@@ -3,6 +3,7 @@ from unittest import TestCase
 
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils.ansi import print_ansi_encoded_string
+from sqlalchemy.sql import sqltypes as types
 
 COLUMN_TYPE_PARSE = [
     "array<string>",
@@ -26,6 +27,46 @@ COLUMN_TYPE_PARSE = [
     "string",
     "uniontype<int,double,array<string>,struct<a:int,b:string>>",
 ]
+
+COLUMN_TYPE = [
+    "ARRAY",
+    "BIGINT",
+    "BINARY VARYING",
+    "CURSOR",
+    "DATETIME",
+    "DATETIMEOFFSET",
+    "GEOGRAPHY",
+    "INT2",
+    "INT8",
+    "INT128",
+    "UINT2",
+    "LONGBLOB",
+    "JSONB",
+    "POINT",
+    types.ARRAY,
+    types.DateTime,
+    types.BigInteger,
+]
+
+EXPTECTED_COLUMN_TYPE = [
+    "ARRAY",
+    "BIGINT",
+    "VARBINARY",
+    "BINARY",
+    "DATETIME",
+    "DATETIME",
+    "GEOGRAPHY",
+    "SMALLINT",
+    "BIGINT",
+    "BIGINT",
+    "SMALLINT",
+    "LONGBLOB",
+    "JSON",
+    "POINT",
+    "VARCHAR",
+    "VARCHAR",
+    "VARCHAR"
+]
 root = os.path.dirname(__file__)
 import json
 
@@ -44,3 +85,10 @@ class ColumnTypeParseTest(TestCase):
                 True if parsed_string == EXPECTED_OUTPUT[index] else False,
                 msg=f"{index}: {COLUMN_TYPE_PARSE[index]} : {parsed_string}",
             )
+
+        
+    def test_check_column_type(self):
+        self.assertEqual(len(COLUMN_TYPE), len(EXPTECTED_COLUMN_TYPE))
+        for index, column in enumerate(COLUMN_TYPE):
+            column_type = ColumnTypeParser.get_column_type(column_type=column)
+            self.assertEqual(EXPTECTED_COLUMN_TYPE[index], column_type)

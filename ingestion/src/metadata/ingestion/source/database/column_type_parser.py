@@ -214,14 +214,16 @@ class ColumnTypeParser:
     @staticmethod
     def get_column_type(column_type: Any) -> str:
 
-        if ColumnTypeParser.get_column_type_mapping(column_type):
-            return ColumnTypeParser.get_column_type_mapping(column_type)
-        if ColumnTypeParser.get_source_type_mapping(column_type):
-            return ColumnTypeParser.get_source_type_mapping(column_type)
-        if ColumnTypeParser.get_source_type_mapping_containes_brackets(column_type):
-            return ColumnTypeParser.get_source_type_mapping_containes_brackets(
-                column_type
-            )
+        column_type_result = None
+        column_type_result = ColumnTypeParser.get_column_type_mapping(column_type)
+        if column_type_result:
+            return column_type_result
+        column_type_result = ColumnTypeParser.get_source_type_mapping(column_type)
+        if column_type_result:
+            return column_type_result
+        column_type_result = ColumnTypeParser.get_source_type_containes_brackets(column_type)
+        if column_type_result:
+            return column_type_result
 
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("VARCHAR")
 
@@ -234,7 +236,7 @@ class ColumnTypeParser:
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(str(column_type), None)
 
     @staticmethod
-    def get_source_type_mapping_containes_brackets(column_type: Any) -> str:
+    def get_source_type_containes_brackets(column_type: Any) -> str:
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
             str(column_type).split("(", maxsplit=1)[0].split("<")[0].upper(), None
         )
