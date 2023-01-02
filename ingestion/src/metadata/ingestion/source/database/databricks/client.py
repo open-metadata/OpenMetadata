@@ -163,7 +163,7 @@ class DatabricksClient:
 
         return job_list
 
-    def get_job_runs(self, job_id):
+    def get_job_runs(self, job_id) -> List[dict]:
         job_runs = []
         try:
             params = {

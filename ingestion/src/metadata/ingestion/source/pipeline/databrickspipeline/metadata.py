@@ -16,6 +16,8 @@ Databricks pipeline source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional
 
+from pydantic import ValidationError
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -55,17 +57,6 @@ STATUS_MAP = {
     "INTERNAL_ERROR": StatusType.Failed,
 }
 
-TASK_MAP = {
-    "notebook_task": "Notebook_Task",
-    "spark_jar_task": "SparkJar_Task",
-    "spark_python_task": "SparkPython_Task",
-    "spark_submit_task": "SparkSubmit_Task",
-    "pipeline_task": "DeltaLiveTablePipeline_Task",
-    "python_wheel_task": "PythonWheel_Task",
-    "sql_task": "Sql_Task",
-    "dbt_task": "Dbt_Task",
-}
-
 
 class DatabrickspipelineSource(PipelineServiceSource):
     """
@@ -75,8 +66,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.task_id_mapping = {}
-        self.job_id_list = set()
         self.connection = self.config.serviceConnection.__root__.config
         self.client = DatabricksClient(self.connection)
 
@@ -110,21 +99,37 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         Method to Get Pipeline Entity
         """
-        self.job_id_list = set()
-        pipeline_ev = CreatePipelineRequest(
-            name=pipeline_details["job_id"],
-            displayName=pipeline_details["settings"]["name"],
-            description=pipeline_details["settings"]["name"],
-            tasks=self.get_tasks(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
-        )
-        yield pipeline_ev
+        job_id_list = []
+        self.update_context(key="job_id_list", value=job_id_list)
+        try:
+            yield CreatePipelineRequest(
+                name=pipeline_details["job_id"],
+                displayName=pipeline_details["settings"]["name"],
+                description=pipeline_details["settings"]["name"],
+                tasks=self.get_tasks(pipeline_details),
+                service=EntityReference(
+                    id=self.context.pipeline_service.id.__root__, type="pipelineService"
+                ),
+            )
+
+        except TypeError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error building Databricks Pipeline information from {pipeline_details}. There might be Databricks Jobs API version"
+                f" incompatibilities - {err}"
+            )
+        except ValidationError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error building pydantic model for {pipeline_details} - {err}"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Wild error ingesting pipeline {pipeline_details} - {err}")
 
     def get_tasks(self, pipeline_details: dict) -> List[Task]:
         task_list = []
-        self.job_id_list.add(pipeline_details["job_id"])
+        self.append_context(key="job_id_list", value=pipeline_details["job_id"])
 
         downstream_tasks = self.get_downstream_tasks(
             pipeline_details["settings"]["tasks"]
@@ -142,9 +147,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return task_list
 
     def get_task_type(self, task):
-        task_type = [TASK_MAP[key] for key in task if key in TASK_MAP][0]
+        for key in task.keys():
+            if key.endswith("_task"):
+                task_key = key
 
-        return task_type
+        if task_key:
+            return task_key
+        else:
+            return "undefined_task"
 
     def get_downstream_tasks(self, workflow):
         task_key_list = [task["task_key"] for task in workflow]
@@ -171,7 +181,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
         dependent_tasks = {}
 
         for task in workflow:
-            if depends_on := task.get("depends_on"):
+            depends_on = task.get("depends_on")
+            if depends_on:
                 dependent_tasks[task["task_key"]] = [v["task_key"] for v in depends_on]
             else:
                 dependent_tasks[task["task_key"]] = None
@@ -179,7 +190,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return dependent_tasks
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
-        for job_id in self.job_id_list:
+        for job_id in self.context["job_id_list"]:
             try:
                 runs = self.client.get_job_runs(job_id=job_id)
                 for attempt in runs:
