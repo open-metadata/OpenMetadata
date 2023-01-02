@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -72,7 +72,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
-    const { service, serviceType, fullyQualifiedName = '' } = table;
+    const {
+      service,
+      serviceType,
+      database,
+      databaseSchema,
+      fullyQualifiedName = '',
+    } = table;
 
     const data: TitleBreadcrumbProps['titleLinks'] = [
       {
@@ -89,11 +95,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         name: getPartialNameFromTableFQN(fullyQualifiedName, [
           FqnPart.Database,
         ]),
-        url: getDatabaseDetailsPath(fullyQualifiedName),
+        url: getDatabaseDetailsPath(database?.fullyQualifiedName || ''),
       },
       {
         name: getPartialNameFromTableFQN(fullyQualifiedName, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(fullyQualifiedName),
+        url: getDatabaseSchemaDetailsPath(
+          databaseSchema?.fullyQualifiedName || ''
+        ),
       },
       {
         name: getEntityName(table),
@@ -172,7 +180,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
   const handleFormSubmit = async (data: TestCase) => {
     setTestCaseData(data);
-    if (isUndefined(selectedTestSuite)) return;
+    if (isUndefined(selectedTestSuite)) {
+      return;
+    }
     try {
       const { parameterValues, testDefinition, name, entityLink, description } =
         data;

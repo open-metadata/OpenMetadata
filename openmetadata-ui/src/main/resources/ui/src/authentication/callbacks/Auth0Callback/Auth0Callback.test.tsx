@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -110,12 +110,11 @@ describe('Test Auth0Callback component', () => {
     // eslint-disable-next-line no-undef
     await new Promise(process.nextTick);
 
-    expect(localStorageMock.getItem(oidcTokenKey)).toEqual('raw_id_token');
-    expect(mockSetIsAuthenticated).toBeCalledTimes(1);
-    expect(mockSetIsAuthenticated).toBeCalledWith(true);
-    expect(mockHandleSuccessfulLogin).toBeCalledTimes(1);
-    expect(mockHandleSuccessfulLogin).toBeCalledWith({
-      // eslint-disable-next-line @typescript-eslint/camelcase
+    expect(localStorageMock.getItem(oidcTokenKey)).toBe('raw_id_token');
+    expect(mockSetIsAuthenticated).toHaveBeenCalledTimes(1);
+    expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledWith({
       id_token: 'raw_id_token',
       profile: {
         email: 'test_email',

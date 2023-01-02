@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -64,7 +64,7 @@ describe('Test DropDownList Component', () => {
       />
     );
 
-    expect(getAllByTestId(container, 'list-item').length).toBe(2);
+    expect(getAllByTestId(container, 'list-item')).toHaveLength(2);
   });
 
   it('OnSelect of List item, callback should be called', () => {
@@ -86,7 +86,7 @@ describe('Test DropDownList Component', () => {
       })
     );
 
-    expect(MockOnSelect).toBeCalledTimes(1);
+    expect(MockOnSelect).toHaveBeenCalledTimes(1);
   });
 
   it('Selected list item should have remove button', () => {
@@ -109,7 +109,7 @@ describe('Test DropDownList Component', () => {
       })
     );
 
-    expect(MockRemoveOwner).toBeCalledTimes(1);
+    expect(MockRemoveOwner).toHaveBeenCalledTimes(1);
   });
 
   it('On search, show no result placeholder', () => {

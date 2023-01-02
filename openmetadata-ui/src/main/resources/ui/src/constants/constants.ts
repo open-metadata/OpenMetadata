@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -121,7 +121,6 @@ export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 export const CUSTOM_AIRFLOW_DOCS =
   'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
-/* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },

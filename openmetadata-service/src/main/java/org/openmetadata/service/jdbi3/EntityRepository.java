@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -64,9 +65,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -79,6 +80,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -326,9 +328,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final T findByNameOrNull(String fqn, String fields, Include include) throws IOException {
+  public final T findByNameOrNull(String fqn, String fields, Include include) {
     String json = dao.findJsonByFqn(fqn, include);
-    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+    try {
+      return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  @Transaction
+  public final List<T> listAll(Fields fields, ListFilter filter) throws IOException {
+    // forward scrolling, if after == null then first page is being asked
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+      entities.add(entity);
+    }
+    return entities;
   }
 
   @Transaction
@@ -729,8 +747,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
       dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+      LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     } else {
       dao.insert(entity);
+      LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
   }
 
@@ -1160,6 +1180,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
   }
 
+  /** Override this method to support downloading CSV functionality */
+  public String exportToCsv(String name, String user) throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
+  /** Load CSV provided for bulk upload */
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user) throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
   public enum Operation {
     PUT,
     PATCH,
@@ -1463,8 +1493,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
-        // No changes between original and updated.
-        return;
+        return; // No changes between original and updated.
       }
       // Remove relationships from original
       deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
@@ -1477,6 +1506,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       updatedToRefs.sort(EntityUtil.compareEntityReference);
       origToRefs.sort(EntityUtil.compareEntityReference);
+    }
+
+    public final void updateToRelationship(
+        String field,
+        String fromEntityType,
+        UUID fromId,
+        Relationship relationshipType,
+        String toEntityType,
+        EntityReference origToRef,
+        EntityReference updatedToRef,
+        boolean bidirectional)
+        throws JsonProcessingException {
+      if (!recordChange(field, origToRef, updatedToRef, true, entityReferenceMatch)) {
+        return; // No changes between original and updated.
+      }
+      // Remove relationships from original
+      deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
+      if (bidirectional) {
+        deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
+      }
+      // Add relationships from updated
+      addRelationship(fromId, updatedToRef.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
     }
 
     /**
@@ -1496,8 +1547,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(field, originFromRefs, updatedFromRefs, added, deleted, entityReferenceMatch)) {
-        // No changes between original and updated.
-        return;
+        return; // No changes between original and updated.
       }
       // Remove relationships from original
       deleteTo(toId, toEntityType, relationshipType, fromEntityType);
@@ -1508,6 +1558,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);
+    }
+
+    public final void updateFromRelationship(
+        String field,
+        String fromEntityType,
+        EntityReference originFromRef,
+        EntityReference updatedFromRef,
+        Relationship relationshipType,
+        String toEntityType,
+        UUID toId)
+        throws JsonProcessingException {
+      if (!recordChange(field, originFromRef, updatedFromRef, true, entityReferenceMatch)) {
+        return; // No changes between original and updated.
+      }
+      // Remove relationships from original
+      deleteTo(toId, toEntityType, relationshipType, fromEntityType);
+
+      // Add relationships from updated
+      addRelationship(updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
     }
 
     public final void storeUpdate() throws IOException {

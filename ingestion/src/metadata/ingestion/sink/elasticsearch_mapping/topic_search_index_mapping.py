@@ -88,6 +88,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "keyword",
             "normalizer": "lowercase_normalizer"
           },
+          "schemaText": {
+            "type": "text"
+          },
           "schemaFields": {
             "properties": {
               "name": {

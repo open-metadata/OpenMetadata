@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,42 +11,56 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
+
 export const ELASTIC_SEARCH_INDEX_ENTITIES = [
   {
     value: 'table',
-    label: 'Table',
+    label: t('label.table'),
   },
   {
     value: 'topic',
-    label: 'Topic',
+    label: t('label.topic'),
   },
   {
     value: 'dashboard',
-    label: 'Dashboard',
+    label: t('label.dashboard'),
   },
   {
     value: 'pipeline',
-    label: 'Pipeline',
+    label: t('label.pipeline'),
   },
   {
     value: 'mlmodel',
-    label: 'ML Model',
+    label: t('label.mlmodel'),
   },
   {
     value: 'user',
-    label: 'User',
+    label: t('label.user'),
   },
   {
     value: 'team',
-    label: 'Team',
+    label: t('label.team'),
   },
   {
     value: 'glossaryTerm',
-    label: 'Glossary Term',
+    label: t('label.glossary-term'),
   },
   {
     value: 'tag',
-    label: 'Tag',
+    label: t('label.tag'),
+  },
+  {
+    value: 'entityReportData',
+    label: t('label.data-assets-report'),
+  },
+  {
+    value: 'webAnalyticEntityViewReport',
+    label: t('label.web-analytics-report'),
+  },
+  {
+    value: 'webAnalyticUserActivityReport',
+    label: t('label.user-analytics-report'),
   },
 ];
 
@@ -61,6 +75,9 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
     'team',
     'glossaryTerm',
     'tag',
+    'entityReportData',
+    'webAnalyticEntityViewReport',
+    'webAnalyticUserActivityReport',
   ],
   batchSize: 100,
   flushIntervalInSec: 30,
@@ -69,11 +86,11 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
 
 export const RECREATE_INDEX_OPTIONS = [
   {
-    label: 'Yes',
+    label: t('label.yes'),
     value: true,
   },
   {
-    label: 'No',
+    label: t('label.no'),
     value: false,
   },
 ];

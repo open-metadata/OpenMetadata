@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static java.lang.String.format;
 
+import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -24,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
+import org.glassfish.jersey.client.JerseyClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.openmetadata.service.fernet.Fernet;
@@ -69,6 +71,7 @@ public abstract class OpenMetadataApplicationTest {
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + migrationScripsLocation)
             .sqlMigrationPrefix("v")
+            .cleanDisabled(false)
             .load();
     flyway.clean();
     flyway.migrate();
@@ -102,10 +105,12 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static Client getClient() {
-    return APP.client()
+    return new JerseyClientBuilder()
+        .register(new JacksonFeature(APP.getObjectMapper()))
         .property(ClientProperties.CONNECT_TIMEOUT, 0)
         .property(ClientProperties.READ_TIMEOUT, 0)
-        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
+        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
+        .build();
   }
 
   public static WebTarget getResource(String collection) {

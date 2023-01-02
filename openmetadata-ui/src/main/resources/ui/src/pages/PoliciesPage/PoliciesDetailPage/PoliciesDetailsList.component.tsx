@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -61,7 +61,7 @@ const PoliciesDetailsList = ({
           }
 
           return (
-            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+            <Link className="link-hover" to={link}>
               {getEntityName(record)}
             </Link>
           );
@@ -76,7 +76,7 @@ const PoliciesDetailsList = ({
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',

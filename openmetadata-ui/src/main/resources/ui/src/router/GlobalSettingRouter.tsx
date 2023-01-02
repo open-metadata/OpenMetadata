@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,9 +20,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
-import AddAlertPage from '../pages/AddAlertPage/AddAlertPage';
-import AlertsPage from '../pages/AlertsPage/AlertsPage';
-import TeamsPage from '../pages/teams/TeamsPage';
 import { userPermissions } from '../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -31,6 +28,28 @@ import {
 } from '../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
+
+const AddAlertPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AddAlertPage/AddAlertPage'))
+);
+
+const AlertDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AlertDetailsPage/AlertDetailsPage'))
+);
+
+const AlertsActivityFeedPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+  )
+);
+
+const AlertsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AlertsPage/AlertsPage'))
+);
+
+const TeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/teams/TeamsPage'))
+);
 
 const ServicesPage = withSuspenseFallback(
   React.lazy(() => import('../pages/services/ServicesPage'))
@@ -192,7 +211,7 @@ const GlobalSettingRouter = () => {
         component={AlertsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ALERTS
         )}
       />
@@ -202,7 +221,7 @@ const GlobalSettingRouter = () => {
         component={AddAlertPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.EDIT_ALERTS,
           true
         )}
@@ -212,8 +231,29 @@ const GlobalSettingRouter = () => {
         component={AddAlertPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ADD_ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERT,
+          true
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertsActivityFeedPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ACTIVITY_FEED
         )}
       />
 

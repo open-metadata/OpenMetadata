@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -464,10 +464,9 @@ export const addNewTagToEntity = (entityObj, term) => {
         .scrollIntoView()
         .click();
 
-    cy.wait(500);
-    cy.get('[class*="-control"]').should('be.visible').type(term);
-    cy.wait(500);
-    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
+    
+    cy.get(`[title="${term}"]`).should('be.visible').click();
     cy.get(
         '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
     ).contains(term);
@@ -482,12 +481,12 @@ export const addNewTagToEntity = (entityObj, term) => {
         .should('be.visible')
         .click();
 
-    cy.get('[class*="-control"]')
+        cy.get('[data-testid="tag-selector"]')
         .scrollIntoView()
         .should('be.visible')
         .type(term);
     cy.wait(500);
-    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get(`[title="${term}"]`).should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]')
         .scrollIntoView()
         .should('be.visible')

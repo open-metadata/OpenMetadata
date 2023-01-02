@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.util.List;
@@ -51,10 +50,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setService(getContainer(metrics.getId())); // service is a default field
-    metrics.setOwner(fields.contains(FIELD_OWNER) ? getOwner(metrics) : null);
-    metrics.setUsageSummary(
+    return metrics.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
-    return metrics;
   }
 
   @Override

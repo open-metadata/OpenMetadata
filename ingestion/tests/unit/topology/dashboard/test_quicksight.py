@@ -19,7 +19,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.dashboard.quicksight import QuickSightSource
+from metadata.ingestion.source.dashboard.quicksight.metadata import QuickSightSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"

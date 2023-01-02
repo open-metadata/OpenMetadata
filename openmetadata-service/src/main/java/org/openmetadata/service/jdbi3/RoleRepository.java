@@ -45,8 +45,7 @@ public class RoleRepository extends EntityRepository<Role> {
   public Role setFields(Role role, Fields fields) throws IOException {
     role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : null);
     role.setTeams(fields.contains("teams") ? getTeams(role) : null);
-    role.setUsers(fields.contains("users") ? getUsers(role) : null);
-    return role;
+    return role.withUsers(fields.contains("users") ? getUsers(role) : null);
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) throws IOException {

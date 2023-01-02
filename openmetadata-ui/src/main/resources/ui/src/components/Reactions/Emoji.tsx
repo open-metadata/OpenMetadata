@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -104,7 +104,7 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onVisibleChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction tw-mr-1 flex', {
+        className={classNames('ant-btn-reaction tw-mr-1 d-flex', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"

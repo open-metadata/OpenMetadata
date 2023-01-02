@@ -18,15 +18,15 @@ The easiest way to extract metadata is to use any of our connectors!
   </InlineCallout>
 </InlineCalloutContainer>
 
-If you want to learn more about how to extract metadata from DBT, we have you covered:
+If you want to learn more about how to extract metadata from dbt, we have you covered:
 
 <InlineCalloutContainer>
   <InlineCallout
     color="violet-70"
-    bold="DBT Ingestion"
+    bold="dbt Ingestion"
     icon="add_moderator"
-    href="/connectors/ingestion/workflows/metadata/dbt"
+    href="/connectors/ingestion/workflows/dbt"
   >
-    Extract Metadata and ingest your DBT models.
+    Extract Metadata and ingest your dbt models.
   </InlineCallout>
 </InlineCalloutContainer>

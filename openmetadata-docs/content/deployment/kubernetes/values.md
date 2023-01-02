@@ -33,29 +33,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.airflow.auth.username | string | `admin` |
 | global.airflow.enabled | bool | `true` |
 | global.airflow.host | string | `http://openmetadata-dependencies-web.default.svc.cluster.local:8080` |
-| global.airflow.openmetadata.authProvider | string | `no-auth` |
-| global.airflow.openmetadata.authConfig.auth0.clientId | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.auth0.domain | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.auth0.secretKey.secretKey | string | `auth0-client-key-secret` |
-| global.airflow.openmetadata.authConfig.auth0.secretKey.secretRef | string | `auth0-client-key-secret` |
-| global.airflow.openmetadata.authConfig.azure.authority | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.azure.clientId | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.azure.clientSecret.secretKey | string | `azure-client-secret` |
-| global.airflow.openmetadata.authConfig.azure.clientSecret.secretRef | string | `azure-client-secret` |
-| global.airflow.openmetadata.authConfig.azure.scopes | list | `[]` |
-| global.airflow.openmetadata.authConfig.customOidc.clientId | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.customOidc.secretKeyPath | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.customOidc.tokenEndpoint | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.google.audience | string | `https://www.googleapis.com/oauth2/v4/token` |
-| global.airflow.openmetadata.authConfig.google.secretKeyPath | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.okta.clientId | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.okta.email | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.okta.orgUrl | string | `Empty String` |
-| global.airflow.openmetadata.authConfig.okta.privateKey.secretKey | string | `okta-client-private-key-secret` |
-| global.airflow.openmetadata.authConfig.okta.privateKey.secretRef | string | `okta-client-private-key-secret` |
-| global.airflow.openmetadata.authConfig.okta.scopes | list | `[]` |
-| global.airflow.openmetadata.authConfig.openMetadata.jwtToken.secretKey| string | `openmetadata-jwt-secret` |
-| global.airflow.openmetadata.authConfig.openMetadata.jwtToken.secretRef| string | `openmetadata-jwt-secret` |
 | global.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api` |
 | global.airflow.sslCertificatePath | string | `/no/path` |
 | global.airflow.verifySsl | string | `no-ssl` |
@@ -125,7 +102,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | fullnameOverride | string | `"openmetadata"` |
 | image.pullPolicy | string | `"Always"` |
 | image.repository | string | `"openmetadata/server"` |
-| image.tag | string | `0.12.1` |
+| image.tag | string | `0.13.1` |
 | imagePullSecrets | list | `[]` |
 | ingress.annotations | object | `{}` |
 | ingress.className | string | `""` |

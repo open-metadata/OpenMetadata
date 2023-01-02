@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -126,9 +126,9 @@ describe('Test Policy details page', () => {
 
     const rulesTab = await screen.findByText('label.rules');
 
-    const rolesTab = await screen.findByText('label.roles');
+    const rolesTab = await screen.findByText('label.role-plural');
 
-    const teamsTab = await screen.findByText('label.teams');
+    const teamsTab = await screen.findByText('label.team-plural');
 
     expect(container).toBeInTheDocument();
 

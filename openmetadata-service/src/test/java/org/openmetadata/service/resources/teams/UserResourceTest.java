@@ -121,7 +121,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {

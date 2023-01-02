@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
@@ -72,9 +70,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
-    ingestionPipeline.setService(getContainer(ingestionPipeline.getId()));
-    ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
-    return ingestionPipeline;
+    return ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
   }
 
   @Override
