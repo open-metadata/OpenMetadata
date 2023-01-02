@@ -39,13 +39,12 @@ jobs:
           sudo make install_antlr_cli
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
-      - name: Deploy to Github Package Registry
+      - name: Setup settings-security.xml
         run: |
           rm -rf ~/.m2/settings-security.xml
-          echo "<settingsSecurity><master>{A+kYQFzZHwAHP1oUgHkJ274eti3+OAaqahud1IVl0TPc3+jKzSyUswfoCoiIa5pd}</master></settingsSecurity>" > ~/.m2/settings-security.xml
+          echo "<settingsSecurity><master>${{ secrets.MAVEN_MASTER_PASSWORD }}</master></settingsSecurity>" > ~/.m2/settings-security.xml
 
-      - id: install-secret-key
-        name: Install gpg secret key
+      - name: Install gpg secret key
         run: |
           cat <(echo -e "${{ secrets.OSSRH_GPG_SECRET_KEY }}") | gpg --batch --import
           gpg --list-secret-keys --keyid-format LONG
