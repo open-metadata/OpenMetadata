@@ -15,6 +15,7 @@ creating a service
 from typing import Callable, List
 
 from pydantic import BaseModel
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
@@ -67,8 +68,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
 
 
 @timeout(seconds=120)
-@connection_with_options_secrets
-def test_connection_db_common(connection) -> None:
+def test_connection_db_common(connection: Engine) -> None:
     """
     Default implementation is the engine to test.
 
