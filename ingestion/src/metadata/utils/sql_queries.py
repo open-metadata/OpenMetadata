@@ -14,31 +14,6 @@ SQL Queries used during ingestion
 
 import textwrap
 
-CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
-    """
-        Select
-          query_start_time start_time,
-          DATEADD(query_duration_ms, query_start_time) end_time,
-          'default' database_name,
-          user user_name,
-          FALSE aborted,
-          query_id query_id,
-          query query_text,
-          databases schema_name,
-          tables tables
-        From system.query_log
-        Where start_time between '{start_time}' and '{end_time}'
-        and CAST(type,'Int8') <> 3
-        and CAST(type,'Int8') <> 4
-        and query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        and query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-        {filters}
-        and (`type`='QueryFinish' or `type`='QueryStart')
-        LIMIT {result_limit}
-"""
-)
-
-
 BIGQUERY_STATEMENT = textwrap.dedent(
     """
  SELECT
