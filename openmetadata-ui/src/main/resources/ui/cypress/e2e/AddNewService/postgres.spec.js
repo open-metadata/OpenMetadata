@@ -128,7 +128,7 @@ it('Add Usage ingestion', () => {
     handleIngestionRetry('database', true, 0, 'usage');
   });
 });
-// Todo:- need to fix flaky test
+
 it('Verify if usage is ingested properly',() => {
   interceptURL('GET', `/api/v1/tables/name/${serviceName}.*.*${tableName}?fields=*&include=all`, 'entityDetailsPage')
   visitEntityDetailsPage(tableName, serviceName, 'tables');
