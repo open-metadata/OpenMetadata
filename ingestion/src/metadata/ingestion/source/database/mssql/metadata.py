@@ -12,6 +12,10 @@
 import traceback
 from typing import Iterable
 
+from sqlalchemy.dialects.mssql.base import MSDialect
+from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
@@ -27,8 +31,31 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import MSSQL_GET_TABLE_COMMENTS
 
 logger = ingestion_logger()
+
+
+@reflection.cache
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
+    """
+    Returns comment of table.
+    """
+    cursor = connection.execute(
+        MSSQL_GET_TABLE_COMMENTS.format(schema_name=schema_name, table_name=table_name)
+    )
+    try:
+        for result in cursor:
+            if result[1]:
+                return {"text": result[1]}
+    except Exception:
+        return {"text": None}
+    return {"text": None}
+
+
+MSDialect.get_table_comment = get_table_comment
 
 
 class MssqlSource(CommonDbSourceService):
@@ -84,3 +111,21 @@ class MssqlSource(CommonDbSourceService):
                     logger.error(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    @staticmethod
+    def get_table_description(
+        schema_name: str, table_name: str, inspector: Inspector
+    ) -> str:
+        description = None
+        try:
+            table_info: dict = inspector.get_table_comment(table_name, schema_name)
+        # Catch any exception without breaking the ingestion
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
+            )
+        else:
+            if "text" in table_info:
+                description = table_info["text"]
+        return description

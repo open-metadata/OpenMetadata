@@ -527,3 +527,16 @@ HIVE_GET_COMMENTS = textwrap.dedent(
     describe formatted {schema_name}.{table_name}
 """
 )
+
+MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
+    """
+SELECT 
+  obj.name AS table_name, 
+  ep.value AS table_comment
+FROM sys.tables AS obj
+LEFT JOIN sys.extended_properties AS ep
+ON obj.object_id = ep.major_id AND ep.minor_id = 0
+WHERE ep.name = 'MS_Description'
+ AND obj.name = '{table_name}'
+"""
+)
