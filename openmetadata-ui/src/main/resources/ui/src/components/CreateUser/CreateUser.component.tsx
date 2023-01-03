@@ -599,7 +599,7 @@ const CreateUser = ({
                   required: true,
                   type: 'email',
                   message: t('label.field-required', {
-                    field: t('label.service-email'),
+                    field: t('label.service-account-email'),
                   }),
                 },
               ]}>
@@ -782,7 +782,9 @@ const CreateUser = ({
                   className="w-full"
                   data-testid="auth-mechanism"
                   defaultValue={authMechanism}
-                  placeholder={t('label.select-auth-mechanism')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.auth-mechanism'),
+                  })}
                   onChange={(value) => setAuthMechanism(value)}>
                   {getAuthMechanismTypeOptions(authConfig).map((option) => (
                     <Option key={option.value}>{option.label}</Option>

@@ -97,7 +97,7 @@ const PoliciesDetailPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.policies'),
+        name: t('label.policy-plural'),
         url: policiesPath,
       },
       {
@@ -395,7 +395,9 @@ const PoliciesDetailPage = () => {
                       <Tooltip
                         title={
                           policyPermission.EditAll
-                            ? t('label.add-rule')
+                            ? t('label.add-entity', {
+                                entity: t('label.rule'),
+                              })
                             : t('message.no-permission-for-action')
                         }>
                         <Button
@@ -405,7 +407,9 @@ const PoliciesDetailPage = () => {
                           onClick={() =>
                             history.push(getAddPolicyRulePath(fqn))
                           }>
-                          {t('label.add-rule')}
+                          {t('label.add-entity', {
+                            entity: t('label.rule'),
+                          })}
                         </Button>
                       </Tooltip>
 

@@ -368,7 +368,9 @@ const Users = ({
           <p className="m-t-xs">
             {userData.description || (
               <span className="tw-no-description">
-                {t('label.no-description')}
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
               </span>
             )}
           </p>

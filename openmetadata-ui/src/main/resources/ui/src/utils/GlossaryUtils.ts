@@ -231,7 +231,7 @@ export const updateGlossaryListBySearchedTerms = (
 export const getActionsList = () => {
   return [
     {
-      name: t('label.add-term'),
+      name: t('label.add-entity', { entity: t('label.term') }),
       value: 'add_term',
     },
   ];

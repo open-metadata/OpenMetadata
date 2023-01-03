@@ -54,11 +54,11 @@ const breadcrumb = [
     url: getSettingPath(),
   },
   {
-    name: t('label.policies'),
+    name: t('label.policy-plural'),
     url: policiesPath,
   },
   {
-    name: t('label.add-new-policy'),
+    name: t('label.add-new-entity', { entity: t('label.policy') }),
     url: '',
   },
 ];
@@ -112,7 +112,7 @@ const AddPolicyPage = () => {
                 <Typography.Paragraph
                   className="text-base"
                   data-testid="form-title">
-                  {t('label.add-new-policy')}
+                  {t('label.add-new-entity', { entity: t('label.policy') })}
                 </Typography.Paragraph>
                 <Form
                   data-testid="policy-form"
@@ -170,7 +170,9 @@ const AddPolicyPage = () => {
                   </Form.Item>
 
                   <Divider data-testid="add-rule-divider">
-                    {t('label.add-rule')}
+                    {t('label.add-entity', {
+                      entity: t('label.rule'),
+                    })}
                   </Divider>
                   <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
@@ -195,7 +197,9 @@ const AddPolicyPage = () => {
           </Col>
           <Col className="p-l-lg m-t-xlg" span={8}>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.add-policy')}
+              {t('label.add-entity', {
+                entity: t('label.policy'),
+              })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </Col>

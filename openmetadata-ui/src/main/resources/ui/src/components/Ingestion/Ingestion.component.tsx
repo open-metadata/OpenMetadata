@@ -14,14 +14,13 @@
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Table, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
-import cronstrue from 'cronstrue';
-import { useTranslation } from 'react-i18next';
-
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import cronstrue from 'cronstrue';
 import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
@@ -272,7 +271,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         size="small"
         type="primary"
         onClick={() => handleAddIngestionClick(type)}>
-        {t('label.add-pipeline-ingestion', { pipelineType: startCase(type) })}
+        {t('label.add-workflow-ingestion', { workflow: startCase(type) })}
       </Button>
     );
   };
@@ -281,8 +280,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     let name;
     switch (type) {
       case PipelineType.ElasticSearchReindex:
-        name = t('label.add-entity', {
-          entity: t('label.elastic-search-re-index'),
+        name = t('label.add-workflow-ingestion', {
+          workflow: t('label.elastic-search-re-index'),
         });
 
         break;
@@ -313,7 +312,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           size="small"
           type="primary"
           onClick={() => setShowActions((pre) => !pre)}>
-          {t('label.add-pipeline-ingestion', { pipelineType: '' })}
+          {t('label.add-entity', { entity: t('label.ingestion-lowercase') })}
           {showActions ? (
             <DropdownIcon
               style={{
@@ -452,7 +451,9 @@ const Ingestion: React.FC<IngestionProps> = ({
             <Tooltip
               title={
                 permissions.ViewAll || permissions.ViewBasic
-                  ? t('label.view-dag')
+                  ? t('label.view-entity', {
+                      entity: t('label.dag'),
+                    })
                   : t('message.no-permission-to-view')
               }>
               <Button

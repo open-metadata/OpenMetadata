@@ -117,7 +117,9 @@ const Tags: FunctionComponent<TagProps> = ({
                   markdown={
                     !isEmpty(tag.description)
                       ? `**${tag.tagFQN}**\n${tag.description}`
-                      : t('label.no-description')
+                      : t('label.no-entity', {
+                          entity: t('label.description'),
+                        })
                   }
                   textVariant="white"
                 />

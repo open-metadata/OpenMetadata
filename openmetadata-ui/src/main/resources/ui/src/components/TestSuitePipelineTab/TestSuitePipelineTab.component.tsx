@@ -573,7 +573,9 @@ const TestSuitePipelineTab = () => {
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer
-      buttonName={t('label.add-pipeline-ingestion', { pipelineType: '' })}
+      buttonName={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
       onButtonClick={() => {

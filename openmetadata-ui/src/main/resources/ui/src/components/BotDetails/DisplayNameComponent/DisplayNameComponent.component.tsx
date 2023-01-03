@@ -71,7 +71,9 @@ const DisplayNameComponent = ({
             </Typography.Title>
           ) : (
             <Typography.Text className="add-display-name">
-              {t('label.add-display-name')}
+              {t('label.add-entity', {
+                entity: t('label.display-name-lowercase'),
+              })}
             </Typography.Text>
           )}
           {(displayNamePermission || editAllPermission) && (

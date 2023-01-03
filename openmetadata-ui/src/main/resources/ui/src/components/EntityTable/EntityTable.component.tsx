@@ -449,7 +449,9 @@ const EntityTable = ({
                 <RichTextEditorPreviewer markdown={description} />
               ) : (
                 <span className="tw-no-description">
-                  {t('label.no-description')}
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
                 </span>
               )}
             </div>
@@ -668,9 +670,9 @@ const EntityTable = ({
       />
       {editColumn && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', { entity: t('label.column') })}: "${
-            editColumn.column.name
-          }"`}
+          header={`${t('label.edit-entity', {
+            entity: t('label.column'),
+          })}: "${editColumn.column.name}"`}
           placeholder={t('message.enter-column-description')}
           value={editColumn.column.description as string}
           visible={Boolean(editColumn)}

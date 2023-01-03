@@ -29,7 +29,9 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
     step: 2,
   },
   {
-    name: i18next.t('label.configure-metadata-to-es-config-optional'),
+    name: i18next.t('label.configure-entity', {
+      entity: i18next.t('label.metadata-to-es-config-optional'),
+    }),
     step: 3,
   },
   { name: i18next.t('label.schedule-interval'), step: 4 },
@@ -42,14 +44,24 @@ export const INITIAL_FILTER_PATTERN: FilterPattern = {
 
 // Todo: Move this to service constant once we figure out issue related to localization in services constant
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
-  { name: i18next.t('label.select-service-type'), step: 1 },
+  {
+    name: i18next.t('label.select-field', {
+      field: i18next.t('label.service-type'),
+    }),
+    step: 1,
+  },
   {
     name: i18next.t('label.configure-entity', {
       entity: i18next.t('label.service'),
     }),
     step: 2,
   },
-  { name: i18next.t('label.connection-detail-plural'), step: 3 },
+  {
+    name: i18next.t('label.connection-entity', {
+      entity: i18next.t('label.detail-plural'),
+    }),
+    step: 3,
+  },
 ];
 
 export const INGESTION_ACTION_TYPE = {

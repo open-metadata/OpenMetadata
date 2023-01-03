@@ -70,11 +70,15 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         value: tableProfile?.rowCount || 0,
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value: tableProfile?.columnCount || 0,
       },
       {
-        title: `${t('label.table-sample')} %`,
+        title: `${t('label.table-entity-text', {
+          entityText: t('label.sample'),
+        })} %`,
         value: `${tableProfile?.profileSample || 100}%`,
       },
     ],
@@ -227,19 +231,23 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
           <Row gutter={16}>
             <Col span={16}>
               <p className="tw-font-medium tw-text-base">
-                {t('label.column-summary')}
+                {t('label.column-entity', { entity: t('label.summary') })}
               </p>
-
               <Typography.Paragraph
                 className="ant-typography-ellipsis-custom tw-text-grey-muted"
                 data-testid="description"
                 ellipsis={{ tooltip: true, rows: 4 }}>
-                {activeColumnDetails.description || t('label.no-description')}
+                {activeColumnDetails.description ||
+                  t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
               </Typography.Paragraph>
             </Col>
             <Col data-testid="data-type-container" span={8}>
               <Statistic
-                title={t('label.data-type')}
+                title={t('label.data-entity', {
+                  entity: t('label.type'),
+                })}
                 value={activeColumnDetails.dataType}
                 valueStyle={{
                   color: '#1890FF',
@@ -254,14 +262,18 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       <Col span={8}>
         <ProfilerSummaryCard
           data={tableState}
-          title={t('label.table-metrics-summary')}
+          title={t('label.table-entity-text', {
+            entityText: t('label.metrics-summary'),
+          })}
         />
       </Col>
       <Col span={8}>
         <ProfilerSummaryCard
           showIndicator
           data={testSummary}
-          title={t('label.table-tests-summary')}
+          title={t('label.table-entity-text', {
+            entityText: t('label.tests-summary'),
+          })}
         />
       </Col>
       <Col span={24}>

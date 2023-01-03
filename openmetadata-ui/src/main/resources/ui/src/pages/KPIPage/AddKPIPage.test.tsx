@@ -86,7 +86,7 @@ describe('Add KPI page', () => {
 
     expect(formTitle).toBeInTheDocument();
 
-    expect(formTitle.textContent).toContain('label.add-new-kpi');
+    expect(formTitle.textContent).toContain('label.add-new-entity');
 
     const formContainer = await screen.findByTestId('kpi-form');
 

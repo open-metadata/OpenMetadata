@@ -49,7 +49,9 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyEventType':
       return i18next.t('label.event-type');
     case 'matchTestResult':
-      return i18next.t('label.test-result-plural');
+      return i18next.t('label.test-entity', {
+        entity: i18next.t('label.result-plural'),
+      });
     case 'matchUpdatedBy':
       return i18next.t('label.updated-by');
     case 'matchAnyFieldChange':

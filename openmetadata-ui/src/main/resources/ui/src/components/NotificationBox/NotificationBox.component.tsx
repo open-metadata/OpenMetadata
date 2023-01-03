@@ -13,7 +13,7 @@
 
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, toLower } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
@@ -163,7 +163,11 @@ const NotificationBox = ({
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
-              <span>{toLower(t('label.view-all'))}</span>
+              <span>
+                {t('label.view-entity', {
+                  entity: t('label.all-lowercase'),
+                })}
+              </span>
             </Button>
           }
           itemLayout="vertical"
