@@ -18,7 +18,7 @@ import {
   mockEntityDetailsWithConstraint,
   mockEntityDetailsWithoutDescription,
   mockEntityDetailsWithTagsAndAlgorithm,
-} from './mocks/SummaryListItems.mocks';
+} from '../../mocks/SummaryListItems.mock';
 import SummaryListItem from './SummaryListItems.component';
 
 jest.mock('../../../../common/rich-text-editor/RichTextEditorPreviewer', () =>

@@ -12,12 +12,12 @@
  */
 
 import React from 'react';
-import { Constraint } from '../../../../../../generated/entity/data/table';
+import { Constraint } from '../../../../generated/entity/data/table';
 import {
   LabelType,
   State,
   TagSource,
-} from '../../../../../../generated/type/tagLabel';
+} from '../../../../generated/type/tagLabel';
 
 export const mockEntityDetails = {
   children: [],

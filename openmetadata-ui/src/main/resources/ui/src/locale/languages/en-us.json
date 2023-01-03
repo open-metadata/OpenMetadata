@@ -499,6 +499,7 @@
     "token-expiration": "Token Expiration",
     "token-security": "Token Security",
     "topic": "Topic",
+    "topic-lowercase": "topic",
     "topic-name": "Topic Name",
     "topics": "Topics",
     "total-active-user": "Total Active User",

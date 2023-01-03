@@ -13,13 +13,15 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import { isArray } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTopicByFqn } from '../../../../axiosAPIs/topicsAPI';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Topic } from '../../../../generated/entity/data/topic';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
@@ -32,25 +34,50 @@ interface TopicSummaryProps {
 
 function TopicSummary({ entityDetails }: TopicSummaryProps) {
   const { t } = useTranslation();
+  const [topicDetails, setTopicDetails] = useState<Topic>(entityDetails);
 
   const topicConfig = useMemo(() => {
-    const configs = getConfigObject(entityDetails);
+    const configs = getConfigObject(topicDetails);
 
     return {
       ...configs,
       'Retention Size': bytesToSize(configs['Retention Size'] ?? 0),
       'Max Message Size': bytesToSize(configs['Max Message Size'] ?? 0),
     };
-  }, [entityDetails]);
+  }, [topicDetails]);
 
   const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
     () =>
       getFormattedEntityData(
         SummaryEntityType.SCHEMAFIELD,
-        entityDetails.messageSchema?.schemaFields
+        topicDetails.messageSchema?.schemaFields
       ),
-    [entityDetails]
+    [topicDetails]
   );
+
+  const fetchExtraTopicInfo = async () => {
+    try {
+      const res = await getTopicByFqn(
+        entityDetails.fullyQualifiedName ?? '',
+        ''
+      );
+
+      const { partitions } = res;
+
+      setTopicDetails({ ...entityDetails, partitions });
+    } catch {
+      showErrorToast(
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.topic-lowercase'),
+          entityName: entityDetails.name,
+        })
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchExtraTopicInfo();
+  }, [entityDetails]);
 
   return (
     <>
@@ -71,11 +98,18 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
               return (
                 <Col key={fieldName} span={24}>
                   <Row gutter={16}>
-                    <Col className="text-gray" span={10}>
+                    <Col
+                      className="text-gray"
+                      data-testid={`${fieldName}-label`}
+                      span={10}>
                       {fieldName}
                     </Col>
-                    <Col span={12}>
-                      {isArray(value) ? value.join(', ') : value}
+                    <Col data-testid={`${fieldName}-value`} span={12}>
+                      {value
+                        ? isArray(value)
+                          ? value.join(', ')
+                          : value
+                        : '-'}
                     </Col>
                   </Row>
                 </Col>
@@ -87,7 +121,9 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
       <Divider className="m-0" />
       <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
         </Col>
@@ -96,7 +132,9 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
             <SummaryList formattedEntityData={formattedSchemaFieldsData} />
           ) : (
             <div className="m-y-md">
-              <Typography.Text className="text-gray">
+              <Typography.Text
+                className="text-gray"
+                data-testid="no-data-message">
                 {t('message.no-data-available')}
               </Typography.Text>
             </div>

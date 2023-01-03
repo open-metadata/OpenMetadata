@@ -77,24 +77,33 @@ function DashboardSummary({ entityDetails }: DashboardSummaryProps) {
         </Col>
         <Col span={24}>
           <Row gutter={16}>
-            <Col className="text-gray" span={10}>
+            <Col
+              className="text-gray"
+              data-testid="dashboard-url-label"
+              span={10}>
               {`${t('label.dashboard')} ${t('label.url-uppercase')}`}
             </Col>
-            <Col span={12}>
-              <Link
-                target="_blank"
-                to={{ pathname: entityDetails.dashboardUrl }}>
-                <Space align="start">
-                  <Typography.Text className="link">
-                    {entityDetails.name}
-                  </Typography.Text>
-                  <SVGIcons
-                    alt="external-link"
-                    icon="external-link"
-                    width="12px"
-                  />
-                </Space>
-              </Link>
+            <Col data-testid="dashboard-url-value" span={12}>
+              {entityDetails.dashboardUrl ? (
+                <Link
+                  target="_blank"
+                  to={{ pathname: entityDetails.dashboardUrl }}>
+                  <Space align="start">
+                    <Typography.Text
+                      className="link"
+                      data-testid="dashboard-link-name">
+                      {entityDetails.name}
+                    </Typography.Text>
+                    <SVGIcons
+                      alt="external-link"
+                      icon="external-link"
+                      width="12px"
+                    />
+                  </Space>
+                </Link>
+              ) : (
+                '-'
+              )}
             </Col>
           </Row>
         </Col>
@@ -102,7 +111,9 @@ function DashboardSummary({ entityDetails }: DashboardSummaryProps) {
       <Divider className="m-0" />
       <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="charts-header">
             {t('label.chart-plural')}
           </Typography.Text>
         </Col>

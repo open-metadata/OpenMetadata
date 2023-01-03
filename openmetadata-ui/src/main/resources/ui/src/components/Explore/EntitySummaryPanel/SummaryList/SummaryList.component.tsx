@@ -40,20 +40,23 @@ export default function SummaryList({
             <SummaryListItems
               entityDetails={entity}
               isColumnsData={entityType === SummaryEntityType.COLUMN}
+              key={`${entity.name}-summary-list-item-${idx}`}
             />
           ) : (
             <Collapse
               ghost
               className="summary-list-collapse"
-              collapsible="icon">
+              collapsible="icon"
+              key={`${entity.name}-collapse-${idx}`}>
               <Collapse.Panel
+                data-testid={`${entity.name}-collapse`}
                 header={
                   <SummaryListItems
                     entityDetails={entity}
                     isColumnsData={entityType === SummaryEntityType.COLUMN}
                   />
                 }
-                key={`${entity.name} ${idx}`}>
+                key={`${entity.name}-collapse-panel-${idx}`}>
                 <SummaryList
                   entityType={entityType}
                   formattedEntityData={entity.children}

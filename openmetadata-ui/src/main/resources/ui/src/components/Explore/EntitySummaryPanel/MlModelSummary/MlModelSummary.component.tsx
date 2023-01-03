@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { startCase } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -86,11 +87,14 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
                 return (
                   <Col key={fieldName} span={24}>
                     <Row gutter={16}>
-                      <Col className="text-gray" span={10}>
-                        {fieldName}
+                      <Col
+                        className="text-gray"
+                        data-testid={`${fieldName}-label`}
+                        span={10}>
+                        {startCase(fieldName)}
                       </Col>
-                      <Col span={12}>
-                        {basicMlModelInfo[fieldName as keyof BasicMlModelInfo]}
+                      <Col data-testid={`${fieldName}-value`} span={12}>
+                        {value}
                       </Col>
                     </Row>
                   </Col>
@@ -105,7 +109,9 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
       <Divider className="m-0" />
       <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="features-header">
             {t('label.feature-plural')}
           </Typography.Text>
         </Col>

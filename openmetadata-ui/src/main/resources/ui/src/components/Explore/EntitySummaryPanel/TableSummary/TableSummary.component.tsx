@@ -189,10 +189,13 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
             {Object.keys(basicTableInfo).map((fieldName) => (
               <Col key={fieldName} span={24}>
                 <Row gutter={16}>
-                  <Col className="text-gray" span={10}>
+                  <Col
+                    className="text-gray"
+                    data-testid={`${fieldName}-label`}
+                    span={10}>
                     {fieldName}
                   </Col>
-                  <Col span={12}>
+                  <Col data-testid={`${fieldName}-value`} span={12}>
                     {basicTableInfo[fieldName as keyof BasicTableInfo]}
                   </Col>
                 </Row>
@@ -205,13 +208,15 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="profiler-header">
             {t('label.profiler-amp-data-quality')}
           </Typography.Text>
         </Col>
         <Col span={24}>
           {isUndefined(overallSummary) ? (
-            <Typography.Text>
+            <Typography.Text data-testid="no-profiler-enabled-message">
               {t('message.no-profiler-enabled-summary-message')}
             </Typography.Text>
           ) : (
@@ -220,7 +225,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
                 <Col key={field.title} span={10}>
                   <Row>
                     <Col span={24}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text
+                        className="text-gray"
+                        data-testid={`${field.title}-label`}>
                         {field.title}
                       </Typography.Text>
                     </Col>
@@ -229,7 +236,8 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
                         className={classNames(
                           'summary-panel-statistics-count',
                           field.className
-                        )}>
+                        )}
+                        data-testid={`${field.title}-value`}>
                         {field.value}
                       </Typography.Text>
                     </Col>
@@ -243,7 +251,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
       <Divider className="m-0" />
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
         </Col>
