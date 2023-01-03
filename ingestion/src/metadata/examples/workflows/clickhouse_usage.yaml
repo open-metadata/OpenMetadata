@@ -1,5 +1,5 @@
 source:
-  type: clickhouse_usage
+  type: clickhouse-usage
   serviceName: local_clickhouse
   serviceConnection:
     config:
@@ -25,4 +25,4 @@ bulkSink:
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    hostPort: localhost:8123
