@@ -122,6 +122,7 @@ class ProfilerPartitionUnitTest(TestCase):
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
+    @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
     def __init__(
         self,
         methodName,
@@ -129,8 +130,10 @@ class ProfilerPartitionUnitTest(TestCase):
         mock_create_bigquery_client,
         auth_default,
         validate_service_name,
+        mock_test_connection,
     ):
         super().__init__(methodName)
+        mock_test_connection.return_value = True
         validate_service_name.return_value = True
         auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)
         self.profiler_workflow = ProfilerWorkflow.create(mock_bigquery_config)
@@ -239,7 +242,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.enablePartitioning == True
+        assert resp.enablePartitioning
         assert resp.partitionColumnName == "foo"
         assert resp.partitionIntervalType == PartitionIntervalType.TIME_UNIT
         assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY

@@ -99,15 +99,14 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         return self.report
 
     def test_connection(self) -> None:
-        # DBT does not need to connect to any source to process information
-        # Passing the test connection here
-        pass
+        """
+        DBT does not need to connect to any source to process information
+        """
 
     def prepare(self):
         """
-        By default, there's nothing to prepare
+        By default for DBT nothing is required to be prepared
         """
-        # By default for DBT nothing is required to be prepared
 
     def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """
@@ -257,7 +256,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             try:
                 # Create all the tags added
                 dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
-                for tag_label in dbt_tag_labels:
+                for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
                             name="DBTTags",

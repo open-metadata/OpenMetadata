@@ -57,7 +57,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            region=self.connection.usageLocation,
+            region=self.service_connection.usageLocation,
             filters=self.filters,
             result_limit=self.source_config.resultLimit,
         )

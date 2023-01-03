@@ -45,6 +45,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
@@ -52,7 +53,6 @@ from metadata.ingestion.source.database.database_service import (
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
@@ -419,7 +419,8 @@ class CommonDbSourceService(
         Used a timed-bound function to test that the engine
         can properly reach the source
         """
-        test_connection(self.engine)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.engine)
 
     @property
     def connection(self) -> Connection:
