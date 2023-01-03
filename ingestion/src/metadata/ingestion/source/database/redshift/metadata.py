@@ -45,14 +45,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_table
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import (
+from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
 )
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database, filter_by_table
+from metadata.utils.logger import ingestion_logger
 
 sa_version = Version(sa.__version__)
 
