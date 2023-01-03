@@ -149,7 +149,9 @@ const EdgeInfoDrawer = ({
               />
             ) : (
               <Typography.Paragraph className="text-grey-muted m-b-0">
-                {t('label.no-description')}
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
               </Typography.Paragraph>
             )}
           </Col>

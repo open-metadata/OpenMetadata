@@ -531,7 +531,9 @@ const DashboardDetails = ({
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
-        title: t('label.chart-name'),
+        title: t('label.chart-entity', {
+          entity: t('label.name'),
+        }),
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
@@ -550,7 +552,9 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: t('label.chart-type'),
+        title: t('label.chart-entity', {
+          entity: t('label.type'),
+        }),
         dataIndex: 'chartType',
         key: 'chartType',
         width: 100,
@@ -569,7 +573,9 @@ const DashboardDetails = ({
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
                 <span className="tw-no-description">
-                  {t('label.no-description')}
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
                 </span>
               )}
             </div>
@@ -823,7 +829,9 @@ const DashboardDetails = ({
           header={t('label.edit-chart', {
             chartName: editChart.chart.displayName,
           })}
-          placeholder={t('label.enter-chart-description')}
+          placeholder={t('label.enter-field-description', {
+            field: t('label.chart'),
+          })}
           value={editChart.chart.description || ''}
           visible={Boolean(editChart)}
           onCancel={closeEditChartModal}

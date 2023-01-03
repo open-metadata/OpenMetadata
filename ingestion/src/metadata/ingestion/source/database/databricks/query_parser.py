@@ -13,7 +13,6 @@ Databricks Query parser module
 """
 from abc import ABC
 
-from metadata.clients.databricks_client import DatabricksClient
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -26,6 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger

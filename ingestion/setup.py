@@ -45,7 +45,9 @@ base_requirements = {
     "boto3~=1.19.12",
     "botocore==1.22.12",
     "avro-python3==1.10.2",
-    "grpcio-tools==1.48.2",
+    # https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
+    "grpcio<1.48.1",
+    "grpcio-tools==1.47.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -73,7 +75,6 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
-        "grpcio==1.50.0",
         "sqlalchemy-bigquery>=1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",

@@ -30,8 +30,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -118,7 +118,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             else:
                 database = self.config.serviceConnection.__root__.config.database
                 if database:
-                    self.engine: Engine = get_connection(self.connection)
+                    self.engine: Engine = get_connection(self.service_connection)
                     yield from self.process_table_query()
                 else:
                     query = "select datname from pg_catalog.pg_database"
@@ -127,7 +127,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                         row = list(res)
                         logger.info(f"Ingesting from database: {row[0]}")
                         self.config.serviceConnection.__root__.config.database = row[0]
-                        self.engine = get_connection(self.connection)
+                        self.engine = get_connection(self.service_connection)
                         yield from self.process_table_query()
 
         except Exception as err:
@@ -139,7 +139,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         Process Query
         """
         try:
-            with get_connection(self.connection).connect() as conn:
+            with get_connection(self.service_connection).connect() as conn:
                 rows = conn.execute(self.get_sql_statement())
                 queries = []
                 for row in rows:

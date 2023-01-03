@@ -13,7 +13,10 @@ Helpers to import python classes and modules dynamically
 """
 import importlib
 import traceback
-from typing import Type, TypeVar
+from enum import Enum
+from typing import Callable, Optional, Type, TypeVar
+
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -25,6 +28,7 @@ from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
+from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -35,9 +39,9 @@ CLASS_SEPARATOR = "_"
 MODULE_SEPARATOR = "."
 
 
-class ImportClassException(Exception):
+class DynamicImportException(Exception):
     """
-    Raise it when having issues dynamically importing classes
+    Raise it when having issues dynamically importing objects
     """
 
 
@@ -85,18 +89,18 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_class(key: str) -> Type[T]:
+def import_from_module(key: str) -> Type[T]:
     """
-    Dynamically import a class from a module path
+    Dynamically import an object from a module path
     """
 
     try:
-        module_name, class_name = key.rsplit(MODULE_SEPARATOR, 1)
-        my_class = getattr(importlib.import_module(module_name), class_name)
-        return my_class
+        module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
+        obj = getattr(importlib.import_module(module_name), obj_name)
+        return obj
     except Exception as err:
         logger.debug(traceback.format_exc())
-        raise ImportClassException(f"Cannot load class from {key} due to {err}")
+        raise DynamicImportException(f"Cannot load object from {key} due to {err}")
 
 
 # module building strings read better with .format instead of f-strings
@@ -104,7 +108,7 @@ def import_class(key: str) -> Type[T]:
 def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
-    return import_class(
+    return import_from_module(
         "metadata.{}.source.{}.{}.{}.{}Source".format(
             from_,
             service_type.name.lower(),
@@ -118,7 +122,7 @@ def import_source_class(
 def import_processor_class(
     processor_type: str, from_: str = "ingestion"
 ) -> Type[Processor]:
-    return import_class(
+    return import_from_module(
         "metadata.{}.processor.{}.{}Processor".format(
             from_,
             get_module_name(processor_type),
@@ -128,7 +132,7 @@ def import_processor_class(
 
 
 def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]:
-    return import_class(
+    return import_from_module(
         "metadata.{}.stage.{}.{}Stage".format(
             from_,
             get_module_name(stage_type),
@@ -138,7 +142,7 @@ def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]
 
 
 def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
-    return import_class(
+    return import_from_module(
         "metadata.{}.sink.{}.{}Sink".format(
             from_,
             get_module_name(sink_type),
@@ -150,7 +154,7 @@ def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
 def import_bulk_sink_type(
     bulk_sink_type: str, from_: str = "ingestion"
 ) -> Type[BulkSink]:
-    return import_class(
+    return import_from_module(
         "metadata.{}.bulksink.{}.{}BulkSink".format(
             from_,
             get_module_name(bulk_sink_type),
@@ -175,3 +179,33 @@ def get_sink(
     logger.debug(f"Sink type:{sink_type}, {sink_class} configured")
 
     return sink
+
+
+def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
+    """
+    Import get_connection and test_connection from sources
+    """
+    if not isinstance(connection, BaseModel):
+        raise ValueError(
+            "The connection is not a pydantic object. Is it really a connection class?"
+        )
+
+    connection_type: Optional[Enum] = getattr(connection, "type")
+    if not connection_type:
+        raise ValueError(
+            f"Cannot get `type` property from connection {connection}. Check the JSON Schema."
+        )
+
+    service_type: ServiceType = get_service_type_from_source_type(connection_type.value)
+
+    # module building strings read better with .format instead of f-strings
+    # pylint: disable=consider-using-f-string
+    _connection_fn = import_from_module(
+        "metadata.ingestion.source.{}.{}.connection.{}".format(
+            service_type.name.lower(),
+            connection_type.value.lower(),
+            function_name,
+        )
+    )
+
+    return _connection_fn

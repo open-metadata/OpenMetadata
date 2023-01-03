@@ -67,8 +67,12 @@ const RichTextEditorPreviewer = ({
           type="link"
           onClick={displayMoreHandler}>
           {hideReadMoreText
-            ? t('label.read-less-lowercase')
-            : t('label.read-more-lowercase')}
+            ? t('label.read-type-lowercase', {
+                type: t('label.less-lowercase'),
+              })
+            : t('label.read-type-lowercase', {
+                type: t('label.more-lowercase'),
+              })}
         </Button>
       )}
     </div>

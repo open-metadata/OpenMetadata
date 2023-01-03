@@ -56,6 +56,7 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.interfaces.datalake.datalake_profiler_interface import (
     DataLakeProfilerInterface,
@@ -79,7 +80,6 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
@@ -588,4 +588,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
     def test_connection(self):
         service_config = self.config.source.serviceConnection.__root__.config
         self.engine = get_connection(service_config)
-        test_connection(self.engine)
+
+        test_connection_fn = get_test_connection_fn(service_config)
+        test_connection_fn(self.engine)

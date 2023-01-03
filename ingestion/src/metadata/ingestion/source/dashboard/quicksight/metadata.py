@@ -49,7 +49,6 @@ class QuickSightSource(DashboardServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.quicksight = self.connection.client
         self.aws_account_id = self.service_connection.awsAccountId
 
     @classmethod
@@ -68,12 +67,12 @@ class QuickSightSource(DashboardServiceSource):
         """
         dashboard_ids = [
             dashboard["DashboardId"]
-            for dashboard in self.quicksight.list_dashboards(
+            for dashboard in self.client.list_dashboards(
                 AwsAccountId=self.aws_account_id
             )["DashboardSummaryList"]
         ]
         dashboards = [
-            self.quicksight.describe_dashboard(
+            self.client.describe_dashboard(
                 AwsAccountId=self.aws_account_id, DashboardId=dashboard_id
             )["Dashboard"]
             for dashboard_id in dashboard_ids
@@ -98,7 +97,7 @@ class QuickSightSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        dashboard_url = self.quicksight.get_dashboard_embed_url(
+        dashboard_url = self.client.get_dashboard_embed_url(
             AwsAccountId=self.aws_account_id,
             DashboardId=dashboard_details["DashboardId"],
             IdentityType="ANONYMOUS",
@@ -128,7 +127,7 @@ class QuickSightSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        dashboard_url = self.quicksight.get_dashboard_embed_url(
+        dashboard_url = self.client.get_dashboard_embed_url(
             AwsAccountId=self.aws_account_id,
             DashboardId=dashboard_details["DashboardId"],
             IdentityType="ANONYMOUS",
@@ -172,7 +171,7 @@ class QuickSightSource(DashboardServiceSource):
             dataset_arns = dashboard_details["Version"]["DatasetArns"]
             dataset_ids = [
                 dataset["DataSetId"]
-                for dataset in self.quicksight.list_data_sets(
+                for dataset in self.client.list_data_sets(
                     AwsAccountId=self.aws_account_id
                 )
                 if dataset["Arn"] in dataset_arns
@@ -180,14 +179,14 @@ class QuickSightSource(DashboardServiceSource):
             data_source_arns = set()
             for dataset_id in dataset_ids:
                 for data_source in list(
-                    self.quicksight.describe_data_set(
+                    self.client.describe_data_set(
                         AwsAccountId=self.aws_account_id, DataSetId=dataset_id
                     )["Dataset"]["PhysicalTableMap"].values()
                 )[0]:
                     data_source_arns.add(data_source["DataSourceArn"])
             data_sources = [
                 data_source
-                for data_source in self.quicksight.list_data_sources(
+                for data_source in self.client.list_data_sources(
                     AwsAccountId=self.aws_account_id
                 )["DataSources"]
                 if data_source["Arn"] in data_source_arns

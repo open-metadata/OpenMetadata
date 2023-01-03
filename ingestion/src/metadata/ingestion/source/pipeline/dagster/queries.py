@@ -58,13 +58,13 @@ DAGSTER_PIPELINE_DETAILS_GRAPHQL = """
                   name
                 }
               }
-              
+
             }
           }
         }
       }
     }
-    
+
   }
 }
 """
@@ -99,7 +99,6 @@ GRAPHQL_RUNS_QUERY = """query SidebarOpGraphsQuery($selector: PipelineSelector!,
   }
 }
 """
-
 
 TEST_QUERY_GRAPHQL = """query Pipeline {
             pipelineRunsOrError {
@@ -139,24 +138,3 @@ GRAPHQL_QUERY_FOR_JOBS = """query PipelineRuns($selector: GraphSelector!){
                     }
                 }
                 }"""
-
-TABLEAU_LINEAGE_GRAPHQL_QUERY = """
-{
-  workbooks {
-    id
-    luid
-    name
-    upstreamTables{
-      name
-      schema
-      upstreamDatabases{
-        name
-      }
-      referencedByQueries{
-        name
-        query
-      }
-    }
-  }
-}
-"""

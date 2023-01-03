@@ -180,6 +180,13 @@ def get_column_lineage(
     if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(
         to_table_raw_name
     ).get(from_table_raw_name):
+        # Select all
+        if "*" in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name)[0]:
+            column_lineage_map[to_table_raw_name][from_table_raw_name] = [
+                (c.name.__root__, c.name.__root__) for c in from_entity.columns
+            ]
+
+        # Other cases
         for to_col, from_col in column_lineage_map.get(to_table_raw_name).get(
             from_table_raw_name
         ):
@@ -288,9 +295,11 @@ def populate_column_lineage_map(raw_column_lineage):
         raw_column_lineage (_type_): raw column lineage
     """
     lineage_map = {}
-    if not raw_column_lineage or len(raw_column_lineage[0]) != 2:
+    if not raw_column_lineage:
         return lineage_map
-    for source, target in raw_column_lineage:
+    for column_lineage in raw_column_lineage:
+        source = column_lineage[0]
+        target = column_lineage[-1]
         for parent in source._parent:  # pylint: disable=protected-access
             if lineage_map.get(str(target.parent)):
                 ele = lineage_map.get(str(target.parent))

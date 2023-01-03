@@ -26,8 +26,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
@@ -72,9 +72,11 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
         """
         Method to set query tag for current session
         """
-        if self.connection.queryTag:
+        if self.service_connection.queryTag:
             self.engine.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=self.connection.queryTag)
+                SNOWFLAKE_SESSION_TAG_QUERY.format(
+                    query_tag=self.service_connection.queryTag
+                )
             )
 
     def get_table_query(self) -> Iterable[TableQuery]:
@@ -93,7 +95,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
                 self.engine.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_connection(self.connection)
+                self.engine = get_connection(self.service_connection)
                 self.set_session_query_tag()
                 yield from super().get_table_query()
 
@@ -101,6 +103,6 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
         """
         Method to get database name
         """
-        if not data["database_name"] and self.connection.database:
-            return self.connection.database
+        if not data["database_name"] and self.service_connection.database:
+            return self.service_connection.database
         return data["database_name"]

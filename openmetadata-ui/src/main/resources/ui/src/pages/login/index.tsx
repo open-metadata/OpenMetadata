@@ -279,7 +279,9 @@ const SigninPage = () => {
                         data-testid="signup"
                         type="link"
                         onClick={onClickSignUp}>
-                        {t('label.create-account')}
+                        {t('label.create-entity', {
+                          entity: t('label.account'),
+                        })}
                       </Button>
                     </div>
                   </>
