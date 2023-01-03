@@ -2275,7 +2275,7 @@ public interface CollectionDAO {
                 + "ON CONFLICT (usageDate, id) DO UPDATE SET count7 = entity_usage.count7 - entity_usage.count1 + :count1,"
                 + "count30 = entity_usage.count30 - entity_usage.count1 + :count1, count1 = :count1",
         connectionType = POSTGRES)
-    void insertOrReplace(
+    void insertOrReplaceCount(
         @Bind("date") String date,
         @Bind("id") String id,
         @Bind("entityType") String entityType,
