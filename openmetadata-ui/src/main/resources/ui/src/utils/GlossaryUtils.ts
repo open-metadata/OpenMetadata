@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
-import { FormattedGlossarySuggestion } from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,
@@ -185,7 +184,7 @@ const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
  * @returns list of glossary tree
  */
 export const getSearchedGlossaryTermTree = (
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: GlossaryTerm[]
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
@@ -208,7 +207,7 @@ export const getSearchedGlossaryTermTree = (
  */
 export const updateGlossaryListBySearchedTerms = (
   glossaries: ModifiedGlossaryData[],
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: GlossaryTerm[]
 ) => {
   const searchedTermTree = getSearchedGlossaryTermTree(searchedTerms);
 
@@ -243,7 +242,7 @@ export const getActionsList = () => {
  * @param fqn fqn of glossary or glossary term
  * @returns list of fqns
  */
-export const getHierarchicalKeysByFQN = (fqn: string) => {
+export const getHierarchicalKeysByFQN = (fqn?: string) => {
   if (fqn) {
     const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
       const currFqn = prev.length

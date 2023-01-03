@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
@@ -62,7 +61,7 @@ const Appbar: React.FC = (): JSX.Element => {
     isTourRoute,
     onLogoutHandler,
   } = useAuthContext();
-  const match: Match | null = useRouteMatch({
+  const match = useRouteMatch<{ searchQuery: string }>({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
   const searchQuery = match?.params?.searchQuery;
