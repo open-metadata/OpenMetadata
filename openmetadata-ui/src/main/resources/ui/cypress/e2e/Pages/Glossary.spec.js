@@ -300,7 +300,7 @@ describe('Glossary page should work properly', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/name/*.${NEW_GLOSSARY_TERMS.term_1.name}?fields=children,relatedTerms,reviewers,tags`,
+      `/api/v1/glossaryTerms/name/*.${NEW_GLOSSARY_TERMS.term_1.name}?fields=*`,
       'getGlossaryTerm'
     );
     interceptURL(
@@ -319,7 +319,8 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get('[data-testid="section-synonyms"] [data-testid="edit-button"]')
+    cy.wait(200);
+    cy.get('[data-testid="section-synonyms"]').find('[data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -352,7 +353,7 @@ describe('Glossary page should work properly', () => {
     //Navigate to glossary term
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/name/*.${NEW_GLOSSARY_TERMS.term_1.name}?fields=children,relatedTerms,reviewers,tags`,
+      `/api/v1/glossaryTerms/name/*.${NEW_GLOSSARY_TERMS.term_1.name}?fields=*`,
       'getGlossaryTerm'
     );
     interceptURL(
@@ -366,8 +367,10 @@ describe('Glossary page should work properly', () => {
       .click();
     verifyResponseStatusCode('@getGlossaryTerm', 200);
     verifyResponseStatusCode('@waitForTermPermission', 200);
+    cy.get('[data-testid="section-references"]').should('be.visible')
+    cy.wait(200);
     // updating References
-    cy.get('[data-testid="section-references"] [data-testid="edit-button"]')
+    cy.get('[data-testid="section-references"]').find('[data-testid="edit-button"]')
       .should('exist')
       .click();
     cy.get('[data-testid="add-button"]').should('be.visible').click();
@@ -548,12 +551,16 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
+    //Remove all added tags from breadcrumb
     cy.get('.ant-select-selection-item-remove')
       .eq(0)
       .should('be.visible')
       .click();
-    // uncomment below code once `Updating data of glossary term should work properly` is fixed
-    // cy.get('[role="button"]').eq(0).should('be.visible').click();
+    cy.wait(200);
+    cy.get('.ant-select-selection-item-remove')
+      .eq(0)
+      .should('be.visible')
+      .click();
 
     interceptURL('PATCH', '/api/v1/tables/*', 'removeTags');
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
@@ -563,9 +570,9 @@ describe('Glossary page should work properly', () => {
       .should('not.contain', term)
       .and('not.contain', 'Personal');
     //Remove the added column tag from entity
-    // uncomment below code once `Updating data of glossary term should work properly` is fixed
-    // cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
-    cy.wait(500);
+    
+    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
+    cy.wait(200);
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
     cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
