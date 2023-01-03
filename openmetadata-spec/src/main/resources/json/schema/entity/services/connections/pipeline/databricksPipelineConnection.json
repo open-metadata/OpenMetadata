@@ -13,14 +13,6 @@
         "DatabricksPipeline"
       ],
       "default": "DatabricksPipeline"
-    },
-    "databricksScheme": {
-      "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": [
-        "databricks+connector"
-      ],
-      "default": "databricks+connector"
     }
   },
   "properties": {
@@ -29,12 +21,6 @@
       "description": "Service Type",
       "$ref": "#/definitions/databricksType",
       "default": "DatabricksPipeline"
-    },
-    "scheme": {
-      "title": "Connection Scheme",
-      "description": "SQLAlchemy driver scheme options.",
-      "$ref": "#/definitions/databricksScheme",
-      "default": "databricks+connector"
     },
     "hostPort": {
       "title": "Host and Port",
