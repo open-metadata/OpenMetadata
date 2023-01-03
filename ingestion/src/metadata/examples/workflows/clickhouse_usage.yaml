@@ -25,4 +25,4 @@ bulkSink:
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
-    hostPort: localhost:8123
+    authProvider: no-auth
