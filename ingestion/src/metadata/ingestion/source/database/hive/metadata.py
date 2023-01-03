@@ -30,7 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils.sql_queries import HIVE_GET_COMMENTS
+from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
 
 complex_data_types = ["struct", "map", "array", "union"]
 
