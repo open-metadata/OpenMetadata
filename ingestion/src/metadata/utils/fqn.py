@@ -15,6 +15,7 @@ ES indexes definitions
 """
 import re
 from collections import namedtuple
+from functools import lru_cache
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
@@ -100,6 +101,7 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
+@lru_cache
 def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[str]:
     """
     Given an Entity T, build the FQN of that Entity
