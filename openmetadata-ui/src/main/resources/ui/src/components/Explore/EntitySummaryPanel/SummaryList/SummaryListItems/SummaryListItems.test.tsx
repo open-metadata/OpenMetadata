@@ -92,7 +92,7 @@ describe('SummaryListItems component tests', () => {
     );
 
     const richTextEditorPreviewer = queryByTestId('RichTextEditorPreviewer');
-    const noDescription = getByText('label.no-description');
+    const noDescription = getByText('label.no-entity');
 
     expect(richTextEditorPreviewer).toBeNull();
     expect(noDescription).toBeInTheDocument();

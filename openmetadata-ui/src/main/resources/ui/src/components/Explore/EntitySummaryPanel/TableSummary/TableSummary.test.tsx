@@ -92,8 +92,10 @@ describe('TableSummary component tests', () => {
     });
 
     const rowCountLabel = screen.getByTestId('label.row-count-label');
-    const colCountLabel = screen.getByTestId('label.column-count-label');
-    const tableSampleLabel = screen.getByTestId('label.table-sample %-label');
+    const colCountLabel = screen.getByTestId('label.column-entity-label');
+    const tableSampleLabel = screen.getByTestId(
+      'label.table-entity-text %-label'
+    );
     const testsPassedLabel = screen.getByTestId(
       'label.test-plural label.passed-label'
     );
@@ -104,8 +106,10 @@ describe('TableSummary component tests', () => {
       'label.test-plural label.failed-label'
     );
     const rowCountValue = screen.getByTestId('label.row-count-value');
-    const colCountValue = screen.getByTestId('label.column-count-value');
-    const tableSampleValue = screen.getByTestId('label.table-sample %-value');
+    const colCountValue = screen.getByTestId('label.column-entity-value');
+    const tableSampleValue = screen.getByTestId(
+      'label.table-entity-text %-value'
+    );
     const testsPassedValue = screen.getByTestId(
       'label.test-plural label.passed-value'
     );
