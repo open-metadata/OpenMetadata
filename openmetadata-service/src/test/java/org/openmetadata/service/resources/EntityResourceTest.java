@@ -342,7 +342,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();
-    // new AlertResourceTest().setupAlerts();
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
