@@ -137,9 +137,7 @@ const TestSuitePage = () => {
               type="primary"
               onClick={onAddTestSuite}>
               {t('label.add-entity', {
-                entity: t('label.test-entity', {
-                  entity: t('label.suite'),
-                }),
+                entity: t('label.test-suite'),
               })}
             </Button>
           </p>
@@ -169,9 +167,7 @@ const TestSuitePage = () => {
           type="primary"
           onClick={onAddTestSuite}>
           {t('label.add-entity', {
-            entity: t('label.test-entity', {
-              entity: t('label.suite'),
-            }),
+            entity: t('label.test-suite'),
           })}
         </Button>
       </Space>

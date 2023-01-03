@@ -231,10 +231,8 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
           <Row gutter={16}>
             <Col span={16}>
               <p className="tw-font-medium tw-text-base">
-                {t('label.column-summary')}
                 {t('label.column-entity', { entity: t('label.summary') })}
               </p>
-
               <Typography.Paragraph
                 className="ant-typography-ellipsis-custom tw-text-grey-muted"
                 data-testid="description"

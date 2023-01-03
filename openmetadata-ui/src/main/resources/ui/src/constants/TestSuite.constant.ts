@@ -15,13 +15,9 @@ import i18next from 'i18next';
 import { StepperStepType } from 'Models';
 import { ROUTES } from './constants';
 
-const TEST_SUITE_LABEL = i18next.t('label.test-entity', {
-  entity: i18next.t('label.suite'),
-});
+const TEST_SUITE_LABEL = i18next.t('label.test-suite');
 const ADD_TEST_SUITE_LABEL = i18next.t('label.add-entity', {
-  entity: i18next.t('label.test-entity', {
-    entity: i18next.t('label.suite'),
-  }),
+  entity: i18next.t('label.test-suite'),
 });
 
 export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
@@ -30,9 +26,7 @@ export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: i18next.t('label.test-entity', {
-      entity: i18next.t('label.suite-status'),
-    }),
+    name: i18next.t('label.test-suite-status'),
     step: 2,
   },
 ];

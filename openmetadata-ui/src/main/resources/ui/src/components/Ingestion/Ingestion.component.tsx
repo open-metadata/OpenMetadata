@@ -280,8 +280,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     let name;
     switch (type) {
       case PipelineType.ElasticSearchReindex:
-        name = t('label.add-entity', {
-          entity: t('label.elastic-search-re-index'),
+        name = t('label.add-workflow-ingestion', {
+          workflow: t('label.elastic-search-re-index'),
         });
 
         break;

@@ -93,9 +93,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (text) => (isEmpty(text) ? '--' : text),
       },
       {
-        title: t('label.test-entity', {
-          entity: t('label.suite'),
-        }),
+        title: t('label.test-suite'),
         dataIndex: 'testSuite',
         key: 'testSuite',
         render: (value) => {

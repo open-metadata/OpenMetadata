@@ -573,8 +573,8 @@ const TestSuitePipelineTab = () => {
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer
-      buttonName={t('label.add-workflow-ingestion', {
-        workflow: t('label.pipeline'),
+      buttonName={t('label.add-entity', {
+        entity: t('label.ingestion'),
       })}
       hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
