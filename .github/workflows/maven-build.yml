@@ -27,13 +27,12 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
+concurrency:
   group: maven-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
   test:
     runs-on: ${{matrix.os}}
-    environment: publish
 
     strategy:
       matrix:
@@ -72,15 +71,13 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-          gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
-          gpg-passphrase: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
 
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev
-      
+
       - name: Setup Test Containers Properties
         run: |
           sudo make install_antlr_cli
@@ -89,8 +86,6 @@ jobs:
       - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_PRIVATE_KET: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
