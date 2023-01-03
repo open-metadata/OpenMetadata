@@ -58,7 +58,15 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-DATALAKE_INT_TYPES = {"int64", "INT", "int32"}
+DATALAKE_DATA_TYPES = {
+    **dict.fromkeys(["int64", "INT", "int32"], DataType.INT.value),
+    "object": DataType.STRING.value,
+    **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT.value),
+    "bool": DataType.BOOLEAN.value,
+    **dict.fromkeys(
+        ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
+    ),
+}
 
 DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet", ".json.gz")
 
@@ -376,6 +384,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         schema_name = self.context.database_schema.name.__root__
         try:
             table_constraints = None
+            columns = []
             if isinstance(self.service_connection.configSource, GCSConfig):
                 data_frame = self.get_gcs_files(
                     client=self.client, key=table_name, bucket_name=schema_name
@@ -385,7 +394,6 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
             if isinstance(self.service_connection.configSource, AzureConfig):
-                columns = None
                 connection_args = self.service_connection.configSource.securityConfig
                 storage_options = {
                     "tenant_id": connection_args.tenantId,
@@ -534,14 +542,11 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             for column in df_columns:
                 # use String by default
                 data_type = DataType.STRING.value
-
                 try:
-                    if (
-                        hasattr(data_frame[column], "dtypes")
-                        and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
-                        and data_frame[column].dtypes.name in ("int64", "int32")
-                    ):
-                        data_type = DataType.INT.value
+                    if hasattr(data_frame[column], "dtypes"):
+                        data_type = DATALAKE_DATA_TYPES.get(
+                            data_frame[column].dtypes.name, DataType.STRING.value
+                        )
 
                     parsed_string = {
                         "dataTypeDisplay": data_type,
