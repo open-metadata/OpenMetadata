@@ -13,7 +13,7 @@
 
 /// <reference types="cypress" />
 
-import { followAndOwnTheEntity, interceptURL, searchEntity, visitEntityDetailsPage } from '../../common/common';
+import { followAndOwnTheEntity, interceptURL, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { ENTITIES, FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const FOLLOWING_MYDATA_COUNT = 4;
@@ -121,15 +121,16 @@ describe('MyData page should work', () => {
     cy.get('[data-testid="following-data-container"]')
       .find('[data-testid*="Following data"]')
       .should('have.length', FOLLOWING_MYDATA_COUNT);
-
+    interceptURL('GET', '/api/v1/search/query?q=owner.id:*&from=0&size=10&index=*','userDetailsmyDataTab' )
     cy.get('[data-testid="my-data-total-count"]').should('be.visible').click();
-
+    verifyResponseStatusCode('@userDetailsmyDataTab', 200)
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
-
+    interceptURL('GET', 'api/v1/search/query?q=followers:*&from=0&size=10&index=*', 'userDetailsFollowTab')
     cy.get('[data-testid="following-data-total-count"]')
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@userDetailsFollowTab', 200)
 
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
