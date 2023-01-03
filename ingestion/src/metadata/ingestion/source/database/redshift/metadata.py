@@ -25,7 +25,6 @@ from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_name
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
 from metadata.generated.schema.entity.data.database import Database
