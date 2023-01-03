@@ -95,6 +95,8 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
               const value =
                 topicConfig[fieldName as keyof TopicConfigObjectInterface];
 
+              const fieldValue = isArray(value) ? value.join(', ') : value;
+
               return (
                 <Col key={fieldName} span={24}>
                   <Row gutter={16}>
@@ -105,11 +107,7 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
                       {fieldName}
                     </Col>
                     <Col data-testid={`${fieldName}-value`} span={12}>
-                      {value
-                        ? isArray(value)
-                          ? value.join(', ')
-                          : value
-                        : '-'}
+                      {fieldValue ? fieldValue : '-'}
                     </Col>
                   </Row>
                 </Col>

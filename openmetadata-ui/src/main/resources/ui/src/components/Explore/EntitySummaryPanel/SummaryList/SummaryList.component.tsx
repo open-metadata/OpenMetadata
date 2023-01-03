@@ -35,19 +35,19 @@ export default function SummaryList({
           <Text className="text-gray">{t('message.no-data-available')}</Text>
         </div>
       ) : (
-        formattedEntityData.map((entity, idx) =>
+        formattedEntityData.map((entity) =>
           isEmpty(entity.children) || isUndefined(entity.children) ? (
             <SummaryListItems
               entityDetails={entity}
               isColumnsData={entityType === SummaryEntityType.COLUMN}
-              key={`${entity.name}-summary-list-item-${idx}`}
+              key={`${entity.name}-summary-list-item`}
             />
           ) : (
             <Collapse
               ghost
               className="summary-list-collapse"
               collapsible="icon"
-              key={`${entity.name}-collapse-${idx}`}>
+              key={`${entity.name}-collapse`}>
               <Collapse.Panel
                 data-testid={`${entity.name}-collapse`}
                 header={
@@ -56,7 +56,7 @@ export default function SummaryList({
                     isColumnsData={entityType === SummaryEntityType.COLUMN}
                   />
                 }
-                key={`${entity.name}-collapse-panel-${idx}`}>
+                key={`${entity.name}-collapse-panel`}>
                 <SummaryList
                   entityType={entityType}
                   formattedEntityData={entity.children}
