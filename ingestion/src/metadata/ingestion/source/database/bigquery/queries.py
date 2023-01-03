@@ -14,8 +14,24 @@ SQL Queries used during ingestion
 
 import textwrap
 
-HIVE_GET_COMMENTS = textwrap.dedent(
+BIGQUERY_STATEMENT = textwrap.dedent(
     """
-    describe formatted {schema_name}.{table_name}
+ SELECT
+   project_id as database_name,
+   user_email as user_name,
+   statement_type as query_type,
+   start_time,
+   end_time,
+   query as query_text,
+   null as schema_name
+FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
+  {filters}
+  AND job_type = "QUERY"
+  AND state = "DONE"
+  AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
+  AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  LIMIT {result_limit}
 """
 )
