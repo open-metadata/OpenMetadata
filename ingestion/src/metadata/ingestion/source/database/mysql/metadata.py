@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Mysql source module"""
+from sqlalchemy.dialects.mysql.base import MySQLDialect
 
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -21,6 +22,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+
+MySQLDialect
 
 
 class MysqlSource(CommonDbSourceService):
