@@ -148,7 +148,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    classification_name="DBTTags",
+                    classification_name=self.source_config.dbtConfigSource.dbtClassificationName,
                     tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,
@@ -259,11 +259,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
-                            name="DBTTags",
+                            name=self.source_config.dbtConfigSource.dbtClassificationName,
                             description="dbt classification",
                         ),
                         tag_request=CreateTagRequest(
-                            classification="DBTTags",
+                            classification=self.source_config.dbtConfigSource.dbtClassificationName,
                             name=tag_label.tagFQN.__root__.split(".")[1],
                             description="dbt Tags",
                         ),
@@ -608,7 +608,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self, dbt_test: dict
     ) -> Iterable[CreateTestDefinitionRequest]:
         """
-        AMethod to add DBT test definitions
+        A Method to add DBT test definitions
         """
         try:
             test_name = dbt_test.get("name")
