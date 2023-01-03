@@ -151,12 +151,6 @@ def _get_column_info(self, *args, **kwargs):
     # redhift doesn't suport compex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
-    if isinstance(column_info["type"], VARCHAR):
-        if column_info["type"].length is None:
-            column_info["type"] = NullType()
-    if re.match("char", kwdrs["format_type"]):
-        column_info["type"] = CHAR
-
     if "info" not in column_info:
         column_info["info"] = {}
     if encode and encode != "none":
