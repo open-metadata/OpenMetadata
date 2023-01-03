@@ -17,9 +17,7 @@ from typing import Iterable, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import String
 
 from metadata.generated.schema.entity.data.database import Database

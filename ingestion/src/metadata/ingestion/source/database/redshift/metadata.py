@@ -97,7 +97,9 @@ def _get_column_info(self, *args, **kwargs):
 
 
 @reflection.cache
-def _get_schema_column_info(self, connection, schema=None, **kw):
+def _get_schema_column_info(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     """
     Get schema column info
 
@@ -255,7 +257,7 @@ def _get_charlen(format_type):
 
 
 @reflection.cache
-def _get_column_info(  # pylint: disable=too-many-locals,too-many-arguments
+def _get_column_info(  # pylint: disable=too-many-locals,too-many-arguments, unused-argument
     self,
     name,
     format_type,

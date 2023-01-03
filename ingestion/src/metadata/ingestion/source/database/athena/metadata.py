@@ -17,7 +17,7 @@ from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
 
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -34,8 +34,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

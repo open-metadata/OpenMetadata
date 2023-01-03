@@ -71,6 +71,7 @@ class TableNameAndType(BaseModel):
     type_: TableType = TableType.Regular
 
 
+# pylint: disable=too-many-public-methods
 class CommonDbSourceService(
     DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
 ):

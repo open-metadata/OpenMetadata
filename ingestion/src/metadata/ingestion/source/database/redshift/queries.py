@@ -82,7 +82,7 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
       c.relname as name,
       c.relkind
     FROM pg_catalog.pg_class c
-    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace     
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind = 'r'
       AND n.nspname = :schema
     UNION
