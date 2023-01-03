@@ -27,7 +27,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeType,
 )
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_SESSION_TAG_QUERY
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_SESSION_TAG_QUERY,
+)
 from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
 
 
