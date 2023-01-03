@@ -155,7 +155,7 @@ class DatabricksClient:
                     timeout=10,
                 ).json()
 
-                job_list.extend(job_list["jobs"])
+                job_list.extend(response["jobs"])
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -164,6 +164,9 @@ class DatabricksClient:
         return job_list
 
     def get_job_runs(self, job_id) -> List[dict]:
+        """
+        Method returns List of all runs for a job by the specified job_id
+        """
         job_runs = []
         try:
             params = {

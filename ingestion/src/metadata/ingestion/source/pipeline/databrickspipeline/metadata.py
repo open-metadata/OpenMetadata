@@ -115,8 +115,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
         except TypeError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error building Databricks Pipeline information from {pipeline_details}. There might be Databricks Jobs API version"
-                f" incompatibilities - {err}"
+                f"Error building Databricks Pipeline information from {pipeline_details}."
+                f" There might be Databricks Jobs API version incompatibilities - {err}"
             )
         except ValidationError as err:
             logger.debug(traceback.format_exc())
@@ -147,14 +147,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return task_list
 
     def get_task_type(self, task):
+        task_key = "undefined_task_type"
         for key in task.keys():
             if key.endswith("_task"):
                 task_key = key
 
-        if task_key:
-            return task_key
-        else:
-            return "undefined_task"
+        return task_key
 
     def get_downstream_tasks(self, workflow):
         task_key_list = [task["task_key"] for task in workflow]
