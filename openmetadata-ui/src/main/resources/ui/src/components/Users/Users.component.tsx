@@ -16,12 +16,13 @@ import {
   Button as AntDButton,
   Card,
   Image,
+  Select,
   Space,
   Switch,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
+import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -33,7 +34,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import Select from 'react-select';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { changePassword } from '../../axiosAPIs/auth-API';
 import { getRoles } from '../../axiosAPIs/rolesAPIV1';
@@ -85,7 +85,6 @@ import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
@@ -93,7 +92,8 @@ import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import ChangePasswordForm from './ChangePasswordForm';
-import { Option, Props } from './Users.interface';
+import { Props } from './Users.interface';
+import './Users.style.less';
 import { userPageFilterList } from './Users.util';
 
 const Users = ({
@@ -127,8 +127,8 @@ const Users = ({
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<Array<Option>>([]);
-  const [selectedTeams, setSelectedTeams] = useState<Array<Option>>([]);
+  const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
+  const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
@@ -215,16 +215,15 @@ const Users = ({
   const handleRolesChange = () => {
     // filter out the roles , and exclude the admin one
     const updatedRoles = selectedRoles.filter(
-      (role) => role.value !== toLower(TERM_ADMIN)
+      (roleId) => roleId !== toLower(TERM_ADMIN)
     );
 
     // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
     const isAdmin = selectedRoles.find(
-      (role) => role.value === toLower(TERM_ADMIN)
+      (roleId) => roleId === toLower(TERM_ADMIN)
     );
     updateUserDetails({
-      roles: updatedRoles.map((item) => {
-        const roleId = item.value;
+      roles: updatedRoles.map((roleId) => {
         const role = roles.find((r) => r.id === roleId);
 
         return { id: roleId, type: 'role', name: role?.name || '' };
@@ -236,8 +235,7 @@ const Users = ({
   };
   const handleTeamsChange = () => {
     updateUserDetails({
-      teams: selectedTeams.map((item) => {
-        const teamId = item.value;
+      teams: selectedTeams.map((teamId) => {
         const team = teams.find((t) => t.id === teamId);
 
         return { id: teamId, type: 'team', name: team?.name || '' };
@@ -247,25 +245,12 @@ const Users = ({
     setIsTeamsEdit(false);
   };
 
-  const handleOnRolesChange = (
-    value: unknown,
-    { action }: { action: string }
-  ) => {
-    if (isNil(value) || action === 'clear') {
-      setSelectedRoles([]);
-    } else {
-      setSelectedRoles(value as Option[]);
-    }
+  const handleOnRolesChange = (value: string[]) => {
+    setSelectedRoles(value);
   };
-  const handleOnTeamsChange = (
-    value: unknown,
-    { action }: { action: string }
-  ) => {
-    if (isNil(value) || action === 'clear') {
-      setSelectedTeams([]);
-    } else {
-      setSelectedTeams(value as Option[]);
-    }
+
+  const handleOnTeamsChange = (value: string[]) => {
+    setSelectedTeams(value);
   };
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
@@ -483,18 +468,17 @@ const Users = ({
             {isTeamsEdit ? (
               <Space className="tw-w-full" direction="vertical">
                 <Select
-                  isClearable
-                  isMulti
-                  isSearchable
-                  aria-label="Select teams"
-                  className="tw-w-full"
-                  isLoading={isTeamsLoading}
+                  allowClear
+                  showSearch
+                  aria-label={t('label.select-team-plural')}
+                  className="w-full"
+                  loading={isTeamsLoading}
+                  mode="multiple"
                   options={teams?.map((team) => ({
                     label: getEntityName(team as unknown as EntityReference),
                     value: team.id,
                   }))}
-                  placeholder="Teams..."
-                  styles={reactSingleSelectCustomStyle}
+                  placeholder={`${t('label.team-plural')}...`}
                   value={selectedTeams}
                   onChange={handleOnTeamsChange}
                 />
@@ -586,9 +570,7 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
             </div>
           }>
-          <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
-            {rolesElement}
-          </div>
+          <div className="roles-container">{rolesElement}</div>
         </Card>
       );
     } else {
@@ -623,19 +605,19 @@ const Users = ({
             {isRolesEdit ? (
               <Space className="tw-w-full" direction="vertical">
                 <Select
-                  isClearable
-                  isMulti
-                  isSearchable
+                  allowClear
+                  showSearch
                   aria-label="Select roles"
-                  className="tw-w-full"
+                  className="w-full"
                   id="select-role"
-                  isLoading={isRolesLoading}
+                  loading={isRolesLoading}
+                  mode="multiple"
                   options={userRolesOption}
-                  placeholder="Roles..."
-                  styles={reactSingleSelectCustomStyle}
+                  placeholder={`${t('label.team-plural')}...`}
                   value={selectedRoles}
                   onChange={handleOnRolesChange}
                 />
+
                 <div className="tw-flex tw-justify-end" data-testid="buttons">
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
@@ -836,27 +818,16 @@ const Users = ({
   };
 
   const prepareSelectedRoles = () => {
-    const defaultRoles = [
-      ...(userData.roles?.map((role) => ({
-        label: getEntityName(role),
-        value: role.id,
-      })) || []),
-    ];
+    const defaultRoles = [...(userData.roles?.map((role) => role.id) || [])];
     if (userData.isAdmin) {
-      defaultRoles.push({
-        label: TERM_ADMIN,
-        value: toLower(TERM_ADMIN),
-      });
+      defaultRoles.push(toLower(TERM_ADMIN));
     }
     setSelectedRoles(defaultRoles);
   };
 
   const prepareSelectedTeams = () => {
     setSelectedTeams(
-      getNonDeletedTeams(userData.teams || []).map((team) => ({
-        label: getEntityName(team),
-        value: team.id,
-      }))
+      getNonDeletedTeams(userData.teams || []).map((team) => team.id)
     );
   };
 
