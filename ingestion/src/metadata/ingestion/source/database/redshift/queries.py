@@ -78,27 +78,20 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
 
 REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
     """
-        SELECT
-          c.relkind,
-          n.oid as "schema_oid",
-          n.nspname as "schema",
-          c.oid as "rel_oid",
-          c.relname,
-          CASE c.reldiststyle
-            WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
-            AS "diststyle",
-          c.relowner AS "owner_id",
-          u.usename AS "owner_name",
-          TRIM(TRAILING ';' FROM pg_catalog.pg_get_viewdef(c.oid, true))
-            AS "view_definition",
-          pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
-        FROM pg_catalog.pg_class c
-             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
-        WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
-          AND n.nspname !~ '^pg_'
-        ORDER BY c.relkind, n.oid, n.nspname;
-        """
+    SELECT
+      c.relname as name,
+      c.relkind
+    FROM pg_catalog.pg_class c
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace     
+    WHERE c.relkind = 'r'
+      AND n.nspname = :schema
+    UNION
+    SELECT
+        tablename as name,
+        'e' as relkind
+    FROM svv_external_tables
+    WHERE schemaname = :schema;
+    """
 )
 
 
