@@ -60,8 +60,7 @@ class DomopipelineSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.domo_client = self.connection.client
-        self.client = DomoClient(self.service_connection)
+        self.domo_client = DomoClient(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -77,7 +76,7 @@ class DomopipelineSource(PipelineServiceSource):
         return pipeline_details["name"]
 
     def get_pipelines_list(self) -> Dict:
-        results = self.client.get_pipelines()
+        results = self.domo_client.get_pipelines()
         for result in results:
             yield result
 
@@ -132,7 +131,7 @@ class DomopipelineSource(PipelineServiceSource):
             )
             return None
 
-        runs = self.client.get_runs(pipeline_id)
+        runs = self.domo_client.get_runs(pipeline_id)
         try:
 
             for run in runs or []:

@@ -64,9 +64,9 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
@@ -135,8 +135,7 @@ class AmundsenSource(Source[Entity]):
         self.database_object = None
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
+        self.client = get_connection(self.service_connection)
         self.status = AmundsenStatus()
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
@@ -244,7 +243,9 @@ class AmundsenSource(Source[Entity]):
                     description="Tags associates with amundsen entities",
                 ),
                 tag_request=CreateTagRequest(
-                    name=tag, description="Amundsen Table Tag"
+                    classification=AMUNDSEN_TAG_CATEGORY,
+                    name=tag,
+                    description="Amundsen Table Tag",
                 ),
             )
             yield classification
@@ -343,7 +344,9 @@ class AmundsenSource(Source[Entity]):
                     description="Tags associates with amundsen entities",
                 ),
                 category_details=CreateTagRequest(
-                    name=AMUNDSEN_TABLE_TAG, description="Amundsen Table Tag"
+                    classification=AMUNDSEN_TAG_CATEGORY,
+                    name=AMUNDSEN_TABLE_TAG,
+                    description="Amundsen Table Tag",
                 ),
             )
             yield amundsen_table_tag
@@ -353,7 +356,9 @@ class AmundsenSource(Source[Entity]):
                     description="Tags associates with amundsen entities",
                 ),
                 category_details=CreateTagRequest(
-                    name=table["cluster"], description="Amundsen Cluster Tag"
+                    classification=AMUNDSEN_TAG_CATEGORY,
+                    name=table["cluster"],
+                    description="Amundsen Cluster Tag",
                 ),
             )
             yield amundsen_cluster_tag

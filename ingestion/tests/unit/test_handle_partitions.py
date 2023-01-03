@@ -92,11 +92,13 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 class BigqueryUnitTest(TestCase):
     @patch("google.cloud.bigquery.Client")
-    @patch("metadata.utils.connections.create_generic_connection")
+    @patch("metadata.ingestion.connections.builders.create_generic_db_connection")
     @patch(
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
     )
-    @patch("metadata.ingestion.source.database.common_db_source.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
     def __init__(
         self,
         methodName,
