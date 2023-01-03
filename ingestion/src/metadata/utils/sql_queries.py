@@ -14,27 +14,6 @@ SQL Queries used during ingestion
 
 import textwrap
 
-SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
-    """
-        SELECT
-          query_type,
-          query_text,
-          user_name,
-          database_name,
-          schema_name,
-          start_time,
-          end_time
-        from snowflake.account_usage.query_history
-        WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-        AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
-        {filters}
-        LIMIT {result_limit}
-        """
-)
-
-SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
-
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(
     """
         MATCH (db:Database)<-[:CLUSTER_OF]-(cluster:Cluster)
@@ -220,33 +199,6 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
 )
 
 
-SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
-    """
-    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
-    from snowflake.account_usage.tag_references
-    where OBJECT_DATABASE = '{database_name}'
-      and OBJECT_SCHEMA = '{schema_name}'
-"""
-)
-
-
-SNOWFLAKE_GET_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
-"""
-
-SNOWFLAKE_GET_VIEW_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
-"""
-
-SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
-    """
-    select COMMENT
-    from information_schema.TABLES
-    WHERE TABLE_SCHEMA = '{schema_name}'
-      AND TABLE_NAME = '{table_name}'
-"""
-)
-
 BIGQUERY_STATEMENT = textwrap.dedent(
     """
  SELECT
@@ -268,15 +220,6 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   LIMIT {result_limit}
 """
 )
-
-SNOWFLAKE_GET_CLUSTER_KEY = """
-  select CLUSTERING_KEY,
-          TABLE_SCHEMA,
-          TABLE_NAME
-  from   information_schema.tables 
-  where  TABLE_TYPE = 'BASE TABLE'
-  and CLUSTERING_KEY is not null
-"""
 
 
 HIVE_GET_COMMENTS = textwrap.dedent(
