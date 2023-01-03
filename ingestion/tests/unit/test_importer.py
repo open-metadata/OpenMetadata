@@ -14,13 +14,18 @@ Test import utilities
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
+    DynamicImportException,
     get_class_name_root,
     get_module_name,
     get_source_module_name,
     import_bulk_sink_type,
-    import_class,
+    import_connection_fn,
+    import_from_module,
     import_processor_class,
     import_sink_class,
     import_source_class,
@@ -49,7 +54,7 @@ class ImporterTest(TestCase):
         from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
-            import_class(
+            import_from_module(
                 "metadata.ingestion.source.database.mysql.metadata.MysqlSource"
             ),
             MysqlSource,
@@ -118,4 +123,23 @@ class ImporterTest(TestCase):
         self.assertEqual(
             import_sink_class(sink_type="metadata-rest", from_="orm_profiler"),
             MetadataRestSink,
+        )
+
+    def test_import_get_connection(self) -> None:
+
+        connection = MysqlConnection(
+            username="name",
+            hostPort="hostPort",
+        )
+
+        get_connection_fn = import_connection_fn(
+            connection=connection, function_name="get_connection"
+        )
+        self.assertIsNotNone(get_connection_fn)
+
+        self.assertRaises(
+            DynamicImportException,
+            import_connection_fn,
+            connection=connection,
+            function_name="random",
         )

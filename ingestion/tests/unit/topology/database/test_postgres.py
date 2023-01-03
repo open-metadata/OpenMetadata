@@ -209,7 +209,9 @@ EXPECTED_COLUMN_VALUE = [
 
 
 class PostgresUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.common_db_source.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

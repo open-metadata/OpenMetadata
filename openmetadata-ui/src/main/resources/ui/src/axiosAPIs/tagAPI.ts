@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
@@ -95,6 +96,17 @@ export const updateClassification = async (data: Classification) => {
 
   return response.data;
 };
+export const patchClassification = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<Classification>
+  >(`${BASE_URL}/${id}`, data, configOptions);
+
+  return response.data;
+};
 
 export const createTag = async (data: CreateTag) => {
   const response = await APIClient.post<CreateTag, AxiosResponse<Tag>>(
@@ -107,6 +119,15 @@ export const createTag = async (data: CreateTag) => {
 
 export const updateTag = async (data: TagsCategory) => {
   const response = await APIClient.put(`/tags`, data);
+
+  return response.data;
+};
+
+export const patchTag = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const response = await APIClient.patch(`/tags/${id}`, data, configOptions);
 
   return response.data;
 };

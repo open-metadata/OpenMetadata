@@ -19,8 +19,8 @@ from typing import Iterable, Iterator, Optional
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -63,7 +63,7 @@ class LineageSource(QueryParserSource, ABC):
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             try:
-                with get_connection(self.connection).connect() as conn:
+                with get_connection(self.service_connection).connect() as conn:
                     rows = conn.execute(
                         self.get_sql_statement(
                             start_time=self.start,

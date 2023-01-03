@@ -130,7 +130,9 @@ class DatabricksLineageTests(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
 
-    @patch("metadata.clients.databricks_client.DatabricksClient.list_query_history")
+    @patch(
+        "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_query_history"
+    )
     def test_get_table_query(self, list_query_history):
         list_query_history.return_value = mock_data
         results = self.databricks.get_table_query()

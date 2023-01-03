@@ -17,7 +17,6 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
-from metadata.clients.atlas_client import AtlasClient
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -53,9 +52,10 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 
