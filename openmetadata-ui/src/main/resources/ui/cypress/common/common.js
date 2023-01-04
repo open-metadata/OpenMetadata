@@ -965,11 +965,6 @@ export const followAndOwnTheEntity = (termObj) => {
     // search for the term and redirect to the respective entity tab
   
     visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
-  
-    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
-    cy.get('[data-testid="follow-button"]').should('be.visible').click();
-  
-    verifyResponseStatusCode('@waitAfterFollow', 200);
     // go to manage tab and search for logged in user and set the owner
     interceptURL(
       'GET',
@@ -1000,20 +995,22 @@ export const followAndOwnTheEntity = (termObj) => {
         expect(text).equal('admin');
       });
   
+    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
+    cy.get('[data-testid="follow-button"]').scrollIntoView().should('be.visible').click();
+    verifyResponseStatusCode('@waitAfterFollow', 200);
+
     cy.clickOnLogo();
-  
-    // checks newly generated feed for follow and setting owner
-    cy.get('[data-testid="message-container"]')
-      .first()
-      .contains('Added owner: admin')
-      .should('be.visible');
-  
-    cy.get('[data-testid="message-container"]')
-      .eq(1)
-      .scrollIntoView()
+
+    cy.get('[data-testid="message-container"]').first()
       .contains(`Followed ${termObj.entity.slice(0, -1)}`)
       .should('be.visible');
   
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .eq(1).scrollIntoView()
+      .contains('Added owner: admin')
+      .should('be.visible');
+
     //Check followed entity on mydata page
     cy.get('[data-testid="following-data-container"]')
     .find(`[data-testid="Following data-${termObj.displayName}"]`)
