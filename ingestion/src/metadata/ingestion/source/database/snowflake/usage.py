@@ -11,11 +11,11 @@
 """
 Snowflake usage module
 """
+from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_SQL_STATEMENT
 from metadata.ingestion.source.database.snowflake.query_parser import (
     SnowflakeQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):

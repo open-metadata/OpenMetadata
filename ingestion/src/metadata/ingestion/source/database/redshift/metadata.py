@@ -19,7 +19,7 @@ from typing import Iterable, List, Optional, Tuple
 
 import sqlalchemy as sa
 from packaging.version import Version
-from sqlalchemy import inspect, util
+from sqlalchemy import inspect, sql, util
 from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect
 from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_names
 from sqlalchemy.engine import reflection
@@ -30,7 +30,6 @@ from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
-    Table,
     TablePartition,
     TableType,
 )
@@ -44,15 +43,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_table
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import (
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
+from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
 )
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
 
 sa_version = Version(sa.__version__)
 
@@ -60,69 +62,6 @@ logger = ingestion_logger()
 
 ischema_names = pg_ischema_names
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
-
-
-@reflection.cache
-def get_table_names(self, connection, schema=None, **kw):
-    """
-    Get table names
-
-    Args:
-        connection ():
-        schema ():
-        **kw:
-    Returns:
-    """
-    return self._get_table_or_view_names(  # pylint: disable=protected-access
-        ["r", "e"], connection, schema, **kw
-    )
-
-
-@reflection.cache
-def get_view_names(self, connection, schema=None, **kw):
-    """
-    Get view name
-
-    Args:
-        connection ():
-        schema ():
-        **kw:
-    Returns:
-    """
-    return self._get_table_or_view_names(  # pylint: disable=protected-access
-        ["v"], connection, schema, **kw
-    )
-
-
-@reflection.cache
-def _get_table_or_view_names(self, relkinds, connection, schema=None, **kw):
-    """
-    Get table or view name
-
-    Args:
-        relkinds:
-        connection:
-        schema:
-        **kw:
-    Returns
-    """
-    default_schema = inspect(connection).default_schema_name
-    if not schema:
-        schema = default_schema
-    info_cache = kw.get("info_cache")
-    all_relations = self._get_all_relation_info(  # pylint: disable=protected-access
-        connection, info_cache=info_cache
-    )
-    relation_names = []
-    for key, relation in all_relations.items():
-        if key.schema == schema and relation.relkind in relkinds:
-            relation_names.append(
-                (
-                    key.name,
-                    relation.relkind,
-                )
-            )
-    return relation_names
 
 
 def _get_column_info(self, *args, **kwargs):
@@ -157,40 +96,10 @@ def _get_column_info(self, *args, **kwargs):
     return column_info
 
 
-# pylint: disable=unused-argument
 @reflection.cache
-def _get_all_relation_info(self, connection, **kw):
-    """
-    Get all relation info
-
-    Args:
-        connection:
-        **kw:
-    Returns
-    """
-    result = connection.execute(REDSHIFT_GET_ALL_RELATION_INFO)
-    relations = {}
-    for rel in result:
-        key = RelationKey(rel.relname, rel.schema, connection)
-        relations[key] = rel
-
-    result = connection.execute(
-        """
-            SELECT
-                schemaname as "schema",
-                tablename as "relname",
-                'e' as relkind
-            FROM svv_external_tables;
-            """
-    )
-    for rel in result:
-        key = RelationKey(rel.relname, rel.schema, connection)
-        relations[key] = rel
-    return relations
-
-
-@reflection.cache
-def _get_schema_column_info(self, connection, schema=None, **kw):
+def _get_schema_column_info(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     """
     Get schema column info
 
@@ -212,16 +121,8 @@ def _get_schema_column_info(self, connection, schema=None, **kw):
     return dict(all_columns)
 
 
-RedshiftDialectMixin._get_table_or_view_names = (  # pylint: disable=protected-access
-    _get_table_or_view_names
-)
-RedshiftDialectMixin.get_view_names = get_view_names
-RedshiftDialectMixin.get_table_names = get_table_names
 RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
     _get_column_info
-)
-RedshiftDialectMixin._get_all_relation_info = (  # pylint: disable=protected-access
-    _get_all_relation_info
 )
 RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
     _get_schema_column_info
@@ -356,7 +257,7 @@ def _get_charlen(format_type):
 
 
 @reflection.cache
-def _get_column_info(  # pylint: disable=too-many-locals,too-many-arguments
+def _get_column_info(  # pylint: disable=too-many-locals,too-many-arguments, unused-argument
     self,
     name,
     format_type,
@@ -476,58 +377,24 @@ class RedshiftSource(CommonDbSourceService):
         for row in results:
             self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
-        Handle table and views.
-
-        Fetches them up using the context information and
-        the inspector set when preparing the db.
-
-        :return: tables or views, depending on config
+        Handle custom table types
         """
-        schema_name = self.context.database_schema.name.__root__
-        if self.source_config.includeTables:
-            # table_type value for regular tables will be 'r' and for external tables will be 'e'
-            for table_name, table_type in self.inspector.get_table_names(schema_name):
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    table_fqn if self.source_config.useFqnForFiltering else table_name,
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
-                yield table_name, STANDARD_TABLE_TYPES.get(table_type)
-        if self.source_config.includeViews:
-            # table_type value for views will be 'v'
-            for view_name, table_type in self.inspector.get_view_names(schema_name):
-                view_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
-                    table_name=view_name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    view_fqn if self.source_config.useFqnForFiltering else view_name,
-                ):
-                    self.status.filter(
-                        view_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
-                yield view_name, STANDARD_TABLE_TYPES.get(table_type)
+
+        result = self.connection.execute(
+            sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
+            dict(schema=schema_name),
+        )
+
+        return [
+            TableNameAndType(
+                name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
+            )
+            for name, relkind in result
+        ]
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
