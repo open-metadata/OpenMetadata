@@ -525,7 +525,7 @@
     "are-you-want-to-restore": "Are you sure you want to restore {{entity}}?",
     "assess-data-reliability-with-data-profiler-lineage": "Assess data reliability with data profiler, lineage, sample data, and more.",
     "assigned-you-a-new-task-lowercase": "a new task has been assigned to you",
-    "at-least-one-policy": "Enter at least one policy.",
+    "at-least-one-policy": "Enter at least one policy",
     "bot-email-confirmation": "{{email}} for {{botName}} bot",
     "configure-webhook-message": "OpenMetadata can be configured to automatically send out event notifications to registered webhooks. Enter the Webhook Name, and an Endpoint URL to receive the HTTP callback on. Use Event Filters to only receive notifications based on events of interest, like when an entity is created, updated, or deleted; and for the entities your application is interested in. Add a description to help people understand the purpose of the webhook and to keep  track of the use case. Use advanced configuration to set up a shared secret key to verify the webhook events using HMAC signature.",
     "configure-webhook-name-message": "OpenMetadata can be configured to automatically send out event notifications to registered {{webhookType}} webhooks through OpenMetadata. Enter the {{webhookType}} webhook name, and an Endpoint URL to receive the HTTP callback on. Use Event Filters to only receive notifications for the required entities. Filter events based on when an entity is created, updated, or deleted. Add a description to note the use case of the webhook. You can use advanced configuration to set up a shared secret key to verify the {{webhookType}} webhook events using HMAC signature.",
