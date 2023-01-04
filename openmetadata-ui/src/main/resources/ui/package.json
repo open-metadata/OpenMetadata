@@ -109,7 +109,7 @@
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch --maxWorkers=3",
     "test:coverage": "jest --passWithNoTests --coverage --maxWorkers=3",
-    "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters=\"text-summary\" --maxWorkers=3",
+    "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters json-summary --maxWorkers=3",
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx,json}\"",
     "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx,json}' --fix",
     "pretty": "prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore'  --write",
