@@ -272,7 +272,7 @@ public class BuildSearchIndexResource {
     } else {
       reportDataList =
           dao.entityExtensionTimeSeriesDao()
-              .getAfterExtension(entityFQN, limit + 1, after == null ? "" : RestUtil.decodeCursor(after));
+              .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     }
     ResultList<ReportData> reportDataResultList;
     if (before != null) {
