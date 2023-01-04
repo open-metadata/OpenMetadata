@@ -2263,16 +2263,19 @@ public interface CollectionDAO {
                 + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
                 + "INTERVAL 6 DAY)), "
                 + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-                + "INTERVAL 29 DAY))",
+                + "INTERVAL 29 DAY))"
+                + "ON DUPLICATE KEY UPDATE count7 = count7 - count1 + :count1, count30 = count30 - count1 + :count1, count1 = :count1",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
                 + "SELECT (:date :: date), :id, :entityType, :count1, "
                 + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '6 days')), "
-                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days'))",
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days'))"
+                + "ON CONFLICT (usageDate, id) DO UPDATE SET count7 = entity_usage.count7 - entity_usage.count1 + :count1,"
+                + "count30 = entity_usage.count30 - entity_usage.count1 + :count1, count1 = :count1",
         connectionType = POSTGRES)
-    void insert(
+    void insertOrReplaceCount(
         @Bind("date") String date,
         @Bind("id") String id,
         @Bind("entityType") String entityType,
