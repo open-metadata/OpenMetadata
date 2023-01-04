@@ -34,7 +34,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { changePassword } from '../../axiosAPIs/auth-API';
 import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
@@ -80,6 +79,7 @@ import {
   filterListTasks,
   getFeedFilterDropdownIcon,
 } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
