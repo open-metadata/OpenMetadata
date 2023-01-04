@@ -2436,7 +2436,7 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
+                  "%s AND (ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE) ", postgresCondition);
         }
       }
       if (team == null && isAdminStr == null && isBotStr == null) {
@@ -2481,7 +2481,7 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
+                  "%s AND (ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE) ", postgresCondition);
         }
       }
       if (team == null && isAdminStr == null && isBotStr == null) {
@@ -2533,7 +2533,7 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
+                  "%s AND (ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE) ", postgresCondition);
         }
       }
       if (team == null && isAdminStr == null && isBotStr == null) {
