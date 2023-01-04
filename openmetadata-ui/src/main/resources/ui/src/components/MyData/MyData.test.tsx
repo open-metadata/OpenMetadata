@@ -25,18 +25,6 @@ import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import MyData from './MyData.component';
 import { MyDataProps } from './MyData.interface';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 const mockPaging = {
   after: 'MTY0OTIzNTQ3MzExMg==',
   total: 202,

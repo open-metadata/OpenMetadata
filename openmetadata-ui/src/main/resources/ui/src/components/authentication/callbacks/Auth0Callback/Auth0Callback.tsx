@@ -13,8 +13,8 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import React, { VFC } from 'react';
-import jsonData from '../../../jsons/en';
-import localState from '../../../utils/LocalStorageUtils';
+import jsonData from '../../../../jsons/en';
+import localState from '../../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { OidcUser } from '../../auth-provider/AuthProvider.interface';
 

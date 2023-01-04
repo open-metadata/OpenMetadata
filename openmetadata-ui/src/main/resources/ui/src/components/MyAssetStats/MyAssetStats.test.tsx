@@ -17,18 +17,6 @@ import { MemoryRouter } from 'react-router';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import MyAssetStats from './MyAssetStats.component';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 const mockProp = {
   entityCounts: {
     tableCount: 40,

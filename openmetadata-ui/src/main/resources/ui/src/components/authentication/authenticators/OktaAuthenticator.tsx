@@ -19,8 +19,8 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
-import localState from '../../utils/LocalStorageUtils';
+import { ROUTES } from '../../../constants/constants';
+import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 

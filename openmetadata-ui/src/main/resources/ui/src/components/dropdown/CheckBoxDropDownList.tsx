@@ -12,8 +12,8 @@
  */
 
 import React from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useAuth } from '../../hooks/authHooks';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const CheckBoxDropDownList = ({

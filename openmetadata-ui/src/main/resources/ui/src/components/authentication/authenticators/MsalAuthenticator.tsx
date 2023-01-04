@@ -26,8 +26,8 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useMutex } from 'react-context-mutex';
-import { msalLoginRequest } from '../../utils/AuthProvider.util';
-import localState from '../../utils/LocalStorageUtils';
+import { msalLoginRequest } from '../../../utils/AuthProvider.util';
+import localState from '../../../utils/LocalStorageUtils';
 import {
   AuthenticatorRef,
   OidcUser,

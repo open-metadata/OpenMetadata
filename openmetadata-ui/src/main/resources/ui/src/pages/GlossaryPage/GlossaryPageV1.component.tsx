@@ -14,12 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend, isEmpty } from 'lodash';
-import {
-  AssetsDataType,
-  FormattedGlossarySuggestion,
-  GlossarySuggestionHit,
-  LoadingState,
-} from 'Models';
+import { AssetsDataType, LoadingState } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -325,7 +320,7 @@ const GlossaryPageV1 = () => {
     if (isEmpty(data)) {
       modifiedData = updateGlossaryListBySearchedTerms(modifiedData, [
         { fullyQualifiedName: arrFQN[arrFQN.length - 1] },
-      ] as FormattedGlossarySuggestion[]);
+      ] as GlossaryTerm[]);
     }
     selectDataByFQN(fqn, modifiedData);
   };
@@ -375,7 +370,7 @@ const GlossaryPageV1 = () => {
   const getSearchedGlossaries = (
     arrGlossaries: ModifiedGlossaryData[],
     newGlossaries: string[],
-    searchedTerms: FormattedGlossarySuggestion[]
+    searchedTerms: GlossaryTerm[]
   ) => {
     if (newGlossaries.length) {
       let arrNewData: ModifiedGlossaryData[] = [];
@@ -420,14 +415,10 @@ const GlossaryPageV1 = () => {
   const fetchSearchedTerms = useCallback(() => {
     if (searchText) {
       searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-        // TODO: fix type issues below
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((res: any) => {
+        .then((res) => {
           if (res.data) {
-            const searchedTerms: FormattedGlossarySuggestion[] =
-              res.data.hits?.hits?.map(
-                (item: GlossarySuggestionHit) => item._source
-              ) || [];
+            const searchedTerms =
+              res.data.hits?.hits?.map((item) => item._source) || [];
             if (searchedTerms.length) {
               const searchedGlossaries: string[] = [
                 ...new Set(
