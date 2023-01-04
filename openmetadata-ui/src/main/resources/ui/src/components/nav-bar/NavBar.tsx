@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Menu, Select, Space } from 'antd';
+import {
+  Badge,
+  Dropdown,
+  Image,
+  Input,
+  Menu,
+  Select,
+  Space,
+  Tooltip,
+} from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
@@ -50,7 +59,6 @@ import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import PopOver from '../common/popover/PopOver';
 import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
@@ -461,10 +469,7 @@ const NavBar = ({
               <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
-                  <PopOver
-                    position="bottom"
-                    title="Profile"
-                    trigger="mouseenter">
+                  <Tooltip placement="bottom" title="Profile" trigger="hover">
                     {isImgUrlValid ? (
                       <div className="profile-image square tw--mr-2">
                         <Image
@@ -480,7 +485,7 @@ const NavBar = ({
                     ) : (
                       <Avatar name={username} width="30" />
                     )}
-                  </PopOver>
+                  </Tooltip>
                 }
                 isDropDownIconVisible={false}
                 type="link"

@@ -17,6 +17,7 @@
 
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import { isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
@@ -34,7 +35,6 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import PopOver from '../common/popover/PopOver';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
@@ -166,17 +166,13 @@ const ServiceConnectionDetails = ({
           <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
             <div className="tw-flex">
               <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
-              <PopOver
-                delay={0}
-                position="bottom"
-                title={description}
-                trigger="mouseenter">
+              <Tooltip position="bottom" title={description} trigger="hover">
                 <FontAwesomeIcon
                   className="tw-mx-1"
                   color="#C4C4C4"
                   icon={{ ...faInfoCircle }}
                 />
-              </PopOver>
+              </Tooltip>
             </div>
             <div className="tw-mx-3 tw-flex-1">
               <input

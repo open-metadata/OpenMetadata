@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
 import {
@@ -19,7 +20,6 @@ import {
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
@@ -43,10 +43,10 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
         </p>
         <div className="tw-flex">
           {onShowNewConversation ? (
-            <PopOver
-              position="bottom"
+            <Tooltip
+              placement="bottom"
               title="Start conversation"
-              trigger="mouseenter">
+              trigger="hover">
               <Button
                 className={classNames('tw-h-7 tw-px-2')}
                 data-testid="add-new-conversation"
@@ -58,7 +58,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
                 }}>
                 <FontAwesomeIcon icon="plus" />
               </Button>
-            </PopOver>
+            </Tooltip>
           ) : null}
           <svg
             className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
