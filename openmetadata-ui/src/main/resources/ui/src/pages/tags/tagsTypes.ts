@@ -18,12 +18,3 @@ export type Tag = {
   associatedTags: Array<string>;
   usageCount: number;
 };
-
-/** TODO:9259 rename this */
-export type TagsCategory = {
-  name: string;
-  description: string;
-  children?: Array<Tag>;
-  href?: string;
-  usageCount?: number;
-};
