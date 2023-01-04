@@ -14,6 +14,7 @@
 import { Popover, PopoverProps } from 'antd';
 import React, { FunctionComponent, useState } from 'react';
 import CopyToClipboard from 'react-copy-to-clipboard';
+import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 import { Button } from '../Button/Button';
@@ -31,6 +32,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
   position = 'left',
   onCopy,
 }: Props) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState<boolean>(false);
 
   const handleCopying = () => {
@@ -54,7 +56,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
             <span
               className="tw-text-grey-body tw-text-xs tw-font-medium tw-italic"
               data-testid="copy-success">
-              Copied to the clipboard
+              {t('message.copied-to-clipboard')}
             </span>
           }
           open={copied}

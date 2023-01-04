@@ -63,7 +63,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import {
   getCountBadge,
   getCurrentUserId,
@@ -218,9 +217,7 @@ const PipelineDetails = ({
       );
       setPipelinePermissions(entityPermission);
     } catch (error) {
-      showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
-      );
+      showErrorToast(t('server.fetch-entity-permissions-error'));
     }
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
 
@@ -436,16 +433,11 @@ const PipelineDetails = ({
           setEntityThreadPaging(pagingObj);
           setEntityThreads((prevData) => [...prevData, ...data]);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
+          showErrorToast(t('server.fetch-feed-error'));
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
+        showErrorToast(err, t('server.fetch-feed-error'));
       })
       .finally(() => setEntityThreadLoading(false));
   };
@@ -650,14 +642,11 @@ const PipelineDetails = ({
         if (res) {
           setEntityLineage(res);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
+        showErrorToast(err, t('server.unexpected-response'));
       })
       .finally(() => {
         setLineageLoading(false);
@@ -719,11 +708,11 @@ const PipelineDetails = ({
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(err, t('server.add-feed-error'));
       });
   };
 
@@ -734,16 +723,11 @@ const PipelineDetails = ({
           setEntityThreads((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['create-conversation-error']
-        );
+        showErrorToast(err, t('server.create-conversation-error'));
       });
   };
 
