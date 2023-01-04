@@ -91,7 +91,7 @@ const mockUserData = {
   ],
 };
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../../components/authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: true,

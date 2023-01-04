@@ -12,6 +12,12 @@
  */
 
 declare module 'Models' {
+  import { CreateDashboardService } from '../generated/api/services/createDashboardService';
+  import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
+  import { CreateMessagingService } from '../generated/api/services/createMessagingService';
+  import { CreateMlModelService } from '../generated/api/services/createMlModelService';
+  import { CreatePipelineService } from '../generated/api/services/createPipelineService';
+  import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
   import { TagLabel } from '../generated/type/tagLabel';
@@ -21,62 +27,17 @@ declare module 'Models' {
     id: string;
   }
 
-  export type Match = {
-    params: {
-      searchQuery: string;
-    };
-  };
-  export type PaginationProps = {
-    sizePerPage: number;
-    totalNumberOfValues: number;
-    currentPage: number;
-    paginate;
-  };
-  export type Feed = {
-    addressedToEntity: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    from: string;
-    message: string;
-  };
-
-  export type FeedById = {
-    from: string;
-    message: string;
-    postTs: string;
-  };
-
-  export type ServiceOption = {
-    id: string;
-    brokers?: Array<string>;
-    description: string;
-    dashboardUrl?: string;
-    ingestionSchedule?: {
-      repeatFrequency: string;
-      startDate: string;
-    };
-    jdbc?: { connectionUrl: string; driverClass: string };
-    name: string;
-    schemaRegistry?: string;
-    serviceType: string;
-  };
+  export type ServicesUpdateRequest =
+    | CreatePipelineService
+    | CreateMlModelService
+    | CreateDashboardService
+    | CreateDatabaseService
+    | CreateMessagingService
+    | CreateStorageService;
 
   export type EntityTags = {
     isRemovable?: boolean;
   } & TagLabel;
-
-  export type MockColumn = {
-    columnId: number;
-    name: string;
-    columnDataType: string;
-    description: string;
-    selected: boolean;
-    piiTags?: Array<string>;
-  };
 
   export type TableColumn = {
     name: string;
@@ -151,21 +112,9 @@ declare module 'Models' {
     buckets: Array<Bucket>;
   };
 
-  export interface Aggregation {
-    'sterms#Platform': Sterm;
-    'sterms#Cluster': Sterm;
-    'sterms#Tags': Sterm;
-  }
-  export type TableEntity = {
-    id: string;
-    href: string;
-    tableType: string;
-    fullyQualifiedName: string;
-    tableConstraints?: string;
-    followers?: Array<string>;
-    tags?: Array<string>;
-  } & TableDetail;
-
+  /**
+   * @deprecated -- Use generated types instead
+   */
   export type UserProfile = {
     images: Record<string, string>;
   };
@@ -200,14 +149,6 @@ declare module 'Models' {
     changeDescription?: ChangeDescription;
   };
 
-  export type FormattedTeamsData = {
-    name: string;
-    displayName: string;
-    type: string;
-    id: string;
-    teamType: string;
-  };
-
   export type SearchedUsersAndTeams = {
     users: User[];
     teams: Team[];
@@ -219,27 +160,6 @@ declare module 'Models' {
     fqn: string;
     source: string;
   };
-
-  export interface FormattedGlossarySuggestion {
-    deleted: boolean;
-    description: string;
-    display_name: string;
-    entity_type: string;
-    fullyQualifiedName: string;
-    glossary_id: string;
-    glossary: { name: string };
-    last_updated_timestamp: number;
-    name: string;
-  }
-
-  export interface GlossarySuggestionHit {
-    text: string;
-    _index?: string;
-    _type?: string;
-    _id?: string;
-    _score?: number;
-    _source: FormattedGlossarySuggestion;
-  }
 
   export interface AssetsDataType {
     data: FormattedTableData[];
@@ -262,15 +182,6 @@ declare module 'Models' {
     signingIn?: boolean;
   };
 
-  export type Table = {
-    id: string;
-    type?: string;
-    name: string;
-    description: string;
-    href: string;
-    fullyQualifiedName: string;
-  };
-
   export type StateInfo = {
     count: number;
     percentileRank: number;
@@ -281,57 +192,6 @@ declare module 'Models' {
     weeklyStats: StateInfo;
     monthlyStats: StateInfo;
     date: string;
-  };
-
-  export type Database = {
-    description: string;
-    displayName?: string;
-    fullyQualifiedName: string;
-    href: string;
-    id: string;
-    name: string;
-    owner: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    service: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    tables: Table[];
-    usageSummary: UsageState;
-  };
-
-  export type SearchHit = {
-    _index?: string;
-    _type?: string;
-    _id?: string;
-    _score?: number;
-    _source: FormattedTableData;
-  };
-
-  export type SearchResponse = {
-    data: {
-      hits: {
-        total: {
-          value: number;
-          relation?: string;
-        };
-        hits: Array<SearchHit>;
-      };
-      aggregations: Record<string, Sterm>;
-    };
-  };
-
-  export type ServiceCollection = {
-    name: string;
-    value: string;
   };
 
   export type ServiceData = {
@@ -350,19 +210,6 @@ declare module 'Models' {
     | 'mlmodelServices'
     | 'metadataServices';
 
-  export type ServiceCategory = {
-    databases: string;
-    messaging: string;
-    dashboards: string;
-    pipelines: string;
-    mlModels: string;
-  };
-
-  export type SampleData = {
-    columns: Array<string>;
-    rows: Array<Array<string>>;
-  };
-
   export type SearchDataFunctionType = {
     queryString: string;
     from: number;
@@ -372,37 +219,6 @@ declare module 'Models' {
     sortOrder: string;
     searchIndex?: string;
   };
-
-  export type EntityCounts = {
-    tableCount: number;
-    topicCount: number;
-    dashboardCount: number;
-    pipelineCount: number;
-  };
-
-  export interface Follower {
-    description: string;
-    href: string;
-    id: string;
-    name: string;
-    type: string;
-  }
-
-  export interface Owner {
-    description: string;
-    href: string;
-    id: string;
-    name: string;
-    type: string;
-  }
-
-  export interface Service {
-    description: string;
-    href: string;
-    id: string;
-    name: string;
-    type: string;
-  }
 
   // topic interface end
 
@@ -426,7 +242,6 @@ declare module 'Models' {
     data: Array<RecentlySearchedData>;
   }
 
-  export type DatasetSchemaTableTab = 'schema' | 'sample_data';
   export type LineagePos = 'from' | 'to';
   export interface LeafNodes {
     upStreamNode: Array<string>;
@@ -460,10 +275,6 @@ declare module 'Models' {
     step: number;
   };
 
-  type DynamicObj = {
-    [key: string]: string;
-  };
-
   type DynamicFormFieldType = {
     key: string;
     value: string;
@@ -485,8 +296,8 @@ declare module 'Models' {
       password: string;
       username: string;
       database: string;
-      connectionArguments: DynamicObj;
-      connectionOptions: DynamicObj;
+      connectionArguments: Record<string, string>;
+      connectionOptions: Record<string, string>;
     };
     brokers?: Array<string>;
     schemaRegistry?: string;

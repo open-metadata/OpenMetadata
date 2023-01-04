@@ -17,13 +17,15 @@ from typing import Iterable, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import String
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
@@ -34,14 +36,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import (
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
+from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
 )
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -52,6 +57,12 @@ INTERVAL_TYPE_MAP = {
     "list": IntervalType.COLUMN_VALUE.value,
     "hash": IntervalType.COLUMN_VALUE.value,
     "range": IntervalType.TIME_UNIT.value,
+}
+
+RELKIND_MAP = {
+    "r": TableType.Regular,
+    "p": TableType.Partitioned,
+    "f": TableType.Foreign,
 }
 
 
@@ -73,23 +84,8 @@ class POLYGON(String):
     __visit_name__ = "POLYGON"
 
 
-@reflection.cache
-def get_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
-    """
-    Overwriting get_table_names method of dialect to filter partitioned tables
-    """
-    result = connection.execute(
-        sql.text(POSTGRES_GET_TABLE_NAMES).columns(relname=sqltypes.Unicode),
-        dict(schema=schema if schema is not None else self.default_schema_name),
-    )
-    return [name for name, in result]
-
-
 ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
 
-PGDialect.get_table_names = get_table_names
 PGDialect.ischema_names = ischema_names
 
 
@@ -108,6 +104,25 @@ class PostgresSource(CommonDbSourceService):
                 f"Expected PostgresConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Overwrite the inspector implementation to handle partitioned
+        and foreign types
+        """
+        result = self.connection.execute(
+            sql.text(POSTGRES_GET_TABLE_NAMES),
+            dict(schema=schema_name),
+        )
+
+        return [
+            TableNameAndType(
+                name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)
+            )
+            for name, relkind in result
+        ]
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database

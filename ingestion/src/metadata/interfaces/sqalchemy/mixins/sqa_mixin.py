@@ -27,8 +27,10 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeType,
 )
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_SESSION_TAG_QUERY,
+)
 from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
-from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 
 
 class SQAInterfaceMixin:
@@ -95,7 +97,7 @@ class SQAInterfaceMixin:
             partition_config: PartitionProfilerConfig object with some partition details
 
         Returns:
-            dict or None: dictionnary with all the elements constituing the a partition
+            dict or None: dictionary with all the elements constituting the a partition
         """
         if not partition_config:
             return None

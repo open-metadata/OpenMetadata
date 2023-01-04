@@ -13,9 +13,9 @@
 
 import React from 'react';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
+import { useAuth } from '../../hooks/authHooks';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { ROUTES } from '../constants/constants';
-import { useAuth } from '../hooks/authHooks';
 
 interface AdminProtectedRouteProps extends RouteProps {
   hasPermission: boolean;

@@ -11,9 +11,9 @@
 """
 MSSQL usage module
 """
+from metadata.ingestion.source.database.mssql.queries import MSSQL_SQL_STATEMENT
 from metadata.ingestion.source.database.mssql.query_parser import MssqlQueryParserSource
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
 
 
 class MssqlUsageSource(MssqlQueryParserSource, UsageSource):

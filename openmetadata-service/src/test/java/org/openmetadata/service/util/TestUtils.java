@@ -359,6 +359,12 @@ public final class TestUtils {
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
+  public static <T> T getWithResponse(WebTarget target, Class<T> clz, Map<String, String> headers, int statusConde)
+      throws HttpResponseException {
+    final Response response = SecurityUtil.addHeaders(target, headers).get();
+    return readResponse(response, clz, statusConde);
+  }
+
   public static <T> T delete(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).delete();
     return readResponse(response, clz, Status.OK.getStatusCode());
