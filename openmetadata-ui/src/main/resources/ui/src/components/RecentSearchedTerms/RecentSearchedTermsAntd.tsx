@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
+import { Button, Card, Popover } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,7 +21,7 @@ import {
   removeRecentSearchTerm,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import PopOver from '../common/popover/PopOver';
+
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 const RecentSearchedTermsAntd: FunctionComponent = () => {
@@ -63,17 +63,16 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
                         data-testid={`search-term-${item.term}`}
                         type="text">
                         {item.term.length > 20 ? (
-                          <PopOver
-                            html={
+                          <Popover
+                            content={
                               <div className="tw-flex tw-flex-nowrap">
                                 {item.term}
                               </div>
                             }
-                            position="top"
-                            size="regular"
-                            trigger="mouseenter">
+                            placement="top"
+                            trigger="hover">
                             <span>{item.term.slice(0, 20)}...</span>
-                          </PopOver>
+                          </Popover>
                         ) : (
                           item.term
                         )}

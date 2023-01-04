@@ -82,7 +82,6 @@
     "react-oidc": "^1.0.3",
     "react-quill": "^2.0.0",
     "react-router-dom": "^5.2.0",
-    "react-tippy": "^1.4.0",
     "react-toastify": "^8.2.0",
     "reactflow": "^11.1.1",
     "reactjs-localstorage": "^1.0.1",

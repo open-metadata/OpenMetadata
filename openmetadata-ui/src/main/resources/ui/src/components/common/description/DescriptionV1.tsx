@@ -23,7 +23,6 @@ import { Table } from '../../../generated/entity/data/table';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
 
@@ -129,16 +128,16 @@ const DescriptionV1 = ({
               className="focus:tw-outline-none tw-ml-2 tw--mt-6"
               data-testid="request-description"
               onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-              <PopOver
-                position="top"
+              <Tooltip
+                placement="top"
                 title="Request description"
-                trigger="mouseenter">
+                trigger="hover">
                 <SVGIcons
                   alt="request-description"
                   className="tw-mt-2"
                   icon={Icons.REQUEST}
                 />
-              </PopOver>
+              </Tooltip>
             </button>
           ) : null}
           {!isUndefined(descriptionThread) ? (
