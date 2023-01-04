@@ -16,7 +16,6 @@ import { debounce, isEqual, lowerCase } from 'lodash';
 import { Status } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { default as AppState, default as appState } from '../../../AppState';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { getGroupTypeTeams } from '../../../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
@@ -29,6 +28,7 @@ import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
 } from '../../../utils/UserDataUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import DropDownList from '../../dropdown/DropDownList';
 import './OwnerWidgetWrapper.style.less';
 
