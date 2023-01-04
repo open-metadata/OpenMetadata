@@ -46,13 +46,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import (
+from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_COLUMN_COMMENTS,
     MSSQL_GET_TABLE_COMMENTS,
 )
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
