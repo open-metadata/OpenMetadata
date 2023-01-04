@@ -57,10 +57,6 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({ isAuthDisabled: true }),
-}));
-
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));

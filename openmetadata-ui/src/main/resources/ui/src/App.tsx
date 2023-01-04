@@ -28,15 +28,15 @@ import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import { AuthProvider } from './authentication/auth-provider/AuthProvider';
 import Appbar from './components/app-bar/Appbar';
+import { AuthProvider } from './components/authentication/auth-provider/AuthProvider';
+import ErrorBoundry from './components/ErrorBoundry/ErrorBoundry';
 import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './components/PermissionProvider/PermissionProvider';
+import AppRouter from './components/router/AppRouter';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
-import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
-import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
   library.add(

@@ -16,11 +16,11 @@ import { Button, Card, Select, Space } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
