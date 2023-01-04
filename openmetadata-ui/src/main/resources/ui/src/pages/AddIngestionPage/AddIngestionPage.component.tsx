@@ -283,10 +283,10 @@ const AddIngestionPage = () => {
   };
 
   useEffect(() => {
-    if (isAirflowAvailable) {
+    fetchAirflowStatus().finally(() => {
       fetchServiceDetails();
-    }
-  }, [serviceCategory, serviceFQN, isAirflowAvailable]);
+    });
+  }, [serviceCategory, serviceFQN]);
 
   return <PageContainerV1>{renderAddIngestionPage()}</PageContainerV1>;
 };
