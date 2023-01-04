@@ -477,7 +477,7 @@ describe('Glossary page should work properly', () => {
       .eq(0)
       .should('be.visible')
       .click();
-    cy.get('[data-testid="tag-selector"]').should('be.visible').click();
+    cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(`${glossary}.${term}`);
     cy.get(`[title*="${term}"]`).should('be.visible').click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
@@ -502,7 +502,7 @@ describe('Glossary page should work properly', () => {
       .first()
       .click();
 
-    cy.get('[data-testid="tag-selector"]').should('be.visible').click();
+    cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(`${glossary}.${term}`);
     cy.get(`[title*="${term}"]`).should('be.visible').click();
 
     cy.get(
