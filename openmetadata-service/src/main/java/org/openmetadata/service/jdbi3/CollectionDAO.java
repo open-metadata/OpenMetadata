@@ -3142,9 +3142,6 @@ public interface CollectionDAO {
     List<ReportDataRow> getAfterExtension(
         @Bind("entityFQN") String entityFQN, @Bind("limit") int limit, @Bind("after") String after);
 
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE user_tokens SET json = :json WHERE token = :token",
-        connectionType = MYSQL)
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     String getExtensionAtTimestamp(
