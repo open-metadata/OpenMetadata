@@ -87,7 +87,9 @@ const KPIList = () => {
             <RichTextEditorPreviewer markdown={description} />
           ) : (
             <span data-testid="no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </span>
           ),
       },

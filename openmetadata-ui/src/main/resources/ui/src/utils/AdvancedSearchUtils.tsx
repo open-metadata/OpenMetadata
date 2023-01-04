@@ -128,7 +128,9 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   } else if (type === 'delGroup') {
     return (
       <SVGIcons
-        alt={i18next.t('label.delete-group')}
+        alt={i18next.t('label.delete-entity', {
+          entity: i18next.t('label.group'),
+        })}
         className="action action--DELETE cursor-pointer "
         height={16}
         icon={Icons.DELETE_COLORED}

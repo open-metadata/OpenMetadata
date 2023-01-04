@@ -25,7 +25,6 @@ from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_name
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
 from metadata.generated.schema.entity.data.database import Database
@@ -150,12 +149,6 @@ def _get_column_info(self, *args, **kwargs):
     # raw_data_type is not included in column_info as
     # redhift doesn't suport compex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
-
-    if isinstance(column_info["type"], VARCHAR):
-        if column_info["type"].length is None:
-            column_info["type"] = NullType()
-    if re.match("char", kwdrs["format_type"]):
-        column_info["type"] = CHAR
 
     if "info" not in column_info:
         column_info["info"] = {}

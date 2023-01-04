@@ -50,7 +50,6 @@ import {
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -282,13 +281,19 @@ const DataInsightPage = () => {
             </div>
             <Tooltip
               title={
-                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
+                isAdminUser
+                  ? t('label.add-entity', {
+                      entity: t('label.kpi-uppercase'),
+                    })
+                  : t('message.no-permission-for-action')
               }>
               <Button
                 disabled={!isAdminUser}
                 type="primary"
                 onClick={handleAddKPI}>
-                {t('label.add-kpi')}
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
               </Button>
             </Tooltip>
           </Space>

@@ -41,7 +41,9 @@ export const datasetTableTabs = [
     path: 'profiler',
   },
   {
-    name: i18next.t('label.data-quality'),
+    name: i18next.t('label.data-entity', {
+      entity: i18next.t('label.quality'),
+    }),
     path: 'data-quality',
   },
   {

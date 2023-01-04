@@ -107,7 +107,9 @@ const DescriptionV1 = ({
         )}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-description')}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
           value={description}
           visible={Boolean(isEdit)}
           onCancel={onCancel}

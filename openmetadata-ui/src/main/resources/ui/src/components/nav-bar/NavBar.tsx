@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Menu, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Menu, Select, Space } from 'antd';
+import { CookieStorage } from 'cookie-storage';
+import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +35,10 @@ import {
   prepareFeedLink,
 } from '../../utils/FeedUtils';
 import {
+  languageSelectOptions,
+  SupportedLocales,
+} from '../../utils/i18next/i18nextUtil';
+import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
@@ -50,6 +56,9 @@ import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
+
+const cookieStorage = new CookieStorage();
+
 const NavBar = ({
   supportDropdown,
   profileDropdown,
@@ -84,6 +93,10 @@ const NavBar = ({
   const profilePicture = useMemo(
     () => currentUser?.profile?.images?.image512,
     [currentUser]
+  );
+
+  const [language, setLanguage] = useState(
+    cookieStorage.getItem('i18next') || SupportedLocales.English
   );
 
   const { socket } = useWebSocketConnector();
@@ -262,6 +275,11 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
+  const handleLanguageChange = (langCode: string) => {
+    setLanguage(langCode);
+    i18next.changeLanguage(langCode);
+  };
+
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
@@ -374,7 +392,13 @@ const NavBar = ({
               ))}
           </div>
           <Space className="tw-ml-auto">
-            <Space size={24}>
+            <Space size={16}>
+              <Select
+                bordered={false}
+                options={languageSelectOptions}
+                value={language}
+                onChange={handleLanguageChange}
+              />
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-settings"

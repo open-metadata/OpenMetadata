@@ -252,7 +252,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           treeCheckable
           className="w-full"
           data-testid="resources"
-          placeholder={t('label.select-resource-plural')}
+          placeholder={t('label.select-field', {
+            field: t('label.resource-plural'),
+          })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
           onChange={(values: string[]) => {
@@ -300,7 +302,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <Select
           data-testid="effect"
-          placeholder={t('label.select-rule-effect')}
+          placeholder={t('label.select-field', {
+            field: t('label.rule-effect'),
+          })}
           value={ruleData.effect}
           onChange={(value) =>
             setRuleData((prev: Rule) => ({ ...prev, effect: value }))

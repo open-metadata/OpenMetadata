@@ -715,7 +715,9 @@ const TaskDetailPage = () => {
                             disabled={!suggestion}
                             type="primary"
                             onClick={onTaskResolve}>
-                            {t('label.add-description')}
+                            {t('label.add-entity', {
+                              entity: t('label.description'),
+                            })}
                           </Button>
                         )}
                       </Fragment>

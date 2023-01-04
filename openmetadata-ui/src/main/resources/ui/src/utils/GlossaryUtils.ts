@@ -231,7 +231,7 @@ export const updateGlossaryListBySearchedTerms = (
 export const getActionsList = () => {
   return [
     {
-      name: t('label.add-term'),
+      name: t('label.add-entity', { entity: t('label.term') }),
       value: 'add_term',
     },
   ];
@@ -397,7 +397,7 @@ export const getEntityReferenceFromGlossary = (
     href: glossary.href,
     fullyQualifiedName: glossary.fullyQualifiedName ?? '',
     id: glossary.id,
-    type: 'glossary',
+    type: 'glossaryTerm',
     description: glossary.description,
     displayName: glossary.displayName,
     name: glossary.name,

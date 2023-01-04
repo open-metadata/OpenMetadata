@@ -598,7 +598,9 @@ const TagsPage = () => {
               <Tooltip
                 title={
                   createClassificationPermission
-                    ? t('label.add-classification')
+                    ? t('label.add-entity', {
+                        entity: t('label.classification'),
+                      })
                     : t('message.no-permission-for-action')
                 }>
                 <button
@@ -610,7 +612,11 @@ const TagsPage = () => {
                     setErrorDataClassification(undefined);
                   }}>
                   <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                  <span>{t('label.add-classification')}</span>
+                  <span>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </span>
                 </button>
               </Tooltip>
             </div>
@@ -663,7 +669,9 @@ const TagsPage = () => {
                   <RichTextEditorPreviewer markdown={text} />
                 ) : (
                   <span className="tw-no-description">
-                    {t('label.no-description')}
+                    {t('label.no-entity', {
+                      entity: t('label.description'),
+                    })}
                   </span>
                 )}
               </div>
@@ -841,7 +849,9 @@ const TagsPage = () => {
                   <Tooltip
                     title={
                       createTagPermission || classificationPermissions.EditAll
-                        ? t('label.add-new-tag')
+                        ? t('label.add-new-entity', {
+                            entity: t('label.tag-lowercase'),
+                          })
                         : t('message.no-permission-for-action')
                     }>
                     <Button
@@ -859,7 +869,9 @@ const TagsPage = () => {
                         setIsAddingTag((prevState) => !prevState);
                         setErrorDataTag(undefined);
                       }}>
-                      {t('label.add-new-tag')}
+                      {t('label.add-new-entity', {
+                        entity: t('label.tag-lowercase'),
+                      })}
                     </Button>
                   </Tooltip>
 
@@ -874,8 +886,8 @@ const TagsPage = () => {
                     onClick={() => {
                       deleteTagHandler();
                     }}>
-                    {t('label.delete-classification-or-tag', {
-                      type: t('label.classification'),
+                    {t('label.delete-entity', {
+                      entity: t('label.classification'),
                     })}
                   </Button>
                 </div>
@@ -927,7 +939,9 @@ const TagsPage = () => {
               header={t('label.edit-description-for', {
                 entityName: editTag?.name,
               })}
-              placeholder={t('label.enter-description')}
+              placeholder={t('label.enter-entity', {
+                entity: t('label.description'),
+              })}
               value={editTag?.description as string}
               visible={isEditTag}
               onCancel={() => {
@@ -983,8 +997,8 @@ const TagsPage = () => {
               })}
               cancelText={t('label.cancel')}
               confirmText={t('label.confirm')}
-              header={t('label.delete-classification-or-tag', {
-                type: deleteTags.data?.isCategory
+              header={t('label.delete-entity', {
+                entity: deleteTags.data?.isCategory
                   ? t('label.classification')
                   : t('label.tag'),
               })}

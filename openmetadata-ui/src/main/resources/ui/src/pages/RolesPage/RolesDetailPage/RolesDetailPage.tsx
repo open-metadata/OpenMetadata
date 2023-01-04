@@ -287,12 +287,14 @@ const RolesDetailPage = () => {
               />
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
-                <TabPane key="policies" tab={t('label.policies')}>
+                <TabPane key="policies" tab={t('label.policy-plural')}>
                   <Space className="w-full" direction="vertical">
                     <Tooltip
                       title={
                         rolePermission.EditAll
-                          ? t('label.add-policy')
+                          ? t('label.add-entity', {
+                              entity: t('label.policy'),
+                            })
                           : t('message.no-permission-for-action')
                       }>
                       <Button
@@ -305,7 +307,9 @@ const RolesDetailPage = () => {
                             selectedData: role.policies || [],
                           })
                         }>
-                        {t('label.add-policy')}
+                        {t('label.add-entity', {
+                          entity: t('label.policy'),
+                        })}
                       </Button>
                     </Tooltip>
                     <RolesDetailPageList

@@ -933,7 +933,11 @@ const ServicePage: FunctionComponent = () => {
           !isUndefined(description) && description.trim() ? (
             <RichTextEditorPreviewer markdown={description} />
           ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
           ),
       },
       {
@@ -1155,7 +1159,9 @@ const ServicePage: FunctionComponent = () => {
                           <Tooltip
                             title={
                               servicePermission.EditAll
-                                ? t('label.test-connection')
+                                ? t('label.test-entity', {
+                                    entity: t('label.connection'),
+                                  })
                                 : t('message.no-permission-for-action')
                             }>
                             <Button
@@ -1170,7 +1176,9 @@ const ServicePage: FunctionComponent = () => {
                               loading={isTestingConnection}
                               type="primary"
                               onClick={checkTestConnect}>
-                              {t('label.test-connection')}
+                              {t('label.test-entity', {
+                                entity: t('label.connection'),
+                              })}
                             </Button>
                           </Tooltip>
                         )}

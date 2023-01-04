@@ -62,7 +62,9 @@ const CommentModal: FC<CommentModalProps> = ({
       <RichTextEditor
         height="208px"
         initialValue={comment}
-        placeHolder={t('label.add-comment')}
+        placeHolder={t('label.add-entity', {
+          entity: t('label.comment-lowercase'),
+        })}
         style={{ marginTop: '0px' }}
         onTextChange={setComment}
       />

@@ -137,7 +137,9 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             <CustomStatistic
               changeInValue={relativePercentage}
               duration={selectedDays}
-              label={t('label.total-active-user')}
+              label={t('label.total-entity', {
+                entity: t('label.active-user'),
+              })}
               value={total}
             />
           </Col>

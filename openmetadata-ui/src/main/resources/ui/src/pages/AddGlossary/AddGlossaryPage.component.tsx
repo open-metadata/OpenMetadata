@@ -132,7 +132,9 @@ const AddGlossaryPage: FunctionComponent = () => {
         <AddGlossary
           allowAccess={createPermission}
           fetchTags={fetchTags}
-          header={t('label.add-glossary')}
+          header={t('label.add-entity', {
+            entity: t('label.glossary'),
+          })}
           isTagLoading={isTagLoading}
           saveState={status}
           slashedBreadcrumb={slashedBreadcrumb}
