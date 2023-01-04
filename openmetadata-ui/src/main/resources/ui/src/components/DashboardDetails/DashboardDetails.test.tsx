@@ -32,18 +32,6 @@ import { getClassifications } from '../../utils/TagsUtils';
 import DashboardDetails from './DashboardDetails.component';
 import { ChartType } from './DashboardDetails.interface';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 const mockUserTeam = [
   {
     description: 'description',

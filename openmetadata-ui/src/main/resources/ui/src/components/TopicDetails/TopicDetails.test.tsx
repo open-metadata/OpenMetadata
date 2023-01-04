@@ -26,17 +26,6 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import TopicDetails from './TopicDetails.component';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
   return jest
     .fn()

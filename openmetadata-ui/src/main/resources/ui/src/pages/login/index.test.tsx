@@ -23,7 +23,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
+jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
 

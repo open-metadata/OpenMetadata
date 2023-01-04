@@ -23,7 +23,7 @@ jest.mock('../../../AppState', () => ({
   users: [{ name: 'user1', displayName: 'User1DN' }],
 }));
 
-jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       authConfig: {},
