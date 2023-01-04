@@ -14,7 +14,7 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import SigninPage from './index';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;

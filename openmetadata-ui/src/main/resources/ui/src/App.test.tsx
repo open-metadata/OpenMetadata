@@ -14,7 +14,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
-import { AuthContext } from './authentication/auth-provider/AuthProvider';
+import { AuthContext } from './components/authentication/auth-provider/AuthProvider';
 
 const authContext = jest.fn();
 

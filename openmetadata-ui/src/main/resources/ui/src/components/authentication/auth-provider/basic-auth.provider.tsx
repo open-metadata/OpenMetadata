@@ -22,22 +22,22 @@ import {
   generatePasswordResetLink,
   logoutUser,
   resetPassword,
-} from '../../axiosAPIs/auth-API';
+} from '../../../axiosAPIs/auth-API';
 import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
-} from '../../constants/auth.constants';
-import { ROUTES } from '../../constants/constants';
-import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
-import { RegistrationRequest } from '../../generated/auth/registrationRequest';
-import jsonData from '../../jsons/en';
-import localState from '../../utils/LocalStorageUtils';
+} from '../../../constants/auth.constants';
+import { ROUTES } from '../../../constants/constants';
+import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
+import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
+import jsonData from '../../../jsons/en';
+import localState from '../../../utils/LocalStorageUtils';
 import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
-} from '../../utils/ToastUtils';
-import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
+} from '../../../utils/ToastUtils';
+import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 

@@ -13,10 +13,10 @@
 
 import { Space, Tooltip } from 'antd';
 import React from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { useAuth } from '../../hooks/authHooks';
 import { IcDeleteColored } from '../../utils/SvgUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { Button } from '../buttons/Button/Button';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';

@@ -20,9 +20,9 @@ import React, {
 import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
-} from '../../axiosAPIs/auth-API';
-import { AuthTypes } from '../../enums/signin.enum';
-import localState from '../../utils/LocalStorageUtils';
+} from '../../../axiosAPIs/auth-API';
+import { AuthTypes } from '../../../enums/signin.enum';
+import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { useBasicAuth } from '../auth-provider/basic-auth.provider';
 
