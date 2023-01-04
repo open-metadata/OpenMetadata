@@ -19,7 +19,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.dashboard.quicksight import QuickSightSource
+from metadata.ingestion.source.dashboard.quicksight.metadata import QuickSightSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
@@ -179,7 +179,9 @@ class QuickSightUnitTest(TestCase):
     QuickSight Unit Test
     """
 
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -190,9 +192,7 @@ class QuickSightUnitTest(TestCase):
         )
         self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
         self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
-        self.quicksight.quicksight.get_dashboard_embed_url = (
-            mock_get_dashboard_embed_url
-        )
+        self.quicksight.client.get_dashboard_embed_url = mock_get_dashboard_embed_url
 
     def test_dashboard(self):
         dashboard_list = []

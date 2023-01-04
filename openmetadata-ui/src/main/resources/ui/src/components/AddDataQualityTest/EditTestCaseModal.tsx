@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -80,7 +80,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             key={name}
             label={t('label.sql-query')}
             name={name}
-            tooltip={t('label.sql-query-tooltip')}>
+            tooltip={t('message.sql-query-tooltip')}>
             <SchemaEditor
               className="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
@@ -236,13 +236,15 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             </Form.Item>
           )}
           <Form.Item required label={`${t('label.name')}:`} name="name">
-            <Input disabled placeholder={t('label.enter-test-case-name')} />
+            <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item
             required
-            label={`${t('label.test-type')}:`}
+            label={`${t('label.test-entity', {
+              entity: t('label.type'),
+            })}:`}
             name="testDefinition">
-            <Input disabled placeholder={t('label.enter-test-case-name')} />
+            <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
 
           {GenerateParamsField()}

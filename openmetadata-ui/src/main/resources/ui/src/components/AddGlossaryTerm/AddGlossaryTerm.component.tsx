@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -511,7 +511,9 @@ const AddGlossaryTerm = ({
         </div>
 
         <RelatedTermsModal
-          header={t('label.add-related-terms')}
+          header={t('label.add-entity', {
+            entity: t('label.related-term-plural'),
+          })}
           relatedTerms={relatedTerms}
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
@@ -519,7 +521,9 @@ const AddGlossaryTerm = ({
         />
 
         <ReviewerModal
-          header={t('label.add-reviewers')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

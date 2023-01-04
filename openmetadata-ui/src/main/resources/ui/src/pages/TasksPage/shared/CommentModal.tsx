@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -62,7 +62,9 @@ const CommentModal: FC<CommentModalProps> = ({
       <RichTextEditor
         height="208px"
         initialValue={comment}
-        placeHolder={t('label.add-comment')}
+        placeHolder={t('label.add-entity', {
+          entity: t('label.comment-lowercase'),
+        })}
         style={{ marginTop: '0px' }}
         onTextChange={setComment}
       />

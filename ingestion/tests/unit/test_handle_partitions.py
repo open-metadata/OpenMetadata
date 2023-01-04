@@ -25,7 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.bigquery import BigquerySource
+from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 
 """
 Check Partitioned Table in Profiler Workflow
@@ -92,9 +92,13 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 class BigqueryUnitTest(TestCase):
     @patch("google.cloud.bigquery.Client")
-    @patch("metadata.utils.connections.create_generic_connection")
-    @patch("metadata.ingestion.source.database.bigquery.BigquerySource.set_project_id")
-    @patch("metadata.ingestion.source.database.common_db_source.test_connection")
+    @patch("metadata.ingestion.connections.builders.create_generic_db_connection")
+    @patch(
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
+    )
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
     def __init__(
         self,
         methodName,

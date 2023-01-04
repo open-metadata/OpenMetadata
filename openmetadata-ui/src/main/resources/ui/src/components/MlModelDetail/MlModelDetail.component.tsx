@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -261,7 +261,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 4,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 5,
     },
@@ -384,7 +384,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         }),
         // Autoclose timer
         2000
@@ -394,7 +394,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         })
       );
     }
@@ -433,9 +433,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlHyperParameters = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">
-          {t('label.hyper-parameters')}{' '}
+          {t('label.hyper-parameter-plural')}{' '}
         </h6>
         <div className="m-t-xs">
           {isEmpty(mlModelDetail.mlHyperParameters) ? (
@@ -458,7 +458,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">{t('label.model-store')}</h6>
         {mlModelDetail.mlStore ? (
           <div className="m-t-xs tw-table-container">

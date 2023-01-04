@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-/* eslint-disable @typescript-eslint/camelcase */
 
 import {
   findAllByText,
@@ -340,6 +338,7 @@ const mockProp: MyDataProps = {
   fetchFeedHandler: mockFetchFeedHandler,
   followedData: currentUserMockData,
   isFeedLoading: false,
+  isLoadingOwnedData: false,
   ownedData: currentUserMockData,
   paging: mockPaging,
   postFeedHandler: postFeed,
@@ -373,7 +372,7 @@ describe('Test MyData page', () => {
     expect(leftPanel).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
     expect(recentSearchedTerms).toBeInTheDocument();
-    expect(entityList.length).toBe(2);
+    expect(entityList).toHaveLength(2);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

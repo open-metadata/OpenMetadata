@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -143,7 +143,7 @@ const Explore: React.FC<ExploreProps> = ({
     data.forEach((filter) => {
       filter.value?.map((val) => {
         if (filter.key) {
-          terms.push({ term: { [filter.key]: val } });
+          terms.push({ term: { [filter.key]: val.key } });
         }
       });
     });
@@ -190,7 +190,7 @@ const Explore: React.FC<ExploreProps> = ({
     const dropdownItems = getDropDownItems(searchIndex);
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({ ...item, value: undefined }))
+      dropdownItems.map((item) => ({ ...item, value: [] }))
     );
   }, [searchIndex]);
 

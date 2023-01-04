@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -375,7 +375,7 @@ const TestSuitePipelineTab = () => {
         },
       },
       {
-        title: t('label.recent-runs'),
+        title: t('label.recent-run-plural'),
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
         render: (_, record) => (
@@ -385,7 +385,7 @@ const TestSuitePipelineTab = () => {
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => {
@@ -500,7 +500,7 @@ const TestSuitePipelineTab = () => {
                 <Tooltip
                   title={
                     viewPermission
-                      ? t('label.logs')
+                      ? t('label.log-plural')
                       : t('message.no-permission-for-action')
                   }>
                   <Button
@@ -557,7 +557,9 @@ const TestSuitePipelineTab = () => {
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer
-      buttonName={t('label.add-pipeline-ingestion', { pipelineType: '' })}
+      buttonName={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
       onButtonClick={() => {

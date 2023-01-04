@@ -15,6 +15,8 @@ Validate query parser logic
 
 from unittest import TestCase
 
+from sqllineage.core.models import Column
+
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.parser import LineageParser
 
@@ -159,4 +161,108 @@ class QueryParserTests(TestCase):
         self.assertEqual(
             LineageParser.clean_raw_query(query),
             None,
+        )
+
+    def test_ctes_column_lineage(self):
+        """
+        Validate we obtain information from Comon Table Expressions
+        """
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+         WITH cte_table AS (
+           SELECT
+             USERS.ID,
+             USERS.NAME
+           FROM TESTDB.PUBLIC.USERS
+        ),
+        cte_table2 AS (
+           SELECT
+              ID,
+              NAME
+           FROM cte_table
+        )        
+        SELECT 
+          ID,
+          NAME
+        FROM cte_table2
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        tables = {str(table) for table in parser.source_tables}
+        self.assertEqual(tables, {"testdb.public.users"})
+        self.assertEqual(
+            parser.column_lineage,
+            [
+                (
+                    Column("testdb.public.users.id"),
+                    Column("cte_table.id"),
+                    Column("cte_table2.id"),
+                    Column("testdb.public.target.id"),
+                ),
+                (
+                    Column("testdb.public.users.name"),
+                    Column("cte_table.name"),
+                    Column("cte_table2.name"),
+                    Column("testdb.public.target.name"),
+                ),
+            ],
+        )
+
+    def test_table_with_single_comment(self):
+        """
+        Validate we obtain information from Comon Table Expressions
+        """
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        SELECT
+            ID,
+            -- A comment here
+            NAME
+        FROM TESTDB.PUBLIC.USERS
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, {"testdb.public.users", "testdb.public.target"})
+        self.assertEqual(
+            parser.column_lineage,
+            [
+                (Column("testdb.public.users.id"), Column("testdb.public.target.id")),
+                (
+                    Column("testdb.public.users.name"),
+                    Column("testdb.public.target.name"),
+                ),
+            ],
+        )
+
+    def test_table_with_aliases(self):
+        """
+        Validate we obtain information from Comon Table Expressions
+        """
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        SELECT
+            ID AS new_identifier,
+            NAME new_name
+        FROM TESTDB.PUBLIC.USERS
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, {"testdb.public.users", "testdb.public.target"})
+        self.assertEqual(
+            parser.column_lineage,
+            [
+                (
+                    Column("testdb.public.users.id"),
+                    Column("testdb.public.target.new_identifier"),
+                ),
+                (
+                    Column("testdb.public.users.name"),
+                    Column("testdb.public.target.new_name"),
+                ),
+            ],
         )

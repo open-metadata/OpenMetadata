@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -231,7 +231,7 @@ export const updateGlossaryListBySearchedTerms = (
 export const getActionsList = () => {
   return [
     {
-      name: t('label.add-term'),
+      name: t('label.add-entity', { entity: t('label.term') }),
       value: 'add_term',
     },
   ];
@@ -397,7 +397,7 @@ export const getEntityReferenceFromGlossary = (
     href: glossary.href,
     fullyQualifiedName: glossary.fullyQualifiedName ?? '',
     id: glossary.id,
-    type: 'glossary',
+    type: 'glossaryTerm',
     description: glossary.description,
     displayName: glossary.displayName,
     name: glossary.name,

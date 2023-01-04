@@ -113,24 +113,23 @@ class AirflowLineageRunner:
         if service_entity:
             return service_entity
 
-        else:
-            pipeline_service: PipelineService = self.metadata.create_or_update(
-                CreatePipelineServiceRequest(
-                    name=self.service_name,
-                    serviceType=PipelineServiceType.Airflow,
-                    connection=PipelineConnection(
-                        config=AirflowConnection(
-                            hostPort=conf.get("webserver", "base_url"),
-                            connection=BackendConnection(),
-                        ),
+        pipeline_service: PipelineService = self.metadata.create_or_update(
+            CreatePipelineServiceRequest(
+                name=self.service_name,
+                serviceType=PipelineServiceType.Airflow,
+                connection=PipelineConnection(
+                    config=AirflowConnection(
+                        hostPort=conf.get("webserver", "base_url"),
+                        connection=BackendConnection(),
                     ),
-                )
+                ),
             )
+        )
 
-            if pipeline_service is None:
-                raise RuntimeError("Failed to create Airflow service.")
+        if pipeline_service is None:
+            raise RuntimeError("Failed to create Airflow service.")
 
-            return pipeline_service
+        return pipeline_service
 
     def get_task_url(self, task: "Operator"):
         return f"/taskinstance/list/?flt1_dag_id_equals={self.dag.dag_id}&_flt_3_task_id={task.task_id}"

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -40,6 +40,7 @@ import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
 import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
@@ -49,7 +50,6 @@ import {
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -117,12 +117,12 @@ const DataInsightPage = () => {
     };
   }, [kpiList]);
 
-  const handleTierChange = (tiers: string[] = []) => {
+  const handleTierChange = (tiers: SearchDropdownOption[] = []) => {
     setTierOptions((prev) => ({ ...prev, selectedOptions: tiers }));
     setChartFilter((previous) => ({
       ...previous,
       tier: tiers.length
-        ? tiers.map((tier) => TIER_FILTER[tier]).join(',')
+        ? tiers.map((tier) => TIER_FILTER[tier.key].key).join(',')
         : undefined,
     }));
   };
@@ -136,14 +136,14 @@ const DataInsightPage = () => {
     }));
   };
 
-  const handleTeamChange = (teams: string[] = []) => {
+  const handleTeamChange = (teams: SearchDropdownOption[] = []) => {
     setTeamOptions((prev) => ({
       ...prev,
       selectedOptions: teams,
     }));
     setChartFilter((previous) => ({
       ...previous,
-      team: teams.length ? teams.join(',') : undefined,
+      team: teams.length ? teams.map((team) => team.key).join(',') : undefined,
     }));
   };
 
@@ -171,13 +171,13 @@ const DataInsightPage = () => {
       setTierOptions((prev) => ({
         ...prev,
         options: prev.options.filter((value) =>
-          value.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+          value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
         ),
       }));
     } else {
       setTierOptions((prev) => ({
         ...prev,
-        options: defaultTierOptions,
+        options: defaultTierOptions.map((op) => ({ key: op, label: op })),
       }));
     }
   };
@@ -202,7 +202,7 @@ const DataInsightPage = () => {
       const teamFilterOptions = hits.map((hit) => {
         const source = hit._source;
 
-        return source.name;
+        return { key: source.name, label: source.displayName ?? source.name };
       });
       setTeamOptions((prev) => ({
         ...prev,
@@ -217,7 +217,7 @@ const DataInsightPage = () => {
   const fetchDefaultTierOptions = () => {
     setTierOptions((prev) => ({
       ...prev,
-      options: defaultTierOptions,
+      options: defaultTierOptions.map((op) => ({ key: op, label: op })),
     }));
   };
 
@@ -276,18 +276,24 @@ const DataInsightPage = () => {
                 {t('label.data-insight-plural')}
               </Typography.Title>
               <Typography.Text className="data-insight-label-text">
-                {t('label.data-insight-subtitle')}
+                {t('message.data-insight-subtitle')}
               </Typography.Text>
             </div>
             <Tooltip
               title={
-                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
+                isAdminUser
+                  ? t('label.add-entity', {
+                      entity: t('label.kpi-uppercase'),
+                    })
+                  : t('message.no-permission-for-action')
               }>
               <Button
                 disabled={!isAdminUser}
                 type="primary"
                 onClick={handleAddKPI}>
-                {t('label.add-kpi')}
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
               </Button>
             </Tooltip>
           </Space>

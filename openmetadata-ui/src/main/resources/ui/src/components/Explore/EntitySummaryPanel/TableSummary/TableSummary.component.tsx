@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -121,12 +121,16 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value:
           TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
-        title: `${t('label.table-sample')} %`,
+        title: `${t('label.table-entity-text', {
+          entityText: t('label.sample'),
+        })} %`,
         value: `${TableDetails?.profile?.profileSample ?? 100}%`,
       },
       {

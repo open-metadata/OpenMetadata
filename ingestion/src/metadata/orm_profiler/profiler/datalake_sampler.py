@@ -15,7 +15,7 @@ for the profiler
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.ingestion.source.database.datalake import DatalakeSource
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.orm_profiler.api.models import ProfileSampleConfig
 
 RANDOM_LABEL = "random"

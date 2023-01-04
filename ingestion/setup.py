@@ -45,7 +45,9 @@ base_requirements = {
     "boto3~=1.19.12",
     "botocore==1.22.12",
     "avro-python3==1.10.2",
-    "grpcio-tools==1.48.2",
+    # https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
+    "grpcio<1.48.1",
+    "grpcio-tools==1.47.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -73,13 +75,12 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
-        "grpcio==1.50.0",
         "sqlalchemy-bigquery>=1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
     },
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
-    "docker": {"python_on_whales==0.34.0"},
+    "docker": {"python_on_whales==0.55.0"},
     "backup": {"boto3~=1.19.12", "azure-identity", "azure-storage-blob"},
     "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2", "dagster_graphql"},
     "datalake-s3": {
@@ -201,7 +202,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.13.0.dev0",
+    version="0.13.2.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

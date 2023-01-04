@@ -1,0 +1,99 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/classification/tag.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tag",
+  "description": "This schema defines the Tag entity. A Tag can have children Tags to set up a tag hierarchy.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.classification.Tag",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "tagName": {
+      "description": "Name of the tag.",
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the tag.",
+      "$ref": "#/definitions/tagName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this tag.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Unique name of the tag of format `Classification.tag1.tag2`.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the tag.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "classification": {
+      "description": "Reference to the classification that this tag is part of.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "parent": {
+      "description": "Reference to the parent tag. When null, the term is at the root of the Classification.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "Children tags under this tag.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to the tag.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "usageCount": {
+      "description": "Count of how many times this tag and children tags are used.",
+      "type": "integer"
+    },
+    "deprecated": {
+      "description": "If the tag is deprecated.",
+      "type": "boolean",
+      "default": false
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "disabled": {
+      "description": "System tags can't be deleted. Use this flag to disable them.",
+      "type": "boolean"
+    },
+    "mutuallyExclusive": {
+      "description": "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
+      "type": "boolean",
+      "default": "false"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

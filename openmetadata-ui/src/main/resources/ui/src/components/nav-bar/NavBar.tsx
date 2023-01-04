@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Menu, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Menu, Select, Space } from 'antd';
+import { CookieStorage } from 'cookie-storage';
+import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +35,10 @@ import {
   prepareFeedLink,
 } from '../../utils/FeedUtils';
 import {
+  languageSelectOptions,
+  SupportedLocales,
+} from '../../utils/i18next/i18nextUtil';
+import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
@@ -50,6 +56,9 @@ import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
+
+const cookieStorage = new CookieStorage();
+
 const NavBar = ({
   supportDropdown,
   profileDropdown,
@@ -86,10 +95,16 @@ const NavBar = ({
     [currentUser]
   );
 
+  const [language, setLanguage] = useState(
+    cookieStorage.getItem('i18next') || SupportedLocales.English
+  );
+
   const { socket } = useWebSocketConnector();
 
   const navStyle = (value: boolean) => {
-    if (value) return { color: activeLink };
+    if (value) {
+      return { color: activeLink };
+    }
 
     return { color: normalLink };
   };
@@ -260,13 +275,23 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
+  const handleLanguageChange = (langCode: string) => {
+    setLanguage(langCode);
+    i18next.changeLanguage(langCode);
+  };
+
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO_SMALL} />
+              <SVGIcons
+                alt="OpenMetadata Logo"
+                height={30}
+                icon={Icons.LOGO_SMALL}
+                width={25}
+              />
             </NavLink>
             <Space className="tw-ml-5 flex-none" size={16}>
               <NavLink
@@ -294,7 +319,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.insights')}
+                {t('label.insight-plural')}
               </NavLink>
               <Dropdown
                 className="cursor-pointer"
@@ -315,7 +340,7 @@ const NavBar = ({
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder={t('label.search-global')}
+              placeholder={t('message.search-for-entity-types')}
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',
@@ -367,7 +392,13 @@ const NavBar = ({
               ))}
           </div>
           <Space className="tw-ml-auto">
-            <Space size={24}>
+            <Space size={16}>
+              <Select
+                bordered={false}
+                options={languageSelectOptions}
+                value={language}
+                onChange={handleLanguageChange}
+              />
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-settings"
@@ -375,7 +406,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.SETTINGS,
                 }}>
-                {t('label.settings')}
+                {t('label.setting-plural')}
               </NavLink>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown

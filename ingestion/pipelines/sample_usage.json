@@ -1,11 +1,14 @@
 {
   "source": {
-    "type": "sample-usage",
+    "type": "custom-database",
     "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "./examples/sample_data"
+        "type": "CustomDatabase",
+        "sourcePythonClass": "metadata.ingestion.source.database.sample_usage.SampleUsageSource",
+        "connectionOptions": {
+          "sampleDataFolder": "./examples/sample_data"
+        }
       }
     },
     "sourceConfig": {

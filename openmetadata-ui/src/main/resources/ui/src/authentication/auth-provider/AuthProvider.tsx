@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -81,6 +81,9 @@ interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const AuthContext = createContext({} as any);
 
 const cookieStorage = new CookieStorage();
 
@@ -635,9 +638,6 @@ export const AuthProvider = ({
     </AuthContext.Provider>
   );
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const AuthContext = createContext({} as any);
 
 export const useAuthContext = () => useContext(AuthContext);
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
+/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
@@ -48,7 +50,10 @@ const ServiceConnectionDetails = ({
   const [schema, setSchema] = useState({});
   const [data, setData] = useState<ReactNode>();
 
-  const getKeyValues = (obj: {}, schemaPropertyObject: {}): ReactNode => {
+  const getKeyValues = (
+    obj: object,
+    schemaPropertyObject: object
+  ): ReactNode => {
     const internalRef = '$ref';
     const oneOf = 'oneOf';
 

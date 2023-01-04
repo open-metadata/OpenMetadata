@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -98,7 +98,7 @@ const AlertsPage = () => {
         key: 'description',
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'id',
         width: 120,
         key: 'id',
@@ -109,7 +109,7 @@ const AlertsPage = () => {
                 <Link to={`edit-alert/${id}`}>
                   <Button
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="tw-w-4" icon={Icons.EDIT} />}
+                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
                     type="text"
                   />
                 </Link>
@@ -118,7 +118,7 @@ const AlertsPage = () => {
                 <Button
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="tw-w-4" icon={Icons.DELETE} />}
+                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />
@@ -149,7 +149,7 @@ const AlertsPage = () => {
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
                 GlobalSettingOptions.ADD_ALERTS
               )}>
-              <Button type="primary">
+              <Button data-testid="create-alert" type="primary">
                 {t('label.create-entity', { entity: 'alert' })}
               </Button>
             </Link>

@@ -29,10 +29,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     entity.setPipeline(fields.contains("pipelines") ? getIngestionPipeline(entity) : null);
-    entity.setTests(fields.contains("tests") ? getTestCases(entity) : null);
-    return entity;
+    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : null);
   }
 
   @Override

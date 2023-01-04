@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -77,7 +77,7 @@ const breadcrumb = [
     url: ROUTES.KPI_LIST,
   },
   {
-    name: t('label.add-new-kpi'),
+    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
     url: '',
     activeTitle: true,
   },
@@ -214,7 +214,7 @@ const AddKPIPage = () => {
         <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph className="text-base" data-testid="form-title">
-            {t('label.add-new-kpi')}
+            {t('label.add-new-entity', { entity: t('label.kpi-uppercase') })}
           </Typography.Paragraph>
           <Form
             data-testid="kpi-form"
@@ -228,7 +228,9 @@ const AddKPIPage = () => {
               rules={[
                 {
                   required: true,
-                  message: t('message.data-insight-chart-required'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.data-insight-chart'),
+                  }),
                 },
               ]}>
               <Select
@@ -259,7 +261,9 @@ const AddKPIPage = () => {
               rules={[
                 {
                   required: true,
-                  message: t('message.metric-type-required'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.metric-type'),
+                  }),
                 },
               ]}>
               <Select
@@ -288,7 +292,11 @@ const AddKPIPage = () => {
                         return Promise.resolve();
                       }
 
-                      return Promise.reject(t('message.metric-value-required'));
+                      return Promise.reject(
+                        t('message.field-text-is-required', {
+                          fieldText: t('label.metric-value'),
+                        })
+                      );
                     },
                   },
                 ]}>
@@ -395,7 +403,7 @@ const AddKPIPage = () => {
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder={t('label.write-your-description')}
+                placeHolder={t('message.write-your-description')}
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
@@ -422,7 +430,9 @@ const AddKPIPage = () => {
       </Col>
       <Col className="m-t-md" data-testid="right-panel" span={4}>
         <Typography.Paragraph className="text-base font-medium">
-          {t('label.add-kpi')}
+          {t('label.add-entity', {
+            entity: t('label.kpi-uppercase'),
+          })}
         </Typography.Paragraph>
         <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
       </Col>

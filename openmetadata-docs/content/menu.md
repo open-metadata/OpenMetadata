@@ -159,10 +159,6 @@ site_menu:
     url: /deployment/upgrade/kubernetes
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions
     url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.9 to 0.10
-    url: /deployment/upgrade/versions/090-to-010
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
-    url: /deployment/upgrade/versions/010-to-011
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
@@ -493,15 +489,6 @@ site_menu:
   - category: Connectors / Ingestion / Workflows / Metadata
     url: /connectors/ingestion/workflows/metadata
 
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT
-    url: /connectors/ingestion/workflows/metadata/dbt
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-owner
-
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns
     url: /connectors/ingestion/workflows/metadata/filter-patterns
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns / Database
@@ -515,6 +502,16 @@ site_menu:
     url: /connectors/ingestion/workflows/lineage
   - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
     url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
+  - category: Connectors / Ingestion / Workflows / dbt
+    url: /connectors/ingestion/workflows/dbt
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
@@ -585,6 +582,9 @@ site_menu:
 
   - category: Features / Data Insights
     url: /openmetadata/data-insight
+
+  - category: Features / Alerts & Notifications
+    url: /openmetadata/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts
@@ -885,8 +885,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/storageservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags
     url: /main-concepts/metadata-standard/schemas/entity/tags
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / TagCategory
-    url: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / Classification
+    url: /main-concepts/metadata-standard/schemas/entity/classification/classification
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn / GenerateToken
     url: /main-concepts/metadata-standard/schemas/entity/teams/authn/generatetoken
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn
@@ -1100,7 +1100,7 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / DBT
+  - category: SDK / Python SDK / Ingestion / dbt
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage

@@ -62,7 +62,6 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public AlertResourceTest() {
     super(Entity.ALERT, Alert.class, AlertResource.AlertList.class, "alerts", AlertResource.FIELDS);
     supportsSoftDelete = false;
-    supportsAuthorizedMetadataOperations = false;
     supportsFieldsQueryParam = false;
     supportsEmptyDescription = true;
     alertActionResourceTest = new AlertActionResourceTest();

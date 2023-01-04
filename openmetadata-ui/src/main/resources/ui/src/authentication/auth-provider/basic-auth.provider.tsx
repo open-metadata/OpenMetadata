@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -77,6 +77,11 @@ const initialContext = {
   handleUserCreated: stub,
 };
 
+/**
+ * The Basic Auth Context
+ */
+export const BasicAuthContext = createContext<InitialContext>(initialContext);
+
 const BasicAuthProvider = ({
   children,
   onLoginSuccess,
@@ -97,7 +102,6 @@ const BasicAuthProvider = ({
           localState.setOidcToken(response.accessToken);
 
           onLoginSuccess({
-            // eslint-disable-next-line @typescript-eslint/camelcase
             id_token: response.accessToken,
             profile: {
               email,
@@ -225,11 +229,6 @@ const BasicAuthProvider = ({
     </BasicAuthContext.Provider>
   );
 };
-
-/**
- * The Basic Auth Context
- */
-export const BasicAuthContext = createContext<InitialContext>(initialContext);
 
 export const useBasicAuth = () => useContext(BasicAuthContext);
 

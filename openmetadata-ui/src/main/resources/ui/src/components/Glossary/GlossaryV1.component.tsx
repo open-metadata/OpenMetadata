@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -559,7 +559,8 @@ const GlossaryV1 = ({
                 {' '}
                 <ProfilePicture
                   displayName={selectedData.updatedBy}
-                  id={selectedData.id}
+                  // There is no user id present in response
+                  id=""
                   name={selectedData.updatedBy || ''}
                   textClass="text-xs"
                   width="20"

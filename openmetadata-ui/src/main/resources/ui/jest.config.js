@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,13 @@
 module.exports = {
   // Project name
   displayName: '@openmetadata',
+
+  globals: {
+    // TypeScript
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
+    },
+  },
 
   // Working directory
   roots: ['<rootDir>/src'],
@@ -51,6 +58,12 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
   },
+
+  // TypeScript
+  preset: 'ts-jest',
+
+  // Test Environment
+  testEnvironment: 'jsdom',
 
   // Sonar Cloud Configuration
   testResultsProcessor: 'jest-sonar-reporter',

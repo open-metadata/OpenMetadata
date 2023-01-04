@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -136,8 +136,9 @@ const ProfilerDashboardPage = () => {
   const fetchTableEntity = async () => {
     try {
       const fqn = isColumnView
-        ? getTableFQNFromColumnFQN(decodedEntityFQN)
-        : decodedEntityFQN;
+        ? getTableFQNFromColumnFQN(entityTypeFQN)
+        : entityTypeFQN;
+
       const field = `tags, usageSummary, owner, followers${
         isColumnView ? ', profile' : ''
       }`;
@@ -212,7 +213,7 @@ const ProfilerDashboardPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <p className="tw-text-center">
+        <p className="text-center">
           No data found{' '}
           {decodedEntityFQN
             ? `for column ${getNameFromFQN(decodedEntityFQN)}`
@@ -223,7 +224,7 @@ const ProfilerDashboardPage = () => {
   }
 
   return (
-    <PageContainerV1 className="tw-py-4">
+    <PageContainerV1 className="p-y-md">
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
         fetchTestCases={fetchTestCases}

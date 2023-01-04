@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -52,7 +52,7 @@ const CustomBarChart = ({
         justify="center">
         <Col>
           <ErrorPlaceHolder>
-            <Typography.Text>{t('label.no-data-available')}</Typography.Text>
+            <Typography.Text>{t('message.no-data-available')}</Typography.Text>
           </ErrorPlaceHolder>
         </Col>
       </Row>

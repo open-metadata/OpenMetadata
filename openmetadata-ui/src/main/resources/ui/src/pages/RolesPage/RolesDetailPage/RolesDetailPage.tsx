@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -81,7 +81,7 @@ const RolesDetailPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.roles'),
+        name: t('label.role-plural'),
         url: rolesPath,
       },
       {
@@ -259,7 +259,7 @@ const RolesDetailPage = () => {
             <ErrorPlaceHolder dataTestId="no-data">
               <div className="text-center">
                 <p>
-                  {t('label.no-roles-found')} {t('label.go-back')} {fqn}
+                  {t('message.no-roles-found-for')} {t('label.go-back')} {fqn}
                 </p>
                 <Button
                   className="m-t-sm"
@@ -287,12 +287,14 @@ const RolesDetailPage = () => {
               />
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
-                <TabPane key="policies" tab={t('label.policies')}>
-                  <Space className="tw-w-full" direction="vertical">
+                <TabPane key="policies" tab={t('label.policy-plural')}>
+                  <Space className="w-full" direction="vertical">
                     <Tooltip
                       title={
                         rolePermission.EditAll
-                          ? t('label.add-policy')
+                          ? t('label.add-entity', {
+                              entity: t('label.policy'),
+                            })
                           : t('message.no-permission-for-action')
                       }>
                       <Button
@@ -305,7 +307,9 @@ const RolesDetailPage = () => {
                             selectedData: role.policies || [],
                           })
                         }>
-                        {t('label.add-policy')}
+                        {t('label.add-entity', {
+                          entity: t('label.policy'),
+                        })}
                       </Button>
                     </Tooltip>
                     <RolesDetailPageList
@@ -318,7 +322,7 @@ const RolesDetailPage = () => {
                     />
                   </Space>
                 </TabPane>
-                <TabPane key="teams" tab={t('label.teams')}>
+                <TabPane key="teams" tab={t('label.team-plural')}>
                   <RolesDetailPageList
                     hasAccess={rolePermission.EditAll}
                     list={role.teams ?? []}
@@ -363,7 +367,7 @@ const RolesDetailPage = () => {
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {t('label.sure-to-remove')}{' '}
+            {t('message.sure-to-remove')}{' '}
             {`${getEntityName(selectedEntity.record)} ${t(
               'label.from-lowercase'
             )} ${getEntityName(role)}?`}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -107,7 +107,9 @@ const DescriptionV1 = ({
         )}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-description')}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
           value={description}
           visible={Boolean(isEdit)}
           onCancel={onCancel}

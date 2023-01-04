@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -138,7 +138,7 @@ describe('Test ConfigureIngestion component', () => {
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(filterPatternComponents.length).toBe(3);
-    expect(toggleSwitchs.length).toBe(5);
+    expect(filterPatternComponents).toHaveLength(3);
+    expect(toggleSwitchs).toHaveLength(5);
   });
 });

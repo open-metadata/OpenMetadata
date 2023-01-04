@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -121,7 +121,7 @@ const UserListV1: FC<UserListV1Props> = ({
     return [
       ...commonUserDetailColumns(),
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         width: 90,
@@ -190,7 +190,7 @@ const UserListV1: FC<UserListV1Props> = ({
                 size="small"
                 onClick={onShowDeletedUserChange}
               />
-              <span className="tw-ml-2">{t('label.deleted-users')}</span>
+              <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
             </span>
           </Col>
           <Col span={24}>
@@ -202,7 +202,7 @@ const UserListV1: FC<UserListV1Props> = ({
                   disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddNewUser}>
-                  {t('label.add-user')}
+                  {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               }
               heading="User"
@@ -233,16 +233,20 @@ const UserListV1: FC<UserListV1Props> = ({
               checked={showDeletedUser}
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">{t('label.deleted-users')}</span>
+            <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
           </span>
           <Tooltip
-            title={isAdminUser ? t('label.add-user') : ADMIN_ONLY_ACTION}>
+            title={
+              isAdminUser
+                ? t('label.add-entity', { entity: t('label.user') })
+                : t('message.admin-only-action')
+            }>
             <Button
               data-testid="add-user"
               disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
-              {t('label.add-user')}
+              {t('label.add-entity', { entity: t('label.user') })}
             </Button>
           </Tooltip>
         </Space>
@@ -293,7 +297,9 @@ const UserListV1: FC<UserListV1Props> = ({
         closable={false}
         confirmLoading={isLoading}
         okText={t('label.restore')}
-        title={t('label.restore-user')}
+        title={t('label.restore-entity', {
+          entity: t('label.user'),
+        })}
         visible={showReactiveModal}
         onCancel={() => {
           setShowReactiveModal(false);
@@ -301,7 +307,7 @@ const UserListV1: FC<UserListV1Props> = ({
         }}
         onOk={handleReactiveUser}>
         <p>
-          {t('label.want-to-restore')} {getEntityName(selectedUser)}?
+          {t('message.are-you-want-to-restore')} {getEntityName(selectedUser)}?
         </p>
       </Modal>
 

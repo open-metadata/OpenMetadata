@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -567,7 +567,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
       {
-        title: t('label.table-name'),
+        title: t('label.table-entity-text', {
+          entityText: t('label.name'),
+        }),
         dataIndex: 'name',
         key: 'name',
         render: (text: string, record: Table) => {

@@ -53,12 +53,14 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -68,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Glossary collection", tags = "Glossary collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "glossaries", order = 5)
+@Collection(name = "glossaryTerms", order = 7) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
 
@@ -81,6 +83,11 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     Entity.withHref(uriInfo, term.getRelatedTerms());
     Entity.withHref(uriInfo, term.getReviewers());
     return term;
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    TagLabelCache.initialize();
   }
 
   @Inject

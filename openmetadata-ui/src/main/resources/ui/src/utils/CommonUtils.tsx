@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/* eslint-disable @typescript-eslint/ban-types */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Typography } from 'antd';
@@ -64,6 +66,7 @@ import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { Field } from '../generated/api/data/createTopic';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
+import { Classification } from '../generated/entity/classification/classification';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
@@ -74,7 +77,6 @@ import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TagCategory } from '../generated/entity/tags/tagCategory';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -89,16 +91,13 @@ import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
-export const arraySorterByKey = (
-  key: string,
+export const arraySorterByKey = <T extends object>(
+  key: keyof T,
   sortDescending = false
-): Function => {
+) => {
   const sortOrder = sortDescending ? -1 : 1;
 
-  return (
-    elementOne: { [x: string]: number | string },
-    elementTwo: { [x: string]: number | string }
-  ) => {
+  return (elementOne: T, elementTwo: T) => {
     return (
       (elementOne[key] < elementTwo[key]
         ? -1
@@ -294,14 +293,9 @@ export const addToRecentSearched = (searchTerm: string): void => {
     let arrSearchedData: RecentlySearched['data'] = [];
     if (recentlySearch?.data) {
       const arrData = recentlySearch.data
-        // search term is not case-insensetive.
+        // search term is not case-insensitive.
         .filter((item) => item.term !== searchData.term)
-        .sort(
-          arraySorterByKey('timestamp', true) as (
-            a: RecentlySearchedData,
-            b: RecentlySearchedData
-          ) => number
-        );
+        .sort(arraySorterByKey<RecentlySearchedData>('timestamp', true));
       arrData.unshift(searchData);
 
       if (arrData.length > 5) {
@@ -578,7 +572,7 @@ export const getEntityName = (
     | Webhook
     | Bot
     | Kpi
-    | TagCategory
+    | Classification
     | Field
 ) => {
   return entity?.displayName || entity?.name || '';
@@ -606,7 +600,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
       dependents,
     });
   } else {
-    return t('message.permanently-delete-metadata-and-dependents', {
+    return t('message.permanently-delete-metadata', {
       entityName: getTitleCase(entity),
     });
   }
@@ -793,7 +787,7 @@ export const getEmptyPlaceholder = () => {
   return (
     <ErrorPlaceHolder size={SIZE.MEDIUM}>
       <Typography.Paragraph>
-        {t('label.no-data-available')}
+        {t('message.no-data-available')}
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );
@@ -880,7 +874,7 @@ export const Transi18next = ({
   ...otherProps
 }: {
   i18nKey: string;
-  values?: {};
+  values?: object;
   renderElement: JSX.Element | HTMLElement;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -153,7 +153,9 @@ const ReviewerModal = ({
       width={800}>
       <>
         <Searchbar
-          placeholder={`${t('label.search-for-user')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          })}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}
@@ -184,7 +186,7 @@ const ReviewerModal = ({
           </Row>
         ) : (
           <Typography.Text className="flex justify-center mt-10 text-grey-muted text-base">
-            {t('label.no-user-available')}
+            {t('message.no-user-available')}
           </Typography.Text>
         )}
       </>

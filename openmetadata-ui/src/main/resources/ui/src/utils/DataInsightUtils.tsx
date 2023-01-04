@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,6 +23,7 @@ import {
   isUndefined,
   last,
   omit,
+  round,
   sortBy,
   toNumber,
 } from 'lodash';
@@ -30,6 +31,7 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -506,14 +508,19 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   return {
     data: graphData,
     tiers,
-    total: latestData,
+    total: round(latestData, 2),
     relativePercentage,
     latestData: last(graphData) as Record<string, number>,
   };
 };
 
-export const getTeamFilter = (suggestionValues: ListItem[]): string[] => {
-  return suggestionValues.map((suggestion) => suggestion.value);
+export const getTeamFilter = (
+  suggestionValues: ListItem[]
+): SearchDropdownOption[] => {
+  return suggestionValues.map((suggestion) => ({
+    key: suggestion.value,
+    label: suggestion.value,
+  }));
 };
 
 export const getFormattedActiveUsersData = (
@@ -549,8 +556,9 @@ export const getEntitiesChartSummary = (
     );
 
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
         const { total } = getGraphDataByTierType(chartData.data ?? []);
 
@@ -578,8 +586,9 @@ export const getWebChartSummary = (
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
         const latestData = last(chartData.data);
 
@@ -650,11 +659,11 @@ export const getKpiTargetValueByMetricType = (
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
-    return t('label.kpi-target-achieved-before-time');
+    return t('message.kpi-target-achieved-before-time');
   } else if (day <= 0 && !isTargetMet) {
-    return t('label.kpi-target-overdue');
+    return t('message.kpi-target-overdue');
   } else if (isTargetMet) {
-    return t('label.kpi-target-achieved');
+    return t('message.kpi-target-achieved');
   } else {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }

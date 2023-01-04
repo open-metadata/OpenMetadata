@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -1191,7 +1191,9 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       // eslint-disable-next-line react/prop-types
       className={`svg-icon ${props.className ? props.className : ''}`}
       data-testid="image"
+      height="16px"
       src={IconComponent}
+      width="16px"
       {...omit(props, ['src', 'className'])}
     />
   ) : null;

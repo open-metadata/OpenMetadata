@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -71,7 +71,9 @@ const FollowersModal = ({
       onCancel={onCancel}>
       <div>
         <Searchbar
-          placeholder={`${t('label.search-for-followers')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.follower-plural'),
+          })}...`}
           searchValue={searchText}
           typingInterval={1500}
           onSearch={handleSearchAction}
