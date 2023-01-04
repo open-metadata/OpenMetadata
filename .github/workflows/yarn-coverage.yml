@@ -1,4 +1,4 @@
-name: SonarCloud + Node Yarn Coverage
+name: SonarCloud + Jest Coverage
 
 on:
   # Trigger analysis when pushing in master or pull requests, and when creating
@@ -6,7 +6,7 @@ on:
   push:
     branches:
       - main
-      - '0.[0-9]+.[0-9]+'
+      - "0.[0-9]+.[0-9]+"
     paths:
       - openmetadata-ui/src/main/resources/ui/**
   pull_request_target:
@@ -43,9 +43,9 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
       - uses: actions/checkout@v3
@@ -57,24 +57,21 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install Ubuntu dependencies
+      - name: Install Antlr4 CLI
         run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          librdkafka-dev unixodbc-dev libevent-dev
           sudo make install_antlr_cli
       - name: Install Yarn Packages
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn test:coverage
+        run: yarn test:cov-summary
         id: yarn_coverage
       - name: Jest Coverage Comment
         uses: MishaKav/jest-coverage-comment@main
         with:
           hide-comment: true
-          coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-final.json
+          coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
       - name: yarn add sonarqube-scanner
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner
