@@ -14,7 +14,6 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { ServiceCategory } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServices } from '../../axiosAPIs/serviceAPI';
@@ -25,7 +24,7 @@ import Services from '../../components/Services/Services';
 import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
-import { ServiceCategory as Category } from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
@@ -34,13 +33,13 @@ import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ServicesPage = () => {
-  const { tab } = useParams<{ [key: string]: keyof ServiceCategory }>();
+  const { tab } = useParams<{ tab: string }>();
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [serviceName, setServiceName] = useState<Category>(
-    Category.DATABASE_SERVICES
+  const [serviceName, setServiceName] = useState<ServiceCategory>(
+    ServiceCategory.DATABASE_SERVICES
   );
   const [currentPage, setCurrentPage] = useState<number>(1);
 

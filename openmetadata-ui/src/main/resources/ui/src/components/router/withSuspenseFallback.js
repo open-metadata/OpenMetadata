@@ -12,7 +12,7 @@
  */
 
 import React, { Suspense } from 'react';
-import Loader from '../components/Loader/Loader';
+import Loader from '../Loader/Loader';
 
 export default function withSuspenseFallback(Component) {
   return function DefaultFallback(props) {

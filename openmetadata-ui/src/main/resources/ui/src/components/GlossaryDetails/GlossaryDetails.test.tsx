@@ -24,18 +24,6 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 jest.mock('../../components/tags-container/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });

@@ -24,7 +24,7 @@ import { WebStorageStateStore } from 'oidc-client';
 import {
   JWT_PRINCIPAL_CLAIMS,
   UserProfile,
-} from '../authentication/auth-provider/AuthProvider.interface';
+} from '../components/authentication/auth-provider/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';

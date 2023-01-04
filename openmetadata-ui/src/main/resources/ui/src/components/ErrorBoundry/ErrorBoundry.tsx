@@ -12,20 +12,27 @@
  */
 
 import React from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { useHistory } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
+import ErrorFallback from './ErrorFallback';
 
-import PageLayoutV1 from '../containers/PageLayoutV1';
-import GlobalSettingRouter from '../router/GlobalSettingRouter';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
+interface Props {
+  children: React.ReactNode;
+}
 
-const GlobalSetting = () => {
+const ErrorBoundry: React.FC<Props> = ({ children }) => {
+  const history = useHistory();
+
+  const onErrorReset = () => {
+    history.push(ROUTES.HOME);
+  };
+
   return (
-    <PageLayoutV1
-      className="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRouter />
-    </PageLayoutV1>
+    <ErrorBoundary FallbackComponent={ErrorFallback} onReset={onErrorReset}>
+      {children}
+    </ErrorBoundary>
   );
 };
 
-export default GlobalSetting;
+export default ErrorBoundry;

@@ -14,7 +14,7 @@
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { ServiceOption, ServicesData, ServiceTypes } from 'Models';
+import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
@@ -70,8 +70,7 @@ function EditConnectionFormPage() {
       connection: {
         config: updatedData,
       },
-      // TODO: fix type issue here
-    } as unknown as ServiceOption;
+    } as ServicesUpdateRequest;
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceCategory, serviceDetails?.id ?? '', configData)

@@ -14,7 +14,7 @@
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { ServiceTypes } from 'Models';
+import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -63,7 +63,7 @@ const EditIngestionPage = () => {
   const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
   const history = useHistory();
-  const [serviceData, setServiceData] = useState<DataObj>();
+  const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(
     {} as IngestionPipeline
   );
@@ -87,8 +87,7 @@ const EditIngestionPage = () => {
       getServiceByFQN(serviceCategory, serviceFQN)
         .then((resService) => {
           if (resService) {
-            // TODO: fix type issue below
-            setServiceData(resService as DataObj);
+            setServiceData(resService as ServicesUpdateRequest);
             resolve();
           } else {
             showErrorToast(

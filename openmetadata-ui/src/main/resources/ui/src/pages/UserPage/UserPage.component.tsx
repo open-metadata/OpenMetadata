@@ -27,10 +27,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';

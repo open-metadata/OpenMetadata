@@ -14,7 +14,7 @@
 import { OktaAuth } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import React, { FunctionComponent, ReactNode } from 'react';
-import localState from '../../utils/LocalStorageUtils';
+import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
