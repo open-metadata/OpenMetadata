@@ -11,23 +11,28 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import CopyToClipboardButton from './CopyToClipboardButton';
+import { ErrorBoundary } from 'react-error-boundary';
+import { useHistory } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
+import ErrorFallback from './ErrorFallback';
 
-const mockProps = {
-  copyText: 'mock-copy',
+interface Props {
+  children: React.ReactNode;
+}
+
+const ErrorBoundry: React.FC<Props> = ({ children }) => {
+  const history = useHistory();
+
+  const onErrorReset = () => {
+    history.push(ROUTES.HOME);
+  };
+
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback} onReset={onErrorReset}>
+      {children}
+    </ErrorBoundary>
+  );
 };
 
-describe('Test CopyToClipboardButton Component', () => {
-  it('Should render all child elements', () => {
-    const { container } = render(<CopyToClipboardButton {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const copyIcon = getByTestId(container, 'copy-icon');
-
-    expect(copyIcon).toBeInTheDocument();
-  });
-});
+export default ErrorBoundry;

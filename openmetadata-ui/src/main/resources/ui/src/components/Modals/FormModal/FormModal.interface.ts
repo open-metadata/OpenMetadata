@@ -12,14 +12,14 @@
  */
 
 import { FormErrorData } from 'Models';
+import { Classification } from '../../../generated/entity/classification/classification';
 import { Team } from '../../../generated/entity/teams/team';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
 
-export type FormData = TagsCategory | Team;
+export type FormData = Classification | Team;
 export type FormModalProp = {
   onCancel: () => void;
-  onChange?: (data: TagsCategory | Team) => void;
-  onSave: (data: TagsCategory | Team) => void;
+  onChange?: (data: Classification | Team) => void;
+  onSave: (data: Classification | Team) => void;
   form: React.ElementType;
   header: string;
   initialData: FormData;

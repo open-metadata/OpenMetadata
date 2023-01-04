@@ -18,8 +18,8 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { AuthTypes } from '../../enums/signin.enum';
-import localState from '../../utils/LocalStorageUtils';
+import { AuthTypes } from '../../../enums/signin.enum';
+import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 

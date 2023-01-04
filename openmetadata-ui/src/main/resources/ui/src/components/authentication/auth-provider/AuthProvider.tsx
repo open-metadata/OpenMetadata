@@ -31,22 +31,21 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import appState from '../../AppState';
-import axiosClient from '../../axiosAPIs';
-import { fetchAuthenticationConfig } from '../../axiosAPIs/miscAPI';
+import appState from '../../../AppState';
+import axiosClient from '../../../axiosAPIs';
+import { fetchAuthenticationConfig } from '../../../axiosAPIs/miscAPI';
 import {
   getLoggedInUser,
   getUserByName,
   updateUser,
-} from '../../axiosAPIs/userAPI';
-import Loader from '../../components/Loader/Loader';
-import { NO_AUTH } from '../../constants/auth.constants';
-import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
-import { ClientErrors } from '../../enums/axios.enum';
-import { AuthTypes } from '../../enums/signin.enum';
-import { AuthenticationConfiguration } from '../../generated/configuration/authenticationConfiguration';
-import { AuthType, User } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
+} from '../../../axiosAPIs/userAPI';
+import { NO_AUTH } from '../../../constants/auth.constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
+import { ClientErrors } from '../../../enums/axios.enum';
+import { AuthTypes } from '../../../enums/signin.enum';
+import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
+import { AuthType, User } from '../../../generated/entity/teams/user';
+import jsonData from '../../../jsons/en';
 import {
   EXPIRY_THRESHOLD_MILLES,
   extractDetailsFromToken,
@@ -58,15 +57,16 @@ import {
   isTourRoute,
   msalInstance,
   setMsalInstance,
-} from '../../utils/AuthProvider.util';
-import localState from '../../utils/LocalStorageUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+} from '../../../utils/AuthProvider.util';
+import localState from '../../../utils/LocalStorageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   fetchAllUsers,
   getUserDataFromOidc,
   matchUserDetails,
-} from '../../utils/UserDataUtils';
-import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
+} from '../../../utils/UserDataUtils';
+import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import Loader from '../../Loader/Loader';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../authenticators/basic-auth.authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
