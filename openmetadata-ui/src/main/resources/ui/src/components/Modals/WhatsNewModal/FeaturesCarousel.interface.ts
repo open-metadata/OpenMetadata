@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-export type Tag = {
+export type CarousalData = {
+  title: string;
   description: string;
-  fullyQualifiedName: string;
-  name: string;
-  associatedTags: Array<string>;
-  usageCount: number;
+  isImage: boolean;
+  path: string;
+};
+
+export type FeaturesCarouselProps = {
+  data: CarousalData[];
 };
