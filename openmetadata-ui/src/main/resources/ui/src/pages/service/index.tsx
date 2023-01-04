@@ -949,6 +949,12 @@ const ServicePage: FunctionComponent = () => {
     ];
   }, []);
 
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      getAllIngestionWorkflows();
+    }
+  }, [isAirflowAvailable]);
+
   return (
     <PageContainerV1>
       {isLoading ? (
