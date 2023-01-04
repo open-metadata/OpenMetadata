@@ -18,7 +18,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -35,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
