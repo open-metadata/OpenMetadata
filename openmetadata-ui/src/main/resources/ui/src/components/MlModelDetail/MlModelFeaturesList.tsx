@@ -316,7 +316,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           />
                         ) : (
                           <Typography.Text className="tw-no-description">
-                            {t('label.no-description')}
+                            {t('label.no-entity', {
+                              entity: t('label.description'),
+                            })}
                           </Typography.Text>
                         )}
                         <Tooltip
@@ -358,10 +360,13 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         </Row>
         {!isEmpty(selectedFeature) && (
           <ModalWithMarkdownEditor
-            header={t('label.edit-feature', {
-              featureName: selectedFeature.name,
+            header={t('label.edit-entity-name', {
+              entityType: t('label.feature'),
+              entityName: selectedFeature.name,
             })}
-            placeholder={t('label.enter-feature-description')}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.feature-lowercase'),
+            })}
             value={selectedFeature.description as string}
             visible={editDescription}
             onCancel={handleCancelEditDescription}

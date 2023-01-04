@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isNil } from 'lodash';
-import { ServiceData, ServiceOption, ServicesData } from 'Models';
+import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
 import {
   ConfigData,
   ServiceResponse,
@@ -73,10 +73,10 @@ export const getServiceByFQN = async (
 
 export const postService = async (
   serviceCat: string,
-  options: ServiceOption
+  options: ServicesUpdateRequest
 ) => {
   const response = await APIClient.post<
-    ServiceOption,
+    ServicesUpdateRequest,
     AxiosResponse<ServiceData>
   >(`/services/${serviceCat}`, options);
 
@@ -86,10 +86,10 @@ export const postService = async (
 export const updateService = async (
   serviceCat: string,
   _id: string,
-  options: ServiceOption
+  options: ServicesUpdateRequest
 ) => {
   const response = await APIClient.put<
-    ServiceOption,
+    ServicesUpdateRequest,
     AxiosResponse<ServicesType>
   >(`/services/${serviceCat}`, options);
 

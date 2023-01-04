@@ -77,7 +77,7 @@ const breadcrumb = [
     url: ROUTES.KPI_LIST,
   },
   {
-    name: t('label.add-new-kpi'),
+    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
     url: '',
     activeTitle: true,
   },
@@ -214,7 +214,7 @@ const AddKPIPage = () => {
         <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph className="text-base" data-testid="form-title">
-            {t('label.add-new-kpi')}
+            {t('label.add-new-entity', { entity: t('label.kpi-uppercase') })}
           </Typography.Paragraph>
           <Form
             data-testid="kpi-form"
@@ -430,7 +430,9 @@ const AddKPIPage = () => {
       </Col>
       <Col className="m-t-md" data-testid="right-panel" span={4}>
         <Typography.Paragraph className="text-base font-medium">
-          {t('label.add-kpi')}
+          {t('label.add-entity', {
+            entity: t('label.kpi-uppercase'),
+          })}
         </Typography.Paragraph>
         <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
       </Col>

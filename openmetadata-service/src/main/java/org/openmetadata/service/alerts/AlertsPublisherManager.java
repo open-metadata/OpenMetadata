@@ -21,7 +21,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertsPublisherManager {
@@ -57,7 +56,18 @@ public class AlertsPublisherManager {
     }
   }
 
-  public void addAlertActionPublisher(Alert alert, AlertAction alertAction) throws IOException {
+  public AlertActionStatus getStatus(UUID alertId, UUID actionID) {
+    Map<UUID, AlertsActionPublisher> alertsActionPublisherMap = alertPublisherMap.get(alertId);
+    if (alertsActionPublisherMap != null) {
+      AlertsActionPublisher pub = alertsActionPublisherMap.get(actionID);
+      if (pub != null) {
+        return pub.getAlertAction().getStatusDetails();
+      }
+    }
+    return null;
+  }
+
+  public void addAlertActionPublisher(Alert alert, AlertAction alertAction) {
     if (Boolean.FALSE.equals(alertAction.getEnabled())) {
       // Only add alert that is enabled for publishing events
       AlertActionStatus status =
@@ -65,7 +75,6 @@ public class AlertsPublisherManager {
               .withStatus(AlertActionStatus.Status.DISABLED)
               .withTimestamp(System.currentTimeMillis())
               .withFailureDetails(null);
-      setStatus(alert.getId(), alertAction.getId(), status);
       alertAction.setStatusDetails(status);
       return;
     }
@@ -85,20 +94,6 @@ public class AlertsPublisherManager {
         alertPublisherMap.get(alert.getId()) == null ? new HashMap<>() : alertPublisherMap.get(alert.getId());
     alertsActionPublisherMap.put(alertAction.getId(), publisher);
     alertPublisherMap.put(alert.getId(), alertsActionPublisherMap);
-  }
-
-  public void removeAlertStatus(UUID alertId, UUID alertActionId) {
-    daoCollection.entityExtensionTimeSeriesDao().delete(alertId.toString(), alertActionId.toString());
-  }
-
-  public void removeAllAlertStatus(UUID alertId) {
-    daoCollection.entityExtensionTimeSeriesDao().deleteAll(alertId.toString());
-  }
-
-  public void setStatus(UUID alertId, UUID alertActionId, AlertActionStatus status) throws IOException {
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .insert(alertId.toString(), alertActionId.toString(), "alertActionStatus", JsonUtils.pojoToJson(status));
   }
 
   @SneakyThrows
@@ -145,7 +140,6 @@ public class AlertsPublisherManager {
         LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
 
         alertActionPublishers.remove(action.getId());
-        removeAlertStatus(alertId, action.getId());
         alertPublisherMap.put(alertId, alertActionPublishers);
       }
     }
@@ -161,7 +155,6 @@ public class AlertsPublisherManager {
         LOG.info("Alert publisher deleted for {}", publisher.getAlert().getName());
       }
       alertPublisherMap.remove(alertId);
-      removeAllAlertStatus(alertId);
     }
   }
 }

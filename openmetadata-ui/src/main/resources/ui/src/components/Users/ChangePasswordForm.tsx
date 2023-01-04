@@ -48,7 +48,9 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         htmlType: 'submit',
       }}
       okText={t('label.update-password')}
-      title={t('label.change-password')}
+      title={t('label.change-entity', {
+        entity: t('label.password'),
+      })}
       visible={visible}
       width={500}
       onCancel={() => {
@@ -73,7 +75,9 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             ]}>
             <Input.Password
               data-testid="name"
-              placeholder={t('label.enter-old-password')}
+              placeholder={t('label.enter-type-password', {
+                type: t('label.old'),
+              })}
             />
           </Form.Item>
         )}
@@ -89,7 +93,11 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
               message: passwordErrorMessage,
             },
           ]}>
-          <Input.Password placeholder={t('label.enter-new-password')} />
+          <Input.Password
+            placeholder={t('label.enter-type-password', {
+              type: t('label.new'),
+            })}
+          />
         </Form.Item>
         <Form.Item
           label={t('label.confirm-new-password')}

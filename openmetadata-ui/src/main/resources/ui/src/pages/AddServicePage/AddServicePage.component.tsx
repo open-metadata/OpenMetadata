@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { ServiceOption, ServiceTypes } from 'Models';
+import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -43,7 +43,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
   const { serviceCategory } = useParams<{ [key: string]: string }>();
-  const [newServiceData, setNewServiceData] = useState<DataObj>();
+  const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
@@ -77,11 +77,10 @@ const AddServicePage = () => {
 
   const onAddServiceSave = (data: DataObj) => {
     return new Promise<void>((resolve, reject) => {
-      postService(serviceCategory, data as ServiceOption)
+      postService(serviceCategory, data)
         .then((res) => {
           if (res) {
-            // TODO: Fix types conflicts below
-            setNewServiceData(res as unknown as DataObj);
+            setNewServiceData(res);
             resolve();
           } else {
             showErrorToast(

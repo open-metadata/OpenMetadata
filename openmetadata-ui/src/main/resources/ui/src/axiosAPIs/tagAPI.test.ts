@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TagsCategory } from '../pages/tags/tagsTypes';
+import { Classification } from '../generated/entity/classification/classification';
 import {
   createClassification,
   createTag,
@@ -83,7 +83,7 @@ describe('API functions should work properly', () => {
   });
 
   it('createClassification function should work properly', async () => {
-    const mockPostData = { name: 'testCategory' } as TagsCategory;
+    const mockPostData = { name: 'testCategory' } as Classification;
     const result = await createClassification(mockPostData);
 
     expect(result).toEqual({
@@ -93,7 +93,7 @@ describe('API functions should work properly', () => {
   });
 
   it('createTag function should work properly', async () => {
-    const mockPostData = { name: 'newTag' } as TagsCategory;
+    const mockPostData = { name: 'newTag' } as Classification;
     const result = await createTag(mockPostData);
 
     expect(result).toEqual({

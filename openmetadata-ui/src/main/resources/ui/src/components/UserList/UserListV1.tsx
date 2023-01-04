@@ -202,7 +202,7 @@ const UserListV1: FC<UserListV1Props> = ({
                   disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddNewUser}>
-                  {t('label.add-user')}
+                  {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               }
               heading="User"
@@ -236,13 +236,17 @@ const UserListV1: FC<UserListV1Props> = ({
             <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
           </span>
           <Tooltip
-            title={isAdminUser ? t('label.add-user') : ADMIN_ONLY_ACTION}>
+            title={
+              isAdminUser
+                ? t('label.add-entity', { entity: t('label.user') })
+                : t('message.admin-only-action')
+            }>
             <Button
               data-testid="add-user"
               disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
-              {t('label.add-user')}
+              {t('label.add-entity', { entity: t('label.user') })}
             </Button>
           </Tooltip>
         </Space>
@@ -293,7 +297,9 @@ const UserListV1: FC<UserListV1Props> = ({
         closable={false}
         confirmLoading={isLoading}
         okText={t('label.restore')}
-        title={t('label.restore-user')}
+        title={t('label.restore-entity', {
+          entity: t('label.user'),
+        })}
         visible={showReactiveModal}
         onCancel={() => {
           setShowReactiveModal(false);

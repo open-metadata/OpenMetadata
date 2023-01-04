@@ -240,7 +240,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           </Form.Item>
           <Form.Item
             required
-            label={`${t('label.test-type')}:`}
+            label={`${t('label.test-entity', {
+              entity: t('label.type'),
+            })}:`}
             name="testDefinition">
             <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>

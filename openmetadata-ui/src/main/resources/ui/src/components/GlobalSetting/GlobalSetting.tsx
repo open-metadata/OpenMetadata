@@ -12,8 +12,9 @@
  */
 
 import React from 'react';
-import GlobalSettingRouter from '../../router/GlobalSettingRouter';
+
 import PageLayoutV1 from '../containers/PageLayoutV1';
+import GlobalSettingRouter from '../router/GlobalSettingRouter';
 import './GlobalSetting.less';
 import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
 

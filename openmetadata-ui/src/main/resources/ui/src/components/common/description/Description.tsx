@@ -211,13 +211,17 @@ const Description: FC<DescriptionProps> = ({
               />
             ) : (
               <span className="tw-no-description p-y-xs">
-                {t('label.no-description')}
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
               </span>
             )}
           </div>
           <ModalWithMarkdownEditor
             header={t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-description')}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
             value={description}
             visible={Boolean(isEdit)}
             onCancel={onCancel}

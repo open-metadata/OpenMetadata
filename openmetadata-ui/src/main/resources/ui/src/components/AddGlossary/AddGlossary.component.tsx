@@ -290,7 +290,9 @@ const AddGlossary = ({
           </div>
         </div>
         <ReviewerModal
-          header={t('label.add-reviewer')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}
