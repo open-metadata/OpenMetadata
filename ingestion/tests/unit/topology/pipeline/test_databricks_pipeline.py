@@ -18,7 +18,14 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -39,6 +46,14 @@ mock_file_path = (
 )
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
+
+mock_file_path = (
+    Path(__file__).parent.parent.parent
+    / "resources/datasets/databricks_pipeline_history.json"
+)
+with open(mock_file_path) as file:
+    mock_history_data: dict = json.load(file)
+
 
 mock_databricks_config = {
     "source": {
@@ -164,13 +179,50 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
 )
 
 
+EXPECTED_PIPELINE_STATUS = [
+    OMetaPipelineStatus(
+        pipeline_fqn="databricks_pipeline_source.606358633757175",
+        pipeline_status=PipelineStatus(
+            executionStatus=StatusType.Successful.value,
+            taskStatus=[
+                TaskStatus(
+                    name="one_task",
+                    executionStatus=StatusType.Successful.value,
+                    startTime=1672691730568,
+                    endTime=1672691793559,
+                    logLink="https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/821029",
+                )
+            ],
+            timestamp=1672691730552,
+        ),
+    ),
+    OMetaPipelineStatus(
+        pipeline_fqn="databricks_pipeline_source.606358633757175",
+        pipeline_status=PipelineStatus(
+            executionStatus=StatusType.Failed.value,
+            taskStatus=[
+                TaskStatus(
+                    name="one_task",
+                    executionStatus=StatusType.Failed.value,
+                    startTime=1672691610544,
+                    endTime=1672691677696,
+                    logLink="https://workspace.azuredatabricks.net/?o=workspace_id#job/325697581681107/run/820956",
+                )
+            ],
+            timestamp=1672691610525,
+        ),
+    ),
+]
+
+
 class DatabricksPipelineTests(TestCase):
     """
     Implements the necessary methods to extract
     Databricks Pipeline test
     """
 
-    # @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    maxDiff = None
+
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )
@@ -186,15 +238,28 @@ class DatabricksPipelineTests(TestCase):
         )
         self.databricks.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.databricks.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.databricks.context.__dict__["job_id_list"] = [
+            mock_history_data[0]["job_id"]
+        ]
 
     @patch(
         "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_jobs"
     )
-    def test_list_jobs(self, list_jobs):
+    def test_get_pipelines_list(self, list_jobs):
         list_jobs.return_value = mock_data
         results = list(self.databricks.get_pipelines_list())
         self.assertEqual(mock_data, results)
 
-    def test_pipelines(self):
+    def test_yield_pipeline(self):
         pipelines = list(self.databricks.yield_pipeline(mock_data[0]))[0]
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
+
+    @patch(
+        "metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs"
+    )
+    def test_yield_pipeline_status(self, get_job_runs):
+        get_job_runs.return_value = mock_history_data
+        pipeline_status = list(
+            self.databricks.yield_pipeline_status(mock_history_data[0]["job_id"])
+        )
+        self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)
