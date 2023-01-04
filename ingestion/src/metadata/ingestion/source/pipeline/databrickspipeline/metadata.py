@@ -99,8 +99,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         Method to Get Pipeline Entity
         """
-        job_id_list = []
-        self.update_context(key="job_id_list", value=job_id_list)
+        self.context.job_id_list = []
         try:
             yield CreatePipelineRequest(
                 name=pipeline_details["job_id"],
@@ -188,7 +187,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return dependent_tasks
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
-        for job_id in self.context["job_id_list"]:
+
+        for job_id in self.context.job_id_list:
             try:
                 runs = self.client.get_job_runs(job_id=job_id)
                 for attempt in runs:
