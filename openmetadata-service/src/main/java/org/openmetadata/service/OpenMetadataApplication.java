@@ -14,7 +14,6 @@
 package org.openmetadata.service;
 
 import io.dropwizard.Application;
-import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.db.DataSourceFactory;
@@ -88,6 +87,7 @@ import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.socket.FeedServlet;
+import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EmailUtil;
@@ -171,7 +171,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+
     initializeWebsockets(catalogConfig, environment);
+
+    // Handle Asset Using Servlet
+    OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet("/assets", "/", "index.html");
+    String pathPattern = "/" + '*';
+    environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
@@ -210,7 +216,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return catalogConfig.getSwaggerBundleConfig();
           }
         });
-    bootstrap.addBundle(new AssetsBundle("/assets", "/", "index.html", "static"));
     bootstrap.addBundle(
         new HealthCheckBundle<>() {
           @Override
