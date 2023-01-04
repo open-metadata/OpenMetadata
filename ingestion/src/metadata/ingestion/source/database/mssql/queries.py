@@ -39,3 +39,36 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
       ORDER BY s.last_execution_time DESC
 """
 )
+
+MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
+    """
+SELECT obj.name AS table_name,
+        ep.value AS table_comment,
+        s.name AS schema_name
+FROM sys.tables AS obj
+LEFT JOIN sys.extended_properties AS ep
+    ON obj.object_id = ep.major_id AND ep.minor_id = 0
+JOIN sys.schemas AS s
+    ON obj.schema_id = s.schema_id
+WHERE ep.name = 'MS_Description'
+ 	AND obj.name = '{table_name}'
+	And s.name  = '{schema_name}';
+"""
+)
+
+MSSQL_GET_COLUMN_COMMENTS = textwrap.dedent(
+    """
+SELECT obj.name AS TableName,
+	     col.name AS ColumnName,
+       ep.value AS ColumnComment,
+       s.name AS schema_name
+FROM sys.tables AS obj
+INNER JOIN sys.columns AS col ON obj.object_id = col.object_id
+INNER JOIN sys.extended_properties AS ep ON col.object_id = ep.major_id AND col.column_id = ep.minor_id
+JOIN sys.schemas AS s
+    ON obj.schema_id = s.schema_id
+WHERE ep.name = 'MS_Description'
+  AND obj.name = '{table_name}'
+  	And s.name  = '{schema_name}';
+"""
+)
