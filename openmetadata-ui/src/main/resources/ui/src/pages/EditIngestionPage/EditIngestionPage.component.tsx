@@ -318,10 +318,10 @@ const EditIngestionPage = () => {
   };
 
   useEffect(() => {
-    fetchAirflowStatus().finally(() => {
+    if (isAirflowAvailable) {
       fetchData();
-    });
-  }, [serviceCategory, serviceFQN]);
+    }
+  }, [serviceCategory, serviceFQN, isAirflowAvailable]);
 
   return <PageContainerV1>{renderEditIngestionPage()}</PageContainerV1>;
 };
