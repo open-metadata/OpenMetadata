@@ -342,10 +342,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();
-    // new AlertResourceTest().setupAlerts(test);
 
     runWebhookTests = new Random().nextBoolean();
-    if (false) {
+    if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
       AlertResourceTest alertResourceTest = new AlertResourceTest();
       alertResourceTest.startWebhookSubscription(true);
@@ -355,7 +354,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    if (false) {
+    if (runWebhookTests) {
       AlertResourceTest alertResourceTest = new AlertResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
@@ -843,7 +842,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_delete_entityWithOwner_200(TestInfo test) throws IOException {
+  protected void post_delete_entityWithOwner_200(TestInfo test) throws IOException {
     if (!supportsOwner) {
       return;
     }

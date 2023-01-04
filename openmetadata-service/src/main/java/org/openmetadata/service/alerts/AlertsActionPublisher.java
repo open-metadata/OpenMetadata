@@ -76,7 +76,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return alertAction;
   }
 
-  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason) throws IOException {
+  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason) {
     FailureDetails failureDetails =
         new FailureDetails()
             .withLastFailedAt(updateTime)
@@ -93,7 +93,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     throw new RuntimeException(reason);
   }
 
-  protected void setAwaitingRetry(Long updateTime, int statusCode, String reason) throws IOException {
+  protected void setAwaitingRetry(Long updateTime, int statusCode, String reason) {
     FailureDetails failureDetails =
         new FailureDetails()
             .withLastFailedAt(updateTime)
@@ -109,7 +109,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     setStatus(status);
   }
 
-  protected void setSuccessStatus(Long updateTime) throws IOException {
+  protected void setSuccessStatus(Long updateTime) {
     AlertActionStatus status =
         new AlertActionStatus()
             .withStatus(AlertActionStatus.Status.ACTIVE)
@@ -119,8 +119,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     setStatus(status);
   }
 
-  protected void setStatus(AlertActionStatus status) throws IOException {
-    AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status);
+  protected void setStatus(AlertActionStatus status) {
     alertAction.setStatusDetails(status);
   }
 
