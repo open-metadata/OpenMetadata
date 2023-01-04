@@ -1398,7 +1398,7 @@ const TeamDetailsV1 = ({
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {t('message.are-you-sure-you-want-to-remove-child-from-parent]', {
+            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
               child: getEntityName(selectedEntity.record),
               parent: getEntityName(currentTeam),
             })}
