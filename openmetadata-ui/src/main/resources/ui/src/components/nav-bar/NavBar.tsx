@@ -17,9 +17,9 @@ import {
   Image,
   Input,
   Menu,
-  Popover,
   Select,
   Space,
+  Tooltip,
 } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
@@ -469,7 +469,7 @@ const NavBar = ({
               <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
-                  <Popover placement="bottom" title="Profile" trigger="hover">
+                  <Tooltip placement="bottom" title="Profile" trigger="hover">
                     {isImgUrlValid ? (
                       <div className="profile-image square tw--mr-2">
                         <Image
@@ -485,7 +485,7 @@ const NavBar = ({
                     ) : (
                       <Avatar name={username} width="30" />
                     )}
-                  </Popover>
+                  </Tooltip>
                 }
                 isDropDownIconVisible={false}
                 type="link"

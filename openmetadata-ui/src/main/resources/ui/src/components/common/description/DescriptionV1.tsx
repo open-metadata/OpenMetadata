@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -128,7 +128,7 @@ const DescriptionV1 = ({
               className="focus:tw-outline-none tw-ml-2 tw--mt-6"
               data-testid="request-description"
               onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-              <Popover
+              <Tooltip
                 placement="top"
                 title="Request description"
                 trigger="hover">
@@ -137,7 +137,7 @@ const DescriptionV1 = ({
                   className="tw-mt-2"
                   icon={Icons.REQUEST}
                 />
-              </Popover>
+              </Tooltip>
             </button>
           ) : null}
           {!isUndefined(descriptionThread) ? (

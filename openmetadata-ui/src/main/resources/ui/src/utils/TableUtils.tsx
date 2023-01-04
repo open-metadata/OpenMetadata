@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Popover } from 'antd';
+import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -180,13 +180,13 @@ export const getConstraintIcon = (
   }
 
   return (
-    <Popover
+    <Tooltip
       className={classNames(className)}
       placement="bottom"
       title={title}
       trigger="hover">
       <SVGIcons alt={title} icon={icon} width={width} />
-    </Popover>
+    </Tooltip>
   );
 };
 

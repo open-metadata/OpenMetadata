@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
@@ -34,9 +34,9 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
       : name;
 
     return (
-      <Popover placement="top" title={formattedName} trigger="hover">
-        <>{label || formattedName}</>
-      </Popover>
+      <Tooltip placement="top" title={formattedName} trigger="hover">
+        {label || formattedName}
+      </Tooltip>
     );
   };
 

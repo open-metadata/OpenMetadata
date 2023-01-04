@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
 import {
@@ -43,7 +43,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
         </p>
         <div className="tw-flex">
           {onShowNewConversation ? (
-            <Popover
+            <Tooltip
               placement="bottom"
               title="Start conversation"
               trigger="hover">
@@ -58,7 +58,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
                 }}>
                 <FontAwesomeIcon icon="plus" />
               </Button>
-            </Popover>
+            </Tooltip>
           ) : null}
           <svg
             className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
