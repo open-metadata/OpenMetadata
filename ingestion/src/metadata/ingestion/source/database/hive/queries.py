@@ -9,23 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Snowflake lineage module
+SQL Queries used during ingestion
 """
 
-from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_SQL_STATEMENT
-from metadata.ingestion.source.database.snowflake.query_parser import (
-    SnowflakeQueryParserSource,
+import textwrap
+
+HIVE_GET_COMMENTS = textwrap.dedent(
+    """
+    describe formatted {schema_name}.{table_name}
+    """
 )
-
-
-class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):
-    """
-    Snowflake class for Lineage
-    """
-
-    sql_stmt = SNOWFLAKE_SQL_STATEMENT
-
-    filters = """
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
-    """

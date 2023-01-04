@@ -11,12 +11,11 @@
 """
 Redshift usage module
 """
-
+from metadata.ingestion.source.database.redshift.queries import REDSHIFT_SQL_STATEMENT
 from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
 
 class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
