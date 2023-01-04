@@ -36,7 +36,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public StorageService setFields(StorageService entity, Fields fields) throws IOException {
+  public StorageService setFields(StorageService entity, Fields fields) {
     return entity;
   }
 
