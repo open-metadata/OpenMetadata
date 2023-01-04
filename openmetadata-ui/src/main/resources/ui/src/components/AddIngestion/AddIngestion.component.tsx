@@ -13,7 +13,7 @@
 
 import { isEmpty, isUndefined, trim } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INITIAL_FILTER_PATTERN,
@@ -719,6 +719,81 @@ const AddIngestion = ({
     return excludedSteps;
   };
 
+  const handleDatasetServiceName = useCallback(
+    (val) => setDatabaseServiceNames(val),
+    [databaseServiceNames]
+  );
+
+  const handleDescription = useCallback(
+    (val) => setDescription(val),
+    [description]
+  );
+
+  const handleEnableDebugLog = useCallback(
+    () => setEnableDebugLog((pre) => !pre),
+    [enableDebugLog]
+  );
+
+  const handleIncludeLineage = useCallback(
+    () => setIncludeLineage((pre) => !pre),
+    [includeLineage]
+  );
+
+  const handleIncludeTags = useCallback(
+    () => setIncludeTags((pre) => !pre),
+    [includeTag]
+  );
+
+  const handleIncludeView = useCallback(
+    () => setIncludeView((pre) => !pre),
+    [includeView]
+  );
+
+  const handleIngestSampleData = useCallback(
+    () => setIngestSampleData((pre) => !pre),
+    [ingestSampleData]
+  );
+
+  const handleMarkAllDeletedTables = useCallback(
+    () => setMarkAllDeletedTables((pre) => !pre),
+    [markAllDeletedTables]
+  );
+
+  const handleMarkDeletedTables = useCallback(
+    () => setMarkDeletedTables((pre) => !pre),
+    [markDeletedTables]
+  );
+
+  const handleIngestionName = useCallback(
+    (val) => setIngestionName(val),
+    [ingestionName]
+  );
+
+  const handleProfileSample = useCallback(
+    (val) => setProfileSample(val),
+    [profileSample]
+  );
+
+  const handleUseFqnFilterClick = useCallback(
+    () => setUseFqnFilter((pre) => !pre),
+    [useFqnFilter]
+  );
+
+  const handleQueryLogDuration = useCallback(
+    (val) => setQueryLogDuration(val),
+    [queryLogDuration]
+  );
+
+  const handleStageFileLocation = useCallback(
+    (val) => setStageFileLocation(val),
+    [stageFileLocation]
+  );
+
+  const handleProfileSampleType = useCallback(
+    (val) => setProfileSampleType(val),
+    [profileSampleType]
+  );
+
   return (
     <div data-testid="add-ingestion-container">
       <h6 className="tw-heading tw-text-base">{heading}</h6>
@@ -741,24 +816,22 @@ const AddIngestion = ({
             formType={status}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
-            handleDatasetServiceName={(val) => setDatabaseServiceNames(val)}
-            handleDescription={(val) => setDescription(val)}
-            handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
-            handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}
-            handleIncludeTags={() => setIncludeTags((pre) => !pre)}
-            handleIncludeView={() => setIncludeView((pre) => !pre)}
-            handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
-            handleIngestionName={(val) => setIngestionName(val)}
-            handleMarkAllDeletedTables={() =>
-              setMarkAllDeletedTables((pre) => !pre)
-            }
-            handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
-            handleProfileSample={(val) => setProfileSample(val)}
-            handleProfileSampleType={(val) => setProfileSampleType(val)}
-            handleQueryLogDuration={(val) => setQueryLogDuration(val)}
+            handleDatasetServiceName={handleDatasetServiceName}
+            handleDescription={handleDescription}
+            handleEnableDebugLog={handleEnableDebugLog}
+            handleIncludeLineage={handleIncludeLineage}
+            handleIncludeTags={handleIncludeTags}
+            handleIncludeView={handleIncludeView}
+            handleIngestSampleData={handleIngestSampleData}
+            handleIngestionName={handleIngestionName}
+            handleMarkAllDeletedTables={handleMarkAllDeletedTables}
+            handleMarkDeletedTables={handleMarkDeletedTables}
+            handleProfileSample={handleProfileSample}
+            handleProfileSampleType={handleProfileSampleType}
+            handleQueryLogDuration={handleQueryLogDuration}
             handleResultLimit={setResultLimit}
             handleShowFilter={handleShowFilter}
-            handleStageFileLocation={(val) => setStageFileLocation(val)}
+            handleStageFileLocation={handleStageFileLocation}
             handleThreadCount={setThreadCount}
             handleTimeoutSeconds={setTimeoutSeconds}
             includeLineage={includeLineage}
@@ -793,7 +866,7 @@ const AddIngestion = ({
             useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
             onNext={handleNext}
-            onUseFqnFilterClick={() => setUseFqnFilter((pre) => !pre)}
+            onUseFqnFilterClick={handleUseFqnFilterClick}
           />
         )}
 

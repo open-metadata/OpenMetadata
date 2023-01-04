@@ -14,7 +14,7 @@
 import { Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { Fragment, useRef } from 'react';
+import React, { Fragment, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
@@ -96,10 +96,23 @@ const ConfigureIngestion = ({
   const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
 
-  const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
-    handleProfileSampleType(value);
-    handleProfileSample(undefined);
-  };
+  const handleProfileSampleTypeChange = useCallback(
+    (value: ProfileSampleType) => {
+      handleProfileSampleType(value);
+      handleProfileSample(undefined);
+    },
+    []
+  );
+
+  const onChangeSlider = useCallback(
+    (value: number | null) => handleProfileSample(value ?? undefined),
+    []
+  );
+
+  const onChangeProfileSample = useCallback(
+    (value) => handleProfileSample(value ?? undefined),
+    []
+  );
 
   const getIngestSampleToggle = (label: string, desc: string) => {
     return (
@@ -167,9 +180,7 @@ const ConfigureIngestion = ({
               </Typography.Paragraph>
               <SliderWithInput
                 value={profileSample || 100}
-                onChange={(value: number | null) =>
-                  handleProfileSample(value ?? undefined)
-                }
+                onChange={onChangeSlider}
               />
             </>
           )}
@@ -186,7 +197,7 @@ const ConfigureIngestion = ({
                   name: t('label.row-count-lowercase'),
                 })}
                 value={profileSample}
-                onChange={(value) => handleProfileSample(value ?? undefined)}
+                onChange={onChangeProfileSample}
               />
             </>
           )}

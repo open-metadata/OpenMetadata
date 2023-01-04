@@ -28,7 +28,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isUndefined, omit, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import {
@@ -261,6 +261,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     onVisibilityChange(false);
   };
 
+  const onChangeSliderInput = useCallback(
+    (value) => setProfileSample(Number(value)),
+    []
+  );
+
   useEffect(() => {
     fetchProfileConfig();
   }, []);
@@ -322,7 +327,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <SliderWithInput
                   className="p-x-xs"
                   value={profileSample || 0}
-                  onChange={(value) => setProfileSample(Number(value))}
+                  onChange={onChangeSliderInput}
                 />
               </Form.Item>
             ) : (
