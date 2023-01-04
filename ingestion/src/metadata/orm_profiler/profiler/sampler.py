@@ -17,6 +17,7 @@ from typing import Dict, Optional, Union
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.expression import func
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.orm_profiler.api.models import ProfileSampleConfig
@@ -68,7 +69,8 @@ class Sampler:
                 .cte(f"{self.table.__tablename__}_rnd")
             )
         return (
-            self.session.query(self.table)
+            self.session.query(self.table, ModuloFn(RandomNumFn(), 100))
+            .label(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )

@@ -27,7 +27,7 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-
+CHUNKSIZE = 200000
 def _get_json_text(key: str, text: str) -> str:
     if key.endswith(".gz"):
         return gzip.decompress(text)
@@ -44,7 +44,7 @@ def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
     try:
         chunk_list = []
         with pd.read_csv(
-            f"gs://{bucket_name}/{key}", sep=",", chunksize=200000
+            f"gs://{bucket_name}/{key}", sep=",", chunksize=CHUNKSIZE
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
@@ -63,7 +63,7 @@ def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
     try:
         chunk_list = []
         with pd.read_csv(
-            f"gs://{bucket_name}/{key}", sep="\t", chunksize=200000
+            f"gs://{bucket_name}/{key}", sep="\t", chunksize=CHUNKSIZE
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
