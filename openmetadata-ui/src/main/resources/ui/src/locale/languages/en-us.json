@@ -521,6 +521,7 @@
     "are-you-sure-delete-tag": "Are you sure you want to delete the {{type}} \"{{tagName}}\"?",
     "are-you-sure-to-revoke-access": "Are you sure you want to revoke access for JWT token?",
     "are-you-sure-want-to-text": "Are you sure you want to {{text}}",
+    "are-you-sure-you-want-to-remove-child-from-parent": "Are you sure you want to remove the {{child}} from {{parent}}?",
     "are-you-want-to-restore": "Are you sure you want to restore",
     "assess-data-reliability-with-data-profiler-lineage": "Assess data reliability with data profiler, lineage, sample data, and more",
     "assigned-you-a-new-task-lowercase": "assigned you a new task",
