@@ -11,13 +11,13 @@
 
 """Athena source module"""
 
-from typing import Iterable, Optional, Tuple
+from typing import Iterable
 
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
 
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -30,9 +30,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_table
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -169,56 +170,12 @@ class AthenaSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
-        """
-        Handle table and views.
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """Return tables as external"""
 
-        Fetches them up using the context information and
-        the inspector set when preparing the db.
-
-        :return: tables or views, depending on config
-        """
-        schema_name = self.context.database_schema.name.__root__
-        if self.source_config.includeTables:
-            for table_name in self.inspector.get_table_names(schema_name):
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    table_fqn if self.source_config.useFqnForFiltering else table_name,
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
-
-                yield table_name, TableType.External  # All tables in Athena are external
-
-        if self.source_config.includeViews:
-            for view_name in self.inspector.get_view_names(schema_name):
-                view_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
-                    table_name=view_name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    view_fqn if self.source_config.useFqnForFiltering else view_name,
-                ):
-                    self.status.filter(
-                        view_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
-
-                yield view_name, TableType.View
+        return [
+            TableNameAndType(name=name, type_=TableType.External)
+            for name in self.inspector.get_table_names(schema_name)
+        ]

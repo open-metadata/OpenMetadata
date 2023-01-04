@@ -11,11 +11,11 @@
 """
 Handle big query lineage extraction
 """
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_STATEMENT
 from metadata.ingestion.source.database.bigquery.query_parser import (
     BigqueryQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.utils.sql_queries import BIGQUERY_STATEMENT
 
 
 class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):

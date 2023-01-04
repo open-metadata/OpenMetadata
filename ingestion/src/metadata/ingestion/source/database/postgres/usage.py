@@ -11,13 +11,11 @@
 """
 Postgres usage module
 """
-
-
+from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
 from metadata.ingestion.source.database.postgres.query_parser import (
     PostgresQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import POSTGRES_SQL_STATEMENT
 
 
 class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
