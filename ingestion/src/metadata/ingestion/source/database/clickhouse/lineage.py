@@ -11,11 +11,13 @@
 """
 Clickhouse lineage module
 """
+from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_SQL_STATEMENT,
+)
 from metadata.ingestion.source.database.clickhouse.query_parser import (
     ClickhouseQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.utils.sql_queries import CLICKHOUSE_SQL_STATEMENT
 
 
 class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):

@@ -17,7 +17,9 @@ from metadata.generated.schema.entity.services.connections.metadata.amundsenConn
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.metadata.amundsen.client import Neo4JConfig, Neo4jHelper
-from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
+from metadata.ingestion.source.metadata.amundsen.queries import (
+    NEO4J_AMUNDSEN_USER_QUERY,
+)
 
 
 def get_connection(connection: AmundsenConnection) -> Neo4jHelper:

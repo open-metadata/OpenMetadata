@@ -28,9 +28,11 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_SESSION_TAG_QUERY,
+)
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 
 logger = ingestion_logger()
 SNOWFLAKE_ABORTED_CODE = "1969"
