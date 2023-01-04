@@ -13,10 +13,10 @@ Snowflake lineage module
 """
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_SQL_STATEMENT
 from metadata.ingestion.source.database.snowflake.query_parser import (
     SnowflakeQueryParserSource,
 )
-from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):

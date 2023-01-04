@@ -121,12 +121,16 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value:
           TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
-        title: `${t('label.table-sample')} %`,
+        title: `${t('label.table-entity-text', {
+          entityText: t('label.sample'),
+        })} %`,
         value: `${TableDetails?.profile?.profileSample ?? 100}%`,
       },
       {

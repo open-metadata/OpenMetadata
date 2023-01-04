@@ -43,7 +43,7 @@ const breadcrumb = [
     url: rolesPath,
   },
   {
-    name: t('label.add-new-role'),
+    name: t('label.add-new-entity', { entity: t('label.role') }),
     url: '',
   },
 ];
@@ -107,7 +107,7 @@ const AddRolePage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {t('label.add-new-role')}
+              {t('label.add-new-entity', { entity: t('label.role') })}
             </Typography.Paragraph>
             <Form
               data-testid="role-form"

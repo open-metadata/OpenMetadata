@@ -52,8 +52,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.domo_client = self.connection.client
-        self.client = DomoClient(self.service_connection)
+        self.domo_client = DomoClient(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -66,7 +65,7 @@ class DomodashboardSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
-        dashboards = self.domo_client.page_list()
+        dashboards = self.client.page_list()
         return dashboards
 
     def get_dashboard_name(self, dashboard: dict) -> str:
@@ -114,7 +113,7 @@ class DomodashboardSource(DashboardServiceSource):
     def yield_dashboard_chart(
         self, dashboard_details: Any
     ) -> Optional[Iterable[CreateChartRequest]]:
-        charts = self.client.get_chart_details(page_id=dashboard_details["id"])
+        charts = self.domo_client.get_chart_details(page_id=dashboard_details["id"])
         for chart in charts.get("cards") or []:
             try:
                 chart_url = (

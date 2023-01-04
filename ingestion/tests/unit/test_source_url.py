@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
-from metadata.utils.source_connections import get_connection_url
+from metadata.ingestion.connections.builders import get_connection_url_common
 
 
 class TestConfig(TestCase):
@@ -33,7 +33,7 @@ class TestConfig(TestCase):
             password="password",
             hostPort="localhost:1234",
         )
-        url = get_connection_url(connection)
+        url = get_connection_url_common(connection)
         assert url == "mysql+pymysql://username:password@localhost:1234"
 
     def test_redshift_url(self):
@@ -46,5 +46,5 @@ class TestConfig(TestCase):
             hostPort="localhost:1234",
             database="dev",
         )
-        url = get_connection_url(connection)
+        url = get_connection_url_common(connection)
         assert url == "redshift+psycopg2://username:password@localhost:1234/dev"

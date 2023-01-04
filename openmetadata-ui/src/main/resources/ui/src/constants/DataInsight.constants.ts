@@ -124,7 +124,9 @@ export const TIER_DATA = {
   'Tier.Tier3': i18n.t('label.tier-number', { tier: 3 }),
   'Tier.Tier4': i18n.t('label.tier-number', { tier: 4 }),
   'Tier.Tier5': i18n.t('label.tier-number', { tier: 5 }),
-  NoTier: i18n.t('label.no-tier'),
+  NoTier: i18n.t('label.no-entity', {
+    entity: i18n.t('label.tier'),
+  }),
 };
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
@@ -165,7 +167,9 @@ export const WEB_SUMMARY_LIST = [
 
 export const ENTITIES_SUMMARY_LIST = [
   {
-    label: i18n.t('label.total-data-asset-plural'),
+    label: i18n.t('label.total-entity', {
+      entity: i18n.t('label.data-asset-plural'),
+    }),
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByType,
   },
@@ -182,7 +186,9 @@ export const ENTITIES_SUMMARY_LIST = [
     id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
   },
   {
-    label: i18n.t('label.total-data-asset-plural-with-tiers'),
+    label: i18n.t('label.total-entity', {
+      entity: i18n.t('label.data-assets-with-tier-plural'),
+    }),
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByTier,
   },

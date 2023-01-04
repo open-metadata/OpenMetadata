@@ -48,7 +48,6 @@ import {
   DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
 } from '../../constants/DataInsight.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   Kpi,
   KpiResult,
@@ -279,13 +278,21 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
             {t('message.no-kpi-available-add-new-one')}
           </Typography.Text>
           <AntdTooltip
-            title={isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION}>
+            title={
+              isAdminUser
+                ? t('label.add-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })
+                : t('message.no-permission-for-action')
+            }>
             <Button
               className="tw-border-primary tw-text-primary"
               disabled={!isAdminUser}
               type="default"
               onClick={handleAddKpi}>
-              {t('label.add-kpi')}
+              {t('label.add-entity', {
+                entity: t('label.kpi-uppercase'),
+              })}
             </Button>
           </AntdTooltip>
         </Space>

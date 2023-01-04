@@ -12,6 +12,8 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
@@ -22,15 +24,44 @@ import APIClient from './index';
 
 const BASE_URL = '/classifications';
 
-export const getTags = async (arrQueryFields?: string | string[]) => {
+interface TagsRequestParams {
+  arrQueryFields?: string | string[];
+  parent?: string;
+  after?: string;
+  before?: string;
+  limit?: number;
+}
+
+export const getTags = async ({
+  arrQueryFields,
+  limit = 10,
+  ...params
+}: TagsRequestParams) => {
   const url = getURLWithQueryFields('/tags', arrQueryFields);
 
-  const response = await APIClient.get<{ data: Classification[] }>(url);
+  const response = await APIClient.get<PagingResponse<Tag[]>>(url, {
+    params: { ...params, limit },
+  });
 
   return response.data;
 };
 
-export const getClassification = async (
+export const getAllClassifications = async (
+  arrQueryFields?: string | string[],
+  limit = 10
+) => {
+  const url = getURLWithQueryFields(BASE_URL, arrQueryFields);
+
+  const response = await APIClient.get<PagingResponse<Classification[]>>(url, {
+    params: {
+      limit,
+    },
+  });
+
+  return response.data;
+};
+
+export const getClassificationByName = async (
   name: string,
   arrQueryFields?: string | string[]
 ) => {
@@ -65,6 +96,17 @@ export const updateClassification = async (data: Classification) => {
 
   return response.data;
 };
+export const patchClassification = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<Classification>
+  >(`${BASE_URL}/${id}`, data, configOptions);
+
+  return response.data;
+};
 
 export const createTag = async (data: CreateTag) => {
   const response = await APIClient.post<CreateTag, AxiosResponse<Tag>>(
@@ -77,6 +119,15 @@ export const createTag = async (data: CreateTag) => {
 
 export const updateTag = async (data: TagsCategory) => {
   const response = await APIClient.put(`/tags`, data);
+
+  return response.data;
+};
+
+export const patchTag = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const response = await APIClient.patch(`/tags/${id}`, data, configOptions);
 
   return response.data;
 };

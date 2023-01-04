@@ -7,7 +7,6 @@ import java.net.URI;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -20,7 +19,6 @@ import org.openmetadata.service.resources.alerts.AlertActionResource;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Disabled
 public class AlertActionResourceTest extends EntityResourceTest<AlertAction, CreateAlertAction> {
 
   public AlertActionResourceTest() {

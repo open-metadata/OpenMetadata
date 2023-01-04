@@ -18,7 +18,7 @@
   # Organize Imports
   - organize-imports-cli
   # Run ESLint
-  - eslint 'src/**/*.{js,jsx,ts,tsx}' --fix
+  - eslint 'src/**/*.{js,jsx,ts,tsx,json}' --fix
 
 # Run Prettier
 'src/**': prettier --write

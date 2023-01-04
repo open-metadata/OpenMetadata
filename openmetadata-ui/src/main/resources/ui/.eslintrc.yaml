@@ -167,10 +167,14 @@ rules:
   '@typescript-eslint/explicit-function-return-type':
     - off
 
+  # disable the rule for all files
+  '@typescript-eslint/explicit-module-boundary-types':
+    - off
+
   # React rules
 
   react/display-name:
-    - warn
+    - off
 
   # React rules
 

@@ -4,13 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,18 +27,20 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.events.CreateAlert;
 import org.openmetadata.schema.api.events.CreateAlertAction;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.entity.alerts.TriggerConfig;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -46,11 +49,11 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.alerts.AlertResource;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Disabled
 public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public static final TriggerConfig ALL_EVENTS_FILTER =
       new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);
@@ -67,8 +70,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
     alertActionResourceTest = new AlertActionResourceTest();
   }
 
-  public void setupAlerts(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
+  @BeforeEach
+  public void setupAlerts() throws IOException {
     CreateAlertAction alertAction =
         alertActionResourceTest.createRequest(String.format("genericAlert_%s", UUID.randomUUID()));
     alert_action1 = alertActionResourceTest.createAndCheckEntity(alertAction, ADMIN_AUTH_HEADERS);
@@ -94,8 +97,10 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
         createAlert(
             webhookName, ALL_EVENTS_FILTER, new ArrayList<>(), List.of(genericWebhookAction.getEntityReference()));
 
-    AlertActionStatus status = getStatus(alert.getId(), genericWebhookAction.getId());
-    assertEquals(AlertActionStatus.Status.DISABLED, status.getStatus());
+    // For the DISABLED Action Publisher are not available so it will have no status
+    AlertActionStatus status =
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.NO_CONTENT.getStatusCode());
+    assertNull(status);
     WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
     //
@@ -114,13 +119,15 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
             ADMIN_AUTH_HEADERS,
             TestUtils.UpdateType.MINOR_UPDATE,
             change);
-    AlertActionStatus status2 = getStatus(alert.getId(), genericWebhookAction.getId());
+    AlertActionStatus status2 =
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
     assertEquals(AlertActionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstEvent(webhookName, 25);
     assertEquals(1, details.getEvents().size());
-    AlertActionStatus successDetails = getStatus(alert.getId(), genericWebhookAction.getId());
+    AlertActionStatus successDetails =
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
     assertEquals(AlertActionStatus.Status.ACTIVE, successDetails.getStatus());
     assertNull(successDetails.getFailureDetails());
     //
@@ -139,8 +146,9 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
             ADMIN_AUTH_HEADERS,
             TestUtils.UpdateType.MINOR_UPDATE,
             change);
-    AlertActionStatus status3 = getStatus(alert.getId(), genericWebhookAction.getId());
-    assertEquals(AlertActionStatus.Status.DISABLED, status3.getStatus());
+    AlertActionStatus status3 =
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.NO_CONTENT.getStatusCode());
+    assertNull(status);
 
     int iterations = 0;
     while (iterations < 10) {
@@ -176,7 +184,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
         .atMost(Duration.ofMillis(100 * 100L))
         .untilTrue(hasWebHookFailed(alert.getId(), genericWebhookAction.getId()));
 
-    AlertActionStatus status = getStatus(alert.getId(), genericWebhookAction.getId());
+    AlertActionStatus status =
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
     assertEquals(AlertActionStatus.Status.FAILED, status.getStatus());
 
     // Now change the webhook URL to a valid URL and ensure callbacks resume
@@ -194,12 +203,41 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
             TestUtils.UpdateType.MINOR_UPDATE,
             change);
 
-    AlertActionStatus status3 = getStatus(alert.getId(), genericWebhookAction.getId());
+    AlertActionStatus status3 =
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
     assertEquals(AlertActionStatus.Status.ACTIVE, status3.getStatus());
     assertNull(status3.getFailureDetails());
 
     alertActionResourceTest.deleteEntity(genericWebhookAction.getId(), ADMIN_AUTH_HEADERS);
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  @Override
+  protected void post_delete_entityWithOwner_200(TestInfo test) throws IOException {
+    if (!supportsOwner) {
+      return;
+    }
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test);
+    Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Entity with user as owner is created successfully. Owner should be able to delete the dentity
+    Alert entity1 = createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    deleteEntity(entity1.getId(), true, true, authHeaders(USER1.getName()));
+    assertEntityDeleted(entity1.getId(), true);
+
+    // Entity with team as owner is created successfully
+    setupAlerts();
+    Alert entity2 =
+        createAndCheckEntity(
+            createRequest(getEntityName(test, 2), "", "", team.getEntityReference()), ADMIN_AUTH_HEADERS);
+
+    // As ADMIN delete the team and ensure the entity still exists but with owner as deleted
+    teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
+    entity2 = getEntity(entity2.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    assertTrue(entity2.getOwner().getDeleted());
   }
 
   @Test
@@ -390,7 +428,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   }
 
   private AtomicBoolean hasWebHookFailed(UUID alertId, UUID alertActionId) throws HttpResponseException {
-    AlertActionStatus status = getStatus(alertId, alertActionId);
+    AlertActionStatus status = getStatus(alertId, alertActionId, Response.Status.OK.getStatusCode());
     LOG.info("webhook status {}", status.getStatus());
     return new AtomicBoolean(status.getStatus() == AlertActionStatus.Status.FAILED);
   }
@@ -470,7 +508,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   }
 
   public void assertAlertStatusSuccessWithId(UUID alertId, UUID actionId) throws HttpResponseException {
-    AlertActionStatus status = getStatus(alertId, actionId);
+    AlertActionStatus status = getStatus(alertId, actionId, Response.Status.OK.getStatusCode());
     assertEquals(AlertActionStatus.Status.ACTIVE, status.getStatus());
     assertNull(status.getFailureDetails());
   }
@@ -478,7 +516,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public void assertAlertStatusSuccessWithName(String alertName, String alertActionName) throws HttpResponseException {
     Alert alert = getEntityByName(alertName, null, "", ADMIN_AUTH_HEADERS);
     AlertAction alertAction = alertActionResourceTest.getEntityByName(alertActionName, null, "", ADMIN_AUTH_HEADERS);
-    AlertActionStatus status = getStatus(alert.getId(), alertAction.getId());
+    AlertActionStatus status = getStatus(alert.getId(), alertAction.getId(), Response.Status.OK.getStatusCode());
     assertEquals(AlertActionStatus.Status.ACTIVE, status.getStatus());
     assertNull(status.getFailureDetails());
   }
@@ -486,16 +524,16 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public void assertAlertStatus(
       UUID alertId, UUID actionId, AlertActionStatus.Status status, Integer statusCode, String failedReason)
       throws HttpResponseException {
-    AlertActionStatus actionStatus = getStatus(alertId, actionId);
+    AlertActionStatus actionStatus = getStatus(alertId, actionId, Response.Status.OK.getStatusCode());
     assertEquals(status, actionStatus.getStatus());
     assertEquals(statusCode, actionStatus.getFailureDetails().getLastFailedStatusCode());
     assertEquals(failedReason, actionStatus.getFailureDetails().getLastFailedReason());
   }
 
-  private AlertActionStatus getStatus(UUID alertId, UUID alertActionId) throws HttpResponseException {
+  private AlertActionStatus getStatus(UUID alertId, UUID alertActionId, int statusCode) throws HttpResponseException {
     WebTarget target = getResource(String.format("%s/%s/status/%s", collectionName, alertId, alertActionId));
     getResource(String.format("%s/%s/status/%s", collectionName, alertId, alertActionId));
-    return TestUtils.get(target, AlertActionStatus.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.getWithResponse(target, AlertActionStatus.class, ADMIN_AUTH_HEADERS, statusCode);
   }
 
   private static AtomicBoolean receivedAllEvents(List<ChangeEvent> expected, Collection<ChangeEvent> callbackEvents) {

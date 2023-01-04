@@ -32,7 +32,7 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
   },
   {
     value: 'mlmodel',
-    label: t('label.mlmodel'),
+    label: t('label.ml-model'),
   },
   {
     value: 'user',

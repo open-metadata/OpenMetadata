@@ -216,6 +216,7 @@ public final class TablesInitializer {
         .cleanOnValidationError(false)
         .locations(location)
         .dataSource(url, user, password)
+        .cleanDisabled(false)
         .load();
   }
 

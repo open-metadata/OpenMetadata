@@ -16,6 +16,7 @@ from abc import ABC
 from copy import deepcopy
 from typing import Iterable, Optional, Tuple
 
+from pydantic import BaseModel
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -45,6 +46,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
@@ -52,7 +54,6 @@ from metadata.ingestion.source.database.database_service import (
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
@@ -60,6 +61,17 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+class TableNameAndType(BaseModel):
+    """
+    Helper model for passing down
+    names and types of tables
+    """
+
+    name: str
+    type_: TableType = TableType.Regular
+
+
+# pylint: disable=too-many-public-methods
 class CommonDbSourceService(
     DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
 ):
@@ -182,6 +194,23 @@ class CommonDbSourceService(
                     description = description[0]
         return description
 
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        return [
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(schema_name) or []
+        ]
+
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Handle table and views.
@@ -194,8 +223,10 @@ class CommonDbSourceService(
         try:
             schema_name = self.context.database_schema.name.__root__
             if self.source_config.includeTables:
-                for table_name in self.inspector.get_table_names(schema_name):
-                    table_name = self.standardize_table_name(schema_name, table_name)
+                for table_and_type in self.query_table_names_and_types(schema_name):
+                    table_name = self.standardize_table_name(
+                        schema_name, table_and_type.name
+                    )
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -215,7 +246,7 @@ class CommonDbSourceService(
                             "Table Filtered Out",
                         )
                         continue
-                    yield table_name, TableType.Regular
+                    yield table_name, table_and_type.type_
 
             if self.source_config.includeViews:
                 for view_name in self.inspector.get_view_names(schema_name):
@@ -419,7 +450,8 @@ class CommonDbSourceService(
         Used a timed-bound function to test that the engine
         can properly reach the source
         """
-        test_connection(self.engine)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.engine)
 
     @property
     def connection(self) -> Connection:
