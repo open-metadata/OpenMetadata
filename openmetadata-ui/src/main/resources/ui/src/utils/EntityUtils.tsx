@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import PopOver from '../components/common/popover/PopOver';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -542,8 +542,8 @@ export const getFrequentlyJoinedColumns = (
         ))}
 
         {frequentlyJoinedWithColumns.length > 3 && (
-          <PopOver
-            html={
+          <Popover
+            content={
               <div className="text-left">
                 {frequentlyJoinedWithColumns
                   ?.slice(3)
@@ -569,11 +569,10 @@ export const getFrequentlyJoinedColumns = (
                   ))}
               </div>
             }
-            position="bottom"
-            theme="light"
+            placement="bottom"
             trigger="click">
             <span className="show-more m-l-xss text-underline">...</span>
-          </PopOver>
+          </Popover>
         )}
       </span>
     </div>
