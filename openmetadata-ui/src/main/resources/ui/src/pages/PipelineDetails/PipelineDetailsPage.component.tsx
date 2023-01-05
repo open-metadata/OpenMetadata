@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
@@ -32,6 +31,9 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import {
   Edge,
   EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';

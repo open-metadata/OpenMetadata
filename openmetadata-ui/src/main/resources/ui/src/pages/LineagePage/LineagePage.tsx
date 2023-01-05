@@ -13,7 +13,6 @@
 
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
@@ -31,6 +30,9 @@ import EntityLineageComponent from '../../components/EntityLineage/EntityLineage
 import {
   Edge,
   EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import {
   getDashboardDetailsPath,
