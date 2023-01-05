@@ -230,8 +230,8 @@ const DeleteWidgetModal = ({
       data-testid="delete-modal"
       footer={Footer()}
       okText="Delete"
+      open={visible}
       title={`Delete ${entityName}`}
-      visible={visible}
       onCancel={handleOnEntityDeleteCancel}>
       <Radio.Group value={value} onChange={onChange}>
         {DELETE_OPTION.map(

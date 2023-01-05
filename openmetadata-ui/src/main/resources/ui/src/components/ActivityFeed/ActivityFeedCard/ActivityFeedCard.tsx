@@ -190,12 +190,12 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           destroyTooltipOnHide={{ keepParent: false }}
           getPopupContainer={() => containerRef.current || document.body}
           key="reaction-options-popover"
+          open={visible && !isEditPost}
           overlayClassName="ant-popover-feed"
           placement="topRight"
           trigger="hover"
-          visible={visible && !isEditPost}
           zIndex={100}
-          onVisibleChange={handleVisibleChange}>
+          onOpenChange={handleVisibleChange}>
           <Space align="start" className="w-full">
             <UserPopOverCard userName={feedDetail.from}>
               <span className="tw-cursor-pointer" data-testid="authorAvatar">

@@ -50,8 +50,8 @@ const ReIndexAllModal = ({
         htmlType: 'submit',
       }}
       okText="Submit"
+      open={visible}
       title={t('label.re-index-elastic-search')}
-      visible={visible}
       width={650}
       onCancel={onCancel}>
       <Form

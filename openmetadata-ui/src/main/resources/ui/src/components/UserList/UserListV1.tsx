@@ -297,10 +297,10 @@ const UserListV1: FC<UserListV1Props> = ({
         closable={false}
         confirmLoading={isLoading}
         okText={t('label.restore')}
+        open={showReactiveModal}
         title={t('label.restore-entity', {
           entity: t('label.user'),
         })}
-        visible={showReactiveModal}
         onCancel={() => {
           setShowReactiveModal(false);
           setSelectedUser(undefined);
