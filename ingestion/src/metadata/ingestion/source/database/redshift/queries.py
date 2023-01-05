@@ -22,6 +22,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
     SELECT *
       FROM pg_catalog.stl_query
      WHERE userid > 1
+          {filters}
           -- Filter out all automated & cursor queries
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
@@ -71,7 +72,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
     WHERE
-        {filters}
+        {db_filters}
     ORDER BY q.endtime DESC
 """
 )

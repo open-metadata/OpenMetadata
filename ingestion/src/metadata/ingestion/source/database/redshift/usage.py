@@ -21,11 +21,11 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
 
     filters = """
-        q.querytxt NOT ILIKE 'fetch %%'
-        AND q.querytxt NOT ILIKE 'padb_fetch_sample: %%'
-        AND q.querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
-        AND q.querytxt NOT ILIKE '%%create table%%as%%select%%'
-        AND q.querytxt NOT ILIKE '%%insert%%'
+        AND querytxt NOT ILIKE 'fetch %%'
+        AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
+        AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
+        AND querytxt NOT ILIKE '%%create table%%as%%select%%'
+        AND querytxt NOT ILIKE '%%insert%%'
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT
@@ -33,3 +33,5 @@ class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
     database_field = "database_name"
 
     schema_field = "schema_name"
+
+    db_filters = ""
