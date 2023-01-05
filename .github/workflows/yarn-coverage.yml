@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # Required for Providing Jest Coverage Comment
 
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
