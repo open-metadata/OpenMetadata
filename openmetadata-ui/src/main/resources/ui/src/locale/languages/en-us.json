@@ -36,6 +36,7 @@
     "app-analytic-plural": "App Analytics",
     "applied-advanced-search": "Applied advanced search",
     "as-lowercase": "as",
+    "asset-lowercase": "asset",
     "asset-plural": "Assets",
     "assigned-entity": "Assigned {{entity}}",
     "assignee-plural": "Assignees",
@@ -704,8 +705,8 @@
     "write-your-description": "Write your description"
   },
   "server": {
-    "add-entity-error": "Error while adding {{entity}}!",
     "create-conversation-error": "Error while creating conversation!",
+    "create-entity-error": "Error while creating {{entity}}!",
     "create-entity-success": "{{entity}} created successfully.",
     "create-tag-category-error": "Error while creating tag category!",
     "create-tag-error": "Error while creating tag!",
@@ -716,7 +717,7 @@
     "entity-fetch-error": "Error while fetching {{entity}}",
     "entity-updating-error": "Error while updating {{entity}}",
     "feed-post-error": "Error while posting the message!",
-    "fetch-entity-permissions-error": "Unable to get permission for asset.",
+    "fetch-entity-permissions-error": "Unable to get permission for {{entity}}.",
     "fetch-tags-category-error": "Error while fetching tags category!",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "join-team-error": "Error while joining the team!",

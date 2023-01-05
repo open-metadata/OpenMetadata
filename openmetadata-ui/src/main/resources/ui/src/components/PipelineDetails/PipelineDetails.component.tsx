@@ -217,7 +217,11 @@ const PipelineDetails = ({
       );
       setPipelinePermissions(entityPermission);
     } catch (error) {
-      showErrorToast(t('server.fetch-entity-permissions-error'));
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
+      );
     }
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
 
@@ -723,7 +727,7 @@ const PipelineDetails = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('server.add-entity-error', { entity: t('label.feed-lowercase') })
+          t('server.create-entity-error', { entity: t('label.feed-lowercase') })
         );
       });
   };
