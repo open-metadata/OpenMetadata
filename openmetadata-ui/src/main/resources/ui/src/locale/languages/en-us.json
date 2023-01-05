@@ -85,6 +85,7 @@
     "connection": "Connection",
     "connection-entity": "Connection {{entity}}",
     "conversation": "Conversation",
+    "conversation-lowercase": "conversation",
     "count": "Count",
     "create": "Create",
     "create-entity": "Create {{entity}}",
@@ -705,7 +706,7 @@
     "write-your-description": "Write your description"
   },
   "server": {
-    "create-conversation-error": "Error while creating conversation!",
+    "add-entity-error": "Error while adding {{entity}}!",
     "create-entity-error": "Error while creating {{entity}}!",
     "create-entity-success": "{{entity}} created successfully.",
     "create-tag-category-error": "Error while creating tag category!",
