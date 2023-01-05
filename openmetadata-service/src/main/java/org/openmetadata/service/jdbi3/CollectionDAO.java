@@ -511,7 +511,7 @@ public interface CollectionDAO {
   class SqlQueryMapper implements RowMapper<SQLQuery> {
     @Override
     public SQLQuery map(ResultSet rs, StatementContext ctx) throws SQLException {
-      List<EntityReference> users = new ArrayList<>();
+      List<EntityReference> users;
       String json = rs.getString("users");
       try {
         users = JsonUtils.readValue(json, new TypeReference<ArrayList<EntityReference>>() {});

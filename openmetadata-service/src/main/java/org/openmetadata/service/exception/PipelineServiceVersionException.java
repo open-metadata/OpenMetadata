@@ -17,7 +17,7 @@ import javax.ws.rs.core.Response;
 
 public class PipelineServiceVersionException extends WebServiceException {
 
-  private static final String BY_NAME_MESSAGE = "Pipeline Service Version mismatch due to [%s].";
+  private static final String BY_NAME_MESSAGE = "Pipeline Service [%s] Version mismatch due to [%s].";
 
   public PipelineServiceVersionException(String message) {
     super(Response.Status.INTERNAL_SERVER_ERROR, message);

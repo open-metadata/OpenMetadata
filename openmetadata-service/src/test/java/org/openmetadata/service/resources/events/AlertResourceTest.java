@@ -61,8 +61,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
       new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);
 
   private final AlertActionResourceTest alertActionResourceTest;
-  private AlertAction alert_action1;
-  private EntityReference alert_action1_ref;
+  private EntityReference alert_action_ref;
 
   public AlertResourceTest() {
     super(Entity.ALERT, Alert.class, AlertResource.AlertList.class, "alerts", AlertResource.FIELDS);
@@ -76,8 +75,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public void setupAlerts() throws IOException {
     CreateAlertAction alertAction =
         alertActionResourceTest.createRequest(String.format("genericAlert_%s", UUID.randomUUID()));
-    alert_action1 = alertActionResourceTest.createAndCheckEntity(alertAction, ADMIN_AUTH_HEADERS);
-    alert_action1_ref = alert_action1.getEntityReference();
+    AlertAction alert_action = alertActionResourceTest.createAndCheckEntity(alertAction, ADMIN_AUTH_HEADERS);
+    alert_action_ref = alert_action.getEntityReference();
   }
 
   @Test
@@ -617,29 +616,27 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
         .withName(name)
         .withTriggerConfig(ALL_EVENTS_FILTER)
         .withFilteringRules(new ArrayList<>())
-        .withAlertActions(List.of(alert_action1_ref))
+        .withAlertActions(List.of(alert_action_ref))
         .withEnabled(true);
   }
 
   @Override
-  public void validateCreatedEntity(Alert createdEntity, CreateAlert createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Alert createdEntity, CreateAlert createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), createdEntity.getName());
     assertEquals(createRequest.getTriggerConfig(), createdEntity.getTriggerConfig());
     validateEntityReferences(createdEntity.getAlertActions(), false);
   }
 
   @Override
-  public void compareEntities(Alert expected, Alert updated, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+  public void compareEntities(Alert expected, Alert updated, Map<String, String> authHeaders) {}
 
   @Override
-  public Alert validateGetWithDifferentFields(Alert entity, boolean byName) throws HttpResponseException {
+  public Alert validateGetWithDifferentFields(Alert entity, boolean byName) {
     return entity;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   public Webhook getWebhook(String name, String uri) {
     return new Webhook()

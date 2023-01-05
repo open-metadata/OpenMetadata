@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
@@ -9,6 +10,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -45,6 +47,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
+  public EntityRepository<TestSuite>.EntityUpdater getUpdater(
+      TestSuite original, TestSuite updated, Operation operation) {
+    return new TestSuiteUpdater(original, updated, operation);
+  }
+
+  @Override
   public void storeEntity(TestSuite entity, boolean update) throws IOException {
     EntityReference owner = entity.getOwner();
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
@@ -71,7 +79,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("tests", original.getTests(), updated.getTests());
+      List<EntityReference> origTests = listOrEmpty(original.getTests());
+      List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
+      updateToRelationships(
+          "tests", TEST_SUITE, original.getId(), Relationship.CONTAINS, TEST_CASE, origTests, updatedTests, false);
     }
   }
 }

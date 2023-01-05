@@ -28,7 +28,7 @@ public class ActivityFeedAlertCache {
           CacheBuilder.newBuilder()
               .maximumSize(1000)
               .expireAfterAccess(1, TimeUnit.MINUTES)
-              .build(new ActivityFeedAlertCache.ActivityFeedAlertLoader());
+              .build(new ActivityFeedAlertLoader());
       ALERT_REPOSITORY = new AlertRepository(dao);
       INITIALIZED = true;
       activityFeedAlertName = alertName;

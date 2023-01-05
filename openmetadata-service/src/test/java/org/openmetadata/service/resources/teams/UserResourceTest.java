@@ -283,12 +283,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
     CreateUser create = createRequest(test).withRoles(roles);
-    List<UUID> createdRoles = Arrays.asList(role1.getId(), role2.getId());
-    CreateUser created = createRequest(test).withRoles(createdRoles);
     User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure User has relationship to these roles
-    String[] expectedRoles = createdRoles.stream().map(UUID::toString).sorted().toArray(String[]::new);
+    String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
     List<EntityReference> roleReferences = user.getRoles();
     String[] actualRoles = roleReferences.stream().map(ref -> ref.getId().toString()).sorted().toArray(String[]::new);
     assertArrayEquals(expectedRoles, actualRoles);
@@ -728,7 +726,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
+  void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthType.SSO)
