@@ -400,6 +400,7 @@
     "server": "Server",
     "service": "Service",
     "service-account-email": "Service Account Email",
+    "service-email": "Service Account Email",
     "service-lowercase": "service",
     "service-name": "Service Name",
     "service-sso": "{{serviceType}} SSO",
