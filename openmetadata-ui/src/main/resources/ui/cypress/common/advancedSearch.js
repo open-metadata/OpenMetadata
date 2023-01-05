@@ -80,10 +80,10 @@ export const FIELDS = {
   Database: {
     name: 'Database',
     testid: '[title="Database"]',
-    searchCriteriaFirstGroup: 'ecommerce_db',
-    responseValueFirstGroup: `"name":"ecommerce_db"`,
-    searchCriteriaSecondGroup: 'default',
-    responseValueSecondGroup: `"name":"default"`,
+    searchCriteriaFirstGroup: 'default',
+    responseValueFirstGroup: `"name":"default"`,
+    searchCriteriaSecondGroup: 'ecommerce_db',
+    responseValueSecondGroup: `"name":"ecommerce_db"`,
   },
   Database_Schema: {
     name: 'Database Schema',
@@ -116,11 +116,11 @@ export const OPERATOR = {
 
 export const searchForField = (condition, fieldid, searchCriteria, index) => {
   //Click on field dropdown
-  cy.get('.rule--field').eq(index).should('be.visible').click();
+  cy.get('.rule--field > .ant-select > .ant-select-selector').eq(index).should('be.visible').click();
   //Select owner fields
   cy.get(`${fieldid}`).eq(index).should('be.visible').click();
   //Select the condition
-  cy.get('.rule--operator').eq(index).should('be.visible').click();
+  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(index).should('be.visible').click();
 
   cy.get(`[title="${condition}"]`).eq(index).should('be.visible').click();
   //Verify the condition
@@ -157,16 +157,19 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
 };
 
 export const goToAdvanceSearch = () => {
+  interceptURL('GET', '/api/v1/search/query?q=&index=table_search_index&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc', 'explorePage')
   //Navigate to explore page
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
     .and('be.visible')
     .click();
+  verifyResponseStatusCode('@explorePage', 200);
 
   cy.get('[data-testid="tables-tab"]')
     .scrollIntoView()
     .should('exist')
     .and('be.visible');
+  cy.wait(1000);
   //Click on advance search button
   cy.get('[data-testid="advance-search-button"]').should('be.visible').click();
 
