@@ -34,7 +34,6 @@ import {
 import { FormSubmitType } from '../../enums/form.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestSuite } from '../../generated/tests/testSuite';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,7 +41,6 @@ import AddTestSuiteForm from './AddTestSuiteForm';
 import { TestSuiteFormDataProps } from './testSuite.interface';
 
 const TestSuiteStepper = () => {
-  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
@@ -76,17 +74,15 @@ const TestSuiteStepper = () => {
           showIngestionButton
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowAvailable}
           name={testSuiteResponse?.name || ''}
           state={FormSubmitType.ADD}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={fetchAirflowStatus}
         />
       );
     }
 
     return <AddTestSuiteForm onSubmit={onSubmitTestSuite} />;
-  }, [activeServiceStep, isAirflowAvailable]);
+  }, [activeServiceStep]);
 
   return (
     <div data-testid="test-suite-stepper-container">

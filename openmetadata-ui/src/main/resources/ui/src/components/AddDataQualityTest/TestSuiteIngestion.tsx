@@ -33,7 +33,6 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import jsonData from '../../jsons/en';
 import {
   getIngestionFrequency,
@@ -51,7 +50,6 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   testSuite,
   onCancel,
 }) => {
-  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { ingestionFQN } = useParams<Record<string, string>>();
   const history = useHistory();
   const [ingestionData, setIngestionData] = useState<
@@ -211,14 +209,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewTestSuiteClick}
-            isAirflowSetup={isAirflowAvailable}
             name={`${testSuite?.name}_${PipelineType.TestSuite}`}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={FormSubmitType.ADD}
             successMessage={getSuccessMessage}
             viewServiceText="View Test Suite"
-            onCheckAirflowStatus={fetchAirflowStatus}
           />
         ) : (
           <TestSuiteScheduler

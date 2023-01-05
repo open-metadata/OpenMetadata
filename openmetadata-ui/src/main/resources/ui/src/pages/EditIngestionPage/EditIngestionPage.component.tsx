@@ -280,7 +280,6 @@ const EditIngestionPage = () => {
                   )}
                   ingestionAction={ingestionAction}
                   ingestionProgress={ingestionProgress}
-                  isAirflowSetup={isAirflowAvailable}
                   isIngestionCreated={isIngestionCreated}
                   isIngestionDeployed={isIngestionDeployed}
                   pipelineType={ingestionType as PipelineType}
@@ -291,7 +290,6 @@ const EditIngestionPage = () => {
                   }
                   showDeployButton={showIngestionButton}
                   status={FormSubmitType.EDIT}
-                  onAirflowStatusCheck={fetchAirflowStatus}
                   onIngestionDeploy={onIngestionDeploy}
                   onSuccessSave={goToService}
                   onUpdateIngestion={onEditIngestionSave}

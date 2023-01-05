@@ -33,7 +33,6 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import {
   getCurrentUserId,
   getEntityName,
@@ -60,7 +59,6 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
-  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
@@ -236,13 +234,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         <SuccessScreen
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowAvailable}
           name={successName}
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={fetchAirflowStatus}
         />
       );
     }
@@ -253,7 +249,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         onSubmit={handleSelectTestSuite}
       />
     );
-  }, [activeServiceStep, isAirflowAvailable, testCaseRes]);
+  }, [activeServiceStep, testCaseRes]);
 
   return (
     <PageLayout

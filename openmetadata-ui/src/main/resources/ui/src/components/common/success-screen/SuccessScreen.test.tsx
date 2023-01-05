@@ -20,7 +20,6 @@ describe('Test SuccessScreen component', () => {
   it('SuccessScreen component should render', async () => {
     const { container } = render(
       <SuccessScreen
-        isAirflowSetup
         showIngestionButton
         handleViewServiceClick={jest.fn()}
         name="NewService"
@@ -59,11 +58,9 @@ describe('Test SuccessScreen component', () => {
       <SuccessScreen
         showIngestionButton
         handleViewServiceClick={jest.fn()}
-        isAirflowSetup={false}
         name="NewService"
         state={FormSubmitType.ADD}
         successMessage={<span>title</span>}
-        onCheckAirflowStatus={jest.fn()}
       />
     );
 

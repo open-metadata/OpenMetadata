@@ -247,7 +247,6 @@ const AddIngestionPage = () => {
                   )}
                   ingestionAction={ingestionAction}
                   ingestionProgress={ingestionProgress}
-                  isAirflowSetup={isAirflowAvailable}
                   isIngestionCreated={isIngestionCreated}
                   isIngestionDeployed={isIngestionDeployed}
                   pipelineType={ingestionType as PipelineType}
@@ -259,7 +258,6 @@ const AddIngestionPage = () => {
                   showDeployButton={showIngestionButton}
                   status={FormSubmitType.ADD}
                   onAddIngestionSave={onAddIngestionSave}
-                  onAirflowStatusCheck={fetchAirflowStatus}
                   onIngestionDeploy={onIngestionDeploy}
                 />
               </div>
