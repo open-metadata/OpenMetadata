@@ -44,6 +44,8 @@ metadata:
   labels: 
     app: airflow-dags 
 spec: 
+  capacity:
+    storage: 5Gi
   storageClassName: ""
   accessModes: 
     - ReadWriteMany
@@ -87,7 +89,9 @@ metadata:
   name: openmetadata-dependencies-logs-pv
   labels: 
     app: airflow-logs
-spec: 
+spec:
+  capacity:
+    storage: 5Gi
   storageClassName: ""
   accessModes: 
     - ReadWriteMany
