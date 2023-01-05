@@ -357,7 +357,12 @@ const PoliciesDetailPage = () => {
           {isEmpty(policy) ? (
             <ErrorPlaceHolder>
               <div className="text-center">
-                <p>{`${t('message.no-policy-found-for')} ${fqn}`}</p>
+                <p>
+                  {t('message.no-entity-found-for-name', {
+                    entity: t('label.policy-lowercase'),
+                    name: fqn,
+                  })}
+                </p>
                 <Button
                   size="small"
                   type="primary"
