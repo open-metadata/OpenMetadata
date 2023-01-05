@@ -68,7 +68,7 @@ jobs:
         run: yarn test:cov-summary
         id: yarn_coverage
       - name: Jest Coverage Comment
-        uses: MishaKav/jest-coverage-comment@main
+        uses: chirag-madlani/jest-coverage-comment@patch-1
         with:
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
           title: Jest test Coverage
