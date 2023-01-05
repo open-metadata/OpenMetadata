@@ -313,8 +313,9 @@ const AddKPIPage = () => {
                           }}
                           max={100}
                           min={0}
-                          tooltipPlacement="bottom"
-                          tooltipVisible={false}
+                          tooltip={{
+                            open: false,
+                          }}
                           value={metricValue}
                           onChange={(value) => {
                             setMetricValue(value);

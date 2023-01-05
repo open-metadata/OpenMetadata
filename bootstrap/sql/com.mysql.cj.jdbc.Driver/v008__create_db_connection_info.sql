@@ -17,3 +17,8 @@ JOIN dbservice_entity db
 WHERE db.serviceType = 'SampleData';
 
 DELETE FROM dbservice_entity where serviceType = 'SampleData';
+
+-- Delete supportsUsageExtraction from vertica
+UPDATE dbservice_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.supportsUsageExtraction')
+WHERE serviceType = 'Vertica';

@@ -218,7 +218,7 @@ const PipelineDetails = ({
       setPipelinePermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        t('server.add-entity-error', {
+        t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),
         })
       );
@@ -659,7 +659,12 @@ const PipelineDetails = ({
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.unexpected-response'));
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.lineage-lowercase'),
+          })
+        );
       })
       .finally(() => {
         setLineageLoading(false);
@@ -727,7 +732,7 @@ const PipelineDetails = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('server.create-entity-error', { entity: t('label.feed-lowercase') })
+          t('server.add-entity-error', { entity: t('label.feed-lowercase') })
         );
       });
   };

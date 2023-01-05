@@ -101,8 +101,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
+      open={visible}
       title={t('label.add-entity', { entity: t('label.team') })}
-      visible={visible}
       width={750}
       onCancel={onCancel}>
       <Form

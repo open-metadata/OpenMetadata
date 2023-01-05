@@ -144,12 +144,12 @@ const ReviewerModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}>
       <>
         <Searchbar

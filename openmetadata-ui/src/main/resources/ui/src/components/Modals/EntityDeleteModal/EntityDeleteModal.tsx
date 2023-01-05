@@ -70,6 +70,7 @@ const EntityDeleteModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text data-testid="modal-header">
           {softDelete ? (
@@ -83,7 +84,6 @@ const EntityDeleteModal = ({
           )}
         </Typography.Text>
       }
-      visible={visible}
       width={600}>
       <div data-testid="body-text">
         <Typography className="mb-2">
