@@ -419,6 +419,53 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(initialUserCount - initialBotCount, users.getPaging().getTotal());
   }
 
+  @Test
+  void get_listUsersWithFalseBotFilterPagination(TestInfo test) throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = Map.of("isBot", "false", "team", team.getName());
+
+    // create 5 bot users
+    for (int i = 0; i < 5; i++) {
+      CreateUser create = createBotUserRequest(test, i).withTeams(List.of(team.getId()));
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    // create 10 non-bot users
+    for (int i = 5; i < 15; i++) {
+      CreateUser create = createRequest(test, i).withTeams(List.of(team.getId()));
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // First page must contain "after" and should not have "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    User user1 = users.getData().get(0);
+
+    String after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // Third page must contain only "before" since it is the last page
+    assertNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user2 = users.getData().get(0);
+    assertNotEquals(user1, user2);
+
+    String before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // First page must contain only "after"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    assertEquals(user1, users.getData().get(0));
+  }
+
   private CreateUser createBotUserRequest(TestInfo test, int index) {
     return createBotUserRequest(getEntityName(test, index));
   }
