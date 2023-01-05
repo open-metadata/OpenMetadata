@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=line-too-long,unused-argument
 
 """
 Usage query database and schema filter tests
@@ -127,6 +128,9 @@ def mock_list_entities(
     limit: int = 1000,
     params: Optional[Dict[str, str]] = None,
 ):
+    """
+    mock list entities for databases
+    """
     schema_list1 = EntityReferenceList(
         __root__=[
             EntityReference(
@@ -202,6 +206,10 @@ EXPECTED_CLICKHOUSE_FILTER = """
 
 
 class UsageQueryFilterTests(TestCase):
+    """
+    Usage filter tests for database and schema filters
+    """
+
     @patch.object(OpenMetadata, "list_all_entities", mock_list_entities)
     def test_prepare_mssql(self):
         config = OpenMetadataWorkflowConfig.parse_obj(mock_mssql_config)

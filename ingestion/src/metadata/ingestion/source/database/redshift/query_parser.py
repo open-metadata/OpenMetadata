@@ -80,12 +80,10 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
         """
         returns sql statement to fetch query logs
         """
-        s = self.sql_stmt.format(
+        return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
             filters=self.filters,  # pylint: disable=no-member
             db_filters=self.db_filters,  # pylint: disable=no-member
             result_limit=self.source_config.resultLimit,
         )
-        print(s)
-        return s
