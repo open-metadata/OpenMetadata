@@ -12,19 +12,18 @@
  */
 
 import { Card } from 'antd';
+import classNames from 'classnames';
 import { lowerCase } from 'lodash';
-import React, { HTMLAttributes } from 'react';
+import React from 'react';
+import { LeftPanelCardProps } from './LeftPanelCard.interface';
 
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  children: React.ReactElement | string;
-  id: string;
-  classes?: string;
-}
-
-const LeftPanelCard = ({ children, id, classes }: CardProps) => {
+const LeftPanelCard = ({ children, id, className }: LeftPanelCardProps) => {
   return (
     <Card
-      className={`${classes} left-panel-card tw-h-full page-layout-v1-left-panel page-layout-v1-vertical-scroll`}
+      className={classNames(
+        className,
+        'left-panel-card tw-h-full page-layout-v1-left-panel page-layout-v1-vertical-scroll'
+      )}
       data-testid={`${lowerCase(id)}-left-panel`}>
       <div>{children}</div>
     </Card>

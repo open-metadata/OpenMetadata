@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 /*
-<<<<<<< ours
- *  Copyright 2022 Collate.
-=======
  *  Copyright 2022 Collate
->>>>>>> theirs
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,24 +23,41 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
-import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { Col, Row, Skeleton } from 'antd';
+import { uniqueId } from 'lodash';
+import { SkeletonInterface } from 'Models';
+import React from 'react';
 
-export interface AddGlossaryProps {
-  header: string;
-  saveState?: LoadingState;
-  allowAccess?: boolean;
-  isTagLoading?: boolean;
-  tagList?: string[];
-  slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
-  onCancel: () => void;
-  onSave: (data: CreateGlossary) => void;
-  fetchTags?: () => void;
-}
+const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {
+  const glossaryMock = Array.from({ length: 10 }, (_, index) => index + 1);
 
-export enum AddGlossaryError {
-  NAME_REQUIRED = 'name required',
-  NAME_INVALID = 'name invalid',
-  DESCRIPTION_REQUIRED = 'description required',
-}
+  return loading ? (
+    <div className="m-b-md p-md">
+      <Skeleton active paragraph={{ rows: 0 }} />
+      <Row gutter={32} justify="space-between">
+        <Col span={24}>
+          <Skeleton.Button active block size="small" />
+        </Col>
+        <Col className="m-t-md" span={24}>
+          <Skeleton.Button active block size="small" />
+        </Col>
+
+        <Col className="m-t-md" span={24}>
+          {glossaryMock.map(() => (
+            <Skeleton.Button
+              active
+              block
+              className="p-xs"
+              key={uniqueId()}
+              size="small"
+            />
+          ))}
+        </Col>
+      </Row>
+    </div>
+  ) : (
+    children
+  );
+};
+
+export default GlossaryV1Skeleton;

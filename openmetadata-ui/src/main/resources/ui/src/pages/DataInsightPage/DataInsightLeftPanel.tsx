@@ -21,6 +21,7 @@ import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import DataInsightsLeftPanelSkeleton from './DataInsightLeftPanelSkeleton.component';
 
 const DataInsightLeftPanel = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
@@ -52,14 +53,16 @@ const DataInsightLeftPanel = () => {
 
   return (
     <LeftPanelCard id="data-insight">
-      <Menu
-        className="data-insight-left-panel"
-        data-testid="data-insight-left-panel"
-        items={menuItems}
-        mode="inline"
-        selectedKeys={[tab ?? DataInsightTabs.DATA_ASSETS]}
-        onClick={handleMenuClick}
-      />
+      <DataInsightsLeftPanelSkeleton loading={menuItems.length === 0}>
+        <Menu
+          className="data-insight-left-panel"
+          data-testid="data-insight-left-panel"
+          items={menuItems}
+          mode="inline"
+          selectedKeys={[tab ?? DataInsightTabs.DATA_ASSETS]}
+          onClick={handleMenuClick}
+        />
+      </DataInsightsLeftPanelSkeleton>
     </LeftPanelCard>
   );
 };

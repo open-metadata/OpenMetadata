@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 /*
-<<<<<<< ours
- *  Copyright 2022 Collate.
-=======
  *  Copyright 2022 Collate
->>>>>>> theirs
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,24 +23,36 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
-import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { Skeleton } from 'antd';
+import { uniqueId } from 'lodash';
+import React from 'react';
+import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
 
-export interface AddGlossaryProps {
-  header: string;
-  saveState?: LoadingState;
-  allowAccess?: boolean;
-  isTagLoading?: boolean;
-  tagList?: string[];
-  slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
-  onCancel: () => void;
-  onSave: (data: CreateGlossary) => void;
-  fetchTags?: () => void;
+interface TitleBreadcrumbSkeletonProps {
+  titleLinks: TitleBreadcrumbProps['titleLinks'];
+  children: JSX.Element;
 }
 
-export enum AddGlossaryError {
-  NAME_REQUIRED = 'name required',
-  NAME_INVALID = 'name invalid',
-  DESCRIPTION_REQUIRED = 'description required',
-}
+const TitleBreadcrumbSkeleton = ({
+  titleLinks,
+  children,
+}: TitleBreadcrumbSkeletonProps) =>
+  titleLinks.length === 0 ? (
+    <div className="flex">
+      {titleLinks.map(() => (
+        <Skeleton
+          active
+          className="m-l-xs"
+          key={uniqueId()}
+          paragraph={{ rows: 0 }}
+          title={{
+            width: 150,
+          }}
+        />
+      ))}
+    </div>
+  ) : (
+    children
+  );
+
+export default TitleBreadcrumbSkeleton;
