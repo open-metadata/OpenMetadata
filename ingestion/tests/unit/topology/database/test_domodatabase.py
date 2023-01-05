@@ -249,7 +249,12 @@ class DomoDatabaseUnitTest(TestCase):
         "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
     )
     @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None: #pylint: disable=unused-argument
+    def __init__(
+        self,
+        methodName,
+        domo_client,  # pylint: disable=unused-argument
+        test_connection,
+    ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domodatabase_config)
