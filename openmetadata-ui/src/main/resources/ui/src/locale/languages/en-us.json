@@ -194,6 +194,7 @@
     "feature-lowercase": "feature",
     "feature-plural": "Features",
     "features-used": "Features Used",
+    "feed-lowercase": "feed",
     "field-change": "Field Change",
     "field-invalid": "{{field}} is invalid",
     "field-plural": "Fields",
@@ -703,7 +704,7 @@
     "write-your-description": "Write your description"
   },
   "server": {
-    "add-feed-error": "Error while adding feed!",
+    "add-entity-error": "Error while adding {{entity}}!",
     "create-conversation-error": "Error while creating conversation!",
     "create-entity-success": "{{entity}} created successfully.",
     "create-tag-category-error": "Error while creating tag category!",
@@ -716,7 +717,6 @@
     "entity-updating-error": "Error while updating {{entity}}",
     "feed-post-error": "Error while posting the message!",
     "fetch-entity-permissions-error": "Unable to get permission for asset.",
-    "fetch-feed-error": "Error while fetching feeds!",
     "fetch-tags-category-error": "Error while fetching tags category!",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "join-team-error": "Error while joining the team!",

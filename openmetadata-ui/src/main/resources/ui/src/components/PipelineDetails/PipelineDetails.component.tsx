@@ -433,11 +433,20 @@ const PipelineDetails = ({
           setEntityThreadPaging(pagingObj);
           setEntityThreads((prevData) => [...prevData, ...data]);
         } else {
-          showErrorToast(t('server.fetch-feed-error'));
+          showErrorToast(
+            t('server.entity-fetch-error', {
+              entity: t('label.feed-lowercase'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.fetch-feed-error'));
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-lowercase'),
+          })
+        );
       })
       .finally(() => setEntityThreadLoading(false));
   };
@@ -712,7 +721,10 @@ const PipelineDetails = ({
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.add-feed-error'));
+        showErrorToast(
+          err,
+          t('server.add-entity-error', { entity: t('label.feed-lowercase') })
+        );
       });
   };
 
