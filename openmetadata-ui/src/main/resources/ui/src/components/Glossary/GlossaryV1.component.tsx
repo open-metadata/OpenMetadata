@@ -549,7 +549,8 @@ const GlossaryV1 = ({
                 {' '}
                 <ProfilePicture
                   displayName={selectedData.updatedBy}
-                  id={selectedData.id}
+                  // There is no user id present in response
+                  id=""
                   name={selectedData.updatedBy || ''}
                   textClass="text-xs"
                   width="20"

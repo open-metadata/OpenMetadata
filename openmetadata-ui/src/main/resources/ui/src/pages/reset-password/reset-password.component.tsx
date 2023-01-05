@@ -15,7 +15,7 @@ import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
+import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
 import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';

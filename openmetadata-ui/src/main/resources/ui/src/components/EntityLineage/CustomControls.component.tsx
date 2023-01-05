@@ -160,7 +160,9 @@ const CustomControls: FC<ControlProps> = ({
           })}
           filterOption={handleSearchFilterOption}
           options={nodeOptions}
-          placeholder={t('label.search-lineage')}
+          placeholder={t('label.search-entity', {
+            entity: t('label.lineage'),
+          })}
           onChange={onOptionSelect}
         />
       </Col>

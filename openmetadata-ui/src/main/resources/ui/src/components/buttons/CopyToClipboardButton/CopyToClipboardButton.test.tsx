@@ -20,23 +20,14 @@ const mockProps = {
   copyText: 'mock-copy',
 };
 
-jest.mock('../../common/popover/PopOver', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <p data-testid="popover">{children}</p>
-    ));
-});
-
 describe('Test CopyToClipboardButton Component', () => {
   it('Should render all child elements', () => {
     const { container } = render(<CopyToClipboardButton {...mockProps} />, {
       wrapper: MemoryRouter,
     });
-    const popover = getByTestId(container, 'popover');
+
     const copyIcon = getByTestId(container, 'copy-icon');
 
-    expect(popover).toBeInTheDocument();
     expect(copyIcon).toBeInTheDocument();
   });
 });

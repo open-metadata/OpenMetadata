@@ -272,9 +272,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId,
       @Parameter(description = "alertAction Id", schema = @Schema(type = "UUID")) @PathParam("actionId")
-          UUID alertActionId)
-      throws IOException {
-    return dao.getAlertActionStatus(alertId, alertActionId);
+          UUID alertActionId) {
+    return AlertsPublisherManager.getInstance().getStatus(alertId, alertActionId);
   }
 
   @GET

@@ -128,10 +128,14 @@ it('Add Usage ingestion', () => {
     handleIngestionRetry('database', true, 0, 'usage');
   });
 });
-// Todo:- need to fix flaky test
-it.skip('Verify if usage is ingested properly',() => {
+
+it('Verify if usage is ingested properly',() => {
+  interceptURL('GET', `/api/v1/tables/name/${serviceName}.*.*${tableName}?fields=*&include=all`, 'entityDetailsPage')
   visitEntityDetailsPage(tableName, serviceName, 'tables');
+  verifyResponseStatusCode('@entityDetailsPage', 200)
+  interceptURL('GET', 'api/v1/tables/*/tableQuery', 'queriesTab')
   cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
+  verifyResponseStatusCode('@queriesTab', 200)
   //Validate that the triggered query is visible in the queries container
   cy.get('[data-testid="queries-container"]').should('be.visible').should('contain', query);
   //Validate queries count is greater than 1

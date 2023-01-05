@@ -16,7 +16,7 @@ import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
-import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
+import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
@@ -717,8 +717,7 @@ const ServicePage: FunctionComponent = () => {
         serviceType: serviceDetails.serviceType,
         description: updatedHTML,
         owner: serviceDetails.owner,
-        // TODO: Fix type issue below
-      } as unknown as ServiceOption;
+      } as ServicesUpdateRequest;
 
       try {
         const response = await updateService(
@@ -745,8 +744,7 @@ const ServicePage: FunctionComponent = () => {
       serviceType: serviceDetails?.serviceType,
       owner,
       description: serviceDetails?.description,
-      // TODO: fix type issues below
-    } as unknown as ServiceOption;
+    } as ServicesUpdateRequest;
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id ?? '', updatedData)
@@ -778,7 +776,7 @@ const ServicePage: FunctionComponent = () => {
     const updatedData = {
       ...serviceDetails,
       owner: undefined,
-    } as unknown as ServiceOption;
+    } as ServicesUpdateRequest;
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id ?? '', updatedData)
@@ -933,7 +931,11 @@ const ServicePage: FunctionComponent = () => {
           !isUndefined(description) && description.trim() ? (
             <RichTextEditorPreviewer markdown={description} />
           ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
           ),
       },
       {
@@ -1155,7 +1157,9 @@ const ServicePage: FunctionComponent = () => {
                           <Tooltip
                             title={
                               servicePermission.EditAll
-                                ? t('label.test-connection')
+                                ? t('label.test-entity', {
+                                    entity: t('label.connection'),
+                                  })
                                 : t('message.no-permission-for-action')
                             }>
                             <Button
@@ -1170,7 +1174,9 @@ const ServicePage: FunctionComponent = () => {
                               loading={isTestingConnection}
                               type="primary"
                               onClick={checkTestConnect}>
-                              {t('label.test-connection')}
+                              {t('label.test-entity', {
+                                entity: t('label.connection'),
+                              })}
                             </Button>
                           </Tooltip>
                         )}

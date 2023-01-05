@@ -48,7 +48,7 @@ describe("Test Add role and assign it to the user", () => {
     //Entering descrription
     cy.get(descriptionBox).type("description");
     //Select the policies
-    cy.get('.ant-select').should('be.visible').click();
+    cy.get('[data-testid="policies"]').should('be.visible').click();
 
     cy.get('[title="Data Consumer Policy"]')
       .scrollIntoView()

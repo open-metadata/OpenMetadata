@@ -74,7 +74,9 @@ export const AddTags = ({
     <Select
       loading={isTagLoading}
       mode="multiple"
-      placeholder={t('label.add-tags')}
+      placeholder={t('label.add-entity', {
+        entity: t('label.tag-plural'),
+      })}
       style={{ width: '100%' }}
       value={selectedTags}
       onChange={handleChange}

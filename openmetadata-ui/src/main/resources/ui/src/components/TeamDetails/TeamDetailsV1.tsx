@@ -169,6 +169,16 @@ const TeamDetailsV1 = ({
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(false);
 
+  const addPolicy = t('label.add-entity', {
+    entity: t('label.policy'),
+  });
+
+  const addRole = t('label.add-entity', {
+    entity: t('label.role'),
+  });
+
+  const addTeam = t('label.add-entity', { entity: t('label.team') });
+
   const teamCount = useMemo(
     () =>
       isOrganization && currentTeam && currentTeam.childrenCount
@@ -695,7 +705,9 @@ const TeamDetailsV1 = ({
                         <Typography.Text
                           className="font-medium"
                           data-testid="restore-team-label">
-                          {t('label.restore-team')}
+                          {t('label.restore-entity', {
+                            entity: t('label.team'),
+                          })}
                         </Typography.Text>
                       </Col>
                       <Col className="p-t-xss" span={24}>
@@ -785,11 +797,11 @@ const TeamDetailsV1 = ({
             ),
             disabled: !entityPermissions.EditAll,
             title: entityPermissions.EditAll
-              ? t('label.add-new-user')
+              ? t('label.add-new-entity', { entity: t('label.user') })
               : t('message.no-permission-for-action'),
 
             onClick: () => handleAddUser(true),
-            label: t('label.add-new-user'),
+            label: t('label.add-new-entity', { entity: t('label.user') }),
             datatestid: 'add-user',
           })
         ) : (
@@ -798,7 +810,9 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder={`${t('label.search-for-user')}...`}
+                  placeholder={`${t('label.search-for-type', {
+                    type: t('label.user-lowercase'),
+                  })}...`}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -815,14 +829,14 @@ const TeamDetailsV1 = ({
                     theme="primary"
                     title={
                       entityPermissions.EditAll
-                        ? t('label.add-user')
+                        ? t('label.add-entity', { entity: t('label.user') })
                         : t('message.no-permission-for-action')
                     }
                     variant="contained"
                     onClick={() => {
                       handleAddUser(true);
                     }}>
-                    {t('label.add-user')}
+                    {t('label.add-entity', { entity: t('label.user') })}
                   </Button>
                 </div>
               )}
@@ -1158,9 +1172,9 @@ const TeamDetailsV1 = ({
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
-                      ? t('label.add-team')
+                      ? addTeam
                       : t('message.no-permission-for-action'),
-                    label: t('label.add-team'),
+                    label: addTeam,
                     onClick: () => handleAddTeam(true),
                     disabled: !createTeamPermission,
                     heading: t('label.team'),
@@ -1174,7 +1188,9 @@ const TeamDetailsV1 = ({
                     <Col span={8}>
                       <Searchbar
                         removeMargin
-                        placeholder={`${t('label.search-team')}...`}
+                        placeholder={`${t('label.search-entity', {
+                          entity: t('label.team'),
+                        })}...`}
                         searchValue={searchTerm}
                         typingInterval={500}
                         onSearch={handleTeamSearch}
@@ -1187,12 +1203,12 @@ const TeamDetailsV1 = ({
                           disabled={!createTeamPermission}
                           title={
                             createTeamPermission
-                              ? t('label.add-team')
+                              ? addTeam
                               : t('message.no-permission-for-action')
                           }
                           type="primary"
                           onClick={() => handleAddTeam(true)}>
-                          {t('label.add-team')}
+                          {addTeam}
                         </ButtonAntd>
                       </Space>
                     </Col>
@@ -1214,9 +1230,9 @@ const TeamDetailsV1 = ({
                 (isEmpty(currentTeam.defaultRoles || []) ? (
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
-                      ? t('label.add-role')
+                      ? addRole
                       : t('message.no-permission-for-action'),
-                    label: t('label.add-role'),
+                    label: addRole,
                     onClick: () =>
                       setAddAttribute({
                         type: EntityType.ROLE,
@@ -1236,7 +1252,7 @@ const TeamDetailsV1 = ({
                       disabled={!entityPermissions.EditAll}
                       title={
                         entityPermissions.EditAll
-                          ? t('label.add-role')
+                          ? addRole
                           : t('message.no-permission-for-action')
                       }
                       type="primary"
@@ -1246,7 +1262,7 @@ const TeamDetailsV1 = ({
                           selectedData: currentTeam.defaultRoles || [],
                         })
                       }>
-                      {t('label.add-role')}
+                      {addRole}
                     </ButtonAntd>
                     <ListEntities
                       hasAccess={entityPermissions.EditAll}
@@ -1262,9 +1278,9 @@ const TeamDetailsV1 = ({
                 (isEmpty(currentTeam.policies) ? (
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
-                      ? t('label.add-policy')
+                      ? addPolicy
                       : t('message.no-permission-for-action'),
-                    label: t('label.add-policy'),
+                    label: addPolicy,
                     datatestid: 'add-policy',
                     onClick: () =>
                       setAddAttribute({
@@ -1272,7 +1288,7 @@ const TeamDetailsV1 = ({
                         selectedData: currentTeam.policies || [],
                       }),
                     disabled: !entityPermissions.EditAll,
-                    heading: t('label.policies'),
+                    heading: t('label.policy-plural'),
                     doc: POLICY_DOCS,
                   })
                 ) : (
@@ -1284,7 +1300,7 @@ const TeamDetailsV1 = ({
                       disabled={!entityPermissions.EditAll}
                       title={
                         entityPermissions.EditAll
-                          ? t('label.add-policy')
+                          ? addPolicy
                           : t('message.no-permission-for-action')
                       }
                       type="primary"
@@ -1294,7 +1310,7 @@ const TeamDetailsV1 = ({
                           selectedData: currentTeam.policies || [],
                         })
                       }>
-                      {t('label.add-policy')}
+                      {addPolicy}
                     </ButtonAntd>
                     <ListEntities
                       hasAccess={entityPermissions.EditAll}
@@ -1320,12 +1336,12 @@ const TeamDetailsV1 = ({
                 theme="primary"
                 title={
                   createTeamPermission
-                    ? t('label.add-team')
+                    ? addTeam
                     : t('message.no-permission-for-action')
                 }
                 variant="outlined"
                 onClick={() => handleAddTeam(true)}>
-                {t('label.add-new-team')}
+                {t('label.add-new-entity', { entity: t('label.team') })}
               </Button>
             </div>
           }
@@ -1377,10 +1393,10 @@ const TeamDetailsV1 = ({
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {t('message.sure-to-remove')}{' '}
-            {`${getEntityName(
-              selectedEntity.record
-            )} t('label.from-lowercase') ${getEntityName(currentTeam)}?`}
+            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+              child: getEntityName(selectedEntity.record),
+              parent: getEntityName(currentTeam),
+            })}
           </Typography.Text>
         </Modal>
       )}

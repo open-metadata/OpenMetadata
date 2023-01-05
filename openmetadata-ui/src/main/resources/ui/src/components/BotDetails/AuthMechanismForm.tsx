@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { checkEmailInUse } from '../../axiosAPIs/auth-API';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import { createUserWithPut, getUserByName } from '../../axiosAPIs/userAPI';
@@ -24,6 +23,7 @@ import { validEmailRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 import {
   AuthenticationMechanism,
@@ -595,7 +595,9 @@ const AuthMechanismForm: FC<Props> = ({
             className="w-full"
             data-testid="auth-mechanism"
             defaultValue={authMechanism}
-            placeholder={t('label.select-auth-mechanism')}
+            placeholder={t('label.select-field', {
+              field: t('label.auth-mechanism'),
+            })}
             onChange={(value) => setAuthMechanism(value)}>
             {getAuthMechanismTypeOptions(authConfig).map((option) => (
               <Option key={option.value}>{option.label}</Option>

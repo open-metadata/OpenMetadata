@@ -481,7 +481,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">{t('label.column-name')}</span>
+                    <span className="text-xs">
+                      {t('label.column-entity', {
+                        entity: t('label.name'),
+                      })}
+                    </span>
                   }
                   labelCol={{
                     style: {
@@ -493,7 +497,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     {
                       required: enablePartition,
                       message: t('message.field-text-is-required', {
-                        fieldText: t('label.column-name'),
+                        fieldText: t('label.column-entity', {
+                          entity: t('label.name'),
+                        }),
                       }),
                     },
                   ]}>

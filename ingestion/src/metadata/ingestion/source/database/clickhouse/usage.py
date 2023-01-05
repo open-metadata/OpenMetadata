@@ -11,11 +11,13 @@
 """
 Clickhouse usage module
 """
+from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_SQL_STATEMENT,
+)
 from metadata.ingestion.source.database.clickhouse.query_parser import (
     ClickhouseQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import CLICKHOUSE_SQL_STATEMENT
 
 
 class ClickhouseUsageSource(ClickhouseQueryParserSource, UsageSource):

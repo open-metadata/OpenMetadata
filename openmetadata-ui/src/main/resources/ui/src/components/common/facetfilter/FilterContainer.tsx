@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
-import PopOver from '../popover/PopOver';
 import { FilterContainerProp } from './facetFilter.interface';
 
 const FilterContainer: FunctionComponent<FilterContainerProp> = ({
@@ -34,9 +34,9 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
       : name;
 
     return (
-      <PopOver position="top" title={formattedName} trigger="mouseenter">
-        <>{label || formattedName}</>
-      </PopOver>
+      <Tooltip placement="top" title={formattedName} trigger="hover">
+        {label || formattedName}
+      </Tooltip>
     );
   };
 

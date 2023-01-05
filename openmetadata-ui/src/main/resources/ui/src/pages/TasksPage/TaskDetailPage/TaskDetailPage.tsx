@@ -23,7 +23,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import {
   getFeedById,
   getTask,
@@ -36,6 +35,7 @@ import {
 import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
@@ -715,7 +715,9 @@ const TaskDetailPage = () => {
                             disabled={!suggestion}
                             type="primary"
                             onClick={onTaskResolve}>
-                            {t('label.add-description')}
+                            {t('label.add-entity', {
+                              entity: t('label.description'),
+                            })}
                           </Button>
                         )}
                       </Fragment>

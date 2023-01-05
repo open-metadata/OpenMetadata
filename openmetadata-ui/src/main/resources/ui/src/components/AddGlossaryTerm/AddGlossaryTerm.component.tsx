@@ -511,7 +511,9 @@ const AddGlossaryTerm = ({
         </div>
 
         <RelatedTermsModal
-          header={t('label.add-related-term-plural')}
+          header={t('label.add-entity', {
+            entity: t('label.related-term-plural'),
+          })}
           relatedTerms={relatedTerms}
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
@@ -519,7 +521,9 @@ const AddGlossaryTerm = ({
         />
 
         <ReviewerModal
-          header={t('label.add-reviewer-plural')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

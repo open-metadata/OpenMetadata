@@ -31,9 +31,7 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getFunctionDisplayName should return correct text for matchTestResult', () => {
-    expect(getFunctionDisplayName('matchTestResult')).toBe(
-      'label.test-result-plural'
-    );
+    expect(getFunctionDisplayName('matchTestResult')).toBe('label.test-entity');
   });
 
   it('getFunctionDisplayName should return correct text for matchUpdatedBy', () => {

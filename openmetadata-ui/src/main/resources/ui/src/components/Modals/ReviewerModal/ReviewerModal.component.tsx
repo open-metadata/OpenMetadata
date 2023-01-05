@@ -153,7 +153,9 @@ const ReviewerModal = ({
       width={800}>
       <>
         <Searchbar
-          placeholder={`${t('label.search-for-user')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          })}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}

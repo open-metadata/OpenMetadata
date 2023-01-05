@@ -84,8 +84,9 @@ export const PropertyValue: FC<Props> = ({
       case 'markdown':
         return (
           <ModalWithMarkdownEditor
-            header={t('label.edit-property', {
-              propertyName,
+            header={t('label.edit-entity-name', {
+              entityType: t('label.property'),
+              entityName: propertyName,
             })}
             placeholder={t('label.enter-property-value')}
             value={value || ''}

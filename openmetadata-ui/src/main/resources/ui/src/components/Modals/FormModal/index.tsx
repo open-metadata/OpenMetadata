@@ -14,8 +14,8 @@
 import { Button, Modal, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useRef, useState } from 'react';
+import { Classification } from '../../../generated/entity/classification/classification';
 import { Team } from '../../../generated/entity/teams/team';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { FormData, FormModalProp, FormRef } from './FormModal.interface';
 
 const FormModal = ({
@@ -74,7 +74,7 @@ const FormModal = ({
           errorData={errorData}
           initialData={initialData}
           ref={formRef}
-          saveData={(data: TagsCategory | Team) => {
+          saveData={(data: Classification | Team) => {
             setData(data);
             onChange && onChange(data);
           }}
