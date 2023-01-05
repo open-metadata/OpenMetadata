@@ -29,7 +29,6 @@ from sqlalchemy.dialects.mssql.base import (
     _db_plus_owner,
 )
 from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 from sqlalchemy.util import compat
