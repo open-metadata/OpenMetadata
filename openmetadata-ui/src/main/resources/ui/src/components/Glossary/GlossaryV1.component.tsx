@@ -17,7 +17,6 @@ import {
   Col,
   Dropdown,
   Input,
-  Menu,
   Row,
   Space,
   Tooltip,
@@ -295,41 +294,32 @@ const GlossaryV1 = ({
     );
   });
 
-  const manageButtonContent = () => {
-    return (
-      <Menu
-        items={[
-          {
-            label: (
-              <Space
-                className="tw-cursor-pointer manage-button"
-                size={8}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDelete(true);
-                  setShowActions(false);
-                }}>
-                <SVGIcons alt="Delete" icon={Icons.DELETE} />
-                <div className="tw-text-left" data-testid="delete-button">
-                  <p
-                    className="tw-font-medium"
-                    data-testid="delete-button-title">
-                    Delete
-                  </p>
-                  <p className="tw-text-grey-muted tw-text-xs">
-                    Deleting this{' '}
-                    {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'} will
-                    permanently remove its metadata from OpenMetadata.
-                  </p>
-                </div>
-              </Space>
-            ),
-            key: 'delete-button',
-          },
-        ]}
-      />
-    );
-  };
+  const manageButtonContent = [
+    {
+      label: (
+        <Space
+          className="tw-cursor-pointer manage-button"
+          size={8}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsDelete(true);
+            setShowActions(false);
+          }}>
+          <SVGIcons alt="Delete" icon={Icons.DELETE} />
+          <div className="tw-text-left" data-testid="delete-button">
+            <p className="tw-font-medium" data-testid="delete-button-title">
+              Delete
+            </p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Deleting this {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}{' '}
+              will permanently remove its metadata from OpenMetadata.
+            </p>
+          </div>
+        </Space>
+      ),
+      key: 'delete-button',
+    },
+  ];
 
   const fetchLeftPanel = () => {
     return (
@@ -448,12 +438,12 @@ const GlossaryV1 = ({
                 ? !glossaryPermission.Delete
                 : !glossaryTermPermission.Delete
             }
-            overlay={manageButtonContent()}
+            menu={{ items: manageButtonContent }}
+            open={showActions}
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
             trigger={['click']}
-            visible={showActions}
-            onVisibleChange={setShowActions}>
+            onOpenChange={setShowActions}>
             <Tooltip
               title={
                 glossaryPermission.Delete || glossaryTermPermission.Delete

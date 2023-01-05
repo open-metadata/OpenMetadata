@@ -161,12 +161,12 @@ const PopoverContent: FC<Props> = ({
         align={{ targetOffset: [0, -10] }}
         content={reactionList}
         id="reaction-popover"
+        open={visible}
         overlayClassName="ant-popover-feed-reactions"
         placement="topLeft"
         trigger="click"
-        visible={visible}
         zIndex={9999}
-        onVisibleChange={handleVisibleChange}>
+        onOpenChange={handleVisibleChange}>
         <Button
           className="tw-p-0"
           data-testid="add-reactions"

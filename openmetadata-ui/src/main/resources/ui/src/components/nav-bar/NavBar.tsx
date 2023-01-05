@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Dropdown,
-  Image,
-  Input,
-  Menu,
-  Select,
-  Space,
-  Tooltip,
-} from 'antd';
+import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
@@ -201,40 +192,36 @@ const NavBar = ({
     };
   };
 
-  const governanceMenu = (
-    <Menu
-      items={[
-        {
-          key: 'glossary',
-          label: (
-            <NavLink
-              className="focus:no-underline"
-              data-testid="appbar-item-glossary"
-              style={navStyle(pathname.startsWith('/glossary'))}
-              to={{
-                pathname: ROUTES.GLOSSARY,
-              }}>
-              {t('label.glossary')}
-            </NavLink>
-          ),
-        },
-        {
-          key: 'tags',
-          label: (
-            <NavLink
-              className="focus:no-underline"
-              data-testid="appbar-item-tags"
-              style={navStyle(pathname.startsWith('/tags'))}
-              to={{
-                pathname: ROUTES.TAGS,
-              }}>
-              {t('label.tag-plural')}
-            </NavLink>
-          ),
-        },
-      ]}
-    />
-  );
+  const governanceMenu = [
+    {
+      key: 'glossary',
+      label: (
+        <NavLink
+          className="focus:no-underline"
+          data-testid="appbar-item-glossary"
+          style={navStyle(pathname.startsWith('/glossary'))}
+          to={{
+            pathname: ROUTES.GLOSSARY,
+          }}>
+          {t('label.glossary')}
+        </NavLink>
+      ),
+    },
+    {
+      key: 'tags',
+      label: (
+        <NavLink
+          className="focus:no-underline"
+          data-testid="appbar-item-tags"
+          style={navStyle(pathname.startsWith('/tags'))}
+          to={{
+            pathname: ROUTES.TAGS,
+          }}>
+          {t('label.tag-plural')}
+        </NavLink>
+      ),
+    },
+  ];
 
   useEffect(() => {
     if (shouldRequestPermission()) {
@@ -331,7 +318,7 @@ const NavBar = ({
               </NavLink>
               <Dropdown
                 className="cursor-pointer"
-                overlay={governanceMenu}
+                menu={{ items: governanceMenu }}
                 trigger={['click']}>
                 <Space data-testid="governance" size={2}>
                   {t('label.govern')}
@@ -419,7 +406,7 @@ const NavBar = ({
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown
                   destroyPopupOnHide
-                  overlay={
+                  dropdownRender={() => (
                     <NotificationBox
                       hasMentionNotification={hasMentionNotification}
                       hasTaskNotification={hasTaskNotification}
@@ -429,7 +416,7 @@ const NavBar = ({
                       onMarkTaskNotificationRead={handleTaskNotificationRead}
                       onTabChange={handleActiveTab}
                     />
-                  }
+                  )}
                   overlayStyle={{
                     zIndex: 9999,
                     width: '425px',
@@ -437,7 +424,7 @@ const NavBar = ({
                   }}
                   placement="bottomRight"
                   trigger={['click']}
-                  onVisibleChange={handleBellClick}>
+                  onOpenChange={handleBellClick}>
                   <Badge dot={hasTaskNotification || hasMentionNotification}>
                     <SVGIcons
                       alt="Alert bell icon"

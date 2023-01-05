@@ -182,8 +182,8 @@ const AddUsersModalV1 = ({
         id: 'save-button',
       }}
       okText="Save"
+      open={isVisible}
       title={header}
-      visible={isVisible}
       width={750}
       onCancel={onCancel}
       onOk={handleSave}>

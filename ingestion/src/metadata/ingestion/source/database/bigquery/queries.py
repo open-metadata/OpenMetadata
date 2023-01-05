@@ -23,7 +23,8 @@ BIGQUERY_STATEMENT = textwrap.dedent(
    start_time,
    end_time,
    query as query_text,
-   null as schema_name
+   null as schema_name,
+   total_slot_ms/1000 as duration
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   {filters}

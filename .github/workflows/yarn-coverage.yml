@@ -70,8 +70,10 @@ jobs:
       - name: Jest Coverage Comment
         uses: MishaKav/jest-coverage-comment@main
         with:
-          hide-comment: true
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
+          title: Jest test Coverage
+          summary-title: UI tests summary
+          badge-title: Coverage
       - name: yarn add sonarqube-scanner
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner

@@ -29,7 +29,7 @@ const mockPorps = {
 describe('Test Sorting DropDown Component', () => {
   it('Should render dropdown component', async () => {
     await act(async () => {
-      const { findByTestId, findAllByTestId } = render(
+      const { findByTestId, findByRole, findAllByTestId } = render(
         <SortingDropDown {...mockPorps} />
       );
 
@@ -39,7 +39,7 @@ describe('Test Sorting DropDown Component', () => {
 
       fireEvent.click(dropdownLabel);
 
-      const dropdownMenu = await findByTestId('dropdown-menu');
+      const dropdownMenu = await findByRole('menu');
 
       expect(dropdownMenu).toBeInTheDocument();
 
@@ -51,7 +51,7 @@ describe('Test Sorting DropDown Component', () => {
 
   it('Should call onSelect method on onClick option', async () => {
     await act(async () => {
-      const { findByTestId, findAllByTestId } = render(
+      const { findByTestId, findByRole, findAllByTestId } = render(
         <SortingDropDown {...mockPorps} />
       );
 
@@ -61,7 +61,7 @@ describe('Test Sorting DropDown Component', () => {
 
       fireEvent.click(dropdownLabel);
 
-      const dropdownMenu = await findByTestId('dropdown-menu');
+      const dropdownMenu = await findByRole('menu');
 
       expect(dropdownMenu).toBeInTheDocument();
 

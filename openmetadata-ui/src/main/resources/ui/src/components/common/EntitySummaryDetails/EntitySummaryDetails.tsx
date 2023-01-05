@@ -157,13 +157,13 @@ const EntitySummaryDetails = ({
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
               <Dropdown
-                overlay={
+                dropdownRender={() => (
                   <TierCard
                     currentTier={tier?.tagFQN}
                     removeTier={removeTier}
                     updateTier={updateTier}
                   />
-                }
+                )}
                 trigger={['click']}>
                 <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier && !deleted ? <EditIcon /> : null}

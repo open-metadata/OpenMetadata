@@ -108,9 +108,9 @@ const AnnouncementDrawer: FC<Props> = ({
       <div data-testid="announcement-drawer">
         <Drawer
           closable={false}
+          open={open}
           placement="right"
           title={title}
-          visible={open}
           width={576}
           onClose={onClose}>
           <div className="tw-flex tw-justify-end">
