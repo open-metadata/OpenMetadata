@@ -99,6 +99,7 @@ class TableUsageStage(Stage[QueryParserData]):
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
+                    duration=record.duration,
                 )
             )
         else:
@@ -107,6 +108,7 @@ class TableUsageStage(Stage[QueryParserData]):
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
+                    duration=record.duration,
                 )
             ]
 

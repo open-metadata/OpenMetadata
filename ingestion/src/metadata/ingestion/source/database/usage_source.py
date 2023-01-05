@@ -57,6 +57,7 @@ class UsageSource(QueryParserSource, ABC):
                             userName=query_dict.get("user_name", ""),
                             startTime=query_dict.get("start_time", ""),
                             endTime=query_dict.get("end_time", ""),
+                            duration=query_dict.get("duration"),
                             analysisDate=analysis_date,
                             aborted=self.get_aborted_status(query_dict),
                             databaseName=self.get_database_name(query_dict),
@@ -94,6 +95,7 @@ class UsageSource(QueryParserSource, ABC):
                                         analysisDate=row["start_time"],
                                         aborted=self.get_aborted_status(row),
                                         databaseName=self.get_database_name(row),
+                                        duration=row.get("duration"),
                                         serviceName=self.config.serviceName,
                                         databaseSchema=self.get_schema_name(row),
                                     )

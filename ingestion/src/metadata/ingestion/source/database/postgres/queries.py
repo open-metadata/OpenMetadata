@@ -20,7 +20,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         u.usename,
         d.datname database_name,
         s.query query_text,
-        s.total_exec_time
+        s.total_exec_time/1000 duration
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid

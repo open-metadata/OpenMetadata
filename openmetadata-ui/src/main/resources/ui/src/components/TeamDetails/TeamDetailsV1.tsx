@@ -16,7 +16,6 @@ import {
   Button as ButtonAntd,
   Col,
   Dropdown,
-  Menu,
   Modal,
   Row,
   Space,
@@ -30,7 +29,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -692,10 +691,6 @@ const TeamDetailsV1 = ({
     key: 'deleted-team-dropdown',
   };
 
-  const organizationDropdownContent = (
-    <Menu items={[DELETED_TOGGLE_MENU_ITEM]} />
-  );
-
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
       ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
@@ -1102,12 +1097,12 @@ const TeamDetailsV1 = ({
             ) : (
               <Dropdown
                 align={{ targetOffset: [-12, 0] }}
-                overlay={organizationDropdownContent}
+                menu={{ items: [DELETED_TOGGLE_MENU_ITEM] }}
+                open={showActions}
                 overlayStyle={{ width: '350px' }}
                 placement="bottomRight"
                 trigger={['click']}
-                visible={showActions}
-                onVisibleChange={setShowActions}>
+                onOpenChange={setShowActions}>
                 <ButtonAntd
                   className="rounded-4 w-6 manage-dropdown-button"
                   data-testid="teams-dropdown"
@@ -1122,7 +1117,7 @@ const TeamDetailsV1 = ({
           </div>
           <Space size={0}>
             {extraInfo.map((info, index) => (
-              <>
+              <Fragment key={uniqueId()}>
                 <EntitySummaryDetails
                   currentOwner={currentTeam.owner}
                   data={info}
@@ -1148,7 +1143,7 @@ const TeamDetailsV1 = ({
                     |
                   </span>
                 ) : null}
-              </>
+              </Fragment>
             ))}
           </Space>
           <div className="m-b-sm m-t-xs" data-testid="description-container">

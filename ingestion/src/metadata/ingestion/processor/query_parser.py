@@ -58,6 +58,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
         userName=record.userName,
         date=start_date.__root__.strftime("%Y-%m-%d"),
         serviceName=record.serviceName,
+        duration=record.duration,
     )
 
 

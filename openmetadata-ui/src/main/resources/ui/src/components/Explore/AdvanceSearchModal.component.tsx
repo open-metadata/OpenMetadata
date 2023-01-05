@@ -74,10 +74,10 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
         </Space>
       }
       okText={t('label.submit')}
+      open={visible}
       title={t('label.advanced-entity', {
         entity: t('label.search'),
       })}
-      visible={visible}
       width={950}>
       <Typography.Text data-testid="advanced-search-message">
         {t('message.advanced-search-message')}

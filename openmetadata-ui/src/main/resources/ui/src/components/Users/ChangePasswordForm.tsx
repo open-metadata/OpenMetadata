@@ -48,10 +48,10 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         htmlType: 'submit',
       }}
       okText={t('label.update-password')}
+      open={visible}
       title={t('label.change-entity', {
         entity: t('label.password'),
       })}
-      visible={visible}
       width={500}
       onCancel={() => {
         form.resetFields();
