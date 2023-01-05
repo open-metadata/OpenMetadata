@@ -61,6 +61,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -72,6 +73,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -81,6 +83,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tags", order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
+  private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
 
   static class TagList extends ResultList<Tag> {
@@ -91,9 +94,65 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
     super(Tag.class, new TagRepository(collectionDAO), authorizer);
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
+    daoCollection = collectionDAO;
+  }
+
+  private void migrateTags() {
+    // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not there , once we have
+    // any entries we don't need to run it
+    if (!(daoCollection.relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
+      // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
+      // Find tag definitions and load classifications from the json file, if necessary
+      EntityRepository<Classification> classificationRepository = Entity.getEntityRepository(CLASSIFICATION);
+      try {
+        List<Classification> classificationList =
+            classificationRepository.listAll(classificationRepository.getFields("*"), new ListFilter(Include.ALL));
+        List<String> jsons = dao.dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
+        List<Tag> storedTags = JsonUtils.readObjects(jsons, Tag.class);
+        for (Tag tag : storedTags) {
+          if (tag.getFullyQualifiedName().contains(".")) {
+            // Either it has classification or a tag which is its parent
+            // Check Classification
+            String[] tokens = tag.getFullyQualifiedName().split("\\.", 2);
+            String classificationName = tokens[0];
+            String remainingPart = tokens[1];
+            for (Classification classification : classificationList) {
+              if (classification.getName().equals(classificationName)) {
+                // This means need to add a relationship
+                try {
+                  dao.addRelationship(classification.getId(), tag.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
+                  break;
+                } catch (Exception ex) {
+                  LOG.info("Classification Relation already exists");
+                }
+              }
+            }
+            if (remainingPart.contains(".")) {
+              // Handle tag -> tag relationship
+              String parentTagName =
+                  tag.getFullyQualifiedName().substring(0, tag.getFullyQualifiedName().lastIndexOf("."));
+              for (Tag parentTag : storedTags) {
+                if (parentTag.getFullyQualifiedName().equals(parentTagName)) {
+                  try {
+                    dao.addRelationship(parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
+                    break;
+                  } catch (Exception ex) {
+                    LOG.info("Parent Tag Ownership already exists");
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (Exception ex) {
+        LOG.error("Failed in Listing all the Stored Tags.");
+      }
+    }
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
+    migrateTags();
     // Find tag definitions and load classifications from the json file, if necessary
     EntityRepository<EntityInterface> classificationRepository = Entity.getEntityRepository(CLASSIFICATION);
     List<LoadTags> loadTagsList =
