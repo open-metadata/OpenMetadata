@@ -357,20 +357,20 @@ const RolesDetailPage = () => {
           closable={false}
           confirmLoading={isLoadingOnSave}
           okText={t('label.confirm')}
+          open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
           })} ${t('label.from-lowercase')} ${getEntityName(role)}`}
-          visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {t('message.sure-to-remove')}{' '}
-            {`${getEntityName(selectedEntity.record)} ${t(
-              'label.from-lowercase'
-            )} ${getEntityName(role)}?`}
+            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+              child: getEntityName(selectedEntity.record),
+              parent: getEntityName(role),
+            })}
           </Typography.Text>
         </Modal>
       )}
