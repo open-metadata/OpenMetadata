@@ -27,7 +27,9 @@ OpenMetadata helm chart depends on Airflow and Airflow expects a presistent disk
 
 In AWS, this is achieved by Elastic File System (EFS) service. AWS Elastic Block Store (EBS) does not provide ReadWriteMany Volume access mode as EBS will only be attached to one Kubernetes Node at any given point of time.
 
-In order to provision persistent volumes from AWS EFS, you will need to setup and install [aws-efs-csi-driver](https://github.com/kubernetes-sigs/aws-efs-csi-driver).
+In order to provision persistent volumes from AWS EFS, you will need to setup and install [aws-efs-csi-driver](https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html). Note that this is required for Airflow as One OpenMetadata Dependencies.
+
+Also, [aws-ebs-csi-driver](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html) might be required for Persistent Volumes that are to be used for MySQL and ElasticSearch as OpenMetadata Dependencies.
 
 The below guide provides Persistent Volumes provisioning as static volumes (meaning you will be responsible to create, maintain and destroy Persistent Volumes).
 
