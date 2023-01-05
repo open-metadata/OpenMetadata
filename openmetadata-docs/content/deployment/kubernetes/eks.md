@@ -50,7 +50,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: <FileSystemId> # Replace with EFS File System Id
+    volumeHandle: <FileSystemId>:/airflow-dags # Replace with EFS File System Id
 
 ---
 apiVersion: v1
@@ -94,7 +94,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: <FileSystemId> # Replace with EFS File System Id
+    volumeHandle: <FileSystemId>:/airflow-logs # Replace with EFS File System Id
 
 ---
 apiVersion: v1
