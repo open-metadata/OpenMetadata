@@ -54,7 +54,7 @@ export const handleIngestionRetry = (
     let timer = BASE_WAIT_TIME;
     const rowIndex = ingestionType === 'metadata' ? 1 : 2;
 
-    interceptURL('GET', '/api/v1/services/ingestionPipelines/*/pipelineStatus?*', 'pipelineStatuses')
+    interceptURL('GET', '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*', 'pipelineStatuses')
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails')
 
     // ingestions page
@@ -69,9 +69,9 @@ export const handleIngestionRetry = (
         // click on the tab only for the first time
         if (retryCount === 0) {
             // Wait for pipeline status to be loaded
+            verifyResponseStatusCode('@pipelineStatuses', 200)
             cy.get('[data-testid="Ingestions"]').click();
         }
-        verifyResponseStatusCode('@pipelineStatuses', 200)
         if (isDatabaseService(type) && testIngestionButton) {
             cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
         }
