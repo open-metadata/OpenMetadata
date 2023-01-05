@@ -13,7 +13,7 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Table, Tooltip, Typography } from 'antd';
+import { Button, Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -43,7 +43,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
@@ -488,8 +487,8 @@ const Ingestion: React.FC<IngestionProps> = ({
         key: 'schedule',
         render: (_, record) =>
           record.airflowConfig?.scheduleInterval ? (
-            <PopOver
-              html={
+            <Popover
+              content={
                 <div>
                   {cronstrue.toString(
                     record.airflowConfig.scheduleInterval || '',
@@ -500,11 +499,10 @@ const Ingestion: React.FC<IngestionProps> = ({
                   )}
                 </div>
               }
-              position="bottom"
-              theme="light"
-              trigger="mouseenter">
+              placement="bottom"
+              trigger="hover">
               <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-            </PopOver>
+            </Popover>
           ) : (
             <span>--</span>
           ),

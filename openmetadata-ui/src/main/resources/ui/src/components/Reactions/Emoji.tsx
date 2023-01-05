@@ -99,10 +99,10 @@ const Emoji: FC<EmojiProps> = ({
     <Popover
       content={popoverContent}
       key="reaction-detail-popover"
+      open={visible}
       trigger="hover"
-      visible={visible}
       zIndex={9999}
-      onVisibleChange={setVisible}>
+      onOpenChange={setVisible}>
       <Button
         className={classNames('ant-btn-reaction tw-mr-1 d-flex', {
           'ant-btn-isReacted': isReacted,

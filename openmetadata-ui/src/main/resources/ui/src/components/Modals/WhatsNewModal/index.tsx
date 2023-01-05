@@ -75,12 +75,12 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       }
       data-testid="whats-new-dialog"
       footer={null}
+      open={visible}
       title={
         <Typography.Text strong data-testid="whats-new-header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={1200}>
       <div className="flex w-auto h-full">
         <div

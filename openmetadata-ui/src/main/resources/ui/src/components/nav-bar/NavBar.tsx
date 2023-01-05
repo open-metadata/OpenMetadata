@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Menu, Select, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
@@ -50,7 +50,6 @@ import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import PopOver from '../common/popover/PopOver';
 import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
@@ -193,40 +192,36 @@ const NavBar = ({
     };
   };
 
-  const governanceMenu = (
-    <Menu
-      items={[
-        {
-          key: 'glossary',
-          label: (
-            <NavLink
-              className="focus:no-underline"
-              data-testid="appbar-item-glossary"
-              style={navStyle(pathname.startsWith('/glossary'))}
-              to={{
-                pathname: ROUTES.GLOSSARY,
-              }}>
-              {t('label.glossary')}
-            </NavLink>
-          ),
-        },
-        {
-          key: 'tags',
-          label: (
-            <NavLink
-              className="focus:no-underline"
-              data-testid="appbar-item-tags"
-              style={navStyle(pathname.startsWith('/tags'))}
-              to={{
-                pathname: ROUTES.TAGS,
-              }}>
-              {t('label.tag-plural')}
-            </NavLink>
-          ),
-        },
-      ]}
-    />
-  );
+  const governanceMenu = [
+    {
+      key: 'glossary',
+      label: (
+        <NavLink
+          className="focus:no-underline"
+          data-testid="appbar-item-glossary"
+          style={navStyle(pathname.startsWith('/glossary'))}
+          to={{
+            pathname: ROUTES.GLOSSARY,
+          }}>
+          {t('label.glossary')}
+        </NavLink>
+      ),
+    },
+    {
+      key: 'tags',
+      label: (
+        <NavLink
+          className="focus:no-underline"
+          data-testid="appbar-item-tags"
+          style={navStyle(pathname.startsWith('/tags'))}
+          to={{
+            pathname: ROUTES.TAGS,
+          }}>
+          {t('label.tag-plural')}
+        </NavLink>
+      ),
+    },
+  ];
 
   useEffect(() => {
     if (shouldRequestPermission()) {
@@ -323,7 +318,7 @@ const NavBar = ({
               </NavLink>
               <Dropdown
                 className="cursor-pointer"
-                overlay={governanceMenu}
+                menu={{ items: governanceMenu }}
                 trigger={['click']}>
                 <Space data-testid="governance" size={2}>
                   {t('label.govern')}
@@ -411,7 +406,7 @@ const NavBar = ({
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown
                   destroyPopupOnHide
-                  overlay={
+                  dropdownRender={() => (
                     <NotificationBox
                       hasMentionNotification={hasMentionNotification}
                       hasTaskNotification={hasTaskNotification}
@@ -421,7 +416,7 @@ const NavBar = ({
                       onMarkTaskNotificationRead={handleTaskNotificationRead}
                       onTabChange={handleActiveTab}
                     />
-                  }
+                  )}
                   overlayStyle={{
                     zIndex: 9999,
                     width: '425px',
@@ -429,7 +424,7 @@ const NavBar = ({
                   }}
                   placement="bottomRight"
                   trigger={['click']}
-                  onVisibleChange={handleBellClick}>
+                  onOpenChange={handleBellClick}>
                   <Badge dot={hasTaskNotification || hasMentionNotification}>
                     <SVGIcons
                       alt="Alert bell icon"
@@ -461,10 +456,7 @@ const NavBar = ({
               <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
-                  <PopOver
-                    position="bottom"
-                    title="Profile"
-                    trigger="mouseenter">
+                  <Tooltip placement="bottom" title="Profile" trigger="hover">
                     {isImgUrlValid ? (
                       <div className="profile-image square tw--mr-2">
                         <Image
@@ -480,7 +472,7 @@ const NavBar = ({
                     ) : (
                       <Avatar name={username} width="30" />
                     )}
-                  </PopOver>
+                  </Tooltip>
                 }
                 isDropDownIconVisible={false}
                 type="link"

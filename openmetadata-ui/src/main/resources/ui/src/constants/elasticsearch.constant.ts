@@ -55,11 +55,11 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.data-assets-report'),
   },
   {
-    value: 'webAnalyticEntityViewReport',
+    value: 'webAnalyticEntityViewReportData',
     label: t('label.web-analytics-report'),
   },
   {
-    value: 'webAnalyticUserActivityReport',
+    value: 'webAnalyticUserActivityReportData',
     label: t('label.user-analytics-report'),
   },
 ];
@@ -76,8 +76,8 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
     'glossaryTerm',
     'tag',
     'entityReportData',
-    'webAnalyticEntityViewReport',
-    'webAnalyticUserActivityReport',
+    'webAnalyticEntityViewReportData',
+    'webAnalyticUserActivityReportData',
   ],
   batchSize: 100,
   flushIntervalInSec: 30,

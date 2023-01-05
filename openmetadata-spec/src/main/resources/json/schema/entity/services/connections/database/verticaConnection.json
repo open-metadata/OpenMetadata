@@ -65,9 +65,6 @@
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     },
-    "supportsUsageExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
-    },
     "supportsDBTExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
     },

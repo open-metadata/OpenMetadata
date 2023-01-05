@@ -19,7 +19,6 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import {
   createTeam,
@@ -28,6 +27,7 @@ import {
   patchTeamDetail,
 } from '../../axiosAPIs/teamsAPI';
 import { getUsers, updateUserDetail } from '../../axiosAPIs/userAPI';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';

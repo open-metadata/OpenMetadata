@@ -3110,19 +3110,35 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE EntityFQN = :entityFQN")
     int listCount(@Bind("entityFQN") String entityFQN);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
+                + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
+                + "SELECT row_num, json FROM data WHERE row_num < :before LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
+                + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
+                + "SELECT row_num, json FROM data WHERE row_num < (:before :: integer) LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ReportDataMapper.class)
-    @SqlQuery(
-        "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
-            + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
-            + "SELECT row_num, json FROM data WHERE row_num < :before LIMIT :limit")
     List<ReportDataRow> getBeforeExtension(
         @Bind("entityFQN") String entityFQN, @Bind("limit") int limit, @Bind("before") String before);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
+                + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
+                + "SELECT row_num, json FROM data WHERE row_num > :after LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
+                + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
+                + "SELECT row_num, json FROM data WHERE row_num > (:after :: integer) LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ReportDataMapper.class)
-    @SqlQuery(
-        "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
-            + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
-            + "SELECT row_num, json FROM data WHERE row_num > :after LIMIT :limit")
     List<ReportDataRow> getAfterExtension(
         @Bind("entityFQN") String entityFQN, @Bind("limit") int limit, @Bind("after") String after);
 

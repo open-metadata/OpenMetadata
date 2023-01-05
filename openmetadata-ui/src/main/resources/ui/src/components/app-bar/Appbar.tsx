@@ -16,12 +16,10 @@ import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
@@ -45,6 +43,7 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 
@@ -62,7 +61,7 @@ const Appbar: React.FC = (): JSX.Element => {
     isTourRoute,
     onLogoutHandler,
   } = useAuthContext();
-  const match: Match | null = useRouteMatch({
+  const match = useRouteMatch<{ searchQuery: string }>({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
   const searchQuery = match?.params?.searchQuery;
