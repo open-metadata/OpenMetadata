@@ -259,7 +259,10 @@ const RolesDetailPage = () => {
             <ErrorPlaceHolder dataTestId="no-data">
               <div className="text-center">
                 <p>
-                  {t('message.no-roles-found-for')} {t('label.go-back')} {fqn}
+                  {t('message.no-entity-found-for-name', {
+                    entity: t('label.role-lowercase'),
+                    name: fqn,
+                  })}
                 </p>
                 <Button
                   className="m-t-sm"
