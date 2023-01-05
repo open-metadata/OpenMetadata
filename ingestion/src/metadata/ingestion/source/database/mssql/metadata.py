@@ -301,21 +301,3 @@ class MssqlSource(CommonDbSourceService):
                     logger.error(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
-
-    @staticmethod
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
-        description = None
-        try:
-            table_info: dict = inspector.get_table_comment(table_name, schema_name)
-        # Catch any exception without breaking the ingestion
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
-            )
-        else:
-            if "text" in table_info:
-                description = table_info["text"]
-        return description
