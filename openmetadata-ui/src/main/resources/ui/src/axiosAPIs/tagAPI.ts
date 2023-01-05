@@ -18,7 +18,6 @@ import { CreateClassification } from '../generated/api/classification/createClas
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
-import { TagsCategory } from '../pages/tags/tagsTypes';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -82,7 +81,7 @@ export const deleteClassification = async (classificationId: string) => {
 
 export const createClassification = async (data: CreateClassification) => {
   const response = await APIClient.post<
-    TagsCategory,
+    CreateClassification,
     AxiosResponse<Classification>
   >(BASE_URL, data);
 
@@ -117,7 +116,7 @@ export const createTag = async (data: CreateTag) => {
   return response.data;
 };
 
-export const updateTag = async (data: TagsCategory) => {
+export const updateTag = async (data: Classification) => {
   const response = await APIClient.put(`/tags`, data);
 
   return response.data;

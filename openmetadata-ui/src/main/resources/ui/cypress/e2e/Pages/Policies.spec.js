@@ -73,7 +73,10 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
   cy.get('.ant-select-tree-checkbox-inner').eq(1).should('be.visible').click();
   //Click on condition combobox
 
-  cy.get('[id*=rc_select]').scrollIntoView().should('be.visible').click();
+  cy.get('[data-testid="condition"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
   cy.get(`[title="${ruleDetails.condition}"]`).should('be.visible').click();
 

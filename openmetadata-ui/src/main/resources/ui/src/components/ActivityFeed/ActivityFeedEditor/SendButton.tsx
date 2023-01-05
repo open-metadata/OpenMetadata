@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
 
 interface SendButtonProp {
   editorValue: string;
@@ -36,8 +36,8 @@ export const SendButton: FC<SendButtonProp> = ({
     <div
       className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end"
       onClick={(e) => e.stopPropagation()}>
-      <PopOver
-        html={
+      <Popover
+        content={
           <Fragment>
             <strong>Send now</strong>
             <p>
@@ -48,9 +48,8 @@ export const SendButton: FC<SendButtonProp> = ({
             </p>
           </Fragment>
         }
-        position="top"
-        size="small"
-        trigger="mouseenter">
+        placement="top"
+        trigger="hover">
         <Button
           className={classNames(
             'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
@@ -67,7 +66,7 @@ export const SendButton: FC<SendButtonProp> = ({
             width="18px"
           />
         </Button>
-      </PopOver>
+      </Popover>
     </div>
   );
 };

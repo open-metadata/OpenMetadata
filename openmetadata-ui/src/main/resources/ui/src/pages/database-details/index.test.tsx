@@ -267,14 +267,6 @@ jest.mock('../../utils/TableUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
 }));
 
-jest.mock('../../components/common/popover/PopOver', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="popover">{children}</div>
-    ));
-});
-
 jest.mock('../../utils/CommonUtils', () => ({
   getCurrentUserId: jest
     .fn()

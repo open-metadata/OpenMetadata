@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
@@ -39,7 +39,6 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import PopOver from '../common/popover/PopOver';
 import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -366,8 +365,8 @@ const TestSuitePipelineTab = () => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <PopOver
-                  html={
+                <Popover
+                  content={
                     <div>
                       {cronstrue.toString(
                         record.airflowConfig.scheduleInterval || '',
@@ -378,11 +377,10 @@ const TestSuitePipelineTab = () => {
                       )}
                     </div>
                   }
-                  position="bottom"
-                  theme="light"
-                  trigger="mouseenter">
+                  placement="bottom"
+                  trigger="hover">
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </PopOver>
+                </Popover>
               ) : (
                 <span>--</span>
               )}
