@@ -50,7 +50,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: [FileSystemId] # Replace with EFS File System Id
+    volumeHandle: <FileSystemId> # Replace with EFS File System Id
 
 ---
 apiVersion: v1
@@ -94,7 +94,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: [FileSystemId] # Replace with EFS File System Id
+    volumeHandle: <FileSystemId> # Replace with EFS File System Id
 
 ---
 apiVersion: v1
@@ -152,10 +152,10 @@ spec:
   volumes:
   - name: airflow-logs
     persistentVolumeClaim:
-      claimName: openmetadata-dependencies-logs
+      claimName: openmetadata-dependencies-logs-pvc
   - name: airflow-dags
     persistentVolumeClaim:
-      claimName: openmetadata-dependencies-dags
+      claimName: openmetadata-dependencies-dags-pvc
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 ```
@@ -188,10 +188,10 @@ airflow:
     extraVolumes:
       - name: efs-airflow-logs
         persistentVolumeClaim:
-          claimName: openmetadata-dependencies-logs
+          claimName: openmetadata-dependencies-logs-pvc
       - name: efs-airflow-dags
         persistentVolumeClaim:
-          claimName: openmetadata-dependencies-dags
+          claimName: openmetadata-dependencies-dags-pvc
     config:
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/airflow-dags/dags"
   dags:
