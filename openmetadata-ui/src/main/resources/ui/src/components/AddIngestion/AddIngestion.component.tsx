@@ -688,11 +688,19 @@ const AddIngestion = ({
 
   const getSuccessMessage = () => {
     const updateMessage = showDeployButton
-      ? 'has been updated, but failed to deploy'
-      : 'has been updated and deployed successfully';
+      ? t('message.action-has-been-done-but-failed-to-deploy', {
+          action: t('label.updated-lowercase'),
+        })
+      : t('message.action-has-been-done-but-deploy-successfully', {
+          action: t('label.updated-lowercase'),
+        });
     const createMessage = showDeployButton
-      ? 'has been created, but failed to deploy'
-      : 'has been created and deployed successfully';
+      ? t('message.action-has-been-done-but-failed-to-deploy', {
+          action: t('label.created-lowercase'),
+        })
+      : t('message.action-has-been-done-but-deploy-successfully', {
+          action: t('label.created-lowercase'),
+        });
 
     return (
       <span>
