@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DynamicObj } from 'Models';
 import {
   DashboardConnection,
   DashboardService,
@@ -45,8 +44,8 @@ export interface DatabaseConnection {
   password: string;
   username: string;
   database: string;
-  connectionArguments: DynamicObj;
-  connectionOptions: DynamicObj;
+  connectionArguments: Record<string, string>;
+  connectionOptions: Record<string, string>;
 }
 
 export interface DataObj {

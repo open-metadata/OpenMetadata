@@ -15,8 +15,8 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { oidcTokenKey } from '../../../constants/constants';
-import jsonData from '../../../jsons/en';
+import { oidcTokenKey } from '../../../../constants/constants';
+import jsonData from '../../../../jsons/en';
 import Auth0Callback from './Auth0Callback';
 
 const localStorageMock = (() => {

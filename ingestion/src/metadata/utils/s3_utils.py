@@ -15,13 +15,12 @@ Utils module to convert different file types from s3 buckets into a dataframe
 
 import gzip
 import json
-import os
 import traceback
 from typing import Any
 
 import pandas as pd
-from pyarrow import fs
-from pyarrow.parquet import ParquetFile
+import pyarrow.parquet as pq
+import s3fs
 
 from metadata.utils.logger import utils_logger
 
@@ -90,10 +89,11 @@ def read_parquet_from_s3(client: Any, key: str, bucket_name: str):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
-
-    s3_file = fs.S3FileSystem(region=client.meta.region_name)
-    return [
-        ParquetFile(s3_file.open_input_file(os.path.join(bucket_name, key)))
-        .read()
-        .to_pandas()
-    ]
+    s3_fs = s3fs.S3FileSystem(
+        key=client.awsAccessKeyId,
+        secret=client.awsSecretAccessKey.get_secret_value(),
+        token=client.awsSessionToken,
+    )
+    bucket_uri = f"s3://{bucket_name}/{key}"
+    dataset = pq.ParquetDataset(bucket_uri, filesystem=s3_fs)
+    return [dataset.read_pandas().to_pandas()]

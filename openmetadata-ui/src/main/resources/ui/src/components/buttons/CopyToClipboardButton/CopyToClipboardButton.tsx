@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
+import { Popover, PopoverProps } from 'antd';
 import React, { FunctionComponent, useState } from 'react';
 import CopyToClipboard from 'react-copy-to-clipboard';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import PopOver from '../../common/popover/PopOver';
-import { Position } from '../../common/popover/PopOverTypes';
+
 import { Button } from '../Button/Button';
 
 interface Props {
   copyText: string;
   copyTimer?: number;
-  position?: Position;
+  position?: PopoverProps['placement'];
   onCopy?: () => void;
 }
 
@@ -49,9 +49,8 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
         size="custom"
         theme="default"
         variant="text">
-        <PopOver
-          delay={0}
-          html={
+        <Popover
+          content={
             <span
               className="tw-text-grey-body tw-text-xs tw-font-medium tw-italic"
               data-testid="copy-success">
@@ -59,8 +58,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
             </span>
           }
           open={copied}
-          position={position}
-          theme="light"
+          placement={position}
           trigger="click">
           <SVGIcons
             alt="Copy"
@@ -68,7 +66,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
             icon={Icons.COPY}
             width="16px"
           />
-        </PopOver>
+        </Popover>
       </Button>
     </CopyToClipboard>
   );

@@ -11,30 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Result } from 'antd';
-import React from 'react';
-import { FallbackProps } from 'react-error-boundary';
-import { ERROR500 } from '../constants/constants';
+import React, { Suspense } from 'react';
+import Loader from '../Loader/Loader';
 
-const ErrorFallback: React.FC<FallbackProps> = ({
-  error,
-  resetErrorBoundary,
-}) => {
-  return (
-    <Result
-      extra={
-        <Button
-          className="ant-btn-primary-custom"
-          type="primary"
-          onClick={resetErrorBoundary}>
-          Home
-        </Button>
-      }
-      status="404"
-      subTitle={error.message}
-      title={ERROR500}
-    />
-  );
-};
-
-export default ErrorFallback;
+export default function withSuspenseFallback(Component) {
+  return function DefaultFallback(props) {
+    return (
+      <Suspense fallback={<Loader />}>
+        <Component {...props} />
+      </Suspense>
+    );
+  };
+}

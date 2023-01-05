@@ -11,26 +11,28 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
-import { lowerCase } from 'lodash';
-import React, { HTMLAttributes } from 'react';
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  id: string;
-  heading?: string;
-  classes?: string;
+import React from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { useHistory } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
+import ErrorFallback from './ErrorFallback';
+
+interface Props {
+  children: React.ReactNode;
 }
 
-const CardV1 = ({ children, id, heading, classes, style }: CardProps) => {
+const ErrorBoundry: React.FC<Props> = ({ children }) => {
+  const history = useHistory();
+
+  const onErrorReset = () => {
+    history.push(ROUTES.HOME);
+  };
+
   return (
-    <Card
-      className={`${classes} tw-h-full`}
-      data-testid={`${lowerCase(id)}-summary-container`}
-      size="small"
-      style={style}>
-      {heading ? <h6 className="tw-heading tw-text-base">{heading}</h6> : ''}
-      <div>{children}</div>
-    </Card>
+    <ErrorBoundary FallbackComponent={ErrorFallback} onReset={onErrorReset}>
+      {children}
+    </ErrorBoundary>
   );
 };
 
-export default CardV1;
+export default ErrorBoundry;

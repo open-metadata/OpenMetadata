@@ -15,7 +15,7 @@
 import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
-export const dashboardVersionProp = {
+export const dashboardVersionProps = {
   version: '0.3',
   currentVersionData: {
     id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
