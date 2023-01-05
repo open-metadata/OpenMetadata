@@ -67,7 +67,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             result_limit=self.config.sourceConfig.config.resultLimit,
-            filters=self.filters,
+            filters=self.filters,  # pylint: disable=no-member
         )
 
     def set_session_query_tag(self) -> None:

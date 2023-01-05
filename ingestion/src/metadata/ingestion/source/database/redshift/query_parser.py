@@ -54,6 +54,6 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,
+            filters=self.filters,  # pylint: disable=no-member
             result_limit=self.source_config.resultLimit,
         )
