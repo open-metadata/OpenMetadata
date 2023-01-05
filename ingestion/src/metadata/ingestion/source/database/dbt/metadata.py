@@ -204,21 +204,22 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 # Validate the catalog file if it is passed
                 if dbt_files.dbt_catalog:
                     catalog_node = catalog_entities.get(key)
-                    for catalog_key, catalog_column in catalog_node.get(
-                        "columns"
-                    ).items():
-                        if all(
-                            required_catalog_key in catalog_column
-                            for required_catalog_key in required_catalog_keys
-                        ):
-                            logger.info(
-                                f"Successfully Validated DBT Column: {catalog_key}"
-                            )
-                        else:
-                            logger.warning(
-                                f"Error validating DBT Column: {catalog_key}\n"
-                                f"Please check if following keys exist for the column node: {required_catalog_keys}"
-                            )
+                    if catalog_node:
+                        for catalog_key, catalog_column in catalog_node.get(
+                            "columns"
+                        ).items():
+                            if all(
+                                required_catalog_key in catalog_column
+                                for required_catalog_key in required_catalog_keys
+                            ):
+                                logger.info(
+                                    f"Successfully Validated DBT Column: {catalog_key}"
+                                )
+                            else:
+                                logger.warning(
+                                    f"Error validating DBT Column: {catalog_key}\n"
+                                    f"Please check if following keys exist for the column node: {required_catalog_keys}"
+                                )
 
     def yield_dbt_tags(
         self, dbt_files: DbtFiles
