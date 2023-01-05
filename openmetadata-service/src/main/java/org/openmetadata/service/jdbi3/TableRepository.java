@@ -1084,7 +1084,7 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
-      updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnNameMatch);
+      updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
@@ -1119,7 +1119,7 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if (nullOrEmpty(addedColumn.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+          if (nullOrEmpty(addedColumn.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
           if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
