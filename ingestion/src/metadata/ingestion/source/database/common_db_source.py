@@ -175,11 +175,7 @@ class CommonDbSourceService(
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         else:
-            if hasattr(table_info, "text"):
-                description = table_info["text"]
-                # DB2 connector does not return a str type
-                if isinstance(description, list):
-                    description = description[0]
+            description = table_info.get("text")
         return description
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
