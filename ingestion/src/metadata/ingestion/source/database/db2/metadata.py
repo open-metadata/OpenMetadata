@@ -14,6 +14,7 @@ import traceback
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.engine.row import LegacyRow
 
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
@@ -71,9 +72,14 @@ class Db2Source(CommonDbSourceService):
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         else:
-            if hasattr(table_info, "text"):
+            if table_info.get("text"):
                 description = table_info["text"]
+
                 # DB2 connector does not return a str type
+                if isinstance(description, LegacyRow):
+                    for table_description in description:
+                        return table_description
+
                 if isinstance(description, list):
                     description = description[0]
         return description
