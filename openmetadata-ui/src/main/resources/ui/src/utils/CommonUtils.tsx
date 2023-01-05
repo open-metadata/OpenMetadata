@@ -906,3 +906,10 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
       return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
   }
 };
+
+/**
+ *
+ * @param text plain text
+ * @returns base64 encoded text
+ */
+export const getBase64EncodedString = (text: string): string => btoa(text);
