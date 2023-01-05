@@ -285,8 +285,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         htmlType: 'submit',
       }}
       okText={t('label.save')}
+      open={visible}
       title={t('label.setting-plural')}
-      visible={visible}
       width={630}
       onCancel={handleCancel}>
       <Row gutter={[16, 16]}>

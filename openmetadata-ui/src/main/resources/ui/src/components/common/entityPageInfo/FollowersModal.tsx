@@ -61,12 +61,12 @@ const FollowersModal = ({
       centered
       destroyOnClose
       data-testid="modal-container"
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}
       onCancel={onCancel}>
       <div>

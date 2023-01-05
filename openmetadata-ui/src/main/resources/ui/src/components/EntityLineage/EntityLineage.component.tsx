@@ -1398,8 +1398,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             deletionState.loading,
             deletionState.status
           )}
+          open={showDeleteModal}
           title="Remove lineage edge"
-          visible={showDeleteModal}
           onCancel={() => {
             setShowDeleteModal(false);
           }}

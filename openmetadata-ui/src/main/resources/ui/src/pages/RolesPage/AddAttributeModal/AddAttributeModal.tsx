@@ -129,6 +129,7 @@ const AddAttributeModal: FC<Props> = ({
       confirmLoading={isModalLoading}
       data-testid="modal-container"
       okText="Submit"
+      open={isOpen}
       title={
         <span data-testid="modal-title">
           {title}{' '}
@@ -137,7 +138,6 @@ const AddAttributeModal: FC<Props> = ({
           </span>
         </span>
       }
-      visible={isOpen}
       width={750}
       onCancel={onCancel}
       onOk={() => onSave(selectedValues)}>

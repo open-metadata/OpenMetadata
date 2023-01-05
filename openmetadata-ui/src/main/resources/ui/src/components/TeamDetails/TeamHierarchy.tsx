@@ -177,8 +177,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         closable={false}
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
+        open={isModalOpen}
         title={t('label.move-the-team')}
-        visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
         <Typography.Text>

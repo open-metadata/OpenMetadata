@@ -103,8 +103,8 @@ const AddAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText="Submit"
+      open={open}
       title={t('message.make-an-announcement')}
-      visible={open}
       width={720}
       onCancel={onCancel}>
       <Form
