@@ -138,7 +138,7 @@ metadata:
   name: my-permission-pod
 spec:
   containers:
-  - image: busybox
+  - image: nginx
     name: my-permission-pod
     volumeMounts:
     - name: airflow-dags
