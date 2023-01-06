@@ -148,7 +148,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    classification_name="DBTTags",
+                    classification_name=self.source_config.dbtClassificationName,
                     tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,
@@ -266,11 +266,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
-                            name="DBTTags",
+                            name=self.source_config.dbtClassificationName,
                             description="dbt classification",
                         ),
                         tag_request=CreateTagRequest(
-                            classification="DBTTags",
+                            classification=self.source_config.dbtClassificationName,
                             name=tag_label.tagFQN.__root__.split(".")[1],
                             description="dbt Tags",
                         ),
@@ -571,7 +571,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         entity=Table,
                         entity_id=to_entity.id,
                         description=data_model.description.__root__,
-                        force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                        force=self.source_config.dbtUpdateDescriptions,
                     )
 
                 # Patch column descriptions from DBT
@@ -581,7 +581,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             entity_id=to_entity.id,
                             column_name=column.name.__root__,
                             description=column.description.__root__,
-                            force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                            force=self.source_config.dbtUpdateDescriptions,
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -615,7 +615,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self, dbt_test: dict
     ) -> Iterable[CreateTestDefinitionRequest]:
         """
-        AMethod to add DBT test definitions
+        A Method to add DBT test definitions
         """
         try:
             test_name = dbt_test.get("name")

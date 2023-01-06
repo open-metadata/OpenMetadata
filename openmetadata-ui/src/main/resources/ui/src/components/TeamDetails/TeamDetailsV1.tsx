@@ -12,6 +12,8 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import AddAttributeModal from '@pages/RolesPage/AddAttributeModal/AddAttributeModal';
+import { restoreTeam } from '@rest/teamsAPI';
 import {
   Button as ButtonAntd,
   Col,
@@ -35,7 +37,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { restoreTeam } from '../../axiosAPIs/teamsAPI';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -62,7 +63,6 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import {
   getEntityName,
   getTierFromEntityInfo,

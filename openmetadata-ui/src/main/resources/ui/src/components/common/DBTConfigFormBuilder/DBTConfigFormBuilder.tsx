@@ -17,10 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
   DBTBucketDetails,
-  DbtConfig,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
+import { ModifiedDbtConfig } from '../../AddIngestion/addIngestion.interface';
 import { Field } from '../../Field/Field';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
@@ -46,10 +46,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   handleIngestionName,
 }: DBTConfigFormProps) => {
   const { t } = useTranslation();
-  const [dbtConfig, setDbtConfig] = useState<DbtConfig>(data);
+  const [dbtConfig, setDbtConfig] = useState<ModifiedDbtConfig>(data);
 
   const updateDbtConfig = (
-    key: keyof DbtConfig,
+    key: keyof ModifiedDbtConfig,
     val?: string | boolean | SCredentials | DBTBucketDetails
   ) => {
     setDbtConfig((pre) => {

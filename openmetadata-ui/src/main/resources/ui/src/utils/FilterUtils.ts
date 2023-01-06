@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { FilterObject } from '@components/AdvancedSearch/AdvancedSearch.interface';
 import { isArray, isNil, isObject, isString } from 'lodash';
-import { FilterObject } from '../components/AdvancedSearch/AdvancedSearch.interface';
 
 export function isFilterObject(obj: unknown): obj is FilterObject {
   const typedObj = obj as FilterObject;

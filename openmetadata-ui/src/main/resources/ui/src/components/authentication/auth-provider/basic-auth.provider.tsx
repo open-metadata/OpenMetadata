@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { JwtPayload } from 'jwt-decode';
-import React, { createContext, ReactNode, useContext, useState } from 'react';
-import { useHistory } from 'react-router-dom';
 import {
   basicAuthRegister,
   basicAuthSignIn,
@@ -22,7 +18,11 @@ import {
   generatePasswordResetLink,
   logoutUser,
   resetPassword,
-} from '../../../axiosAPIs/auth-API';
+} from '@rest/auth-API';
+import { AxiosError } from 'axios';
+import { JwtPayload } from 'jwt-decode';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,

@@ -39,44 +39,6 @@ declare module 'Models' {
     isRemovable?: boolean;
   } & TagLabel;
 
-  export type TableColumn = {
-    name: string;
-    columnDataType: string;
-    description: string;
-    fullyQualifiedName: string;
-    tags: Array<ColumnTags>;
-    columnConstraint?: string;
-    ordinalPosition: number;
-  };
-
-  export type Stats = {
-    count: number;
-    percentileRank: number;
-  };
-
-  export type UsageSummary = {
-    dailyStats: Stats;
-    date: string;
-    monthlyStats: Stats;
-    weeklyStats: Stats;
-  };
-
-  export type ColumnJoin = {
-    fullyQualifiedName: string;
-    joinCount: number;
-  };
-
-  export type ColumnJoins = {
-    columnName: string;
-    joinedWith: Array<ColumnJoin>;
-  };
-
-  export type TableJoinsData = {
-    startDate: string;
-    dayCount: number;
-    columnJoins: Array<ColumnJoins>;
-  };
-
   export type LoadingState = 'initial' | 'waiting' | 'success';
 
   export type TableDetail = {
@@ -101,26 +63,6 @@ declare module 'Models' {
     key: string;
     doc_count: number;
     label?: string;
-  };
-  type AggregationType = {
-    title: string;
-    buckets: Array<Bucket>;
-  };
-  export type Sterm = {
-    doc_count_error_upper_bound: number;
-    sum_other_doc_count: number;
-    buckets: Array<Bucket>;
-  };
-
-  /**
-   * @deprecated -- Use generated types instead
-   */
-  export type UserProfile = {
-    images: Record<string, string>;
-  };
-
-  export type SlackChatConfig = {
-    slackUrl: string;
   };
 
   export type FormattedTableData = {
@@ -182,18 +124,6 @@ declare module 'Models' {
     signingIn?: boolean;
   };
 
-  export type StateInfo = {
-    count: number;
-    percentileRank: number;
-  };
-
-  export type UsageState = {
-    dailyStats: StateInfo;
-    weeklyStats: StateInfo;
-    monthlyStats: StateInfo;
-    date: string;
-  };
-
   export type ServiceData = {
     collection: {
       documentation: string;
@@ -220,8 +150,6 @@ declare module 'Models' {
     searchIndex?: string;
   };
 
-  // topic interface end
-
   interface RecentlyViewedData {
     displayName?: string;
     entityType: 'table' | 'topic' | 'dashboard' | 'pipeline';
@@ -240,16 +168,6 @@ declare module 'Models' {
   }
   export interface RecentlySearched {
     data: Array<RecentlySearchedData>;
-  }
-
-  export type LineagePos = 'from' | 'to';
-  export interface LeafNodes {
-    upStreamNode: Array<string>;
-    downStreamNode: Array<string>;
-  }
-  export interface LoadingNodeState {
-    id: string | undefined;
-    state: boolean;
   }
 
   export type ExtraInfo = {
@@ -313,42 +231,12 @@ declare module 'Models' {
     pipelineUrl?: string;
   };
 
-  export interface EditorContentRef {
-    getEditorContent: () => string;
-    clearEditorContent: () => void;
-  }
-
-  // Feed interfaces and types
-  export interface EntityFieldThreadCount {
-    count: number;
-    entityLink: string;
-  }
-
-  export type EntityThreadField = 'description' | 'columns' | 'tags' | 'tasks';
-  export interface EntityFieldThreads {
-    entityLink: string;
-    count: number;
-    entityField: string;
-  }
-
   export type ImageShape = 'circle' | 'square';
-
-  export interface SelectableOption {
-    readonly label: string;
-    readonly value: string;
-  }
-
-  export interface ScrollHandle {
-    left: boolean;
-    right: boolean;
-  }
 
   export interface PagingResponse<T> {
     data: T;
     paging: Paging;
   }
-
-  export type Status = 'initial' | 'waiting' | 'success';
 
   export interface CurrentState {
     id: string;

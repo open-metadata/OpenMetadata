@@ -75,7 +75,7 @@ jest.mock('./FeedPanelOverlay', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
 });
 
-jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

@@ -11,6 +11,18 @@
  *  limitations under the License.
  */
 
+import Description from '@components/common/description/Description';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import { getRoleByName, patchRole } from '@rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '@rest/teamsAPI';
+import { getUserByName, updateUserDetail } from '@rest/userAPI';
 import { Button, Modal, Space, Tabs, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -18,18 +30,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
-import { getUserByName, updateUserDetail } from '../../../axiosAPIs/userAPI';
-import Description from '../../../components/common/description/Description';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

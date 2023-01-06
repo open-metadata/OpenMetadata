@@ -16,6 +16,9 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
+import axiosClient from '@rest/index';
+import { fetchAuthenticationConfig } from '@rest/miscAPI';
+import { getLoggedInUser, getUserByName, updateUser } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
@@ -32,13 +35,6 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import appState from '../../../AppState';
-import axiosClient from '../../../axiosAPIs';
-import { fetchAuthenticationConfig } from '../../../axiosAPIs/miscAPI';
-import {
-  getLoggedInUser,
-  getUserByName,
-  updateUser,
-} from '../../../axiosAPIs/userAPI';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';

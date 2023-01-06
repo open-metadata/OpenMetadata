@@ -12,13 +12,19 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;

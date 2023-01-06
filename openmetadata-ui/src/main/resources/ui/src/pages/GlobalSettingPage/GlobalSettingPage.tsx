@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import GlobalSetting from '@components/GlobalSetting/GlobalSetting';
 import React from 'react';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import GlobalSetting from '../../components/GlobalSetting/GlobalSetting';
 
 const GlobalSettingPage = () => {
   return (

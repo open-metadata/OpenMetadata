@@ -30,7 +30,7 @@ jest.mock('antd', () => ({
     )),
 }));
 
-jest.mock('../../axiosAPIs/teamsAPI', () => ({
+jest.mock('@rest/teamsAPI', () => ({
   getTeamsHierarchy: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: [],

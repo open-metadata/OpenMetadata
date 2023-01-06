@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 
+import RightPanel from '@components/AddDataQualityTest/components/RightPanel';
+import {
+  getRightPanelForAddTestSuitePage,
+  INGESTION_DATA,
+} from '@components/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from '@components/AddDataQualityTest/TestSuiteIngestion';
+import SuccessScreen from '@components/common/success-screen/SuccessScreen';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
+import IngestionStepper from '@components/IngestionStepper/IngestionStepper.component';
+import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
+import { createTestSuites } from '@rest/testAPI';
 import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { createTestSuites } from '../../axiosAPIs/testAPI';
-import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
-import {
-  getRightPanelForAddTestSuitePage,
-  INGESTION_DATA,
-} from '../../components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
-import SuccessScreen from '../../components/common/success-screen/SuccessScreen';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
   TEST_SUITE_STEPPER_BREADCRUMB,
