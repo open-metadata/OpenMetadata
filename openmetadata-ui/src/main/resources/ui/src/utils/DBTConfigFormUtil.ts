@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil, isString } from 'lodash';
-import { ModifiedDbtConfig } from '../components/AddIngestion/addIngestion.interface';
+import { ModifiedDbtConfig } from '@components/AddIngestion/addIngestion.interface';
 import {
   DbtConfigCloud,
   DbtConfigCloudReq,
@@ -25,7 +24,7 @@ import {
   ErrorDbtHttp,
   ErrorDbtLocal,
   ErrorDbtS3,
-} from '../components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
+} from '@components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
 import {
   reqDBTCloudFields,
   reqDBTHttpFields,
@@ -33,11 +32,12 @@ import {
   reqDBTS3Fields,
   rulesDBTGCSCredsFields,
   rulesDBTS3CredsFields,
-} from '../components/common/DBTConfigFormBuilder/DBTFormConstants';
+} from '@components/common/DBTConfigFormBuilder/DBTFormConstants';
 import {
   DBT_SOURCES,
   GCS_CONFIG,
-} from '../components/common/DBTConfigFormBuilder/DBTFormEnum';
+} from '@components/common/DBTConfigFormBuilder/DBTFormEnum';
+import { isEmpty, isNil, isString } from 'lodash';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
   DbtConfig,

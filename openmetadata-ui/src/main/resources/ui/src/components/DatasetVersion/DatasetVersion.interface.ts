@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { VersionData } from '@pages/EntityVersionPage/EntityVersionPage.component';
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetVersionProp {

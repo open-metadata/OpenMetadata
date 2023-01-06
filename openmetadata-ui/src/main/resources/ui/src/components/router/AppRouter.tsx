@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import AccountActivationConfirmation from '@pages/signup/account-activation-confirmation.component';
 import React, { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
-import AccountActivationConfirmation from '../../pages/signup/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
@@ -26,26 +26,22 @@ const AuthenticatedAppRouter = withSuspenseFallback(
   React.lazy(() => import('./AuthenticatedAppRouter'))
 );
 const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/login'))
+  React.lazy(() => import('@pages/login'))
 );
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('../../pages/page-not-found'))
+  React.lazy(() => import('@pages/page-not-found'))
 );
 
 const ForgotPassword = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/forgot-password/forgot-password.component')
-  )
+  React.lazy(() => import('@pages/forgot-password/forgot-password.component'))
 );
 
 const ResetPassword = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/reset-password/reset-password.component')
-  )
+  React.lazy(() => import('@pages/reset-password/reset-password.component'))
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/signup/basic-signup.component'))
+  React.lazy(() => import('@pages/signup/basic-signup.component'))
 );
 
 const AppRouter = () => {

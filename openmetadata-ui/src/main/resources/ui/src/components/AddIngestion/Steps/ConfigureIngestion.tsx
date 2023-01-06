@@ -13,7 +13,6 @@
 
 import { Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
@@ -26,6 +25,7 @@ import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';

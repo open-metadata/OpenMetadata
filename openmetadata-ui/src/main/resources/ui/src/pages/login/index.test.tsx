@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import SigninPage from './index';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;
@@ -23,12 +23,12 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('@components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
 
 jest.mock(
-  '../../components/containers/PageContainer',
+  '@components/containers/PageContainer',
   () =>
     ({ children }: { children: React.ReactNode }) =>
       <div data-testid="PageContainer">{children}</div>

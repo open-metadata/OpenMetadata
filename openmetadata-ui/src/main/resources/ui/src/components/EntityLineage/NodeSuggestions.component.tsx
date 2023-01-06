@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { searchData } from '@rest/miscAPI';
 import { Empty } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce } from 'lodash';
@@ -22,7 +23,6 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
