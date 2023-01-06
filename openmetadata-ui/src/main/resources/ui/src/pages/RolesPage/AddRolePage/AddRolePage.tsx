@@ -163,9 +163,7 @@ const AddRolePage = () => {
                 rules={[
                   {
                     required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('message.at-least-one-policy'),
-                    }),
+                    message: t('message.at-least-one-policy'),
                   },
                 ]}>
                 <Select

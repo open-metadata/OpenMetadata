@@ -94,16 +94,14 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
 
   @Override
   public void validateCreatedEntity(
-      Classification createdEntity, CreateClassification request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      Classification createdEntity, CreateClassification request, Map<String, String> authHeaders) {
     assertEquals(
         request.getProvider() == null ? ProviderType.USER : request.getProvider(), createdEntity.getProvider());
     assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
   }
 
   @Override
-  public void compareEntities(Classification expected, Classification updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(Classification expected, Classification updated, Map<String, String> authHeaders) {
     assertEquals(expected.getProvider() == null ? ProviderType.USER : expected.getProvider(), updated.getProvider());
     assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
