@@ -25,39 +25,44 @@
 
 import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
-import { SkeletonInterface } from 'Models';
 import React from 'react';
+import LabelCountSkeleton from '../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
+import { SkeletonInterface } from '../Interfaces/Skeleton.interfaces';
+import { exploreMock } from '../SkeletonUtils/Skeleton.utils';
 
-const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {
-  const glossaryMock = Array.from({ length: 10 }, (_, index) => index + 1);
-
+const ExploreSkeleton = ({ children, loading }: SkeletonInterface) => {
   return loading ? (
-    <div className="m-b-md p-md">
+    <div className="m-t-md m-b-md">
       <Skeleton active paragraph={{ rows: 0 }} />
-      <Row gutter={32} justify="space-between">
-        <Col span={24}>
-          <Skeleton.Button active block size="small" />
+      <Row justify="space-between">
+        <Col span={20}>
+          <Skeleton active paragraph={{ rows: 0 }} />
         </Col>
-        <Col className="m-t-md" span={24}>
-          <Skeleton.Button active block size="small" />
-        </Col>
-
-        <Col className="m-t-md" span={24}>
-          {glossaryMock.map(() => (
-            <Skeleton.Button
-              active
-              block
-              className="p-xs"
-              key={uniqueId()}
-              size="small"
-            />
-          ))}
+        <Col span={4}>
+          <Skeleton
+            active
+            paragraph={{ rows: 0 }}
+            title={{
+              width: 40,
+            }}
+          />
         </Col>
       </Row>
+
+      {exploreMock.map(({ innerData }) => (
+        <div className="explore-skeleton-entities m-t-md" key={uniqueId()}>
+          <div className="flex justify-between">
+            <Skeleton active paragraph={{ rows: 0 }} />
+          </div>
+          {innerData.map(() => (
+            <LabelCountSkeleton isCount isLabel isSelect key={uniqueId()} />
+          ))}
+        </div>
+      ))}
     </div>
   ) : (
     children
   );
 };
 
-export default GlossaryV1Skeleton;
+export default ExploreSkeleton;

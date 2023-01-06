@@ -24,50 +24,68 @@
  */
 
 import { Col, Row, Skeleton } from 'antd';
-import { uniqueId } from 'lodash';
-import { SkeletonInterface } from 'Models';
 import React from 'react';
+import { LabelCountSkeletonProps } from '../../Interfaces/Skeleton.interfaces';
 
-const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
-  const tagsMock = Array.from({ length: 10 }, (_, index) => index + 1);
-
-  return loading ? (
-    <div className="m-b-md p-md">
-      <Skeleton active paragraph={{ rows: 0 }} />
-      <Row gutter={32} justify="space-between">
-        <Col span={24}>
-          <Skeleton.Button active block size="small" />
-        </Col>
-
-        <Col className="m-t-md" span={24}>
-          {tagsMock.map(() => (
-            <Row justify="space-between" key={uniqueId()}>
-              <Col span={20}>
+const LabelCountSkeleton = ({
+  key,
+  isSelect,
+  isLabel,
+  isCount,
+  labelProps,
+  selectProps,
+  countProps,
+  ...props
+}: LabelCountSkeletonProps) => {
+  return (
+    <Row justify="space-between" key={key}>
+      {isSelect || isLabel ? (
+        <Col span={20}>
+          <div className="w-48 flex">
+            {isSelect ? (
+              <div>
+                <Skeleton
+                  active
+                  paragraph={{ rows: 0 }}
+                  title={{
+                    width: 14,
+                  }}
+                  {...props}
+                  {...selectProps}
+                />
+              </div>
+            ) : null}
+            {isLabel ? (
+              <div className="m-l-xs">
                 <Skeleton
                   active
                   paragraph={{ rows: 0 }}
                   title={{
                     width: 100,
                   }}
+                  {...props}
+                  {...labelProps}
                 />
-              </Col>
-              <Col span={4}>
-                <Skeleton
-                  active
-                  paragraph={{ rows: 0 }}
-                  title={{
-                    width: 40,
-                  }}
-                />
-              </Col>
-            </Row>
-          ))}
+              </div>
+            ) : null}
+          </div>
         </Col>
-      </Row>
-    </div>
-  ) : (
-    children
+      ) : null}
+      <Col span={4}>
+        {isCount ? (
+          <Skeleton
+            active
+            paragraph={{ rows: 0 }}
+            title={{
+              width: 40,
+            }}
+            {...props}
+            {...countProps}
+          />
+        ) : null}
+      </Col>
+    </Row>
   );
 };
 
-export default TagsLeftPanelSkeleton;
+export default LabelCountSkeleton;

@@ -906,3 +906,10 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
       return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
   }
 };
+
+export const reducerWithoutAction = <S, A>(state: S, action: A) => {
+  return {
+    ...state,
+    ...action,
+  };
+};

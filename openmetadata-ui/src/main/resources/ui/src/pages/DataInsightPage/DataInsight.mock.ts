@@ -586,8 +586,3 @@ export const getEntityTiersData = () => {
 
   return { data: graphData, tiers };
 };
-
-export const dataInsightsSkeletonMock = Array.from(
-  { length: 10 },
-  (_, index) => index + 1
-);

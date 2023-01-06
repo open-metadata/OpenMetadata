@@ -27,7 +27,6 @@ import {
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -39,7 +38,6 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAfterMount } from '../../hooks/useAfterMount';
-import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
 import {
@@ -67,39 +65,11 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import GlossaryV1Skeleton from '../Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
-import GlossaryV1Skeleton from './GlossaryV1Skeleton.component';
 
 const { Title } = Typography;
-
-type Props = {
-  assetData: AssetsDataType;
-  deleteStatus: LoadingState;
-  isSearchResultEmpty: boolean;
-  glossaryList: ModifiedGlossaryData[];
-  selectedKey: string;
-  expandedKey: string[];
-  loadingKey: string[];
-  handleExpandedKey: (key: string[]) => void;
-  handleSelectedKey?: (key: string) => void;
-  searchText: string;
-  selectedData: Glossary | GlossaryTerm;
-  isGlossaryActive: boolean;
-  currentPage: number;
-  handleAddGlossaryClick: () => void;
-  handleAddGlossaryTermClick: () => void;
-  updateGlossary: (value: Glossary) => Promise<void>;
-  handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
-  handleSelectedData: (key: string) => void;
-  handleChildLoading: (status: boolean) => void;
-  handleSearchText: (text: string) => void;
-  onGlossaryDelete: (id: string) => void;
-  onGlossaryTermDelete: (id: string) => void;
-  onAssetPaginate: (num: string | number, activePage?: number) => void;
-  onRelatedTermClick?: (fqn: string) => void;
-  handleUserRedirection?: (name: string) => void;
-  isChildLoading: boolean;
-};
 
 const GlossaryV1 = ({
   assetData,
@@ -127,7 +97,7 @@ const GlossaryV1 = ({
   onAssetPaginate,
   onRelatedTermClick,
   currentPage,
-}: Props) => {
+}: GlossaryV1Props) => {
   const { DirectoryTree } = Tree;
   const { t } = useTranslation();
 

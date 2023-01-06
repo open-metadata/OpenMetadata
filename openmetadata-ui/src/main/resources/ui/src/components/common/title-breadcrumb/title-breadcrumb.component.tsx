@@ -23,8 +23,8 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import TitleBreadcrumbSkeleton from '../../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
-import TitleBreadcrumbSkeleton from './TitleBreadcrumbSkeleton.component';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,

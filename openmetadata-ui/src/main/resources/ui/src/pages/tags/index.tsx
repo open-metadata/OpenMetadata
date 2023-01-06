@@ -58,6 +58,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import TagsLeftPanelSkeleton from '../../components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -90,7 +91,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
-import TagsLeftPanelSkeleton from './TagsLeftPanelSkeleton.component';
 
 type DeleteTagDetailsType = {
   id: string;

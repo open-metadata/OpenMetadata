@@ -25,30 +25,29 @@
 
 import { Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
-import { SkeletonInterface } from 'Models';
 import React from 'react';
+import { TitleBreadcrumbSkeletonProps } from '../Interfaces/Skeleton.interfaces';
 
-import { dataInsightsSkeletonMock } from './DataInsight.mock';
-
-const DataInsightsLeftPanelSkeleton = ({
-  loading,
+const TitleBreadcrumbSkeleton = ({
+  titleLinks,
   children,
-}: SkeletonInterface) => {
-  return loading ? (
-    <div className="m-b-md p-xs">
-      {dataInsightsSkeletonMock.map(() => (
-        <Skeleton.Button
+}: TitleBreadcrumbSkeletonProps) =>
+  titleLinks.length === 0 ? (
+    <div className="flex">
+      {titleLinks.map(() => (
+        <Skeleton
           active
-          block
-          className="p-xs"
+          className="m-l-xs"
           key={uniqueId()}
-          size="small"
+          paragraph={{ rows: 0 }}
+          title={{
+            width: 150,
+          }}
         />
       ))}
     </div>
   ) : (
     children
   );
-};
 
-export default DataInsightsLeftPanelSkeleton;
+export default TitleBreadcrumbSkeleton;

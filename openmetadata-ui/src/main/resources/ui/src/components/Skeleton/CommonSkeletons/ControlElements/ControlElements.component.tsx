@@ -24,35 +24,11 @@
  */
 
 import { Skeleton } from 'antd';
-import { uniqueId } from 'lodash';
 import React from 'react';
-import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
+import { ButtonSkeletonProps } from '../../Interfaces/Skeleton.interfaces';
 
-interface TitleBreadcrumbSkeletonProps {
-  titleLinks: TitleBreadcrumbProps['titleLinks'];
-  children: JSX.Element;
-}
+const ButtonSkeleton = ({ key, ...props }: ButtonSkeletonProps) => {
+  return <Skeleton.Button active block key={key} size="small" {...props} />;
+};
 
-const TitleBreadcrumbSkeleton = ({
-  titleLinks,
-  children,
-}: TitleBreadcrumbSkeletonProps) =>
-  titleLinks.length === 0 ? (
-    <div className="flex">
-      {titleLinks.map(() => (
-        <Skeleton
-          active
-          className="m-l-xs"
-          key={uniqueId()}
-          paragraph={{ rows: 0 }}
-          title={{
-            width: 150,
-          }}
-        />
-      ))}
-    </div>
-  ) : (
-    children
-  );
-
-export default TitleBreadcrumbSkeleton;
+export default ButtonSkeleton;

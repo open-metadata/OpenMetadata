@@ -40,6 +40,7 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
+import ExploreSkeleton from '../Skeleton/Explore/ExploreLeftPanelSkeleton.component';
 import { AdvancedSearchModal } from './AdvanceSearchModal.component';
 import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
@@ -53,7 +54,6 @@ import {
 } from './explore.interface';
 import './Explore.style.less';
 import ExploreQuickFilters from './ExploreQuickFilters';
-import ExploreSkeleton from './ExploreSkeleton.component';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
