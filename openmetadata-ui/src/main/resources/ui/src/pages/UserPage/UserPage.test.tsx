@@ -91,7 +91,7 @@ const mockUserData = {
   ],
 };
 
-jest.mock('../../components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('@components/authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: true,
@@ -104,11 +104,11 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => new URLSearchParams()),
 }));
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('@components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 
-jest.mock('../../components/Users/Users.component', () => {
+jest.mock('@components/Users/Users.component', () => {
   return jest.fn().mockReturnValue(<p>User Component</p>);
 });
 

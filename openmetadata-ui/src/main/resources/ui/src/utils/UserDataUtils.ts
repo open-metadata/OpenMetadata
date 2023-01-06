@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OidcUser } from '@components/authentication/auth-provider/AuthProvider.interface';
 import {
   getSearchedTeams,
   getSearchedUsers,
@@ -22,7 +23,6 @@ import { AxiosError } from 'axios';
 import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams } from 'Models';
 import AppState from '../AppState';
-import { OidcUser } from '../components/authentication/auth-provider/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { SearchIndex } from '../enums/search.enum';

@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
 import { addRole, getPolicies } from '@rest/rolesAPIV1';
 import { Button, Card, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -18,9 +21,6 @@ import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import { Policy } from '../../../generated/entity/policies/policy';

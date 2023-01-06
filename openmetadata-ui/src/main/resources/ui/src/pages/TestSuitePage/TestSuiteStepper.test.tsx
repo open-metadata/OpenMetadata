@@ -30,7 +30,7 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../components/AddDataQualityTest/rightPanelData', () => ({
+jest.mock('@components/AddDataQualityTest/rightPanelData', () => ({
   getRightPanelForAddTestSuitePage: jest.fn().mockReturnValue('Add test suite'),
 }));
 
@@ -42,7 +42,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getTestSuitePath: jest.fn().mockReturnValue('/'),
 }));
 
-jest.mock('../../components/AddDataQualityTest/components/RightPanel', () =>
+jest.mock('@components/AddDataQualityTest/components/RightPanel', () =>
   jest.fn().mockReturnValue(<div>RightPanel</div>)
 );
 
@@ -50,23 +50,20 @@ jest.mock('./AddTestSuiteForm', () =>
   jest.fn().mockReturnValue(<div>AddTestSuiteForm</div>)
 );
 
-jest.mock('../../components/AddDataQualityTest/TestSuiteIngestion', () => {
+jest.mock('@components/AddDataQualityTest/TestSuiteIngestion', () => {
   return jest.fn().mockReturnValue(<div>TestSuiteIngestion</div>);
 });
 
-jest.mock('../../components/common/success-screen/SuccessScreen', () => {
+jest.mock('@components/common/success-screen/SuccessScreen', () => {
   return jest.fn().mockReturnValue(<div>SuccessScreen</div>);
 });
 
-jest.mock(
-  '../../components/IngestionStepper/IngestionStepper.component',
-  () => {
-    return jest.fn().mockReturnValue(<div>Ingestion Stepper</div>);
-  }
-);
+jest.mock('@components/IngestionStepper/IngestionStepper.component', () => {
+  return jest.fn().mockReturnValue(<div>Ingestion Stepper</div>);
+});
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>Title Breadcrumb</div>);
   }

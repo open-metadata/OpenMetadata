@@ -11,6 +11,19 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import DatasetDetails from '@components/DatasetDetails/DatasetDetails.component';
+import {
+  Edge,
+  EdgeData,
+} from '@components/EntityLineage/EntityLineage.interface';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
 import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
 import { getLineageByFQN } from '@rest/lineageAPI';
 import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
@@ -34,19 +47,6 @@ import {
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,

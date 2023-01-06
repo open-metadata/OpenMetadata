@@ -59,7 +59,7 @@ jest.mock('@rest/miscAPI', () => ({
   ),
 }));
 
-jest.mock('../../components/UserList/UserListV1', () => {
+jest.mock('@components/UserList/UserListV1', () => {
   return jest.fn().mockImplementation((prop) => (
     <div>
       <p>UserList.component</p>
@@ -80,7 +80,7 @@ jest.mock('../../components/UserList/UserListV1', () => {
     </div>
   ));
 });
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('@components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 

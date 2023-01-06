@@ -11,6 +11,16 @@
  *  limitations under the License.
  */
 
+import ActivityFeedEditor from '@components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import FeedPanelBody from '@components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
+import ActivityThreadPanelBody from '@components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
+import AssigneeList from '@components/common/AssigneeList/AssigneeList';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import UserPopOverCard from '@components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '@components/Loader/Loader';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -32,16 +42,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
-import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
-import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
-import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PanelTab, TaskOperation } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';

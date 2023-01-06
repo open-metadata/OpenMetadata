@@ -12,6 +12,18 @@
  */
 
 import {
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  ModifiedColumn,
+  SelectedEdge,
+  SelectedNode,
+} from '@components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from '@components/EntityLineage/LineageNodeLabel';
+import Loader from '@components/Loader/Loader';
+import {
   faChevronLeft,
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
@@ -31,18 +43,6 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  EdgeData,
-  EdgeTypeEnum,
-  ModifiedColumn,
-  SelectedEdge,
-  SelectedNode,
-} from '../components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {

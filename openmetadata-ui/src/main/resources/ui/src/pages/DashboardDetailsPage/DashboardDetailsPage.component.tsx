@@ -11,6 +11,16 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import DashboardDetails from '@components/DashboardDetails/DashboardDetails.component';
+import {
+  Edge,
+  EdgeData,
+} from '@components/EntityLineage/EntityLineage.interface';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
 import { updateChart } from '@rest/chartAPI';
 import {
   addFollower,
@@ -35,16 +45,6 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
 import { getListDataInsightCharts } from '@rest/DataInsightAPI';
 import { getListKPIs, postKPI } from '@rest/KpiAPI';
 import {
@@ -34,8 +36,6 @@ import { isUndefined, kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,

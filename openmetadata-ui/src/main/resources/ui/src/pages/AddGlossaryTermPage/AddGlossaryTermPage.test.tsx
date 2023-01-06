@@ -29,7 +29,7 @@ jest.mock('react-router', () => ({
   })),
 }));
 
-jest.mock('../../components/AddGlossaryTerm/AddGlossaryTerm.component', () => {
+jest.mock('@components/AddGlossaryTerm/AddGlossaryTerm.component', () => {
   return jest.fn().mockImplementation(({ onCancel, onSave }) => (
     <div
       data-testid="add-glossary-term"

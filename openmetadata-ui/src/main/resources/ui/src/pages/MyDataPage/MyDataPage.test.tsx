@@ -24,7 +24,7 @@ const mockErrors = {
   sandboxMode: 'SandboxModeError',
 };
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('@components/MyData/MyData.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="my-data-component">Mydata component</p>);
@@ -82,7 +82,7 @@ jest.mock('../../utils/APIUtils', () => ({
   formatDataResponse: jest.fn(),
 }));
 
-jest.mock('../../components/containers/PageContainerV1', () => {
+jest.mock('@components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -90,11 +90,11 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('@components/MyData/MyData.component', () => {
   return jest.fn().mockImplementation(() => <p>MyData.component</p>);
 });
 
-jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
+jest.mock('@components/GithubStarButton/GithubStarButton', () => {
   return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
 });
 

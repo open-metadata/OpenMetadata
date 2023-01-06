@@ -51,7 +51,7 @@ const botData = {
   deleted: false,
 };
 
-jest.mock('../../components/BotDetails/BotDetails.component', () => {
+jest.mock('@components/BotDetails/BotDetails.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
@@ -64,7 +64,7 @@ jest.mock('@rest/userAPI', () => ({
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

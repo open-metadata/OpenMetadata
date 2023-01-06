@@ -11,6 +11,16 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import {
+  Edge,
+  EdgeData,
+} from '@components/EntityLineage/EntityLineage.interface';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
+import PipelineDetails from '@components/PipelineDetails/PipelineDetails.component';
 import { getLineageByFQN } from '@rest/lineageAPI';
 import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
 import {
@@ -27,16 +37,6 @@ import { observer } from 'mobx-react';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
 import {
   getServiceDetailsPath,
   getVersionPath,

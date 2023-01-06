@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { AsyncSelect } from '@components/AsyncSelect/AsyncSelect';
 import { createAlertAction, updateAlertAction } from '@rest/alertActionAPI';
 import {
   createAlert,
@@ -43,7 +44,6 @@ import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

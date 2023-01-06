@@ -233,7 +233,7 @@ jest.mock('@rest/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSearchData)),
 }));
 
-jest.mock('../../components/Glossary/GlossaryV1.component', () => {
+jest.mock('@components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>

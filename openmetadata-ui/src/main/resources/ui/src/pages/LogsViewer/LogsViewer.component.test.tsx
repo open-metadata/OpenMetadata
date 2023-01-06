@@ -24,7 +24,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () => () => <>TitleBreadcrumb.component</>
 );
 
@@ -44,7 +44,7 @@ jest.mock('@rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock(
-  '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  '@components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
   () => ({
     IngestionRecentRuns: jest
       .fn()

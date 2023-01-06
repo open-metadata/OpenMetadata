@@ -17,27 +17,27 @@ import { MemoryRouter } from 'react-router-dom';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPageComponent from './TourPage.component';
 
-jest.mock('../../components/nav-bar/NavBar', () => {
+jest.mock('@components/nav-bar/NavBar', () => {
   return jest.fn().mockReturnValue(<div>NavBarComponent</div>);
 });
 
-jest.mock('../../components/tour/Tour', () => {
+jest.mock('@components/tour/Tour', () => {
   return jest.fn().mockReturnValue(<div>TourComponent</div>);
 });
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('@components/MyData/MyData.component', () => {
   return jest.fn().mockReturnValue(<div>MyDataComponent</div>);
 });
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('@components/MyData/MyData.component', () => {
   return jest.fn().mockReturnValue(<div>MyDataComponent</div>);
 });
 
-jest.mock('../../components/Explore/Explore.component', () => {
+jest.mock('@components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<div>ExploreComponent</div>);
 });
 
-jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
+jest.mock('@components/DatasetDetails/DatasetDetails.component', () => {
   return jest.fn().mockReturnValue(<div>DatasetDetailsComponent</div>);
 });
 

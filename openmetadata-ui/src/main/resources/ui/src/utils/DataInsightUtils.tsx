@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchDropdownOption } from '@components/SearchDropdown/SearchDropdown.interface';
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { t } from 'i18next';
@@ -31,7 +32,6 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,

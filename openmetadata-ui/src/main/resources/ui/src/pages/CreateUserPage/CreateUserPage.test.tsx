@@ -49,7 +49,7 @@ jest.mock('@rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
-jest.mock('../../components/containers/PageContainerV1', () => {
+jest.mock('@components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -61,7 +61,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../components/CreateUser/CreateUser.component', () => {
+jest.mock('@components/CreateUser/CreateUser.component', () => {
   return jest
     .fn()
     .mockImplementation(({ onSave }) => (

@@ -27,12 +27,12 @@ jest.mock('@rest/rolesAPIV1', () => ({
   getPolicies: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('@components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
 jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () =>
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );

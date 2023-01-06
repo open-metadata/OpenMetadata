@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import DashboardVersion from '@components/DashboardVersion/DashboardVersion.component';
+import DatasetVersion from '@components/DatasetVersion/DatasetVersion.component';
+import Loader from '@components/Loader/Loader';
+import PipelineVersion from '@components/PipelineVersion/PipelineVersion.component';
+import TopicVersion from '@components/TopicVersion/TopicVersion.component';
 import {
   getDashboardByFqn,
   getDashboardVersion,
@@ -34,12 +40,6 @@ import {
 import { AxiosError } from 'axios';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
-import DatasetVersion from '../../components/DatasetVersion/DatasetVersion.component';
-import Loader from '../../components/Loader/Loader';
-import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
-import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,

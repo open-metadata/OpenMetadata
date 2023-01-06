@@ -11,6 +11,13 @@
  *  limitations under the License.
  */
 
+import AddIngestion from '@components/AddIngestion/AddIngestion.component';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
+import Loader from '@components/Loader/Loader';
 import {
   addIngestionPipeline,
   checkAirflowStatus,
@@ -25,13 +32,6 @@ import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import Loader from '../../components/Loader/Loader';
 import {
   DEPLOYED_PROGRESS_VAL,
   getServiceDetailsPath,

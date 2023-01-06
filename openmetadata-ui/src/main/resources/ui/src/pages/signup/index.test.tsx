@@ -29,17 +29,17 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('@components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
   })),
 }));
 
-jest.mock('../../components/TeamsSelectable/TeamsSelectable', () => {
+jest.mock('@components/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockImplementation(() => <div>TeamSelectable</div>);
 });
 
-jest.mock('../../components/buttons/Button/Button', () => ({
+jest.mock('@components/buttons/Button/Button', () => ({
   Button: jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -47,7 +47,7 @@ jest.mock('../../components/buttons/Button/Button', () => ({
     )),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('@components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (

@@ -18,8 +18,8 @@ import {
   getMonthCron,
   getWeekCron,
   getYearCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import { StateValue } from '../components/common/CronEditor/CronEditor.interface';
+} from '@components/common/CronEditor/CronEditor.constant';
+import { StateValue } from '@components/common/CronEditor/CronEditor.interface';
 
 export const getCron = (state: StateValue) => {
   const {

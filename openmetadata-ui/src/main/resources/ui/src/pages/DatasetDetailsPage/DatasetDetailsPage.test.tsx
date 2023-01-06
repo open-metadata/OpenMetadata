@@ -66,7 +66,7 @@ jest.mock('../../AppState', () => ({
   ],
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({
@@ -119,7 +119,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
+jest.mock('@components/DatasetDetails/DatasetDetails.component', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -236,12 +236,9 @@ jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
     );
 });
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-  }
-);
+jest.mock('@components/common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
+});
 
 jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),

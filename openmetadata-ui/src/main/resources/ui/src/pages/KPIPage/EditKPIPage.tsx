@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '@components/Loader/Loader';
 import { getChartById } from '@rest/DataInsightAPI';
 import { getKPIByName, patchKPI } from '@rest/KpiAPI';
 import {
@@ -35,10 +39,6 @@ import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,

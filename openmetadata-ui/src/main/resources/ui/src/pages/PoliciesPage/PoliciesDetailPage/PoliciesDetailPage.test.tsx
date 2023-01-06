@@ -35,33 +35,31 @@ jest.mock('@rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/description/Description', () =>
+jest.mock('@components/common/description/Description', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
 );
 
-jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
+jest.mock('@components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
+);
+
+jest.mock('@components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
 jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
-);
-
-jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () =>
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('@components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

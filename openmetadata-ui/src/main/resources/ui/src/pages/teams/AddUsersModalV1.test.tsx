@@ -101,7 +101,7 @@ const mockUserList = [
   },
 ];
 
-jest.mock('../../components/common/searchbar/Searchbar', () => {
+jest.mock('@components/common/searchbar/Searchbar', () => {
   return jest.fn().mockReturnValue(<p data-testid="searchbar">Searchbar</p>);
 });
 

@@ -50,7 +50,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -132,12 +132,9 @@ jest.mock('@rest/databaseAPI', () => ({
     .mockImplementation(() => Promise.resolve({ ...mockDatabase })),
 }));
 
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => {
-    return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
-  }
-);
+jest.mock('@components/common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -149,7 +146,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('@components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -189,22 +186,22 @@ jest.mock('../../utils/ServiceUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
   }
 );
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('@components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
 
-jest.mock('../../components/common/TabsPane/TabsPane', () => {
+jest.mock('@components/common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<div>TabsPane_component</div>);
 });
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '@components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -212,29 +209,25 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
-  () => jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
+jest.mock('@components/common/EntitySummaryDetails/EntitySummaryDetails', () =>
+  jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
 );
 
-jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
+jest.mock('@components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<div>ServiceConfig</div>);
 });
 
-jest.mock(
-  '../../components/common/entityPageInfo/ManageButton/ManageButton',
-  () => {
-    return jest.fn().mockReturnValue(<div>ManageButton</div>);
-  }
-);
-jest.mock('../../components/Ingestion/Ingestion.component', () => {
+jest.mock('@components/common/entityPageInfo/ManageButton/ManageButton', () => {
+  return jest.fn().mockReturnValue(<div>ManageButton</div>);
+});
+jest.mock('@components/Ingestion/Ingestion.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="ingestions">Ingestion</div>);
 });
 
 jest.mock(
-  '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component',
+  '@components/ServiceConnectionDetails/ServiceConnectionDetails.component',
   () => {
     return jest
       .fn()
@@ -244,13 +237,13 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/tags-viewer/tags-viewer', () => {
+jest.mock('@components/tags-viewer/tags-viewer', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);
 });
 
-jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+jest.mock('@components/common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(({ name }) => {
     return <div data-testid={`${name}-profile`}>{name}</div>;
   });

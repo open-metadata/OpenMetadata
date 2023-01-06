@@ -11,6 +11,15 @@
  *  limitations under the License.
  */
 
+import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import TeamDetailsV1 from '@components/TeamDetails/TeamDetailsV1';
 import { searchData } from '@rest/miscAPI';
 import {
   createTeam,
@@ -27,15 +36,6 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,

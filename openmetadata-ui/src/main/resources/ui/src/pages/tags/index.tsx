@@ -11,6 +11,22 @@
  *  limitations under the License.
  */
 
+import Description from '@components/common/description/Description';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from '@components/common/LeftPanelCard/LeftPanelCard';
+import NextPrevious from '@components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
+import Loader from '@components/Loader/Loader';
+import ConfirmationModal from '@components/Modals/ConfirmationModal/ConfirmationModal';
+import FormModal from '@components/Modals/FormModal';
+import { ModalWithMarkdownEditor } from '@components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   createClassification,
@@ -42,22 +58,6 @@ import { FormErrorData, LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import Description from '../../components/common/description/Description';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import Loader from '../../components/Loader/Loader';
-import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
-import FormModal from '../../components/Modals/FormModal';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,

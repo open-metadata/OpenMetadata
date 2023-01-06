@@ -83,7 +83,7 @@ jest.mock('./component/DataQualityTab', () => {
     .mockImplementation(() => <div>DataQualityTab component</div>);
 });
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => {
+jest.mock('@components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn().mockImplementation(() => ({
       getEntityPermission: jest.fn().mockImplementation(() => ({

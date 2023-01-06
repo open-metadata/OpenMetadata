@@ -13,6 +13,12 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import {
+  getDayCron,
+  getHourCron,
+} from '@components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getFeedCount } from '@rest/feedsAPI';
 import { Typography } from 'antd';
@@ -42,12 +48,6 @@ import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,

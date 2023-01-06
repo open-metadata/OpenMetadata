@@ -40,18 +40,15 @@ jest.mock('@rest/pipelineAPI', () => ({
   getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../components/PipelineDetails/PipelineDetails.component', () => {
+jest.mock('@components/PipelineDetails/PipelineDetails.component', () => {
   return jest.fn().mockReturnValue(<div>PipelineDetails.component</div>);
 });
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-  }
-);
+jest.mock('@components/common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
+});
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({

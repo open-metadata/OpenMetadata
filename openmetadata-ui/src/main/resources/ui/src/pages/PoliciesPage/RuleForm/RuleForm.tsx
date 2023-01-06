@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
 import {
   getPolicyFunctions,
   getPolicyResources,
@@ -23,7 +24,6 @@ import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   Effect,

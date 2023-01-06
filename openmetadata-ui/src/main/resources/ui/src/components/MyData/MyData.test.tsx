@@ -236,7 +236,7 @@ jest.mock('@rest/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
-jest.mock('../../components/searched-data/SearchedData', () => {
+jest.mock('@components/searched-data/SearchedData', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
