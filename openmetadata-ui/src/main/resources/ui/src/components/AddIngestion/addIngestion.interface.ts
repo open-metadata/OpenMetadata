@@ -22,6 +22,10 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  DbtConfig,
+  DbtPipelineClass,
+} from '../../generated/metadataIngestion/dbtPipeline';
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
@@ -127,3 +131,7 @@ export type ScheduleIntervalProps = {
   onBack: () => void;
   onDeploy: () => void;
 };
+
+// Todo: Need to refactor below type, as per schema change #9575
+export type ModifiedDbtConfig = DbtConfig &
+  Pick<DbtPipelineClass, 'dbtUpdateDescriptions'>;

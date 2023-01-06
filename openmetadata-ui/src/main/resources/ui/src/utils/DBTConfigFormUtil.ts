@@ -12,6 +12,7 @@
  */
 
 import { isEmpty, isNil, isString } from 'lodash';
+import { ModifiedDbtConfig } from '../components/AddIngestion/addIngestion.interface';
 import {
   DbtConfigCloud,
   DbtConfigCloudReq,
@@ -68,7 +69,7 @@ export const validateDbtCloudConfig = (
 };
 
 export const validateDbtLocalConfig = (
-  data: DbtConfig,
+  data: ModifiedDbtConfig,
   requiredFields = reqDBTLocalFields
 ) => {
   let isValid = true;
@@ -88,7 +89,7 @@ export const validateDbtLocalConfig = (
 };
 
 export const validateDbtHttpConfig = (
-  data: DbtConfig,
+  data: ModifiedDbtConfig,
   requiredFields = reqDBTHttpFields
 ) => {
   let isValid = true;
@@ -229,7 +230,7 @@ export const checkDbtGCSCredsConfigRules = (
 };
 
 export const getSourceTypeFromConfig = (
-  data?: DbtConfig,
+  data?: ModifiedDbtConfig,
   defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;
