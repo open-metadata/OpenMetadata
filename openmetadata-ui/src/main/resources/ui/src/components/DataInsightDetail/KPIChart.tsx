@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getLatestKpiResult, getListKpiResult } from '@rest/KpiAPI';
 import {
   Button,
   Card,
@@ -36,7 +37,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getLatestKpiResult, getListKpiResult } from '../../axiosAPIs/KpiAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,

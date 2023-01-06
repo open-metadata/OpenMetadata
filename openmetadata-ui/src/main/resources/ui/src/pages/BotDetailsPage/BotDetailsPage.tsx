@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import BotDetails from '@components/BotDetails/BotDetails.component';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import { UserDetails } from '@components/Users/Users.interface';
 import {
   getBotByName,
   getUserByName,
   revokeUserToken,
   updateBotDetail,
   updateUserDetail,
-} from '../../axiosAPIs/userAPI';
-import BotDetails from '../../components/BotDetails/BotDetails.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from '../../components/Users/Users.interface';
+} from '@rest/userAPI';
+import { Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';

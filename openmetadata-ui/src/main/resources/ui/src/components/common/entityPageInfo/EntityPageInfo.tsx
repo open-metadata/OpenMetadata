@@ -13,6 +13,7 @@
 
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { getActiveAnnouncement } from '@rest/feedsAPI';
 import { Button, Popover, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -21,7 +22,6 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getActiveAnnouncement } from '../../../axiosAPIs/feedsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '@components/common/rich-text-editor/RichTextEditor.interface';
+import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Tabs } from 'antd';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
 import React, { useState } from 'react';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from '../../../components/common/rich-text-editor/RichTextEditor.interface';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
 

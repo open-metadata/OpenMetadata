@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
+import { checkEmailInUse } from '@rest/auth-API';
+import { createBotWithPut } from '@rest/botsAPI';
+import { createUserWithPut, getUserByName } from '@rest/userAPI';
 import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { checkEmailInUse } from '../../axiosAPIs/auth-API';
-import { createBotWithPut } from '../../axiosAPIs/botsAPI';
-import { createUserWithPut, getUserByName } from '../../axiosAPIs/userAPI';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-
 import {
   AuthenticationMechanism,
   AuthType,
@@ -39,6 +37,7 @@ import {
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
 
 const { Option } = Select;

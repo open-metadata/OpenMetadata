@@ -13,6 +13,19 @@
 
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  deletePostById,
+  deleteThread,
+  getFeedById,
+  updatePost,
+  updateThread,
+} from '@rest/feedsAPI';
+import {
+  getSearchedUsers,
+  getSuggestions,
+  getUserSuggestions,
+  searchData,
+} from '@rest/miscAPI';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
@@ -21,19 +34,6 @@ import { isEqual } from 'lodash';
 import React from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
-import {
-  deletePostById,
-  deleteThread,
-  getFeedById,
-  updatePost,
-  updateThread,
-} from '../axiosAPIs/feedsAPI';
-import {
-  getSearchedUsers,
-  getSuggestions,
-  getUserSuggestions,
-  searchData,
-} from '../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
