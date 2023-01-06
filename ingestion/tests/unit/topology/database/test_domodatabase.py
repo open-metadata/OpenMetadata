@@ -52,22 +52,24 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     ),
 )
 
-EXPTECTED_DATABASE_SCHEMA = CreateDatabaseSchemaRequest(
-    name="do_it_all_with_default_schema",
-    displayName=None,
-    description=None,
-    owner=None,
-    database=EntityReference(
-        id="a58b1856-729c-493b-bc87-6d2269b43ec0",
-        type="database",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
+EXPTECTED_DATABASE_SCHEMA = [
+    CreateDatabaseSchemaRequest(
+        name="do_it_all_with_default_schema",
         displayName=None,
-        deleted=None,
-        href=None,
-    ),
-)
+        description=None,
+        owner=None,
+        database=EntityReference(
+            id="a58b1856-729c-493b-bc87-6d2269b43ec0",
+            type="database",
+            name=None,
+            fullyQualifiedName=None,
+            description=None,
+            displayName=None,
+            deleted=None,
+            href=None,
+        ),
+    )
+]
 
 mock_domodatabase_config = {
     "source": {
@@ -136,107 +138,109 @@ MOCK_TABLE = {
 }
 
 
-EXPTECTED_TABLE = CreateTableRequest(
-    name="DataSet Input",
-    displayName="DataSet Input",
-    description="this is a description for dataset input",
-    tableType=TableType.Regular.value,
-    columns=[
-        Column(
-            name="amount",
-            displayName=None,
-            dataType=DataType.DOUBLE.value,
-            arrayDataType=None,
-            dataLength=None,
-            precision=None,
-            scale=None,
-            dataTypeDisplay=None,
-            description="",
+EXPTECTED_TABLE = [
+    CreateTableRequest(
+        name="DataSet Input",
+        displayName="DataSet Input",
+        description="this is a description for dataset input",
+        tableType=TableType.Regular.value,
+        columns=[
+            Column(
+                name="amount",
+                displayName=None,
+                dataType=DataType.DOUBLE.value,
+                arrayDataType=None,
+                dataLength=None,
+                precision=None,
+                scale=None,
+                dataTypeDisplay=None,
+                description="",
+                fullyQualifiedName=None,
+                tags=None,
+                constraint=None,
+                ordinalPosition=1,
+                jsonSchema=None,
+                children=None,
+                customMetrics=None,
+                profile=None,
+            ),
+            Column(
+                name="bank_transfer_amount",
+                displayName=None,
+                dataType=DataType.DOUBLE.value,
+                arrayDataType=None,
+                dataLength=None,
+                precision=None,
+                scale=None,
+                dataTypeDisplay=None,
+                description="",
+                fullyQualifiedName=None,
+                tags=None,
+                constraint=None,
+                ordinalPosition=2,
+                jsonSchema=None,
+                children=None,
+                customMetrics=None,
+                profile=None,
+            ),
+            Column(
+                name="coupon_amount",
+                displayName=None,
+                dataType=DataType.DOUBLE.value,
+                arrayDataType=None,
+                dataLength=None,
+                precision=None,
+                scale=None,
+                dataTypeDisplay=None,
+                description="",
+                fullyQualifiedName=None,
+                tags=None,
+                constraint=None,
+                ordinalPosition=3,
+                jsonSchema=None,
+                children=None,
+                customMetrics=None,
+                profile=None,
+            ),
+            Column(
+                name="credit_card_amount",
+                displayName=None,
+                dataType=DataType.DOUBLE.value,
+                arrayDataType=None,
+                dataLength=None,
+                precision=None,
+                scale=None,
+                dataTypeDisplay=None,
+                description="",
+                fullyQualifiedName=None,
+                tags=None,
+                constraint=None,
+                ordinalPosition=4,
+                jsonSchema=None,
+                children=None,
+                customMetrics=None,
+                profile=None,
+            ),
+        ],
+        tableConstraints=None,
+        tablePartition=None,
+        tableProfilerConfig=None,
+        owner=None,
+        databaseSchema=EntityReference(
+            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+            type="databaseSchema",
+            name=None,
             fullyQualifiedName=None,
-            tags=None,
-            constraint=None,
-            ordinalPosition=1,
-            jsonSchema=None,
-            children=None,
-            customMetrics=None,
-            profile=None,
-        ),
-        Column(
-            name="bank_transfer_amount",
+            description=None,
             displayName=None,
-            dataType=DataType.DOUBLE.value,
-            arrayDataType=None,
-            dataLength=None,
-            precision=None,
-            scale=None,
-            dataTypeDisplay=None,
-            description="",
-            fullyQualifiedName=None,
-            tags=None,
-            constraint=None,
-            ordinalPosition=2,
-            jsonSchema=None,
-            children=None,
-            customMetrics=None,
-            profile=None,
+            deleted=None,
+            href=None,
         ),
-        Column(
-            name="coupon_amount",
-            displayName=None,
-            dataType=DataType.DOUBLE.value,
-            arrayDataType=None,
-            dataLength=None,
-            precision=None,
-            scale=None,
-            dataTypeDisplay=None,
-            description="",
-            fullyQualifiedName=None,
-            tags=None,
-            constraint=None,
-            ordinalPosition=3,
-            jsonSchema=None,
-            children=None,
-            customMetrics=None,
-            profile=None,
-        ),
-        Column(
-            name="credit_card_amount",
-            displayName=None,
-            dataType=DataType.DOUBLE.value,
-            arrayDataType=None,
-            dataLength=None,
-            precision=None,
-            scale=None,
-            dataTypeDisplay=None,
-            description="",
-            fullyQualifiedName=None,
-            tags=None,
-            constraint=None,
-            ordinalPosition=4,
-            jsonSchema=None,
-            children=None,
-            customMetrics=None,
-            profile=None,
-        ),
-    ],
-    tableConstraints=None,
-    tablePartition=None,
-    tableProfilerConfig=None,
-    owner=None,
-    databaseSchema=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="databaseSchema",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
-    tags=None,
-    viewDefinition=None,
-    extension=None,
-)
+        tags=None,
+        viewDefinition=None,
+        extension=None,
+    )
+]
 
 
 class DomoDatabaseUnitTest(TestCase):
@@ -275,7 +279,11 @@ class DomoDatabaseUnitTest(TestCase):
         for schema in yield_schemas:
             if isinstance(schema, CreateDatabaseSchemaRequest):
                 schema_list.append(schema)
-        assert schema_list[0] == EXPTECTED_DATABASE_SCHEMA
+
+        for _, (exptected, original) in enumerate(
+            zip(EXPTECTED_DATABASE_SCHEMA, schema_list)
+        ):
+            self.assertEqual(exptected, original)
 
     def test_yield_table(self):
         table_list = []
@@ -286,4 +294,6 @@ class DomoDatabaseUnitTest(TestCase):
         for table in yield_tables:
             if isinstance(table, CreateTableRequest):
                 table_list.append(table)
-        assert table_list[0] == EXPTECTED_TABLE
+
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+            self.assertEqual(expected, original)
