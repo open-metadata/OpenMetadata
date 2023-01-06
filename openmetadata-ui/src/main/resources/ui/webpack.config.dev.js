@@ -90,7 +90,6 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
-          path.resolve(__dirname, 'node_modules/rc-tree'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
