@@ -61,7 +61,7 @@ export const handleIngestionRetry = (
     let retryCount = count;
     const testIngestionsTab = () => {
 
-        cy.get('[data-testid="Ingestions"]').should('be.visible');
+        cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
         cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
             'have.text',
             rowIndex
@@ -69,7 +69,8 @@ export const handleIngestionRetry = (
         // click on the tab only for the first time
         if (retryCount === 0) {
             // Wait for pipeline status to be loaded
-            verifyResponseStatusCode('@pipelineStatuses', 200)
+            verifyResponseStatusCode('@pipelineStatuses', 200);
+            cy.wait(1000); //adding manual wait for ingestion button to attach to DOM
             cy.get('[data-testid="Ingestions"]').click();
         }
         if (isDatabaseService(type) && testIngestionButton) {
