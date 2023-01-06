@@ -12,11 +12,15 @@
  */
 
 import { EntityData } from '@components/common/PopOverCard/EntityPopOverCard';
+import {
+  LeafNodes,
+  LineagePos,
+} from '@components/EntityLineage/EntityLineage.interface';
 import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
 import { Popover } from 'antd';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
-import { Bucket, LeafNodes, LineagePos } from 'Models';
+import { Bucket } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';

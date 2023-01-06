@@ -16,6 +16,9 @@ import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-
 import {
   Edge,
   EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
 } from '@components/EntityLineage/EntityLineage.interface';
 import Loader from '@components/Loader/Loader';
 import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
@@ -37,13 +40,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -63,6 +60,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,

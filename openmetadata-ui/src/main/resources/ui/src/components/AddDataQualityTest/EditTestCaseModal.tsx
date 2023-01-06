@@ -16,7 +16,6 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { EditorContentRef } from 'Models';
 import React, {
   useCallback,
   useEffect,
@@ -36,6 +35,7 @@ import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';

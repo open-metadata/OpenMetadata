@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EntityFieldThreads } from 'Models';
 import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { EntityFieldThreads } from '../../../interface/feed.interface';
 
 export interface DescriptionProps {
   className?: string;

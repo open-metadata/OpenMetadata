@@ -18,7 +18,7 @@ import {
 } from '@rest/metadataTypeAPI';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
-import { EditorContentRef, FormErrorData } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
@@ -28,6 +28,7 @@ import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import PageContainerV1 from '../../containers/PageContainerV1';
 import PageLayout from '../../containers/PageLayout';
 import { Field } from '../../Field/Field';

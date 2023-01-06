@@ -19,12 +19,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  ExtraInfo,
-  TagOption,
-} from 'Models';
+import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
   useCallback,
@@ -59,6 +54,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
   getCurrentUserId,

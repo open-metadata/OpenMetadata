@@ -15,6 +15,9 @@ import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPla
 import {
   Edge,
   EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
 } from '@components/EntityLineage/EntityLineage.interface';
 import Loader from '@components/Loader/Loader';
 import MlModelDetailComponent from '@components/MlModelDetail/MlModelDetail.component';
@@ -33,12 +36,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -54,6 +52,7 @@ import {
   EntityReference,
 } from '../../generated/type/entityLineage';
 import { Paging } from '../../generated/type/paging';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,

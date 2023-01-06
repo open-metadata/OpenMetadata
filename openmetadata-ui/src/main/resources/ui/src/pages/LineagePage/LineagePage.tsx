@@ -19,6 +19,9 @@ import EntityLineageComponent from '@components/EntityLineage/EntityLineage.comp
 import {
   Edge,
   EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
 } from '@components/EntityLineage/EntityLineage.interface';
 import { getDashboardByFqn } from '@rest/dashboardAPI';
 import { getLineageByFQN } from '@rest/lineageAPI';
@@ -29,7 +32,6 @@ import { getTableDetailsByFQN } from '@rest/tableAPI';
 import { getTopicByFqn } from '@rest/topicsAPI';
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
