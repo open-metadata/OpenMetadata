@@ -45,6 +45,10 @@ class SampleUsageSource(UsageSource):
 
     service_type = DatabaseServiceType.BigQuery.value
 
+    database_field = ""  # filtering not required
+
+    schema_field = ""  # filtering not required
+
     def __init__(
         self, config: WorkflowSource, metadata_config: OpenMetadataConnection
     ):  # pylint: disable=super-init-not-called

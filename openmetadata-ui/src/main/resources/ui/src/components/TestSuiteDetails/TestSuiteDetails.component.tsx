@@ -13,6 +13,7 @@
 
 import { Space, Tooltip } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { useAuth } from '../../hooks/authHooks';
 import { IcDeleteColored } from '../../utils/SvgUtils';
@@ -39,6 +40,7 @@ const TestSuiteDetails = ({
 }: TestSuiteDetailsProps) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
+  const { t } = useTranslation();
 
   const hasAccess = isAdminUser || isAuthDisabled;
 
@@ -52,7 +54,8 @@ const TestSuiteDetails = ({
           data-testid="test-suite-breadcrumb"
           titleLinks={slashedBreadCrumb}
         />
-        <Tooltip title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+        <Tooltip
+          title={hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION}>
           <Button
             data-testid="test-suite-delete"
             disabled={!hasAccess}
@@ -66,7 +69,7 @@ const TestSuiteDetails = ({
               viewBox="0 0 24 24"
               width={14}
             />
-            <span>Delete</span>
+            <span>{t('label.delete')}</span>
           </Button>
         </Tooltip>
         <DeleteWidgetModal

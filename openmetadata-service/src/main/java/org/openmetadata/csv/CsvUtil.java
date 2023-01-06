@@ -32,9 +32,9 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 
 public final class CsvUtil {
-  public static String SEPARATOR = ",";
-  public static String FIELD_SEPARATOR = ";";
-  public static String LINE_SEPARATOR = "\r\n";
+  public static final String SEPARATOR = ",";
+  public static final String FIELD_SEPARATOR = ";";
+  public static final String LINE_SEPARATOR = "\r\n";
 
   private CsvUtil() {
     // Utility class hides the constructor

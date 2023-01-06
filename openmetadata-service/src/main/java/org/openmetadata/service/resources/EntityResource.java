@@ -253,14 +253,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.ok(entity.getHref()).entity(entity).build();
   }
 
-  public String exportCsvInternal(UriInfo uriInfo, SecurityContext securityContext, String name) throws IOException {
+  public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return dao.exportToCsv(name, securityContext.getUserPrincipal().getName());
   }
 
-  protected CsvImportResult importCsvInternal(
-      UriInfo uriInfo, SecurityContext securityContext, String name, String csv, boolean dryRun) throws IOException {
+  protected CsvImportResult importCsvInternal(SecurityContext securityContext, String name, String csv, boolean dryRun)
+      throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return dao.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());

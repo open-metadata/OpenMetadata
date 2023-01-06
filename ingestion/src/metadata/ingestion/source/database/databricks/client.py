@@ -36,10 +36,14 @@ class DatabricksClient:
 
     def __init__(self, config: DatabricksConnection):
         self.config = config
-        base_url, _ = self.config.hostPort.split(":")
+        base_url, *_ = self.config.hostPort.split(":")
         api_version = "/api/2.0"
+        job_api_version = "/api/2.1"
         auth_token = self.config.token.get_secret_value()
-        self.base_url = f"https://{base_url}{api_version}/sql/history/queries"
+        self.base_query_url = f"https://{base_url}{api_version}/sql/history/queries"
+        self.base_job_url = f"https://{base_url}{job_api_version}/jobs"
+        self.jobs_list_url = f"{self.base_job_url}/list"
+        self.jobs_run_list_url = f"{self.base_job_url}/runs/list"
         self.headers = {
             "Authorization": f"Bearer {auth_token}",
             "Content-Type": "application/json",
@@ -75,7 +79,7 @@ class DatabricksClient:
                         }
 
                     response = self.client.get(
-                        self.base_url,
+                        self.base_query_url,
                         data=json.dumps(data),
                         headers=self.headers,
                         timeout=10,
@@ -103,7 +107,7 @@ class DatabricksClient:
                     if result[-1]["execution_end_time_ms"] <= end_time:
 
                         response = self.client.get(
-                            self.base_url,
+                            self.base_query_url,
                             data=json.dumps(data),
                             headers=self.headers,
                             timeout=10,
@@ -122,3 +126,81 @@ class DatabricksClient:
             query_text.startswith(QUERY_WITH_DBT)
             or query_text.startswith(QUERY_WITH_OM_VERSION)
         )
+
+    def list_jobs(self) -> List[dict]:
+        """
+        Method returns List all the created jobs in a Databricks Workspace
+        """
+        job_list = []
+        try:
+            data = {"limit": 25, "expand_tasks": True, "offset": 0}
+
+            response = self.client.get(
+                self.jobs_list_url,
+                data=json.dumps(data),
+                headers=self.headers,
+                timeout=10,
+            ).json()
+
+            job_list.extend(response["jobs"])
+
+            while response["has_more"]:
+
+                data["offset"] = len(response["jobs"])
+
+                response = self.client.get(
+                    self.jobs_list_url,
+                    data=json.dumps(data),
+                    headers=self.headers,
+                    timeout=10,
+                ).json()
+
+                job_list.extend(response["jobs"])
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
+
+        return job_list
+
+    def get_job_runs(self, job_id) -> List[dict]:
+        """
+        Method returns List of all runs for a job by the specified job_id
+        """
+        job_runs = []
+        try:
+            params = {
+                "job_id": job_id,
+                "active_only": "false",
+                "completed_only": "true",
+                "run_type": "JOB_RUN",
+                "expand_tasks": "true",
+            }
+
+            response = self.client.get(
+                self.jobs_run_list_url,
+                params=params,
+                headers=self.headers,
+                timeout=10,
+            ).json()
+
+            job_runs.extend(response["runs"])
+
+            while response["has_more"]:
+
+                params.update({"start_time_to": response["runs"][-1]["start_time"]})
+
+                response = self.client.get(
+                    self.jobs_run_list_url,
+                    params=params,
+                    headers=self.headers,
+                    timeout=10,
+                ).json()
+
+                job_runs.extend(response["runs"])
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
+
+        return job_runs
