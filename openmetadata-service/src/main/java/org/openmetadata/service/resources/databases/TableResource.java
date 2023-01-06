@@ -923,8 +923,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    ResultList<SQLQuery> getTableQueryList = dao.getQueriesForPagination(id, limitParam, before, after);
-    return getTableQueryList;
+    return dao.getQueriesForPagination(id, limitParam, before, after);
   }
 
   @PUT

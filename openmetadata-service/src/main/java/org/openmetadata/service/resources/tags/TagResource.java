@@ -264,8 +264,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    Tag tag = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return tag;
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET

@@ -29,7 +29,7 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
   }
 
   @Override
-  public AlertAction setFields(AlertAction entity, EntityUtil.Fields fields) throws IOException {
+  public AlertAction setFields(AlertAction entity, EntityUtil.Fields fields) {
     return entity;
   }
 

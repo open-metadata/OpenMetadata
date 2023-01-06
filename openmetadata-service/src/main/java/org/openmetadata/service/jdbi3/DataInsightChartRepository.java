@@ -86,7 +86,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public DataInsightChart setFields(DataInsightChart entity, EntityUtil.Fields fields) throws IOException {
+  public DataInsightChart setFields(DataInsightChart entity, EntityUtil.Fields fields) {
     return entity;
   }
 
