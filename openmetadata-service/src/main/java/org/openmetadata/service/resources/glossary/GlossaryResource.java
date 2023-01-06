@@ -382,10 +382,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
       })
-  public String exportCsv(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
-      throws IOException {
-    return super.exportCsvInternal(uriInfo, securityContext, name);
+  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return super.exportCsvInternal(securityContext, name);
   }
 
   @PUT
@@ -404,7 +402,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
                 @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
       })
   public CsvImportResult importCsv(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
       @Parameter(
@@ -416,7 +413,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean dryRun,
       String csv)
       throws IOException {
-    return super.importCsvInternal(uriInfo, securityContext, name, csv, dryRun);
+    return super.importCsvInternal(securityContext, name, csv, dryRun);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {

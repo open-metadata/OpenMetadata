@@ -31,7 +31,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
     supportsEmptyDescription = false;
   }
 
-  public void setupTestDefinitions(TestInfo test) throws IOException {
+  public void setupTestDefinitions() throws IOException {
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
     TEST_DEFINITION1 =
         testDefinitionResourceTest.getEntityByName("columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);

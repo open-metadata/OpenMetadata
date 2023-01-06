@@ -126,7 +126,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Other roles and non-owner can't edit tests
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), EDIT_TESTS, true);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), EDIT_TESTS, true);
-    entity = patchEntityAndCheckAuthorization(entity, USER2.getName(), EDIT_TESTS, true);
+    patchEntityAndCheckAuthorization(entity, USER2.getName(), EDIT_TESTS, true);
   }
 
   @Override
@@ -231,7 +231,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     fieldUpdated(
         change, "testDefinition", TEST_DEFINITION3.getEntityReference(), TEST_DEFINITION2.getEntityReference());
     fieldUpdated(change, "parameterValues", testCase.getParameterValues(), new ArrayList<>());
-    testCase = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
   }
 
   @Test

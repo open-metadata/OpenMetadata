@@ -25,3 +25,5 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
 
     sql_stmt = POSTGRES_SQL_STATEMENT
     filters = ""
+    database_field = "d.datname"
+    schema_field = ""  # schema filtering not available

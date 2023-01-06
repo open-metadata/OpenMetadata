@@ -188,10 +188,7 @@ public class AlertUtil {
       return false;
     }
     // Check Spel Conditions
-    if (!AlertUtil.evaluateAlertConditions(
-        event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules())) {
-      return false;
-    }
-    return true;
+    return AlertUtil.evaluateAlertConditions(
+        event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules());
   }
 }
