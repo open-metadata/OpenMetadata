@@ -1084,7 +1084,7 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
-      updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnNameMatch);
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
