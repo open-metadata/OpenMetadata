@@ -374,6 +374,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
+        columns = []
         try:
             table_constraints = None
             if isinstance(self.service_connection.configSource, GCSConfig):
@@ -381,11 +382,14 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
             if isinstance(self.service_connection.configSource, S3Config):
+                connection_args = self.service_connection.configSource.securityConfig
                 data_frame = self.get_s3_files(
-                    client=self.client, key=table_name, bucket_name=schema_name
+                    client=self.client,
+                    key=table_name,
+                    bucket_name=schema_name,
+                    client_kwargs=connection_args,
                 )
             if isinstance(self.service_connection.configSource, AzureConfig):
-                columns = None
                 connection_args = self.service_connection.configSource.securityConfig
                 storage_options = {
                     "tenant_id": connection_args.tenantId,
@@ -492,7 +496,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         return None
 
     @staticmethod
-    def get_s3_files(client, key, bucket_name):
+    def get_s3_files(client, key, bucket_name, client_kwargs=None):
         """
         Fetch S3 Bucket files
         """
@@ -514,7 +518,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 return read_json_from_s3(client, key, bucket_name)
 
             if key.endswith(".parquet"):
-                return read_parquet_from_s3(client, key, bucket_name)
+                return read_parquet_from_s3(client_kwargs, key, bucket_name)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
