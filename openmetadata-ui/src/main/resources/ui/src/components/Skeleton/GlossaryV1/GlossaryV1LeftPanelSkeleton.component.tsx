@@ -28,7 +28,7 @@ import { uniqueId } from 'lodash';
 import React from 'react';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
 import { SkeletonInterface } from '../Interfaces/Skeleton.interfaces';
-import { mockData } from '../SkeletonUtils/Skeleton.utils';
+import { getSkeletonMockData } from '../SkeletonUtils/Skeleton.utils';
 
 const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (
@@ -43,7 +43,7 @@ const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {
         </Col>
 
         <Col className="m-t-md" span={24}>
-          {mockData.map(() => (
+          {getSkeletonMockData().map(() => (
             <ButtonSkeleton className="p-xs" key={uniqueId()} />
           ))}
         </Col>

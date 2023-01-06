@@ -242,11 +242,7 @@ const Explore: React.FC<ExploreProps> = ({
         <Card
           className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
           data-testid="data-summary-container">
-          <ExploreSkeleton
-            loading={
-              isUndefined(searchResults?.aggregations) &&
-              isUndefined(postFilter)
-            }>
+          <ExploreSkeleton loading={Boolean(loading)}>
             <FacetFilter
               aggregations={omit(searchResults?.aggregations, 'entityType')}
               filters={postFilter}

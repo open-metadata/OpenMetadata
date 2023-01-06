@@ -29,7 +29,7 @@ import React from 'react';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
 import LabelCountSkeleton from '../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
 import { SkeletonInterface } from '../Interfaces/Skeleton.interfaces';
-import { mockData } from '../SkeletonUtils/Skeleton.utils';
+import { getSkeletonMockData } from '../SkeletonUtils/Skeleton.utils';
 
 const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (
@@ -41,7 +41,7 @@ const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
         </Col>
 
         <Col className="m-t-md" span={24}>
-          {mockData.map(() => (
+          {getSkeletonMockData().map(() => (
             <LabelCountSkeleton isCount isLabel key={uniqueId()} />
           ))}
         </Col>

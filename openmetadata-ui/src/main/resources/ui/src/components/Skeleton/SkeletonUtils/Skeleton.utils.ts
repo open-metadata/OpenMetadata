@@ -20,7 +20,5 @@ export const exploreMock = Array.from({ length: 6 }, (_, index) => {
   };
 });
 
-export const mockData = Array.from({ length: 10 }, (_, index) => index + 1);
-
 export const getSkeletonMockData = (length = 10) =>
   Array.from({ length: length }, (_, index) => index + 1);
