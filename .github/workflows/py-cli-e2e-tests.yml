@@ -68,7 +68,7 @@ jobs:
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
-        E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
+        E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
         E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
         E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
         E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
