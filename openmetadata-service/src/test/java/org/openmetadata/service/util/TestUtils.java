@@ -320,12 +320,6 @@ public final class TestUtils {
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
-  public static <T> T put(WebTarget target, Class<T> clz, Status expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response = SecurityUtil.addHeaders(target, headers).method("PUT");
-    return readResponse(response, clz, expectedStatus.getStatusCode());
-  }
-
   public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
     Response response =

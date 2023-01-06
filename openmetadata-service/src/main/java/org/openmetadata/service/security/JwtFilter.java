@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
@@ -23,7 +25,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import io.dropwizard.util.Strings;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
@@ -204,7 +205,7 @@ public class JwtFilter implements ContainerRequestFilter {
   protected static String extractToken(MultivaluedMap<String, String> headers) {
     LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
-    if (Strings.isNullOrEmpty(source)) {
+    if (nullOrEmpty(source)) {
       throw new AuthenticationException("Not Authorized! Token not present");
     }
     // Extract the bearer token
@@ -216,7 +217,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public static String extractToken(String tokenFromHeader) {
     LOG.debug("Request Token:{}", tokenFromHeader);
-    if (Strings.isNullOrEmpty(tokenFromHeader)) {
+    if (nullOrEmpty(tokenFromHeader)) {
       throw new AuthenticationException("Not Authorized! Token not present");
     }
     // Extract the bearer token

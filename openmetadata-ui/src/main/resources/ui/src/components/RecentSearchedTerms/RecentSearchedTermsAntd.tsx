@@ -14,6 +14,7 @@
 import { Button, Card, Popover } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getExplorePathWithSearch } from '../../constants/constants';
 import {
@@ -25,6 +26,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 const RecentSearchedTermsAntd: FunctionComponent = () => {
+  const { t } = useTranslation();
   const [recentlySearchedTerms, setRecentlySearchTerms] = useState<
     RecentlySearchedData[]
   >([]);
@@ -40,7 +42,9 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
 
   return (
     <>
-      <Card style={leftPanelAntCardStyle} title="Recent Search Terms">
+      <Card
+        style={leftPanelAntCardStyle}
+        title={t('label.recent-search-term-plural')}>
         {recentlySearchedTerms.length ? (
           recentlySearchedTerms.map((item, index) => {
             return (
@@ -94,7 +98,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
             );
           })
         ) : (
-          <>No searched terms.</>
+          <>{t('message.no-searched-terms')}.</>
         )}
       </Card>
     </>
