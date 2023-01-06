@@ -158,6 +158,19 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             for tag in dbt_tags_list
         ] or None
 
+    def check_columns(self, catalog_node, required_catalog_keys):
+        for catalog_key, catalog_column in catalog_node.get("columns").items():
+            if all(
+                required_catalog_key in catalog_column
+                for required_catalog_key in required_catalog_keys
+            ):
+                logger.info(f"Successfully Validated DBT Column: {catalog_key}")
+            else:
+                logger.warning(
+                    f"Error validating DBT Column: {catalog_key}\n"
+                    f"Please check if following keys exist for the column node: {required_catalog_keys}"
+                )
+
     def validate_dbt_files(self, dbt_files: DbtFiles):
         """
         Method to validate DBT files
@@ -204,21 +217,15 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 # Validate the catalog file if it is passed
                 if dbt_files.dbt_catalog:
                     catalog_node = catalog_entities.get(key)
-                    for catalog_key, catalog_column in catalog_node.get(
-                        "columns"
-                    ).items():
-                        if all(
-                            required_catalog_key in catalog_column
-                            for required_catalog_key in required_catalog_keys
-                        ):
-                            logger.info(
-                                f"Successfully Validated DBT Column: {catalog_key}"
-                            )
-                        else:
-                            logger.warning(
-                                f"Error validating DBT Column: {catalog_key}\n"
-                                f"Please check if following keys exist for the column node: {required_catalog_keys}"
-                            )
+                    if catalog_node and "columns" in catalog_node:
+                        self.check_columns(
+                            catalog_node=catalog_node,
+                            required_catalog_keys=required_catalog_keys,
+                        )
+                    else:
+                        logger.warning(
+                            f"Unable to find the node or columns in the catalog file for dbt node: {key}"
+                        )
 
     def yield_dbt_tags(
         self, dbt_files: DbtFiles
@@ -434,7 +441,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                 # If catalog file is passed pass the column information from catalog file
                 column_index = None
-                if catalog_node:
+                if catalog_node and "columns" in catalog_node:
                     catalog_column = catalog_node["columns"].get(key)
                     if catalog_column:
                         column_name = catalog_column.get("name")

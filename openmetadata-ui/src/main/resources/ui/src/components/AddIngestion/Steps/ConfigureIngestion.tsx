@@ -124,14 +124,16 @@ const ConfigureIngestion = ({
     return (
       <Field>
         <div className="tw-flex tw-gap-1">
-          <label>Enable Debug Log</label>
+          <label>{t('label.enable-debug-log')}</label>
           <ToggleSwitchV1
             checked={enableDebugLog}
             handleCheck={handleEnableDebugLog}
             testId="enable-debug-log"
           />
         </div>
-        <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.enable-debug-logging')}
+        </p>
         {getSeparator('')}
       </Field>
     );
@@ -198,10 +200,9 @@ const ConfigureIngestion = ({
   const getThreadCount = () => {
     return (
       <div>
-        <label>Thread Count</label>
+        <label>{t('label.thread-count')}</label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Set the number of threads to use when computing the metrics. If left
-          blank, it will default to 5.
+          {t('message.thread-count-message')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding tw-w-24"
@@ -244,7 +245,9 @@ const ConfigureIngestion = ({
         <div>
           <Field>
             <div className="tw-flex tw-gap-1">
-              <label>Include views</label>
+              <label>
+                {t('label.include-entity', { entity: t('label.view-plural') })}
+              </label>
               <ToggleSwitchV1
                 checked={includeView}
                 handleCheck={handleIncludeView}
@@ -252,13 +255,17 @@ const ConfigureIngestion = ({
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
-              Enable extracting views from the data source
+              {t('message.include-assets-message', {
+                entity: t('label.view-plural'),
+              })}
             </p>
             {getSeparator('')}
           </Field>
           <Field>
             <div className="tw-flex tw-gap-1">
-              <label>Include tags</label>
+              <label>
+                {t('label.include-entity', { entity: t('label.tag-plural') })}
+              </label>
               <ToggleSwitchV1
                 checked={includeTags}
                 handleCheck={handleIncludeTags}
@@ -266,7 +273,9 @@ const ConfigureIngestion = ({
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
-              Enable extracting tags from the data source
+              {t('message.include-assets-message', {
+                entity: t('label.tag-plural'),
+              })}
             </p>
             {getSeparator('')}
           </Field>
@@ -274,7 +283,7 @@ const ConfigureIngestion = ({
           {!isNil(markDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
-                <label>Mark Deleted Tables</label>
+                <label>{t('label.mark-deleted-table-plural')}</label>
                 <ToggleSwitchV1
                   checked={markDeletedTables}
                   handleCheck={() => {
@@ -286,8 +295,7 @@ const ConfigureIngestion = ({
                 />
               </div>
               <p className="tw-text-grey-muted tw-mt-3">
-                Any deleted tables in the data source will be soft deleted in
-                OpenMetadata
+                {t('message.mark-deleted-table-message')}
               </p>
               {getSeparator('')}
             </Field>
@@ -295,7 +303,7 @@ const ConfigureIngestion = ({
           {!isNil(markAllDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
-                <label>Mark All Deleted Tables</label>
+                <label>{t('label.mark-all-deleted-table-plural')}</label>
                 <ToggleSwitchV1
                   checked={markAllDeletedTables}
                   handleCheck={() => {
@@ -307,8 +315,7 @@ const ConfigureIngestion = ({
                 />
               </div>
               <p className="tw-text-grey-muted tw-mt-3">
-                Optional configuration to mark deleted tables only to the
-                filtered schema
+                {t('message.mark-all-deleted-table-message')}
               </p>
               {getSeparator('')}
             </Field>
@@ -323,7 +330,11 @@ const ConfigureIngestion = ({
       <div>
         <Field>
           <div className="tw-flex tw-gap-1">
-            <label>Include lineage</label>
+            <label>
+              {t('label.include-entity', {
+                entity: t('label.lineage-lowercase'),
+              })}
+            </label>
             <ToggleSwitchV1
               checked={includeLineage}
               handleCheck={handleIncludeLineage}
@@ -331,7 +342,7 @@ const ConfigureIngestion = ({
             />
           </div>
           <p className="tw-text-grey-muted tw-mt-3">
-            Configuration to turn off fetching lineage from pipelines.
+            {t('message.include-lineage-message')}
           </p>
           {getSeparator('')}
         </Field>
@@ -343,7 +354,7 @@ const ConfigureIngestion = ({
     return (
       <Field>
         <div className="tw-flex tw-gap-1">
-          <label>Use FQN For Filtering</label>
+          <label>{t('label.use-fqn-for-filtering')}</label>
           <ToggleSwitchV1
             checked={useFqnFilter}
             handleCheck={onUseFqnFilterClick}
@@ -351,9 +362,7 @@ const ConfigureIngestion = ({
           />
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
-          Regex will be applied on fully qualified name (e.g
-          service_name.db_name.schema_name.table_name) instead of raw name (e.g.
-          table_name).
+          {t('message.use-fqn-for-filtering-message')}
         </p>
         {getSeparator('')}
       </Field>
@@ -376,10 +385,10 @@ const ConfigureIngestion = ({
     return (
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-          Database Service Name
+          {t('label.database-service-name')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Database Service Name for creation of lineage
+          {t('message.database-service-name-message')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -496,8 +505,10 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getIngestSampleToggle(
-              'Ingest Sample Data',
-              'Extract sample data from each topic'
+              t('label.ingest-sample-data'),
+              t('message.ingest-sample-data-for-entity', {
+                entity: t('label.topic-lowercase'),
+              })
             )}
             {getDebugLogToggle()}
           </Fragment>
@@ -550,10 +561,10 @@ const ConfigureIngestion = ({
       <>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-            Name
+            {t('label.name')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Name that identifies this pipeline instance uniquely.
+            {t('message.ingestion-pipeline-name-message')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -579,11 +590,10 @@ const ConfigureIngestion = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="query-log-duration">
-            Query Log Duration
+            {t('label.query-log-duration')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Configuration to tune how far we want to look back in query logs to
-            process usage data.
+            {t('message.query-log-duration-message')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -600,11 +610,10 @@ const ConfigureIngestion = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="stage-file-location">
-            Stage File Location
+            {t('label.stage-file-location')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Temporary file name to store the query logs before processing.
-            Absolute file path required.
+            {t('message.stage-file-location-message')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -621,10 +630,10 @@ const ConfigureIngestion = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="result-limit">
-            Result Limit
+            {t('label.result-limit')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Configuration to set the limit for query logs.
+            {t('message.result-limit-message')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -649,11 +658,10 @@ const ConfigureIngestion = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="query-log-duration">
-            Query Log Duration
+            {t('label.query-log-duration')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Configuration to tune how far we want to look back in query logs to
-            process usage data.
+            {t('message.query-log-duration-message')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -670,10 +678,10 @@ const ConfigureIngestion = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="result-limit">
-            Result Limit
+            {t('label.result-limit')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Configuration to set the limit for query logs.
+            {t('message.result-limit-message')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -697,10 +705,10 @@ const ConfigureIngestion = ({
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-              Name
+              {t('label.name')}
             </label>
             <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-              Name that identifies this pipeline instance uniquely.
+              {t('message.ingestion-pipeline-name-message')}
             </p>
             <input
               className="tw-form-inputs tw-form-inputs-padding"
@@ -723,17 +731,19 @@ const ConfigureIngestion = ({
         {getTimeoutSeconds()}
         {getSeparator('')}
         {getIngestSampleToggle(
-          'Ingest Sample Data',
-          'Extract sample data from each profile'
+          t('label.ingest-sample-data'),
+          t('message.ingest-sample-data-for-entity', {
+            entity: t('label.profile-lowercase'),
+          })
         )}
         {getDebugLogToggle()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-              Description
+              {t('label.description')}
             </label>
             <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-              Description of the pipeline.
+              {t('message.pipeline-description-message')}
             </p>
             <RichTextEditor
               data-testid="description"
@@ -786,7 +796,7 @@ const ConfigureIngestion = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          <span>Cancel</span>
+          <span>{t('label.cancel')}</span>
         </Button>
 
         <Button
@@ -795,7 +805,7 @@ const ConfigureIngestion = ({
           theme="primary"
           variant="contained"
           onClick={handleNext}>
-          <span>Next</span>
+          <span>{t('label.next')}</span>
         </Button>
       </Field>
     </Form>

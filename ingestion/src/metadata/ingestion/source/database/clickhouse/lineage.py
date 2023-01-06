@@ -31,3 +31,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
     filters = """
         and query_kind in ('Create', 'Insert')
     """
+
+    database_field = ""
+
+    schema_field = "databases"

@@ -587,10 +587,10 @@ public final class ChangeEventParser {
     StringBuilder outputStr = new StringBuilder();
     for (DiffMatchPatch.Diff d : diffs) {
       if (DiffMatchPatch.Operation.EQUAL.equals(d.operation)) {
-        // merging equal values of both string ..
+        // merging equal values of both string
         outputStr.append(d.text.trim());
       } else if (DiffMatchPatch.Operation.INSERT.equals(d.operation)) {
-        // merging added values with addMarker before and after of new values added..
+        // merging added values with addMarker before and after of new values added
         outputStr.append(addMarker).append(d.text.trim()).append(addMarker).append(" ");
       } else {
         // merging deleted values with removeMarker before and after of old value removed ..

@@ -15,6 +15,7 @@ import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SIZE } from '../../enums/common.enum';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -50,6 +51,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   getTotalCountForGroup,
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
+  const { t } = useTranslation();
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
@@ -87,7 +89,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         data-testid="empty-list">
         <div className={widthClass}>
           <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.SMALL}>
-            {searchText ? 'No match found' : 'No data available'}
+            {searchText
+              ? t('message.no-match-found')
+              : t('message.no-data-available')}
           </ErrorPlaceHolder>
         </div>
       </div>
@@ -115,7 +119,10 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   const removeOwnerButton = (item: DropDownListItem) => {
     return !isNil(value) && item.value === value && removeOwner ? (
-      <Tooltip title="Remove owner">
+      <Tooltip
+        title={t('label.remove-entity', {
+          entity: t('label.owner-lowercase'),
+        })}>
         <button
           className="cursor-pointer"
           data-testid="remove-owner"
@@ -124,9 +131,13 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             removeOwner && removeOwner();
           }}>
           <SVGIcons
-            alt="remove owner"
+            alt={t('label.remove-entity', {
+              entity: t('label.owner-lowercase'),
+            })}
             icon={Icons.ICON_REMOVE}
-            title="Remove owner"
+            title={t('label.remove-entity', {
+              entity: t('label.owner-lowercase'),
+            })}
             width="16px"
           />
         </button>
@@ -339,7 +350,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                   <input
                     className="tw-form-inputs tw-form-inputs-padding"
                     data-testid="searchInputText"
-                    placeholder="Search..."
+                    placeholder={`${t('label.search')}...`}
                     type="text"
                     value={controlledSearchStr}
                     onChange={(e) => {
