@@ -795,7 +795,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test@1234"));
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -848,7 +849,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
