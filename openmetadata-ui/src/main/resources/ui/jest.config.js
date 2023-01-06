@@ -61,6 +61,8 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
     '^@rest/(.*)$': '<rootDir>/src/rest/$1',
+    '^@pages/(.*)$': '<rootDir>/src/pages/$1',
+    '^@components/(.*)$': '<rootDir>/src/components/$1',
   },
 
   // TypeScript
