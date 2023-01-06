@@ -28,7 +28,7 @@ import { uniqueId } from 'lodash';
 import React from 'react';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
 import LabelCountSkeleton from '../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
-import { SkeletonInterface } from '../Interfaces/Skeleton.interfaces';
+import { SkeletonInterface } from '../interfaces/Skeleton.interfaces';
 import { getSkeletonMockData } from '../SkeletonUtils/Skeleton.utils';
 
 const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {

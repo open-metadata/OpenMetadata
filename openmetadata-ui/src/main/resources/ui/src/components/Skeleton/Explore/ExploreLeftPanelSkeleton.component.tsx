@@ -27,7 +27,7 @@ import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import LabelCountSkeleton from '../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
-import { SkeletonInterface } from '../Interfaces/Skeleton.interfaces';
+import { SkeletonInterface } from '../interfaces/Skeleton.interfaces';
 import { exploreMock } from '../SkeletonUtils/Skeleton.utils';
 
 const ExploreSkeleton = ({ children, loading }: SkeletonInterface) => {

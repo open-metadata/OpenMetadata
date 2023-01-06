@@ -27,7 +27,7 @@ import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
-import { SkeletonInterface } from '../Interfaces/Skeleton.interfaces';
+import { SkeletonInterface } from '../interfaces/Skeleton.interfaces';
 import { getSkeletonMockData } from '../SkeletonUtils/Skeleton.utils';
 
 const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {

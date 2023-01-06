@@ -26,7 +26,7 @@
 import { Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import { TitleBreadcrumbSkeletonProps } from '../Interfaces/Skeleton.interfaces';
+import { TitleBreadcrumbSkeletonProps } from '../interfaces/Skeleton.interfaces';
 
 const TitleBreadcrumbSkeleton = ({
   titleLinks,
