@@ -31,6 +31,7 @@ import { ROUTES } from '../../../constants/constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
 import jsonData from '../../../jsons/en';
+import { getBase64EncodedString } from '../../../utils/CommonUtils';
 import localState from '../../../utils/LocalStorageUtils';
 import {
   showErrorToast,
@@ -95,7 +96,10 @@ const BasicAuthProvider = ({
     try {
       setLoginError(null);
       try {
-        const response = await basicAuthSignIn({ email, password });
+        const response = await basicAuthSignIn({
+          email,
+          password: getBase64EncodedString(password),
+        });
 
         if (response.accessToken) {
           localState.setRefreshToken(response.refreshToken);
