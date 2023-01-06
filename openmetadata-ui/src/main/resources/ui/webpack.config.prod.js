@@ -177,7 +177,7 @@ module.exports = {
     alias: {
       '@rest': path.resolve(__dirname, 'src/rest'),
       '@components': path.resolve(__dirname, 'src/components'),
-      '@pages/*': path.resolve(__dirname, 'src/pages'),
+      '@pages': path.resolve(__dirname, 'src/pages'),
     },
   },
 
