@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Status } from 'Models';
+import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 
 export type CardWithListItems = {
@@ -26,7 +26,7 @@ export interface Props extends HTMLAttributes<HTMLDivElement> {
   card: CardWithListItems;
   isActive: boolean;
   isSelected: boolean;
-  tierStatus: Status;
+  tierStatus: LoadingState;
   onSave: (updatedTier: string) => void;
   onCardSelect: (cardId: string) => void;
 }

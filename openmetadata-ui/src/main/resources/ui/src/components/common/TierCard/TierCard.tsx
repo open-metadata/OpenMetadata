@@ -14,7 +14,7 @@
 import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { Status, TableDetail } from 'Models';
+import { LoadingState, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTags } from '../../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -46,7 +46,7 @@ const TierCard = ({
 }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
-  const [statusTier, setStatusTier] = useState<Status>('initial');
+  const [statusTier, setStatusTier] = useState<LoadingState>('initial');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const handleCardSelection = (cardId: string) => {

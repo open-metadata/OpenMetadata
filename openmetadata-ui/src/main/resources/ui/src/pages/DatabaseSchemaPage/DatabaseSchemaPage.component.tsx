@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, ExtraInfo } from 'Models';
+import { ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -81,6 +81,7 @@ import { Table } from '../../generated/entity/data/table';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,
