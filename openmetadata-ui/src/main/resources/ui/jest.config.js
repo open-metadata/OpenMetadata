@@ -34,6 +34,12 @@ module.exports = {
     '<rootDir>/src/**/*.{ts,tsx,js,jsx}', // All files in subdirectories under src/app
     '!<rootDir>/src/*', // Exclude files directly under src/app
   ],
+  coveragePathIgnorePatterns: [
+    '<rootDir>/src/@types/*',
+    '<rootDir>/src/interface/*',
+    '<rootDir>/src/generated/*',
+    '<rootDir>/src/enums/*',
+  ],
 
   // TypeScript
   // preset: 'ts-jest',
