@@ -32,69 +32,64 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AddAlertPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AddAlertPage/AddAlertPage'))
+  React.lazy(() => import('@pages/AddAlertPage/AddAlertPage'))
 );
 
 const AlertDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
+  React.lazy(() => import('@pages/AlertDetailsPage/AlertDetailsPage'))
 );
 
 const AlertsActivityFeedPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+    () => import('@pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
   )
 );
 
 const AlertsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
+  React.lazy(() => import('@pages/AlertsPage/AlertsPage'))
 );
 
 const TeamsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/teams/TeamsPage'))
+  React.lazy(() => import('@pages/teams/TeamsPage'))
 );
 
 const ServicesPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/services/ServicesPage'))
+  React.lazy(() => import('@pages/services/ServicesPage'))
 );
 const BotsPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/BotsPageV1/BotsPageV1.component'))
+  React.lazy(() => import('@pages/BotsPageV1/BotsPageV1.component'))
 );
 const CustomPropertiesPageV1 = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
+    () => import('@pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
 const RolesListPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
+  React.lazy(() => import('@pages/RolesPage/RolesListPage/RolesListPage'))
 );
 const RolesDetailPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/RolesPage/RolesDetailPage/RolesDetailPage')
-  )
+  React.lazy(() => import('@pages/RolesPage/RolesDetailPage/RolesDetailPage'))
 );
 
 const PoliciesDetailPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
+    () => import('@pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
   )
 );
 const PoliciesListPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
+    () => import('@pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
   )
 );
 
 const UserListPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
+  React.lazy(() => import('@pages/UserListPage/UserListPageV1'))
 );
 
 const ElasticSearchIndexPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        '../../pages/ElasticSearchIndexPage/ElasticSearchReIndexPage.component'
-      )
+      import('@pages/ElasticSearchIndexPage/ElasticSearchReIndexPage.component')
   )
 );
 

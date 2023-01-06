@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ServicePageData } from '@pages/service';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { RestoreRequestType } from 'Models';
@@ -19,7 +20,6 @@ import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
-import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 

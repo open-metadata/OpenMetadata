@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import {
   getGlossaries,
   getGlossaryTermByFQN,
@@ -31,7 +32,6 @@ import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
-import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getEntityName } from './CommonUtils';

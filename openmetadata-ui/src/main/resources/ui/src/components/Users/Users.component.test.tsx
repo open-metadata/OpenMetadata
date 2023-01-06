@@ -38,7 +38,7 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
-jest.mock('../../pages/teams/UserCard', () => {
+jest.mock('@pages/teams/UserCard', () => {
   return jest.fn().mockReturnValue(<p>UserCard</p>);
 });
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import CheckboxUserCard from '@pages/teams/CheckboxUserCard';
 import { getSuggestedUsers, searchData } from '@rest/miscAPI';
 import { Button, Col, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
@@ -21,7 +22,6 @@ import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { SearchResponse } from '../../../interface/search.interface';
-import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';

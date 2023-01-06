@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import CheckboxUserCard from '@pages/teams/CheckboxUserCard';
 import { searchData } from '@rest/miscAPI';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
@@ -19,7 +20,6 @@ import React, { useEffect, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
