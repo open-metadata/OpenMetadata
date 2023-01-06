@@ -29,7 +29,6 @@ import {
 } from 'lodash';
 import {
   CurrentState,
-  EntityFieldThreadCount,
   ExtraInfo,
   FormattedTableData,
   RecentlySearched,
@@ -82,6 +81,7 @@ import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';

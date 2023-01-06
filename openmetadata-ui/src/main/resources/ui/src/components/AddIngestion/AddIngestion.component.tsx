@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined, trim } from 'lodash';
+import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +54,7 @@ import {
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import { AddIngestionProps } from './addIngestion.interface';
+import { AddIngestionProps, ModifiedDbtConfig } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
@@ -150,9 +150,9 @@ const AddIngestion = ({
     () => (data?.sourceConfig.config as DbtPipelineClass)?.dbtConfigSource,
     [data]
   );
-  const [dbtConfigSource, setDbtConfigSource] = useState<DbtConfig | undefined>(
-    configData as DbtConfig
-  );
+  const [dbtConfigSource, setDbtConfigSource] = useState<
+    ModifiedDbtConfig | undefined
+  >(configData as DbtConfig);
 
   const sourceTypeData = useMemo(
     () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
@@ -565,9 +565,10 @@ const AddIngestion = ({
       case PipelineType.Dbt: {
         return {
           ...escapeBackwardSlashChar({
-            dbtConfigSource,
+            dbtConfigSource: omit(dbtConfigSource, 'dbtUpdateDescriptions'),
           } as ConfigClass),
           type: ConfigType.Dbt,
+          dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
         };
       }
 

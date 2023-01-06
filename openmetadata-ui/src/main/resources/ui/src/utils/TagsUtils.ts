@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
+import { Bucket, EntityTags, TagOption } from 'Models';
 import {
   getAllClassifications,
   getClassificationByName,
@@ -23,6 +23,7 @@ import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
@@ -122,7 +123,7 @@ export const getTaglist = async (
 };
 
 export const getTableTags = (
-  columns: Array<Partial<TableColumn>>
+  columns: Array<Partial<Column>>
 ): Array<EntityTags> => {
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<EntityTags> = [];

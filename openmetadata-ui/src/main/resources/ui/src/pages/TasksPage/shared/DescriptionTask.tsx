@@ -12,9 +12,9 @@
  */
 
 import { isEqual } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { FC, Fragment, useRef } from 'react';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../../components/common/rich-text-editor/RichTextEditor.interface';
 import {
   TaskType,
   Thread,
