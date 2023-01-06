@@ -20,14 +20,19 @@ import Loader from '../../Loader/Loader';
 import { ScheduleIntervalProps } from '../addIngestion.interface';
 
 const ScheduleInterval = ({
-  status,
-  repeatFrequency,
-  handleRepeatFrequencyChange,
-  submitButtonLabel,
-  onBack,
-  onDeploy,
   includePeriodOptions,
+  onBack,
+  onChange,
+  onDeploy,
+  repeatFrequency,
+  status,
+  submitButtonLabel,
 }: ScheduleIntervalProps) => {
+  const handleRepeatFrequencyChange = (repeatFrequency: string) =>
+    onChange({
+      repeatFrequency: repeatFrequency,
+    });
+
   return (
     <div data-testid="schedule-intervel-container">
       <Field>

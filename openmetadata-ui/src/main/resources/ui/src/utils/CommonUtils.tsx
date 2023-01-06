@@ -42,6 +42,7 @@ import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
+import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import {
   getDayCron,
   getHourCron,
@@ -905,4 +906,45 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
     default:
       return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
   }
+};
+
+/**
+ * It takes a string and returns a string
+ * @param {FilterPatternEnum} type - FilterPatternEnum
+ * @returns A function that takes in a type and returns a keyof AddIngestionState
+ */
+export const getFilterTypes = (
+  type: FilterPatternEnum
+): keyof AddIngestionState => {
+  switch (type) {
+    case FilterPatternEnum.CHART:
+      return 'chartFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DASHBOARD:
+      return 'dashboardFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DATABASE:
+      return 'databaseFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.MLMODEL:
+      return 'mlModelFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.PIPELINE:
+      return 'pipelineFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.SCHEMA:
+      return 'schemaFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.TABLE:
+      return 'tableFilterPattern' as keyof AddIngestionState;
+    default:
+      return 'topicFilterPattern' as keyof AddIngestionState;
+  }
+};
+
+/**
+ * It takes a state and an action, and returns a new state with the action merged into it
+ * @param {S} state - S - The current state of the reducer.
+ * @param {A} action - A - The action that was dispatched.
+ * @returns An object with the state and action properties.
+ */
+export const reducerWithoutAction = <S, A>(state: S, action: A) => {
+  return {
+    ...state,
+    ...action,
+  };
 };
