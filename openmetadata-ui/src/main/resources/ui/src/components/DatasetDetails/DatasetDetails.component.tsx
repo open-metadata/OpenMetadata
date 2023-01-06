@@ -15,7 +15,7 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
-import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -717,7 +717,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         tablePermissions.EditAll || tablePermissions.EditTags
                       }
                       isReadOnly={deleted}
-                      joins={tableJoinData.columnJoins as ColumnJoins[]}
+                      joins={tableJoinData.columnJoins || []}
                       tableConstraints={tableDetails.tableConstraints}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}

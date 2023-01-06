@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-import {
-  EntityFieldThreadCount,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
 import { HTMLAttributes } from 'react';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -25,8 +19,17 @@ import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { ThreadUpdatedFunc } from '../../interface/feed.interface';
-import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import {
+  EntityFieldThreadCount,
+  ThreadUpdatedFunc,
+} from '../../interface/feed.interface';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;

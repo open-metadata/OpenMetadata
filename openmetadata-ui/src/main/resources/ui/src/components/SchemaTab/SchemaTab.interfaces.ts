@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { EntityFieldThreads } from 'Models';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import {
   ColumnJoins,
   Table,
   TableData,
 } from '../../generated/entity/data/table';
+import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export type Props = {
   columns: Table['columns'];

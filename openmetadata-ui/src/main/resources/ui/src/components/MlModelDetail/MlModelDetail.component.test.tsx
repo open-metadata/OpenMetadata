@@ -17,11 +17,11 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { LeafNodes } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Paging } from '../../generated/type/paging';
+import { LeafNodes } from '../EntityLineage/EntityLineage.interface';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {

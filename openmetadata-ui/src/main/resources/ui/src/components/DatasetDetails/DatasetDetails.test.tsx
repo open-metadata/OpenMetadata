@@ -18,7 +18,6 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -33,6 +32,10 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import DatasetDetails from './DatasetDetails.component';
 
 jest.mock('antd', () => ({

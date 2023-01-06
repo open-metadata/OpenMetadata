@@ -25,7 +25,6 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, trim } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
@@ -60,6 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
