@@ -23,11 +23,11 @@ import {
   Switch,
   Tooltip,
 } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, map } from 'lodash';
-import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -98,7 +98,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const isProfiler = activeTab === ProfilerDashboardTab.PROFILER;
 
   const testCaseStatusOption = useMemo(() => {
-    const testCaseStatus: SelectableOption[] = Object.values(
+    const testCaseStatus: DefaultOptionType[] = Object.values(
       TestCaseStatus
     ).map((value) => ({
       label: value,
@@ -123,7 +123,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   }, [isProfiler, isDataQuality]);
 
   const testCaseTypeOption = useMemo(() => {
-    const testCaseStatus: SelectableOption[] = map(TestType, (value, key) => ({
+    const testCaseStatus: DefaultOptionType[] = map(TestType, (value, key) => ({
       label: key,
       value: value,
     }));

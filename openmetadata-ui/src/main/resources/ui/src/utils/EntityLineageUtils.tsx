@@ -19,7 +19,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -37,6 +37,9 @@ import {
   CustomFlow,
   EdgeData,
   EdgeTypeEnum,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
   ModifiedColumn,
   SelectedEdge,
   SelectedNode,

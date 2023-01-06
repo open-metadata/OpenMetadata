@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { EntityFieldThreadCount } from 'Models';
 import { configOptions } from '../constants/constants';
 import { TaskOperation } from '../constants/Feeds.constants';
 import { FeedFilter } from '../enums/mydata.enum';
@@ -27,6 +26,7 @@ import {
   ThreadType,
 } from '../generated/entity/feed/thread';
 import { Paging } from '../generated/type/paging';
+import { EntityFieldThreadCount } from '../interface/feed.interface';
 import APIClient from './index';
 
 export const getAllFeeds = async (
