@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { getLatestTableProfileByFqn } from '@rest/tableAPI';
+import { getListTestCase, ListTestCaseParams } from '@rest/testAPI';
 import {
   Button,
   Col,
@@ -36,8 +38,6 @@ import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
-import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {

@@ -24,16 +24,16 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/lineageAPI', () => ({
+jest.mock('@rest/lineageAPI', () => ({
   getLineageByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('@rest/miscAPI', () => ({
   addLineage: jest.fn(),
   deleteLineageEdge: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+jest.mock('@rest/pipelineAPI', () => ({
   addFollower: jest.fn(),
   patchPipelineDetails: jest.fn(),
   removeFollower: jest.fn(),

@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
 import {
   getDashboardByFqn,
   getDashboardVersion,
   getDashboardVersions,
-} from '../../axiosAPIs/dashboardAPI';
+} from '@rest/dashboardAPI';
 import {
   getPipelineByFqn,
   getPipelineVersion,
   getPipelineVersions,
-} from '../../axiosAPIs/pipelineAPI';
+} from '@rest/pipelineAPI';
 import {
   getTableDetailsByFQN,
   getTableVersion,
   getTableVersions,
-} from '../../axiosAPIs/tableAPI';
+} from '@rest/tableAPI';
 import {
   getTopicByFqn,
   getTopicVersion,
   getTopicVersions,
-} from '../../axiosAPIs/topicsAPI';
+} from '@rest/topicsAPI';
+import { AxiosError } from 'axios';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
 import DatasetVersion from '../../components/DatasetVersion/DatasetVersion.component';

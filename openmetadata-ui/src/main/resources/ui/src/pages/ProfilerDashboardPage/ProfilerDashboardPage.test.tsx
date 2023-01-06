@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getTableDetailsByFQN } from '@rest/tableAPI';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import { ProfilerDashboardTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
@@ -32,7 +32,7 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../../axiosAPIs/tableAPI', () => {
+jest.mock('@rest/tableAPI', () => {
   return {
     getColumnProfilerList: jest
       .fn()
@@ -44,7 +44,7 @@ jest.mock('../../axiosAPIs/tableAPI', () => {
   };
 });
 
-jest.mock('../../axiosAPIs/testAPI', () => {
+jest.mock('@rest/testAPI', () => {
   return {
     getListTestCase: jest.fn().mockImplementation(() => Promise.resolve()),
     ListTestCaseParams: jest.fn().mockImplementation(() => Promise.resolve()),

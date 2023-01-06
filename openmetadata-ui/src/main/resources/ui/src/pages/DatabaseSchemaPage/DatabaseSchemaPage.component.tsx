@@ -11,6 +11,17 @@
  *  limitations under the License.
  */
 
+import {
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseSchemaDetails,
+} from '@rest/databaseAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+  postThread,
+} from '@rest/feedsAPI';
+import { searchQuery } from '@rest/searchAPI';
 import { Col, Row, Space, Table as TableAntd } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -30,17 +41,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
-import {
-  getDatabaseSchemaDetailsByFQN,
-  patchDatabaseSchemaDetails,
-} from '../../axiosAPIs/databaseAPI';
-import {
-  getAllFeeds,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';

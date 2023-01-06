@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { getPolicies } from '@rest/rolesAPIV1';
 import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import PageHeader from '../../../components/header/PageHeader.component';

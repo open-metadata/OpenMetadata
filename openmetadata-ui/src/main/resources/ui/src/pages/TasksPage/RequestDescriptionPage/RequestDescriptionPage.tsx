@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { postThread } from '@rest/feedsAPI';
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -26,7 +27,6 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';

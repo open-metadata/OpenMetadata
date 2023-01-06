@@ -12,6 +12,20 @@
  */
 
 import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+  postThread,
+} from '@rest/feedsAPI';
+import { getLineageByFQN } from '@rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
+import {
+  addFollower,
+  getTableDetailsByFQN,
+  patchTableDetails,
+  removeFollower,
+} from '@rest/tableAPI';
+import {
   act,
   findByTestId,
   findByText,
@@ -20,20 +34,6 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import {
-  getAllFeeds,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import {
-  addFollower,
-  getTableDetailsByFQN,
-  patchTableDetails,
-  removeFollower,
-} from '../../axiosAPIs/tableAPI';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import DatasetDetailsPage from './DatasetDetailsPage.component';
 import {
@@ -247,7 +247,7 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/tableAPI', () => ({
+jest.mock('@rest/tableAPI', () => ({
   addColumnTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve(updateTagRes)),
@@ -277,7 +277,7 @@ jest.mock('../../utils/FeedUtils', () => ({
     .mockImplementation(() => Promise.resolve({ id: 'test', posts: [] })),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: { data: [] } })),
@@ -302,13 +302,13 @@ jest.mock('../../axiosAPIs/feedsAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: createPostRes })),
 }));
 
-jest.mock('../../axiosAPIs/lineageAPI', () => ({
+jest.mock('@rest/lineageAPI', () => ({
   getLineageByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLineageRes })),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('@rest/miscAPI', () => ({
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

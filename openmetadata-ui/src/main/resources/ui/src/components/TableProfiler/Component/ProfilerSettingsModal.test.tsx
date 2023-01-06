@@ -26,7 +26,7 @@ jest.mock('antd/lib/grid', () => ({
     )),
 }));
 
-jest.mock('../../../axiosAPIs/tableAPI', () => ({
+jest.mock('@rest/tableAPI', () => ({
   getTableProfilerConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),

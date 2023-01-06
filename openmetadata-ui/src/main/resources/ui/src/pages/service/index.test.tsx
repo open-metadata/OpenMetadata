@@ -22,14 +22,6 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getCurrentServiceTab } from '../../utils/ServiceUtils';
-
-let mockParams = {
-  serviceFQN: 'bigquery_gcp',
-  serviceType: 'BigQuery',
-  serviceCategory: 'databaseServices',
-  tab: 'databases',
-};
-
 import ServicePage from './index';
 import {
   DASHBOARD_DATA,
@@ -37,6 +29,13 @@ import {
   mockDatabase,
   mockTabs,
 } from './mocks/servicePage.mock';
+
+let mockParams = {
+  serviceFQN: 'bigquery_gcp',
+  serviceType: 'BigQuery',
+  serviceCategory: 'databaseServices',
+  tab: 'databases',
+};
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -65,7 +64,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('@rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -91,23 +90,23 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('@rest/miscAPI', () => ({
   fetchAirflowConfig: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+jest.mock('@rest/mlModelAPI', () => ({
   getMlmodels: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+jest.mock('@rest/pipelineAPI', () => ({
   getPipelines: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/topicsAPI', () => ({
+jest.mock('@rest/topicsAPI', () => ({
   getTopics: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/dashboardAPI', () => ({
+jest.mock('@rest/dashboardAPI', () => ({
   getDashboards: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: DASHBOARD_DATA,
@@ -119,7 +118,7 @@ jest.mock('../../axiosAPIs/dashboardAPI', () => ({
   ),
 }));
 
-jest.mock('../../axiosAPIs/serviceAPI', () => ({
+jest.mock('@rest/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockData)),
@@ -127,7 +126,7 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
   TestConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('@rest/databaseAPI', () => ({
   getDatabases: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ ...mockDatabase })),

@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { searchQuery } from '@rest/searchAPI';
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import useDeepCompareEffect from 'use-deep-compare-effect';
 import AppState from '../../AppState';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
@@ -25,17 +27,14 @@ import {
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/explore.interface';
-import { SearchIndex } from '../../enums/search.enum';
-import { SearchResponse } from '../../interface/search.interface';
-
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
-import useDeepCompareEffect from 'use-deep-compare-effect';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   filterObjectToElasticsearchQuery,

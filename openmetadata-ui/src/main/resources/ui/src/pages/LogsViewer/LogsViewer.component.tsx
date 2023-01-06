@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import {
+  getIngestionPipelineByName,
+  getIngestionPipelineLogById,
+} from '@rest/ingestionPipelineAPI';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
@@ -24,10 +28,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { useParams } from 'react-router-dom';
-import {
-  getIngestionPipelineByName,
-  getIngestionPipelineLogById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
 import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';

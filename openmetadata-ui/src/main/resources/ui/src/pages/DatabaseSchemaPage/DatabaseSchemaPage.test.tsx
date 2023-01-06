@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getDatabaseSchemaDetailsByFQN } from '@rest/databaseAPI';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
-import { getDatabaseSchemaDetailsByFQN } from '../../axiosAPIs/databaseAPI';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -153,13 +153,13 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../axiosAPIs/searchAPI', () => ({
+jest.mock('@rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSearchQueryData)),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetAllFeedsData)),
@@ -174,7 +174,7 @@ jest.mock('../../axiosAPIs/feedsAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockPostThreadData)),
 }));
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('@rest/databaseAPI', () => ({
   getDatabaseSchemaDetailsByFQN: jest
     .fn()
     .mockImplementation(() =>

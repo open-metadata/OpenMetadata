@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getUserByName } from '@rest/userAPI';
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserByName } from '../../axiosAPIs/userAPI';
 import UserPage from './UserPage.component';
 
 const mockUserData = {
@@ -112,20 +112,20 @@ jest.mock('../../components/Users/Users.component', () => {
   return jest.fn().mockReturnValue(<p>User Component</p>);
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('@rest/userAPI', () => ({
   getUserByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockUserData })),
 }));
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('@rest/userAPI', () => ({
   getUserByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockUserData })),
   updateUserDetail: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {

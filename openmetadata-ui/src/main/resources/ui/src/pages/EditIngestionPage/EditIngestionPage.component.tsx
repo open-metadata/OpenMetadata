@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
+import {
+  checkAirflowStatus,
+  deployIngestionPipelineById,
+  getIngestionPipelineByFqn,
+  updateIngestionPipeline,
+} from '@rest/ingestionPipelineAPI';
+import { getServiceByFQN } from '@rest/serviceAPI';
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  checkAirflowStatus,
-  deployIngestionPipelineById,
-  getIngestionPipelineByFqn,
-  updateIngestionPipeline,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';

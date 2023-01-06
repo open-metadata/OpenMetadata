@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { getServices } from '@rest/serviceAPI';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getServices } from '../../axiosAPIs/serviceAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';

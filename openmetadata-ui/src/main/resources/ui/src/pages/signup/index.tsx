@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { createUser } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
-import { createUser } from '../../axiosAPIs/userAPI';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import { UserProfile } from '../../components/authentication/auth-provider/AuthProvider.interface';
 import { Button } from '../../components/buttons/Button/Button';

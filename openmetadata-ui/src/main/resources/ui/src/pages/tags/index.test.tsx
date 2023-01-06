@@ -13,6 +13,12 @@
  */
 
 import {
+  deleteClassification,
+  deleteTag,
+  getAllClassifications,
+  updateClassification,
+} from '@rest/tagAPI';
+import {
   act,
   findAllByTestId,
   findByTestId,
@@ -24,12 +30,6 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import TagsPage from '.';
-import {
-  deleteClassification,
-  deleteTag,
-  getAllClassifications,
-  updateClassification,
-} from '../../axiosAPIs/tagAPI';
 import { getClassifications } from '../../utils/TagsUtils';
 import {
   MOCK_ALL_CLASSIFICATIONS,
@@ -198,7 +198,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('../../axiosAPIs/tagAPI', () => ({
+jest.mock('@rest/tagAPI', () => ({
   createTag: jest.fn(),
   createClassification: jest.fn(),
   updateTag: jest.fn(),

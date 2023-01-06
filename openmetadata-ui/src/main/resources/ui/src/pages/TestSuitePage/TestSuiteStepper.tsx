@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
+import { createTestSuites } from '@rest/testAPI';
 import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { createTestSuites } from '../../axiosAPIs/testAPI';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import {
   getRightPanelForAddTestSuitePage,

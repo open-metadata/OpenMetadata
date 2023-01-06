@@ -17,7 +17,7 @@ import React from 'react';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import RuleForm, { RuleFormProps } from './RuleForm';
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('@rest/rolesAPIV1', () => ({
   getPolicyFunctions: jest.fn().mockImplementation(() => Promise.resolve()),
   getPolicyResources: jest.fn().mockImplementation(() => Promise.resolve()),
   validateRuleCondition: jest.fn().mockImplementation(() => Promise.resolve()),

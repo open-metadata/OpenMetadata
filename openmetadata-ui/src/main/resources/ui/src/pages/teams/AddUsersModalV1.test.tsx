@@ -111,7 +111,7 @@ jest.mock('./UserCard', () => {
     .mockImplementation(() => <p data-testid="user-card">UserCard</p>);
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => {
+jest.mock('@rest/userAPI', () => {
   return {
     getUsers: jest
       .fn()

@@ -23,7 +23,7 @@ jest.mock('../../components/AddGlossary/AddGlossary.component', () => {
   return jest.fn().mockReturnValue(<div>AddGlossary.component</div>);
 });
 
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('@rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

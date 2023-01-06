@@ -13,6 +13,17 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  createClassification,
+  createTag,
+  deleteClassification,
+  deleteTag,
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
+  patchClassification,
+  patchTag,
+} from '@rest/tagAPI';
+import {
   Button,
   Col,
   Input,
@@ -31,17 +42,6 @@ import { FormErrorData, LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import {
-  createClassification,
-  createTag,
-  deleteClassification,
-  deleteTag,
-  getAllClassifications,
-  getClassificationByName,
-  getTags,
-  patchClassification,
-  patchTag,
-} from '../../axiosAPIs/tagAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';

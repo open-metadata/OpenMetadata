@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import {
   getBotByName,
   getUserByName,
   revokeUserToken,
   updateBotDetail,
   updateUserDetail,
-} from '../../axiosAPIs/userAPI';
+} from '@rest/userAPI';
+import { Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import BotDetails from '../../components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from '../../components/containers/PageContainerV1';

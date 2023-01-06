@@ -23,7 +23,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('@rest/rolesAPIV1', () => ({
   getPolicyByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_DATA)),

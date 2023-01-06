@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { getListTestSuites } from '@rest/testAPI';
 import { Button, Form, Input, Space } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';

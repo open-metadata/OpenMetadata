@@ -34,7 +34,7 @@ jest.mock('react-lazylog', () => ({
     .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
 }));
 
-jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('@rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLogsData })),

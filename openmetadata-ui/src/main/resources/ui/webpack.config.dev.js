@@ -65,6 +65,7 @@ module.exports = {
         test: /\.(ts|tsx)$/,
         loader: 'ts-loader',
         options: {
+          configFile: 'tsconfig.json',
           transpileOnly: true, // Speed up compilation in development mode
         },
         include: path.resolve(__dirname, 'src'), // Just the source code
@@ -89,9 +90,7 @@ module.exports = {
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/reactflow'),
-          path.resolve(__dirname, 'node_modules/react-tippy'),
           path.resolve(__dirname, 'node_modules/codemirror'),
-          path.resolve(__dirname, 'node_modules/rc-tree'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
@@ -173,6 +172,11 @@ module.exports = {
       path: require.resolve('path-browserify'),
       fs: false,
       url: require.resolve('url/'),
+    },
+    alias: {
+      '@rest': path.resolve(__dirname, 'src/rest'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@pages/*': path.resolve(__dirname, 'src/pages'),
     },
   },
 

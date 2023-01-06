@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getServiceByFQN, updateService } from '@rest/serviceAPI';
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';

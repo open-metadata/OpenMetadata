@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getListTestSuites } from '@rest/testAPI';
 import { Button, Col, Row, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { getListKPIs } from '@rest/KpiAPI';
+import { searchQuery } from '@rest/searchAPI';
 import {
   Button,
   Card,
@@ -26,8 +28,6 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { getListKPIs } from '../../axiosAPIs/KpiAPI';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';

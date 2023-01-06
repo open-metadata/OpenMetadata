@@ -30,7 +30,7 @@ import {
 } from './mocks/User.mocks';
 import Users from './Users.component';
 
-jest.mock('../../axiosAPIs/rolesAPIV1.ts', () => ({
+jest.mock('@rest/rolesAPIV1.ts', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
@@ -50,7 +50,7 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
-jest.mock('../../axiosAPIs/teamsAPI', () => ({
+jest.mock('@rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
@@ -119,7 +119,7 @@ const mockProp = {
   onSwitchChange: jest.fn(),
 };
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('@rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 

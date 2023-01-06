@@ -11,6 +11,25 @@
  *  limitations under the License.
  */
 
+import { getDashboards } from '@rest/dashboardAPI';
+import { getDatabases } from '@rest/databaseAPI';
+import {
+  checkAirflowStatus,
+  deleteIngestionPipelineById,
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+} from '@rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '@rest/miscAPI';
+import { getMlmodels } from '@rest/mlModelAPI';
+import { getPipelines } from '@rest/pipelineAPI';
+import {
+  getServiceByFQN,
+  TestConnection,
+  updateService,
+} from '@rest/serviceAPI';
+import { getTopics } from '@rest/topicsAPI';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -19,25 +38,6 @@ import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getDashboards } from '../../axiosAPIs/dashboardAPI';
-import { getDatabases } from '../../axiosAPIs/databaseAPI';
-import {
-  checkAirflowStatus,
-  deleteIngestionPipelineById,
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  getIngestionPipelines,
-  triggerIngestionPipelineById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
-import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
-import { getPipelines } from '../../axiosAPIs/pipelineAPI';
-import {
-  getServiceByFQN,
-  TestConnection,
-  updateService,
-} from '../../axiosAPIs/serviceAPI';
-import { getTopics } from '../../axiosAPIs/topicsAPI';
 import { Button as LegacyButton } from '../../components/buttons/Button/Button';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';

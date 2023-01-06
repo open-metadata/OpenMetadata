@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter } from 'react-router';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
-} from '../../axiosAPIs/databaseAPI';
+} from '@rest/databaseAPI';
+import { findByTestId, findByText, render } from '@testing-library/react';
+import React from 'react';
+import { MemoryRouter } from 'react-router';
 import DatabaseDetails from './';
 
 const mockDatabase = {
@@ -218,7 +218,7 @@ jest.mock('../../AppState', () => {
   });
 });
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('@rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockDatabase)),
@@ -231,7 +231,7 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSchemaData)),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAllFeeds)),
@@ -252,7 +252,7 @@ jest.mock('../../components/containers/PageContainer', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/serviceAPI', () => ({
+jest.mock('@rest/serviceAPI', () => ({
   getServiceById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockServiceData })),

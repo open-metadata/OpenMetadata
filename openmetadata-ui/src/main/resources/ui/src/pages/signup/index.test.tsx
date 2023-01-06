@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { createUser } from '@rest/userAPI';
 import { act, fireEvent, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import Signup from '.';
 import AppState from '../../AppState';
-import { createUser } from '../../axiosAPIs/userAPI';
 import { getImages } from '../../utils/CommonUtils';
 import { mockCreateUser } from './mocks/signup.mock';
 
@@ -55,7 +55,7 @@ jest.mock('../../components/containers/PageContainer', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('@rest/userAPI', () => ({
   createUser: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCreateUser)),

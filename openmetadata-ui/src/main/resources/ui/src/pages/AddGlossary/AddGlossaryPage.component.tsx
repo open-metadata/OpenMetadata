@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { addGlossaries } from '@rest/glossaryAPI';
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, {
@@ -22,7 +23,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';

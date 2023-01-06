@@ -44,7 +44,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getGlossaryPath: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('@rest/glossaryAPI', () => ({
   addGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossariesByName: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossaryTermByFQN: jest.fn().mockImplementation(() => Promise.resolve()),

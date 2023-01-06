@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getTeams } from '@rest/teamsAPI';
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, toLower, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import jsonData from '../../jsons/en';

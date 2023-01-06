@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { searchData } from '@rest/miscAPI';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import { isUndefined, uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';

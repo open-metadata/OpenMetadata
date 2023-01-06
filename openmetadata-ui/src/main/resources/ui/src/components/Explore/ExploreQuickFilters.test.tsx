@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getAdvancedFieldDefaultOptions } from '@rest/miscAPI';
 import { act, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getAdvancedFieldDefaultOptions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
@@ -67,7 +67,7 @@ jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('@rest/miscAPI', () => ({
   getAdvancedFieldDefaultOptions: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),

@@ -13,6 +13,15 @@
 
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  getFeedById,
+  getTask,
+  postFeedById,
+  postThread,
+  updatePost,
+  updateTask,
+  updateThread,
+} from '@rest/feedsAPI';
 import { Button, Card, Dropdown, Layout, MenuProps, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -23,15 +32,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
-import {
-  getFeedById,
-  getTask,
-  postFeedById,
-  postThread,
-  updatePost,
-  updateTask,
-  updateThread,
-} from '../../../axiosAPIs/feedsAPI';
 import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';

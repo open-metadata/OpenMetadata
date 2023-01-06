@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { searchData } from '@rest/miscAPI';
+import { getUsers } from '@rest/userAPI';
 import { List, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import {
   ADD_USER_CONTAINER_HEIGHT,

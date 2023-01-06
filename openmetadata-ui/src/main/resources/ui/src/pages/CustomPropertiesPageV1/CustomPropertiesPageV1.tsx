@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getTypeByFQN, updateType } from '@rest/metadataTypeAPI';
 import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../../components/common/TabsPane/TabsPane';

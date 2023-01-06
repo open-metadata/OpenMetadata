@@ -11,6 +11,15 @@
  *  limitations under the License.
  */
 
+import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
+import { getLineageByFQN } from '@rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
+import {
+  addFollower,
+  getTopicByFqn,
+  patchTopicDetails,
+  removeFollower,
+} from '@rest/topicsAPI';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy } from 'lodash';
@@ -25,19 +34,6 @@ import {
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import {
-  addFollower,
-  getTopicByFqn,
-  patchTopicDetails,
-  removeFollower,
-} from '../../axiosAPIs/topicsAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import {

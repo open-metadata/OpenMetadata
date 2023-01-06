@@ -20,7 +20,7 @@ jest.mock('../../components/TopicDetails/TopicDetails.component', () => {
   return jest.fn().mockReturnValue(<div>TopicDetails.component</div>);
 });
 
-jest.mock('../../axiosAPIs/topicsAPI', () => ({
+jest.mock('@rest/topicsAPI', () => ({
   addFollower: jest.fn(),
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   patchTopicDetails: jest.fn(),

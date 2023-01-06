@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import { cloneDeep, isEmpty } from 'lodash';
-import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,
   getGlossaryTermByFQN,
   getGlossaryTerms,
-} from '../axiosAPIs/glossaryAPI';
-import { searchData } from '../axiosAPIs/miscAPI';
+} from '@rest/glossaryAPI';
+import { searchData } from '@rest/miscAPI';
+import { AxiosError } from 'axios';
+import { t } from 'i18next';
+import { cloneDeep, isEmpty } from 'lodash';
+import { DataNode } from 'rc-tree/lib/interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,

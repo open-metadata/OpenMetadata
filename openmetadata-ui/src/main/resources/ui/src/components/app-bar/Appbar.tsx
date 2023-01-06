@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getVersion } from '@rest/miscAPI';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -20,7 +21,6 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
-import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
   getTeamAndUserDetailsPath,

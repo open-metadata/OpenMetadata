@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { createUser } from '@rest/userAPI';
 import {
   act,
   findByTestId,
@@ -20,7 +21,6 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createUser } from '../../axiosAPIs/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
 
 const mockUserRole = {
@@ -45,7 +45,7 @@ const mockUserRole = {
   },
 };
 
-jest.mock('../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('@rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
@@ -69,7 +69,7 @@ jest.mock('../../components/CreateUser/CreateUser.component', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('@rest/userAPI', () => ({
   createUser: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

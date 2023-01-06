@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
+import { getListTestSuites } from '@rest/testAPI';
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import { MOCK_TABLE_DATA } from '../../mocks/TestSuite.mock';
 import TestSuitePage from './TestSuitePage';
 
-jest.mock('../../axiosAPIs/testAPI', () => ({
+jest.mock('@rest/testAPI', () => ({
   getListTestSuites: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE_DATA)),

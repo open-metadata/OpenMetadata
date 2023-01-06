@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getEntityCount } from '@rest/miscAPI';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
@@ -21,7 +22,6 @@ import {
   ServiceTypes,
 } from 'Models';
 import React from 'react';
-import { getEntityCount } from '../axiosAPIs/miscAPI';
 import {
   OperationPermission,
   ResourceEntity,

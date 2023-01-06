@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  getListTestCase,
+  getTestSuiteByName,
+  ListTestCaseParams,
+  updateTestSuiteById,
+} from '@rest/testAPI';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -18,12 +24,6 @@ import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getListTestCase,
-  getTestSuiteByName,
-  ListTestCaseParams,
-  updateTestSuiteById,
-} from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';

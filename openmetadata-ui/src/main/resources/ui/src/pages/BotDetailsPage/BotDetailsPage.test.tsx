@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getUserByName } from '@rest/userAPI';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserByName } from '../../axiosAPIs/userAPI';
 import BotDetailsPage from './BotDetailsPage';
 
 const mockUserDetail = {
@@ -57,7 +57,7 @@ jest.mock('../../components/BotDetails/BotDetails.component', () => {
     .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('@rest/userAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve(botData)),
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve()),
   revokeUserToken: jest.fn().mockImplementation(() => Promise.resolve()),

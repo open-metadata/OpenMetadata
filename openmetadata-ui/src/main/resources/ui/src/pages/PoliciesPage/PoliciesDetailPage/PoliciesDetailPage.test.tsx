@@ -21,7 +21,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('@rest/rolesAPIV1', () => ({
   getPolicyByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_DATA)),
@@ -30,7 +30,7 @@ jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../axiosAPIs/teamsAPI', () => ({
+jest.mock('@rest/teamsAPI', () => ({
   getTeamByName: jest.fn().mockImplementation(() => Promise.resolve()),
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

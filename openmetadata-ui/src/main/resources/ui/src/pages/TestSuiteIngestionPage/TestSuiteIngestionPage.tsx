@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getIngestionPipelineByFqn } from '@rest/ingestionPipelineAPI';
+import { getTestSuiteByName } from '@rest/testAPI';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getIngestionPipelineByFqn } from '../../axiosAPIs/ingestionPipelineAPI';
-import { getTestSuiteByName } from '../../axiosAPIs/testAPI';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import { INGESTION_DATA } from '../../components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';

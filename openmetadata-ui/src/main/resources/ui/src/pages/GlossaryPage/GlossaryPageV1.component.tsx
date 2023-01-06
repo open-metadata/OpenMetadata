@@ -11,13 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { cloneDeep, extend, isEmpty } from 'lodash';
-import { AssetsDataType, LoadingState } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -25,8 +18,15 @@ import {
   getGlossaryTermByFQN,
   patchGlossaries,
   patchGlossaryTerm,
-} from '../../axiosAPIs/glossaryAPI';
-import { searchData } from '../../axiosAPIs/miscAPI';
+} from '@rest/glossaryAPI';
+import { searchData } from '@rest/miscAPI';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, extend, isEmpty } from 'lodash';
+import { AssetsDataType, LoadingState } from 'Models';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';

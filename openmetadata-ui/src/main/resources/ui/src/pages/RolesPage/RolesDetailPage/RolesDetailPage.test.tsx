@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { getRoleByName } from '@rest/rolesAPIV1';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { getRoleByName } from '../../../axiosAPIs/rolesAPIV1';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
@@ -25,7 +25,7 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('@rest/rolesAPIV1', () => ({
   getRoleByName: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));

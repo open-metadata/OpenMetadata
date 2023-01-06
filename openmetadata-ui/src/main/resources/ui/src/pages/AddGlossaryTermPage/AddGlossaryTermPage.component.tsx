@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
+import {
+  addGlossaryTerm,
+  getGlossariesByName,
+  getGlossaryTermByFQN,
+} from '@rest/glossaryAPI';
 import { AxiosError } from 'axios';
 import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  addGlossaryTerm,
-  getGlossariesByName,
-  getGlossaryTermByFQN,
-} from '../../axiosAPIs/glossaryAPI';
 import AddGlossaryTerm from '../../components/AddGlossaryTerm/AddGlossaryTerm.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';

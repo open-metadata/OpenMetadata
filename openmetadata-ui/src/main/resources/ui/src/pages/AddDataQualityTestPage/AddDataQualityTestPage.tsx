@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getTableDetailsByFQN } from '@rest/tableAPI';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import { ProfilerDashboardType } from '../../enums/table.enum';

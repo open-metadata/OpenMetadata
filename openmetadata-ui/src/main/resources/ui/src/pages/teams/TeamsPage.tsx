@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 
+import { searchData } from '@rest/miscAPI';
+import {
+  createTeam,
+  getTeamByName,
+  getTeams,
+  patchTeamDetail,
+} from '@rest/teamsAPI';
+import { getUsers, updateUserDetail } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -19,14 +27,6 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import {
-  createTeam,
-  getTeamByName,
-  getTeams,
-  patchTeamDetail,
-} from '../../axiosAPIs/teamsAPI';
-import { getUsers, updateUserDetail } from '../../axiosAPIs/userAPI';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';

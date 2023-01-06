@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
+import { getAlertActionForAlerts, getAlertsFromId } from '@rest/alertsAPI';
 import { Card } from 'antd';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  getAlertActionForAlerts,
-  getAlertsFromId,
-} from '../../axiosAPIs/alertsAPI';
 import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import {

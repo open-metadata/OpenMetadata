@@ -296,7 +296,7 @@ jest.mock('../../components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
-jest.mock('../../axiosAPIs/searchAPI', () => ({
+jest.mock('@rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(

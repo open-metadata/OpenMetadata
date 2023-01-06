@@ -22,7 +22,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('@rest/rolesAPIV1', () => ({
   addRole: jest.fn().mockImplementation(() => Promise.resolve()),
   getPolicies: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

@@ -13,6 +13,13 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
+} from '@rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '@rest/teamsAPI';
+import {
   Button,
   Card,
   Col,
@@ -31,13 +38,6 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getPolicyByName,
-  getRoleByName,
-  patchPolicy,
-  patchRole,
-} from '../../../axiosAPIs/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
 import Description from '../../../components/common/description/Description';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';

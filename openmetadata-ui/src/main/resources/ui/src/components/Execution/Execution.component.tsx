@@ -12,6 +12,7 @@
  */
 
 import { CloseCircleOutlined } from '@ant-design/icons';
+import { getPipelineStatus } from '@rest/pipelineAPI';
 import {
   Button,
   Col,
@@ -31,7 +32,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
-import { getPipelineStatus } from '../../axiosAPIs/pipelineAPI';
 import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,

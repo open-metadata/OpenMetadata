@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getMlModelByFQN } from '@rest/mlModelAPI';
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getMlModelByFQN } from '../../axiosAPIs/mlModelAPI';
 import MlModelPageComponent from './MlModelPage.component';
 
 const mockData = {
@@ -132,7 +132,7 @@ const mockData = {
   deleted: false,
 };
 
-jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+jest.mock('@rest/mlModelAPI', () => ({
   getMlModelByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
