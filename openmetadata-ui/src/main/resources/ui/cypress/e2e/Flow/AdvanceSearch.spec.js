@@ -25,7 +25,7 @@ import {
 } from '../../common/advancedSearch';
 
 import {
-    interceptURL,
+    deleteCreatedService, interceptURL,
     mySqlConnectionInput,
     testServiceCreationAndIngestion,
     verifyResponseStatusCode

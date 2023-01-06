@@ -610,7 +610,7 @@ export const checkAddRuleWithOperator = (
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${searchCriteria_1}*${filter_2}*${searchCriteria_2}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${searchCriteria_1}*${filter_2}*${response_2}*&sort_field=_score&sort_order=desc`,
     'search'
   );
 
