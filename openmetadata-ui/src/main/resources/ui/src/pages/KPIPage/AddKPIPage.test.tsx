@@ -22,9 +22,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-
 import AddKPIPage from './AddKPIPage';
-
 import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
 const mockPush = jest.fn();
@@ -35,23 +33,23 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/DataInsightAPI', () => ({
+jest.mock('@rest/DataInsightAPI', () => ({
   getListDataInsightCharts: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_CHARTS })),
 }));
 
-jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('@components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () =>
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../axiosAPIs/KpiAPI', () => ({
+jest.mock('@rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_LIST })),

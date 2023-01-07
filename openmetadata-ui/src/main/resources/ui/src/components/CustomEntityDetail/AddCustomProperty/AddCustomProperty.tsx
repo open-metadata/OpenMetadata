@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
+import {
+  addPropertyToEntity,
+  getTypeByFQN,
+  getTypeListByCategory,
+} from '@rest/metadataTypeAPI';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  addPropertyToEntity,
-  getTypeByFQN,
-  getTypeListByCategory,
-} from '../../../axiosAPIs/metadataTypeAPI';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { PageLayoutType } from '../../../enums/layout.enum';
 import { Category, Type } from '../../../generated/entity/type';

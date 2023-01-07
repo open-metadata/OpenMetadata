@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import DeleteWidgetModal from '@components/common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from '@components/common/next-previous/NextPrevious';
+import Loader from '@components/Loader/Loader';
+import { getAllAlerts } from '@rest/alertsAPI';
 import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,

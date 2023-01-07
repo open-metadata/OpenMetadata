@@ -11,6 +11,27 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from '@components/EntityLineage/EntityLineage.interface';
+import Loader from '@components/Loader/Loader';
+import MlModelDetailComponent from '@components/MlModelDetail/MlModelDetail.component';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
+import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
+import { getLineageByFQN } from '@rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
+import {
+  addFollower,
+  getMlModelByFQN,
+  patchMlModelDetails,
+  removeFollower,
+} from '@rest/mlModelAPI';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
@@ -19,31 +40,6 @@ import { observer } from 'mobx-react';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import {
-  addFollower,
-  getMlModelByFQN,
-  patchMlModelDetails,
-  removeFollower,
-} from '../../axiosAPIs/mlModelAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getMlModelPath } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';

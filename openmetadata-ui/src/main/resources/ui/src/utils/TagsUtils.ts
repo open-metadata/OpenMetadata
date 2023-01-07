@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import { Bucket, EntityTags, TagOption } from 'Models';
 import {
   getAllClassifications,
   getClassificationByName,
   getTags,
-} from '../axiosAPIs/tagAPI';
+} from '@rest/tagAPI';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import { Bucket, EntityTags, TagOption } from 'Models';
 import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { Classification } from '../generated/entity/classification/classification';

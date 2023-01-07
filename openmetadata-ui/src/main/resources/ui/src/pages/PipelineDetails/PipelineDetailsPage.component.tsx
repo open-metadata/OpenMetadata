@@ -11,34 +11,34 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import {
-  addFollower,
-  getPipelineByFqn,
-  patchPipelineDetails,
-  removeFollower,
-} from '../../axiosAPIs/pipelineAPI';
-import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
   Edge,
   EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
+} from '@components/EntityLineage/EntityLineage.interface';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
+import PipelineDetails from '@components/PipelineDetails/PipelineDetails.component';
+import { getLineageByFQN } from '@rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
+import {
+  addFollower,
+  getPipelineByFqn,
+  patchPipelineDetails,
+  removeFollower,
+} from '@rest/pipelineAPI';
+import { getServiceByFQN } from '@rest/serviceAPI';
+import { AxiosError } from 'axios';
+import { compare, Operation } from 'fast-json-patch';
+import { isUndefined, omitBy } from 'lodash';
+import { observer } from 'mobx-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   getServiceDetailsPath,
   getVersionPath,

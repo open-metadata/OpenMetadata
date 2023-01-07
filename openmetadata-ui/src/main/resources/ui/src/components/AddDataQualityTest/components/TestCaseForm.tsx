@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
+import { getListTestCase, getListTestDefinitions } from '@rest/testAPI';
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getListTestCase,
-  getListTestDefinitions,
-} from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';

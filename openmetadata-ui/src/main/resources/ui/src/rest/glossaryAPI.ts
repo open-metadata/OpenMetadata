@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 

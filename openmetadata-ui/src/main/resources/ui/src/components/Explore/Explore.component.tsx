@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import FacetFilter from '@components/common/facetfilter/FacetFilter';
+import SearchedData from '@components/searched-data/SearchedData';
 import {
   faSortAmountDownAlt,
   faSortAmountUpAlt,
@@ -30,8 +32,6 @@ import {
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import SearchedData from '../../components/searched-data/SearchedData';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';

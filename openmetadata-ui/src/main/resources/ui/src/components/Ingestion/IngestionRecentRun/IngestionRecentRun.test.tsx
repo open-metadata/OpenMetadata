@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getRunHistoryForPipeline } from '@rest/ingestionPipelineAPI';
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
-jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('@rest/ingestionPipelineAPI', () => ({
   getRunHistoryForPipeline: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: [

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import UserPopOverCard from '@components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
 import { toLower } from 'lodash';
 import React, { FC } from 'react';
-import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 

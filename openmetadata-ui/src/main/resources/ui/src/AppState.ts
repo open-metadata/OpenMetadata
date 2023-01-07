@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { EntityData } from '@components/common/PopOverCard/EntityPopOverCard';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import { EntityData } from './components/common/PopOverCard/EntityPopOverCard';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { CurrentTourPageType } from './enums/tour.enum';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';

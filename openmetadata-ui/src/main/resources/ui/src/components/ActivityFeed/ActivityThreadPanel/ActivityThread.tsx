@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { getFeedById } from '@rest/feedsAPI';
 import { AxiosError } from 'axios';
 import React, { FC, Fragment, useEffect, useState } from 'react';
-import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import {
   Post,
   Thread,

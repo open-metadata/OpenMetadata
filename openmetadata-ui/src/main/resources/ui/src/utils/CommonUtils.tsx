@@ -13,7 +13,14 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import {
+  getDayCron,
+  getHourCron,
+} from '@components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { getFeedCount } from '@rest/feedsAPI';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -40,13 +47,6 @@ import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
-import { getFeedCount } from '../axiosAPIs/feedsAPI';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -919,3 +919,9 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
     ...action,
   };
 };
+
+/**
+ * @param text plain text
+ * @returns base64 encoded text
+ */
+export const getBase64EncodedString = (text: string): string => btoa(text);
