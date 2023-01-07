@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
@@ -91,7 +92,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     assertResponse(
         () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Bot user [bot-test-user] is already used by [bot_put_failIfUserIsAlreadyUsedByAnotherBot] bot");
+        CatalogExceptionMessage.userAlreadyBot(testUser.getName(), create.getName()));
   }
 
   @Test

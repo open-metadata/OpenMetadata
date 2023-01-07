@@ -61,6 +61,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
     supportsNameWithDot = false;
+    supportsNameWithApostrophe = false;
   }
 
   public void setupTypes() throws HttpResponseException {

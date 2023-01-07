@@ -927,7 +927,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(
         () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
+        CatalogExceptionMessage.userAlreadyBot(botUser.getName(), create.getName()));
   }
 
   @Test

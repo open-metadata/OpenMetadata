@@ -182,6 +182,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameWithDot = true;
+  protected boolean supportsNameWithApostrophe = true;
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
@@ -2294,7 +2295,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final String getEntityName(TestInfo test) {
-    return format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    // "'" is added to ensure the names are escaped correctly in backend SQL queries
+    String apostrophe = supportsNameWithApostrophe ? "'" : "";
+    return format("%s%s_%s", entityType, apostrophe, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**
@@ -2303,8 +2306,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
    * these 3 strings)
    */
   public final String getEntityName(TestInfo test, int index) {
+    // "'" is added to ensure the names are escaped correctly in backend SQL queries
+    String apostrophe = supportsNameWithApostrophe ? "'" : "";
     return format(
-        "%s_%s_%s", entityType, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+        "%s%s_%s_%s",
+        entityType, apostrophe, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**
