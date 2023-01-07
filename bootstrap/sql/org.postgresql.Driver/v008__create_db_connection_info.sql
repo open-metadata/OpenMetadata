@@ -19,3 +19,7 @@ DELETE FROM dbservice_entity WHERE serviceType = 'SampleData';
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,supportsUsageExtraction}'
 WHERE serviceType = 'Vertica';
+
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtUpdateDescriptions}'
+WHERE json#>>'{sourceConfig,config,type}' = 'DBT';

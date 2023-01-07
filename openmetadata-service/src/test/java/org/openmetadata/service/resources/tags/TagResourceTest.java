@@ -204,8 +204,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   }
 
   @Override
-  public void validateCreatedEntity(Tag createdEntity, CreateTag request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Tag createdEntity, CreateTag request, Map<String, String> authHeaders) {
     assertEquals(request.getClassification(), createdEntity.getClassification().getFullyQualifiedName());
     if (request.getParent() == null) {
       assertNull(createdEntity.getParent());
@@ -218,7 +217,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   }
 
   @Override
-  public void compareEntities(Tag expected, Tag updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Tag expected, Tag updated, Map<String, String> authHeaders) {
     assertReference(expected.getClassification(), updated.getClassification());
     assertReference(expected.getParent(), updated.getParent());
     assertEquals(expected.getProvider() == null ? ProviderType.USER : expected.getProvider(), updated.getProvider());

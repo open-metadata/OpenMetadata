@@ -338,7 +338,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
-    new TestDefinitionResourceTest().setupTestDefinitions(test);
+    new TestDefinitionResourceTest().setupTestDefinitions();
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();

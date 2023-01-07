@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter } from 'react-router';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
-} from '../../axiosAPIs/databaseAPI';
+} from '@rest/databaseAPI';
+import { findByTestId, findByText, render } from '@testing-library/react';
+import React from 'react';
+import { MemoryRouter } from 'react-router';
 import DatabaseDetails from './';
 
 const mockDatabase = {
@@ -179,7 +179,7 @@ const mockFeedCount = {
   ],
 };
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -193,12 +193,9 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => {
-    return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
-  }
-);
+jest.mock('@components/common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -218,7 +215,7 @@ jest.mock('../../AppState', () => {
   });
 });
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('@rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockDatabase)),
@@ -231,7 +228,7 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSchemaData)),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAllFeeds)),
@@ -244,7 +241,7 @@ jest.mock('../../axiosAPIs/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('@components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -252,7 +249,7 @@ jest.mock('../../components/containers/PageContainer', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/serviceAPI', () => ({
+jest.mock('@rest/serviceAPI', () => ({
   getServiceById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockServiceData })),
@@ -275,26 +272,26 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
-jest.mock('../../components/tags/tags', () => {
+jest.mock('@components/tags/tags', () => {
   return jest.fn().mockReturnValue(<span>Tag</span>);
 });
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('@components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '@components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
   }
 );
 
-jest.mock('../../components/common/TabsPane/TabsPane', () => {
+jest.mock('@components/common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<div>TabsPane</div>);
 });
 
-jest.mock('../../components/FeedEditor/FeedEditor', () => {
+jest.mock('@components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
@@ -309,7 +306,7 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '@components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -317,12 +314,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('@components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
 jest.mock(
-  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  '@components/common/EntitySummaryDetails/EntitySummaryDetails',
   () => {
     return jest
       .fn()
@@ -334,7 +331,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+jest.mock('@components/common/DeleteWidget/DeleteWidgetModal', () => {
   return jest
     .fn()
     .mockReturnValue(

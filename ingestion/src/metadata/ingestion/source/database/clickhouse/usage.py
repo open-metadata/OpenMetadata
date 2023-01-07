@@ -31,3 +31,7 @@ class ClickhouseUsageSource(ClickhouseQueryParserSource, UsageSource):
     filters = """
         and query_kind = 'Select'
     """
+
+    database_field = ""
+
+    schema_field = "databases"

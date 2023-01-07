@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { postThread } from '@rest/feedsAPI';
 import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,

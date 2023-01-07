@@ -240,7 +240,7 @@ jest.mock('./AnnouncementDrawer/AnnouncementDrawer', () => {
   return jest.fn().mockReturnValue(<div>AnnouncementDrawer</div>);
 });
 
-jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+jest.mock('@rest/feedsAPI', () => ({
   getActiveAnnouncement: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

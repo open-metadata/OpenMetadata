@@ -15,7 +15,9 @@ Clickhouse usage module
 import ast
 from abc import ABC
 from datetime import datetime
+from typing import List
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -62,6 +64,29 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,
+            filters=self.filters,  # pylint: disable=no-member
             result_limit=self.source_config.resultLimit,
         )
+
+    def prepare(self):
+        """
+        Fetch queries only from DB that is ingested in OM
+        """
+        databases: List[Database] = self.metadata.list_all_entities(
+            Database, ["databaseSchemas"], params={"service": self.config.serviceName}
+        )
+        database_name_list = []
+        schema_name_list = []
+
+        for database in databases:
+            database_name_list.append(database.name.__root__)
+            if self.schema_field and database.databaseSchemas:
+                for schema in database.databaseSchemas.__root__:
+                    schema_name_list.append(schema.name)
+
+        if self.schema_field and schema_name_list:
+            self.filters += (  # pylint: disable=no-member
+                f" AND hasAny({self.schema_field}, ['"
+                + "','".join(schema_name_list)
+                + "'])"
+            )

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '@components/authentication/auth-provider/basic-auth.provider';
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';

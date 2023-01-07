@@ -22,7 +22,7 @@ const mockInitialData = {
   name: '',
 };
 
-jest.mock('../../components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('@components/common/rich-text-editor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }, ref) => {
       return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;

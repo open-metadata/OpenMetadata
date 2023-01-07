@@ -38,6 +38,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -977,6 +978,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException, TemplateException {
+    byte[] decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+    loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
   }
 

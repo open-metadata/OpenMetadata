@@ -12,13 +12,13 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { FormattedSuggestResponseObject } from '@components/Explore/ExploreQuickFilters.interface';
+import { SearchDropdownOption } from '@components/SearchDropdown/SearchDropdown.interface';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
 import { isArray, isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
-import { FormattedSuggestResponseObject } from '../components/Explore/ExploreQuickFilters.interface';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,

@@ -86,7 +86,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     TagLabelCache.initialize();
   }
 

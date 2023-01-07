@@ -62,3 +62,8 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
                 f"Expected DatabricksConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def prepare(self):
+        """
+        By default, there's nothing to prepare
+        """

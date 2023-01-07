@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict
 
 from airflow import DAG, settings
+from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagModel
 from jinja2 import Template
 from openmetadata_managed_apis.api.config import (
@@ -142,17 +143,17 @@ class DagDeployer:
                     .first()
                 )
                 logger.info("dag_model:" + str(dag_model))
-                # Scheduler Job to scan dags
-                scan_dags_job_background()
-
-                return ApiResponse.success(
-                    {"message": f"Workflow [{self.dag_id}] has been created"}
-                )
             except Exception as exc:
                 msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
                 logger.debug(traceback.format_exc())
                 logger.error(msg)
                 return ApiResponse.server_error({f"message": msg})
+
+        scan_dags_job_background()
+
+        return ApiResponse.success(
+            {"message": f"Workflow [{self.dag_id}] has been created"}
+        )
 
     def deploy(self):
         """

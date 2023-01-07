@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';

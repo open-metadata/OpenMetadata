@@ -136,15 +136,14 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return processor;
   }
 
-  protected void sendAlert(EventResource.ChangeEventList list) throws IOException, InterruptedException {}
+  protected void sendAlert(EventResource.ChangeEventList list) throws IOException {}
 
   protected void onStartDelegate() {}
 
   protected void onShutdownDelegate() {}
 
   @Override
-  public void publish(EventResource.ChangeEventList list)
-      throws EventPublisherException, IOException, InterruptedException {
+  public void publish(EventResource.ChangeEventList list) throws EventPublisherException {
     // Publish to the given Alert Actions
     try {
       LOG.info("Sending Alert {}:{}:{}", alert.getName(), alertAction.getStatusDetails().getStatus(), batch.size());

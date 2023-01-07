@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { AddGlossaryError } from '@components/AddGlossary/AddGlossary.interface';
 import { t } from 'i18next';
-import { AddGlossaryError } from '../components/AddGlossary/AddGlossary.interface';
 import { errorMsg } from '../utils/CommonUtils';
 
 export const ADD_GLOSSARY_ERROR = {

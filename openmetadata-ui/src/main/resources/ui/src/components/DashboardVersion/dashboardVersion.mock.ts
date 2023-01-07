@@ -12,7 +12,7 @@
  */
 /* eslint-disable max-len */
 
-import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
+import { VersionData } from '@pages/EntityVersionPage/EntityVersionPage.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 export const dashboardVersionProps = {
