@@ -11,6 +11,21 @@
  *  limitations under the License.
  */
 
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
+import DailyActiveUsersChart from '@components/DataInsightDetail/DailyActiveUsersChart';
+import DataInsightSummary from '@components/DataInsightDetail/DataInsightSummary';
+import DescriptionInsight from '@components/DataInsightDetail/DescriptionInsight';
+import KPIChart from '@components/DataInsightDetail/KPIChart';
+import OwnerInsight from '@components/DataInsightDetail/OwnerInsight';
+import PageViewsByEntitiesChart from '@components/DataInsightDetail/PageViewsByEntitiesChart';
+import TierInsight from '@components/DataInsightDetail/TierInsight';
+import TopActiveUsers from '@components/DataInsightDetail/TopActiveUsers';
+import TopViewEntities from '@components/DataInsightDetail/TopViewEntities';
+import TotalEntityInsight from '@components/DataInsightDetail/TotalEntityInsight';
+import SearchDropdown from '@components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '@components/SearchDropdown/SearchDropdown.interface';
+import { getListKPIs } from '@rest/KpiAPI';
+import { searchQuery } from '@rest/searchAPI';
 import {
   Button,
   Card,
@@ -26,21 +41,6 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { getListKPIs } from '../../axiosAPIs/KpiAPI';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
-import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
-import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
-import KPIChart from '../../components/DataInsightDetail/KPIChart';
-import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
-import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
-import TierInsight from '../../components/DataInsightDetail/TierInsight';
-import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
-import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
-import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
-import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
-import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {

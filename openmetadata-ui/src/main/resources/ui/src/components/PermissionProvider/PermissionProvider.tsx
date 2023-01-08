@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  getEntityPermissionByFqn,
+  getEntityPermissionById,
+  getLoggedInUserPermissions,
+  getResourcePermission,
+} from '@rest/permissionAPI';
 import { CookieStorage } from 'cookie-storage';
 import { observer } from 'mobx-react';
 import React, {
@@ -24,12 +30,6 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
-import {
-  getEntityPermissionByFqn,
-  getEntityPermissionById,
-  getLoggedInUserPermissions,
-  getResourcePermission,
-} from '../../axiosAPIs/permissionAPI';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
   getUrlPathnameExpiryAfterRoute,

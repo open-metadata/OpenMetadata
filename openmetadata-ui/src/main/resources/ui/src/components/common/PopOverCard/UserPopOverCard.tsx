@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getUserByName } from '@rest/userAPI';
 import { Popover } from 'antd';
 import { isEmpty } from 'lodash';
 import React, {
@@ -22,7 +23,6 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';

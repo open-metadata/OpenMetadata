@@ -65,6 +65,7 @@ module.exports = {
         test: /\.(ts|tsx)$/,
         loader: 'ts-loader',
         options: {
+          configFile: 'tsconfig.json',
           transpileOnly: true, // Speed up compilation in development mode
         },
         include: path.resolve(__dirname, 'src'), // Just the source code
@@ -171,6 +172,11 @@ module.exports = {
       path: require.resolve('path-browserify'),
       fs: false,
       url: require.resolve('url/'),
+    },
+    alias: {
+      '@rest': path.resolve(__dirname, 'src/rest'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@pages': path.resolve(__dirname, 'src/pages'),
     },
   },
 

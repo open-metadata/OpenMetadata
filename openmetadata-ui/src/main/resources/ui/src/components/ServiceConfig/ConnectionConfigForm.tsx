@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
+import { TestConnection } from '@rest/serviceAPI';
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
@@ -21,8 +23,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';

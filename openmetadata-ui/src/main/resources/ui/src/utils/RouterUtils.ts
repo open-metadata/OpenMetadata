@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { ProfilerDashboardTab } from '@components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,

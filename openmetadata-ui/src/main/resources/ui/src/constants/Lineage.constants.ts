@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { ElementLoadingState } from '@components/EntityLineage/EntityLineage.interface';
 import { capitalize } from 'lodash';
-import { ElementLoadingState } from '../components/EntityLineage/EntityLineage.interface';
 import { EntityType } from '../enums/entity.enum';
 
 export const FOREIGN_OBJECT_SIZE = 40;

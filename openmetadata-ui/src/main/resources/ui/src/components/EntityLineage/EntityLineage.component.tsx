@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { searchData } from '@rest/miscAPI';
+import { getTableDetails } from '@rest/tableAPI';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import {
@@ -47,8 +49,6 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -105,8 +105,10 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
+import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import AddPipeLineModal from './AddPipeLineModal';
@@ -124,13 +126,10 @@ import {
   SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
-import EntityLineageSidebar from './EntityLineageSidebar.component';
-import NodeSuggestions from './NodeSuggestions.component';
-
-import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
-import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import './entityLineage.style.less';
+import EntityLineageSidebar from './EntityLineageSidebar.component';
 import LineageNodeLabel from './LineageNodeLabel';
+import NodeSuggestions from './NodeSuggestions.component';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,

@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { getListDataInsightCharts } from '@rest/DataInsightAPI';
+import { getListKPIs, postKPI } from '@rest/KpiAPI';
 import {
   Button,
   Card,
@@ -27,17 +31,11 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getListDataInsightCharts } from '../../axiosAPIs/DataInsightAPI';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import './KPIPage.less';
-
-import { t } from 'i18next';
-import { getListKPIs, postKPI } from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -65,6 +63,8 @@ import {
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './KPIPage.less';
+
 const { Option } = Select;
 
 const breadcrumb = [

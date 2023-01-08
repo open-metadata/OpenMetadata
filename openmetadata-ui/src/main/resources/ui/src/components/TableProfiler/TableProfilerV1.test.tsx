@@ -57,7 +57,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getStatisticsDisplayValue: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/testAPI', () => ({
+jest.mock('@rest/testAPI', () => ({
   getListTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve(TEST_CASE)),
