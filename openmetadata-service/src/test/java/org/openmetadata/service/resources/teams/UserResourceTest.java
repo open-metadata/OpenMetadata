@@ -59,6 +59,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -794,7 +795,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -803,7 +805,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -817,7 +819,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test1@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -847,7 +849,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -856,7 +859,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword(encodePassword("Test@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -870,7 +873,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test1@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -881,6 +884,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 ADMIN_AUTH_HEADERS),
         UNAUTHORIZED,
         CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  private String encodePassword(String password) {
+    return Base64.getEncoder().encodeToString(password.getBytes());
   }
 
   private void validateJwtBasicAuth(JwtResponse jwtResponse, String username) {
