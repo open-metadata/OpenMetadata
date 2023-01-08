@@ -34,9 +34,12 @@ module.exports = {
     '<rootDir>/src/**/*.{ts,tsx,js,jsx}', // All files in subdirectories under src/app
     '!<rootDir>/src/*', // Exclude files directly under src/app
   ],
-
-  // TypeScript
-  // preset: 'ts-jest',
+  coveragePathIgnorePatterns: [
+    '<rootDir>/src/@types/*',
+    '<rootDir>/src/interface/*',
+    '<rootDir>/src/generated/*',
+    '<rootDir>/src/enums/*',
+  ],
 
   // Transforms
   transform: {
@@ -57,6 +60,9 @@ module.exports = {
     '@fortawesome/react-fontawesome':
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
+    '^@rest/(.*)$': '<rootDir>/src/rest/$1',
+    '^@pages/(.*)$': '<rootDir>/src/pages/$1',
+    '^@components/(.*)$': '<rootDir>/src/components/$1',
   },
 
   // TypeScript

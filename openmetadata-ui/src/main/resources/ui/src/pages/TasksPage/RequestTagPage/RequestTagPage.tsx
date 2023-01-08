@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { postThread } from '@rest/feedsAPI';
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -20,9 +23,6 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';

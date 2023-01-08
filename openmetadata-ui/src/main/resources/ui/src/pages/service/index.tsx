@@ -11,6 +11,44 @@
  *  limitations under the License.
  */
 
+import { Button as LegacyButton } from '@components/buttons/Button/Button';
+import DeleteWidgetModal from '@components/common/DeleteWidget/DeleteWidgetModal';
+import Description from '@components/common/description/Description';
+import EntitySummaryDetails from '@components/common/EntitySummaryDetails/EntitySummaryDetails';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from '@components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import NextPrevious from '@components/common/next-previous/NextPrevious';
+import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from '@components/common/TabsPane/TabsPane';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import Ingestion from '@components/Ingestion/Ingestion.component';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '@components/PermissionProvider/PermissionProvider.interface';
+import ServiceConnectionDetails from '@components/ServiceConnectionDetails/ServiceConnectionDetails.component';
+import TagsViewer from '@components/tags-viewer/tags-viewer';
+import { getDashboards } from '@rest/dashboardAPI';
+import { getDatabases } from '@rest/databaseAPI';
+import {
+  checkAirflowStatus,
+  deleteIngestionPipelineById,
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+} from '@rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '@rest/miscAPI';
+import { getMlmodels } from '@rest/mlModelAPI';
+import { getPipelines } from '@rest/pipelineAPI';
+import {
+  getServiceByFQN,
+  TestConnection,
+  updateService,
+} from '@rest/serviceAPI';
+import { getTopics } from '@rest/topicsAPI';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -19,44 +57,6 @@ import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getDashboards } from '../../axiosAPIs/dashboardAPI';
-import { getDatabases } from '../../axiosAPIs/databaseAPI';
-import {
-  checkAirflowStatus,
-  deleteIngestionPipelineById,
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  getIngestionPipelines,
-  triggerIngestionPipelineById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
-import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
-import { getPipelines } from '../../axiosAPIs/pipelineAPI';
-import {
-  getServiceByFQN,
-  TestConnection,
-  updateService,
-} from '../../axiosAPIs/serviceAPI';
-import { getTopics } from '../../axiosAPIs/topicsAPI';
-import { Button as LegacyButton } from '../../components/buttons/Button/Button';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import Description from '../../components/common/description/Description';
-import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Ingestion from '../../components/Ingestion/Ingestion.component';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
-import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
-import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,

@@ -12,6 +12,21 @@
  */
 
 import {
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  ModifiedColumn,
+  SelectedEdge,
+  SelectedNode,
+} from '@components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from '@components/EntityLineage/LineageNodeLabel';
+import Loader from '@components/Loader/Loader';
+import {
   faChevronLeft,
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
@@ -19,7 +34,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -31,18 +46,6 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  EdgeData,
-  EdgeTypeEnum,
-  ModifiedColumn,
-  SelectedEdge,
-  SelectedNode,
-} from '../components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {

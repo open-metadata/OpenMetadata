@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import {
+  ResourceEntity,
+  UIPermission,
+} from '@components/PermissionProvider/PermissionProvider.interface';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import i18next from 'i18next';
@@ -31,10 +35,6 @@ import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../components/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {

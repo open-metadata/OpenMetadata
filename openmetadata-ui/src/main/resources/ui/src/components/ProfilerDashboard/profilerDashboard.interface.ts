@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { ListTestCaseParams } from '@rest/testAPI';
 import { CurveType } from 'recharts/types/shape/Curve';
-import { ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import {
   Column,
   ColumnProfile,

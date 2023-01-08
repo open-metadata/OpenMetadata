@@ -29,3 +29,7 @@ class BigqueryUsageSource(BigqueryQueryParserSource, UsageSource):
     filters = """
         AND statement_type = "SELECT"
     """
+
+    database_field = "project_id"
+
+    schema_field = ""  # schema filtering not available

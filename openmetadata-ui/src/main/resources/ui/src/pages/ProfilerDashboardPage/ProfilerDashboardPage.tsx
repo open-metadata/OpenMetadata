@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import ProfilerDashboard from '@components/ProfilerDashboard/ProfilerDashboard';
+import { ProfilerDashboardTab } from '@components/ProfilerDashboard/profilerDashboard.interface';
+import {
+  getColumnProfilerList,
+  getTableDetailsByFQN,
+  patchTableDetails,
+} from '@rest/tableAPI';
+import { getListTestCase, ListTestCaseParams } from '@rest/testAPI';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getColumnProfilerList,
-  getTableDetailsByFQN,
-  patchTableDetails,
-} from '../../axiosAPIs/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
-import { ProfilerDashboardTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';

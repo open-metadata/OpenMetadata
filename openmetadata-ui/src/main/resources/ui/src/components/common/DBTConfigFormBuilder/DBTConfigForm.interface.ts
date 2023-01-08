@@ -17,6 +17,7 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
+import { ModifiedDbtConfig } from '../../AddIngestion/addIngestion.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export interface DBTFormCommonProps {
@@ -38,7 +39,7 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
 }
 
 export type DbtConfigCloud = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   | 'dbtCloudAccountId'
   | 'dbtCloudAuthToken'
   | 'dbtUpdateDescriptions'
@@ -46,7 +47,7 @@ export type DbtConfigCloud = Pick<
 >;
 
 export type DbtConfigLocal = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   | 'dbtCatalogFilePath'
   | 'dbtManifestFilePath'
   | 'dbtRunResultsFilePath'
@@ -54,7 +55,7 @@ export type DbtConfigLocal = Pick<
 >;
 
 export type DbtConfigHttp = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   | 'dbtCatalogHttpPath'
   | 'dbtManifestHttpPath'
   | 'dbtRunResultsHttpPath'
@@ -62,7 +63,7 @@ export type DbtConfigHttp = Pick<
 >;
 
 export type DbtConfigS3GCS = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   'dbtSecurityConfig' | 'dbtPrefixConfig' | 'dbtUpdateDescriptions'
 >;
 

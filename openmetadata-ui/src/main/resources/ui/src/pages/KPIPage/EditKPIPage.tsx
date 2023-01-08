@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '@components/Loader/Loader';
+import { getChartById } from '@rest/DataInsightAPI';
+import { getKPIByName, patchKPI } from '@rest/KpiAPI';
 import {
   Button,
   Card,
@@ -27,20 +33,12 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isUndefined, toInteger, toNumber } from 'lodash';
+import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import './KPIPage.less';
-
-import { compare } from 'fast-json-patch';
-import moment from 'moment';
-import { getChartById } from '../../axiosAPIs/DataInsightAPI';
-import { getKPIByName, patchKPI } from '../../axiosAPIs/KpiAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -59,6 +57,7 @@ import {
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './KPIPage.less';
 
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();

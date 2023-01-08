@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { getLatestTableProfileByFqn } from '@rest/tableAPI';
+import { getListTestCase, ListTestCaseParams } from '@rest/testAPI';
 import {
   Button,
   Col,
@@ -23,11 +25,11 @@ import {
   Switch,
   Tooltip,
 } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, map } from 'lodash';
-import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -36,8 +38,6 @@ import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
-import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
@@ -98,7 +98,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const isProfiler = activeTab === ProfilerDashboardTab.PROFILER;
 
   const testCaseStatusOption = useMemo(() => {
-    const testCaseStatus: SelectableOption[] = Object.values(
+    const testCaseStatus: DefaultOptionType[] = Object.values(
       TestCaseStatus
     ).map((value) => ({
       label: value,
@@ -123,7 +123,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   }, [isProfiler, isDataQuality]);
 
   const testCaseTypeOption = useMemo(() => {
-    const testCaseStatus: SelectableOption[] = map(TestType, (value, key) => ({
+    const testCaseStatus: DefaultOptionType[] = map(TestType, (value, key) => ({
       label: key,
       value: value,
     }));

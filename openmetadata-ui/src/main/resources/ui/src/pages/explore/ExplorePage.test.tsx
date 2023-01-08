@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { ExploreSearchIndex } from '@components/Explore/explore.interface';
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ConstraintType,
@@ -292,11 +292,11 @@ jest.mock('../../AppState', () => ({
   updateExplorePageTab: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../components/Explore/Explore.component', () => {
+jest.mock('@components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
-jest.mock('../../axiosAPIs/searchAPI', () => ({
+jest.mock('@rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(

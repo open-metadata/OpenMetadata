@@ -72,6 +72,8 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           ON s.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
+    WHERE
+        {db_filters}
     ORDER BY q.endtime DESC
 """
 )

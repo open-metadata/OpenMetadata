@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '@components/authentication/auth-provider/basic-auth.provider';
+import Loader from '@components/Loader/Loader';
+import LoginButton from '@components/LoginButton/LoginButton';
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
@@ -19,10 +23,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
-import Loader from '../../components/Loader/Loader';
-import LoginButton from '../../components/LoginButton/LoginButton';
 import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
