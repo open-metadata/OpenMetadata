@@ -13,6 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
 import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
@@ -21,7 +22,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { Team } from '../../generated/entity/teams/team';
 import { errorMsg } from '../../utils/CommonUtils';
 

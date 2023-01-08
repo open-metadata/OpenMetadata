@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getFeedsWithFilter } from '@rest/feedsAPI';
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
-import { getFeedsWithFilter } from '../../axiosAPIs/feedsAPI';
 import {
   getUserPath,
   NOTIFICATION_READ_TIMER,

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getAllFeeds } from '@rest/feedsAPI';
 import { Button, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -18,7 +19,6 @@ import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
-import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';

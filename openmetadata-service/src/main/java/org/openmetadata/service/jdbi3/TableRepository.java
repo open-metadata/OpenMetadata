@@ -522,7 +522,7 @@ public class TableRepository extends EntityRepository<Table> {
   public ResultList<SQLQuery> getQueriesForPagination(UUID id, int limit, String before, String after) {
     RestUtil.validateCursors(before, after);
     int total = daoCollection.entityExtensionDAO().getTotalQueriesCount(id.toString());
-    List<SQLQuery> tableQueries = null;
+    List<SQLQuery> tableQueries;
     if (before != null) {
       tableQueries =
           daoCollection

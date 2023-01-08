@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
+import { createTestCase, createTestSuites } from '@rest/testAPI';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { createTestCase, createTestSuites } from '../../axiosAPIs/testAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,

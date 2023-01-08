@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
+import { AlertDetailsComponent } from '@components/Alerts/AlertsDetails/AlertDetails.component';
+import Loader from '@components/Loader/Loader';
+import { getAlertActionForAlerts, getAlertsFromName } from '@rest/alertsAPI';
 import { Card } from 'antd';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getAlertActionForAlerts,
-  getAlertsFromName,
-} from '../../axiosAPIs/alertsAPI';
-import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
-import Loader from '../../components/Loader/Loader';
 import { AlertAction } from '../../generated/alerts/alertAction';
 import { AlertFilterRule, Alerts } from '../../generated/alerts/alerts';
 import { getEntityName } from '../../utils/CommonUtils';

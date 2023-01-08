@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
-import { ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import AddService from '@components/AddService/AddService.component';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '@components/containers/PageContainerV1';
 import {
   addIngestionPipeline,
   checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { postService } from '../../axiosAPIs/serviceAPI';
-import AddService from '../../components/AddService/AddService.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
+} from '@rest/ingestionPipelineAPI';
+import { postService } from '@rest/serviceAPI';
+import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
+import { ServicesUpdateRequest, ServiceTypes } from 'Models';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,

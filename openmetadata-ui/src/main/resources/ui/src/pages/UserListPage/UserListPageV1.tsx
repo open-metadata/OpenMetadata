@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import Loader from '@components/Loader/Loader';
+import UserListV1 from '@components/UserList/UserListV1';
+import { searchData } from '@rest/miscAPI';
+import { getUsers } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
-import Loader from '../../components/Loader/Loader';
-import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,

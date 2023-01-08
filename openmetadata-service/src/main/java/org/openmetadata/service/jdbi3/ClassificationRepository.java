@@ -50,7 +50,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public Classification setFields(Classification category, Fields fields) throws IOException {
+  public Classification setFields(Classification category, Fields fields) {
     return category.withUsageCount(fields.contains("usageCount") ? getUsageCount(category) : null);
   }
 

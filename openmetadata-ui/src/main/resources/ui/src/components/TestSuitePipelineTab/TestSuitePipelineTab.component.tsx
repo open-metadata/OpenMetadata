@@ -12,13 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { AxiosError } from 'axios';
-import cronstrue from 'cronstrue';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
   checkAirflowStatus,
   deleteIngestionPipelineById,
@@ -26,8 +19,15 @@ import {
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
+} from '@rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '@rest/miscAPI';
+import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import cronstrue from 'cronstrue';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../utils/CommonUtils';

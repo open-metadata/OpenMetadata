@@ -19,3 +19,15 @@ export type ThreadUpdatedFunc = (
   isThread: boolean,
   data: Operation[]
 ) => void;
+
+export interface EntityFieldThreadCount {
+  count: number;
+  entityLink: string;
+}
+
+export type EntityThreadField = 'description' | 'columns' | 'tags' | 'tasks';
+export interface EntityFieldThreads {
+  entityLink: string;
+  count: number;
+  entityField: string;
+}

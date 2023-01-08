@@ -13,31 +13,27 @@
 
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
-import i18next from 'i18next';
-import { isEqual } from 'lodash';
-import {
-  EntityFieldThreadCount,
-  EntityFieldThreads,
-  EntityThreadField,
-} from 'Models';
-import React from 'react';
-import Showdown from 'showdown';
-import TurndownService from 'turndown';
 import {
   deletePostById,
   deleteThread,
   getFeedById,
   updatePost,
   updateThread,
-} from '../axiosAPIs/feedsAPI';
+} from '@rest/feedsAPI';
 import {
   getSearchedUsers,
   getSuggestions,
   getUserSuggestions,
   searchData,
-} from '../axiosAPIs/miscAPI';
+} from '@rest/miscAPI';
+import { AxiosError } from 'axios';
+import { Operation } from 'fast-json-patch';
+import i18next from 'i18next';
+import { isEqual } from 'lodash';
+
+import React from 'react';
+import Showdown from 'showdown';
+import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
@@ -52,6 +48,11 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import {
+  EntityFieldThreadCount,
+  EntityFieldThreads,
+  EntityThreadField,
+} from '../interface/feed.interface';
 import jsonData from '../jsons/en';
 import {
   getEntityPlaceHolder,

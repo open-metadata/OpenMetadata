@@ -18,7 +18,7 @@ import {
   fireEvent,
   render,
 } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState, TagOption } from 'Models';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -29,6 +29,10 @@ import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { fetchGlossaryTerms } from '../../utils/GlossaryUtils';
 import { getClassifications } from '../../utils/TagsUtils';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import DashboardDetails from './DashboardDetails.component';
 import { ChartType } from './DashboardDetails.interface';
 
