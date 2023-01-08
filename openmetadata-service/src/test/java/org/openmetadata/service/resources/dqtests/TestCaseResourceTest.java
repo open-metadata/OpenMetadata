@@ -80,13 +80,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName("testCaseTable")
+            .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withOwner(USER1_REF)
             .withColumns(
                 List.of(
                     new Column()
-                        .withName("c1")
+                        .withName(C1)
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
@@ -100,7 +100,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withColumns(
                 List.of(
                     new Column()
-                        .withName("c1")
+                        .withName(C1)
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
@@ -108,8 +108,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TEST_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     TABLE_LINK = String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName());
     TABLE_LINK_2 = String.format("<#E::table::%s>", TEST_TABLE2.getFullyQualifiedName());
-    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::c1>", TEST_TABLE1.getFullyQualifiedName());
-    TABLE_COLUMN_LINK_2 = String.format("<#E::table::%s::columns::c1>", TEST_TABLE2.getFullyQualifiedName());
+    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::%s>", TEST_TABLE1.getFullyQualifiedName(), C1);
+    TABLE_COLUMN_LINK_2 = String.format("<#E::table::%s::columns::%s>", TEST_TABLE2.getFullyQualifiedName(), C1);
     INVALID_LINK1 = String.format("<#E::dashboard::%s", "temp");
     INVALID_LINK2 = String.format("<#E::table::%s>", "non-existent");
   }
@@ -166,7 +166,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertResponseContains(
         () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[entityLink must match \"^<#E::\\S+::\\S+>$\"]");
+        "[entityLink must match \"^<#E::\\S+::[\\w'_\\- .:+]+>$\"]");
 
     create.withEntityLink(INVALID_LINK2).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(

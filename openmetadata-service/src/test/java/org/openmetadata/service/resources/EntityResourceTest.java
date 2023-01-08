@@ -183,6 +183,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameWithDot = true;
   protected boolean supportsNameWithApostrophe = true;
+  protected boolean supportsNameWithSpace = true;
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
@@ -278,6 +279,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static DataInsightChart DI_CHART1;
 
   public static KpiTarget KPI_TARGET;
+
+  public static String C1 = "c'_ 1";
+  public static String C2 = "c2";
+  public static String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -2297,7 +2302,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final String getEntityName(TestInfo test) {
     // "'" is added to ensure the names are escaped correctly in backend SQL queries
     String apostrophe = supportsNameWithApostrophe ? "'" : "";
-    return format("%s%s_%s", entityType, apostrophe, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    String space = supportsNameWithSpace ? " " : "";
+    return format("%s%s_%s%s", entityType, apostrophe, space, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**
@@ -2308,9 +2314,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final String getEntityName(TestInfo test, int index) {
     // "'" is added to ensure the names are escaped correctly in backend SQL queries
     String apostrophe = supportsNameWithApostrophe ? "'" : "";
+    String space = supportsNameWithSpace ? " " : "";
     return format(
-        "%s%s_%s_%s",
-        entityType, apostrophe, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+        "%s%s_%s%s_%s",
+        entityType,
+        apostrophe,
+        space,
+        getNthAlphanumericString(index),
+        test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**

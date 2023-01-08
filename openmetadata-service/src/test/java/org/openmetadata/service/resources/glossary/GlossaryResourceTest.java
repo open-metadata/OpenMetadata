@@ -188,7 +188,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Create a table with all the terms as tag labels
     TableResourceTest tableResourceTest = new TableResourceTest();
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t12, t2, t21, t22);
-    Column column = new Column().withName("c1").withDataType(ColumnDataType.INT).withTags(tagLabels);
+    Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
         tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(listOf(column));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
@@ -245,7 +245,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Create a table with all the terms as tag labels
     TableResourceTest tableResourceTest = new TableResourceTest();
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t111, t12, t121, t13, t131, t2, t21, t211, h1, h11, h111);
-    Column column = new Column().withName("c1").withDataType(ColumnDataType.INT).withTags(tagLabels);
+    Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
         tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(listOf(column));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);

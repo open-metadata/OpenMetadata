@@ -81,7 +81,7 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  public static final String LONG_ENTITY_NAME = "1".repeat(128 + 1);
+  public static final String LONG_ENTITY_NAME = "a".repeat(128 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
@@ -269,9 +269,9 @@ public final class TestUtils {
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertTrue(
-        exception.getReasonPhrase().contains(expectedReason),
-        expectedReason + " not in actual " + exception.getReasonPhrase());
+    expectedReason = expectedReason.replace("[", "").replace("]", "");
+    String actualReason = exception.getReasonPhrase().replace("[", "").replace("]", "");
+    assertTrue(actualReason.contains(expectedReason), expectedReason + " not in actual " + exception.getReasonPhrase());
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {

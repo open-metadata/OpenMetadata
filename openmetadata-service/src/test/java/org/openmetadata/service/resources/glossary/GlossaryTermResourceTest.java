@@ -301,7 +301,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
     TableResourceTest tableResourceTest = new TableResourceTest();
-    List<Column> columns = Arrays.asList(getColumn("c1", BIGINT, t11Label), getColumn("c2", BIGINT, t111Label));
+    List<Column> columns = Arrays.asList(getColumn(C1, BIGINT, t11Label), getColumn("c2", BIGINT, t111Label));
     CreateTable createTable =
         tableResourceTest.createRequest("glossaryTermDelTest").withTags(List.of(t1Label)).withColumns(columns);
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
