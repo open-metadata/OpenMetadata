@@ -69,17 +69,6 @@ public class AlertsPublisherManager {
   }
 
   public void addAlertActionPublisher(Alert alert, AlertAction alertAction) {
-    if (Boolean.FALSE.equals(alertAction.getEnabled())) {
-      // Only add alert that is enabled for publishing events
-      AlertActionStatus status =
-          new AlertActionStatus()
-              .withStatus(AlertActionStatus.Status.DISABLED)
-              .withTimestamp(System.currentTimeMillis())
-              .withFailureDetails(null);
-      alertAction.setStatusDetails(status);
-      return;
-    }
-
     // Activity Feed AlertAction Cannot be Created
     if (alertAction.getAlertActionType() == AlertAction.AlertActionType.ACTIVITY_FEED) {
       LOG.info("Activity Feed Alert Action cannot be created.");
@@ -87,9 +76,19 @@ public class AlertsPublisherManager {
     }
     // Create AlertAction Publisher
     AlertsActionPublisher publisher = AlertUtil.getAlertPublisher(alert, alertAction, daoCollection);
-    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
-    publisher.setProcessor(processor);
-    LOG.info("Alert publisher started for {}", alert.getName());
+    if (Boolean.TRUE.equals(alertAction.getEnabled())) {
+      BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
+      publisher.setProcessor(processor);
+      LOG.info("Alert publisher started for {}", alert.getName());
+    } else {
+      // Only add alert that is enabled for publishing events
+      AlertActionStatus status =
+          new AlertActionStatus()
+              .withStatus(AlertActionStatus.Status.DISABLED)
+              .withTimestamp(System.currentTimeMillis())
+              .withFailureDetails(null);
+      alertAction.setStatusDetails(status);
+    }
 
     Map<UUID, AlertsActionPublisher> alertsActionPublisherMap =
         alertPublisherMap.get(alert.getId()) == null ? new HashMap<>() : alertPublisherMap.get(alert.getId());
@@ -150,10 +149,7 @@ public class AlertsPublisherManager {
     if (publishers.size() != 0) {
       for (AlertsActionPublisher alertsActionPublisher : publishers) {
         if (alertsActionPublisher != null) {
-          alertsActionPublisher.getProcessor().halt();
-          alertsActionPublisher.awaitShutdown();
-          EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
-          LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
+          deleteProcessorFromPubSub(alertsActionPublisher);
           UUID alertId = alertsActionPublisher.getAlert().getId();
           Map<UUID, AlertsActionPublisher> alertActionPublishersMap = alertPublisherMap.get(alertId);
           alertActionPublishersMap.remove(alertAction.getId());
@@ -176,14 +172,20 @@ public class AlertsPublisherManager {
     if (alertActionPublishers != null) {
       AlertsActionPublisher alertsActionPublisher = alertActionPublishers.get(action.getId());
       if (alertsActionPublisher != null) {
-        alertsActionPublisher.getProcessor().halt();
-        alertsActionPublisher.awaitShutdown();
-        EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
-        LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
-
+        deleteProcessorFromPubSub(alertsActionPublisher);
         alertActionPublishers.remove(action.getId());
         alertPublisherMap.put(alertId, alertActionPublishers);
       }
+    }
+  }
+
+  public void deleteProcessorFromPubSub(AlertsActionPublisher publisher) throws InterruptedException {
+    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = publisher.getProcessor();
+    if (processor != null) {
+      processor.halt();
+      publisher.awaitShutdown();
+      EventPubSub.removeProcessor(publisher.getProcessor());
+      LOG.info("Alert publisher deleted for {}", publisher.getAlert().getName());
     }
   }
 
@@ -191,10 +193,7 @@ public class AlertsPublisherManager {
     Map<UUID, AlertsActionPublisher> alertPublishers = alertPublisherMap.get(alertId);
     if (alertPublishers != null) {
       for (AlertsActionPublisher publisher : alertPublishers.values()) {
-        publisher.getProcessor().halt();
-        publisher.awaitShutdown();
-        EventPubSub.removeProcessor(publisher.getProcessor());
-        LOG.info("Alert publisher deleted for {}", publisher.getAlert().getName());
+        deleteProcessorFromPubSub(publisher);
       }
       alertPublisherMap.remove(alertId);
     }

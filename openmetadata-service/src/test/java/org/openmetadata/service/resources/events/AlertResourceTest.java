@@ -98,8 +98,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
 
     // For the DISABLED Action Publisher are not available so it will have no status
     AlertActionStatus status =
-        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.NO_CONTENT.getStatusCode());
-    assertNull(status);
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(AlertActionStatus.Status.DISABLED, status.getStatus());
     WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
     //
@@ -146,8 +146,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
             TestUtils.UpdateType.MINOR_UPDATE,
             change);
     AlertActionStatus status3 =
-        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.NO_CONTENT.getStatusCode());
-    assertNull(status);
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(AlertActionStatus.Status.DISABLED, status3.getStatus());
 
     int iterations = 0;
     while (iterations < 10) {
