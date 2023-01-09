@@ -26,6 +26,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { DbtPipelineClass } from '../../generated/metadataIngestion/dbtPipeline';
 import { DataObj } from '../../interface/service.interface';
 import {
   DBT_SOURCES,
@@ -87,14 +88,15 @@ export type ScheduleIntervalProps = {
 };
 
 // Todo: Need to refactor below type, as per schema change #9575
-export type ModifiedDbtConfig = DbtConfig;
+export type ModifiedDbtConfig = DbtConfig &
+  Pick<DbtPipelineClass, 'dbtUpdateDescriptions'>;
 
 export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
   databaseServiceNames: string[];
-  dbtConfigSource: DbtConfig;
+  dbtConfigSource: ModifiedDbtConfig;
   dbtConfigSourceType: DBT_SOURCES;
   description: string;
   enableDebugLog: boolean;

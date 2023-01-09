@@ -59,7 +59,11 @@ import { DBT_SOURCES } from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import { AddIngestionProps } from './addIngestion.interface';
+import {
+  AddIngestionProps,
+  AddIngestionState,
+  ModifiedDbtConfig,
+} from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
@@ -89,11 +93,11 @@ const AddIngestion = ({
   status,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-
+  console.log('data:', data);
   const { sourceConfig, sourceConfigType } = useMemo(
     () => ({
       sourceConfig: data?.sourceConfig.config as ConfigClass,
-      sourceConfigType: (data?.sourceConfig.config as ConfigClass).type,
+      sourceConfigType: (data?.sourceConfig.config as ConfigClass)?.type,
     }),
     []
   );
@@ -151,7 +155,7 @@ const AddIngestion = ({
       showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
-      dbtConfigSource: configData as DbtConfig,
+      dbtConfigSource: configData as ModifiedDbtConfig,
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
         sourceConfig?.chartFilterPattern ?? INITIAL_FILTER_PATTERN,
@@ -460,6 +464,7 @@ const AddIngestion = ({
             dbtConfigSource: omit(dbtConfigSource, 'dbtUpdateDescriptions'),
           } as ConfigClass),
           type: ConfigType.Dbt,
+          dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
         };
       }
 
