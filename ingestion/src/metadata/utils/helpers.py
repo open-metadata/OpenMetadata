@@ -15,8 +15,8 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import random
 import re
-import secrets
 from datetime import datetime, timedelta
 from functools import wraps
 from time import perf_counter
@@ -29,7 +29,9 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-random_int = lambda x=None: secrets.randbelow(x or 9999)
+
+def random_int(min=0, max=999):
+    random.randint(min, max)
 
 
 class BackupRestoreArgs:

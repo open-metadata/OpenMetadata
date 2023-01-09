@@ -940,7 +940,7 @@ class SampleDataSource(
                                 timestamp=int(
                                     (
                                         datetime.now(tz=timezone.utc)
-                                        - timedelta(days=days, hours=random_int(24))
+                                        - timedelta(days=days, hours=random_int(0, 24))
                                     ).timestamp()
                                     * 1000
                                 ),
