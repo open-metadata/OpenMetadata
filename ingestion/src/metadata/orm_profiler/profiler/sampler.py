@@ -15,6 +15,7 @@ for the profiler
 from typing import Dict, Optional, Union
 
 from sqlalchemy import column, inspect, text
+from sqlalchemy import types as sqltypes
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
@@ -120,11 +121,13 @@ class Sampler:
             .limit(self.sample_limit)
             .all()
         )
-
-        rows = [
-            [f"{r}" if isinstance(r, bytes) else r for r in list(row)]
-            for row in sqa_sample
-        ]
+        rows = [list(row) for row in sqa_sample]
+        for col_index, col in enumerate(sqa_columns):
+            if type(col.type) in [sqltypes.LargeBinary, sqltypes.BINARY]:
+                rows = [
+                    [f"{r}" if index == col_index else r for index, r in enumerate(row)]
+                    for row in rows
+                ]
 
         return TableData(
             columns=[column.name for column in sqa_columns],

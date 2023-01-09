@@ -30,8 +30,8 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def random_int(min=0, max=999):
-    random.randint(min, max)
+def random_int(min_val=0, max_val=999):
+    random.randint(min_val, max_val)
 
 
 class BackupRestoreArgs:
