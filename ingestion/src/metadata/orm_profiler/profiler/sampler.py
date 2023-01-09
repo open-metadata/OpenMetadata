@@ -69,8 +69,9 @@ class Sampler:
                 .cte(f"{self.table.__tablename__}_rnd")
             )
         return (
-            self.session.query(self.table, ModuloFn(RandomNumFn(), 100))
-            .label(RANDOM_LABEL)
+            self.session.query(
+                self.table, ModuloFn(RandomNumFn(), 100).label(RANDOM_LABEL)
+            )
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )
@@ -121,9 +122,14 @@ class Sampler:
             .all()
         )
 
+        rows = [
+            [f"{r}" if isinstance(r, bytes) else r for r in list(row)]
+            for row in sqa_sample
+        ]
+
         return TableData(
             columns=[column.name for column in sqa_columns],
-            rows=[list(row) for row in sqa_sample],
+            rows=rows,
         )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:

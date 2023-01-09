@@ -53,21 +53,20 @@ class DatalakeSampler:
     def _fetch_rows(self, data_frame):
         from pandas import notnull  # pylint: disable=import-outside-toplevel
 
+        sampled_data_frame = data_frame.sample(
+            n=(int(self.profile_sample) or 100)
+            if self.profile_sample_type == ProfileSampleType.ROWS
+            else None,
+            frac=self.profile_sample
+            if self.profile_sample_type == ProfileSampleType.PERCENTAGE
+            else None,
+            random_state=random.randint(1, 300),
+            replace=True,
+        )
         return (
-            data_frame.astype(object)
+            sampled_data_frame.astype(object)
             .where(
-                notnull(
-                    data_frame.sample(
-                        n=(self.profile_sample or 100)
-                        if self.profile_sample_type == ProfileSampleType.ROWS
-                        else None,
-                        frac=self.profile_sample
-                        if self.profile_sample_type == ProfileSampleType.PERCENTAGE
-                        else None,
-                        random_state=random.randint(1, 300),
-                        replace=True,
-                    )
-                ),
+                notnull(sampled_data_frame),
                 None,
             )
             .values.tolist()
