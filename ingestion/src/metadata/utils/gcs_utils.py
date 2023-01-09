@@ -23,11 +23,12 @@ import pandas as pd
 from pandas import DataFrame
 from pyarrow.parquet import ParquetFile
 
+from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-CHUNKSIZE = 200000
+
 def _get_json_text(key: str, text: str) -> str:
     if key.endswith(".gz"):
         return gzip.decompress(text)

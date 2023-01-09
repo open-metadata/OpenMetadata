@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.orm_profiler.api.models import ProfileSampleConfig
-from metadata.utils.gcs_utils import CHUNKSIZE
+from metadata.utils.constants import CHUNKSIZE
 
 RANDOM_LABEL = "random"
 
@@ -51,7 +51,7 @@ class DatalakeSampler:
         self._sample_rows = None
 
     def _fetch_rows(self, data_frame):
-        from pandas import notnull
+        from pandas import notnull  # pylint: disable=import-outside-toplevel
 
         return (
             data_frame.astype(object)
