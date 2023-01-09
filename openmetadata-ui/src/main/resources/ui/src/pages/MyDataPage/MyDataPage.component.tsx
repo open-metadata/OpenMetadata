@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import GithubStarButton from '@components/GithubStarButton/GithubStarButton';
+import Loader from '@components/Loader/Loader';
+import MyData from '@components/MyData/MyData.component';
+import { useWebSocketConnector } from '@components/web-scoket/web-scoket.provider';
+import { getFeedsWithFilter, postFeedById } from '@rest/feedsAPI';
+import { fetchSandboxConfig, getAllEntityCount } from '@rest/miscAPI';
+import { getUserById } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
@@ -24,14 +32,6 @@ import React, {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { fetchSandboxConfig, getAllEntityCount } from '../../axiosAPIs/miscAPI';
-import { getUserById } from '../../axiosAPIs/userAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
-import Loader from '../../components/Loader/Loader';
-import MyData from '../../components/MyData/MyData.component';
-import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';

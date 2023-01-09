@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { searchData } from '@rest/miscAPI';
 import { Select, Spin, Typography } from 'antd';
 import { cloneDeep, debounce, includes } from 'lodash';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';

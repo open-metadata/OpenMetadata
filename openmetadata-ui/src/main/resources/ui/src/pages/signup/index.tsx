@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
+import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
+import { UserProfile } from '@components/authentication/auth-provider/AuthProvider.interface';
+import { Button } from '@components/buttons/Button/Button';
+import PageContainer from '@components/containers/PageContainer';
+import TeamsSelectable from '@components/TeamsSelectable/TeamsSelectable';
+import { createUser } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
-import { createUser } from '../../axiosAPIs/userAPI';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import { UserProfile } from '../../components/authentication/auth-provider/AuthProvider.interface';
-import { Button } from '../../components/buttons/Button/Button';
-import PageContainer from '../../components/containers/PageContainer';
-import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';

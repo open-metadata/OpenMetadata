@@ -34,7 +34,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../../axiosAPIs/miscAPI', () => ({
+jest.mock('@rest/miscAPI', () => ({
   deleteEntity: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 

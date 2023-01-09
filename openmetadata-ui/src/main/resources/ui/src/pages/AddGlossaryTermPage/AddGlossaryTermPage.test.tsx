@@ -29,7 +29,7 @@ jest.mock('react-router', () => ({
   })),
 }));
 
-jest.mock('../../components/AddGlossaryTerm/AddGlossaryTerm.component', () => {
+jest.mock('@components/AddGlossaryTerm/AddGlossaryTerm.component', () => {
   return jest.fn().mockImplementation(({ onCancel, onSave }) => (
     <div
       data-testid="add-glossary-term"
@@ -44,7 +44,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getGlossaryPath: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('@rest/glossaryAPI', () => ({
   addGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossariesByName: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossaryTermByFQN: jest.fn().mockImplementation(() => Promise.resolve()),

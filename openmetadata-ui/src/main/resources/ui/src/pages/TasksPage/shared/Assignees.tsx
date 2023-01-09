@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { UserTag } from '@components/common/UserTag/UserTag.component';
 import { Select } from 'antd';
 import React, { FC } from 'react';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 

@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import {
   Button as ButtonAntd,
   Col,
@@ -39,7 +40,6 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAfterMount } from '../../hooks/useAfterMount';
-import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
 import {

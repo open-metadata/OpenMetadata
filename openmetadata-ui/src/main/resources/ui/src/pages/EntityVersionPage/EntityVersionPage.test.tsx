@@ -27,38 +27,35 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/DatasetVersion/DatasetVersion.component', () => {
+jest.mock('@components/DatasetVersion/DatasetVersion.component', () => {
   return jest.fn().mockReturnValue(<div>DatasetVersion component</div>);
 });
-jest.mock(
-  '../../components/DashboardVersion/DashboardVersion.component',
-  () => {
-    return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
-  }
-);
-jest.mock('../../components/PipelineVersion/PipelineVersion.component', () => {
+jest.mock('@components/DashboardVersion/DashboardVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
+});
+jest.mock('@components/PipelineVersion/PipelineVersion.component', () => {
   return jest.fn().mockReturnValue(<div>PipelineVersion component</div>);
 });
-jest.mock('../../components/TopicVersion/TopicVersion.component', () => {
+jest.mock('@components/TopicVersion/TopicVersion.component', () => {
   return jest.fn().mockReturnValue(<div>TopicVersion component</div>);
 });
 
-jest.mock('../../axiosAPIs/dashboardAPI', () => ({
+jest.mock('@rest/dashboardAPI', () => ({
   getDashboardByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
   getDashboardVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getDashboardVersions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+jest.mock('@rest/pipelineAPI', () => ({
   getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
   getPipelineVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getPipelineVersions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../axiosAPIs/tableAPI', () => ({
+jest.mock('@rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
   getTableVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getTableVersions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../axiosAPIs/topicsAPI', () => ({
+jest.mock('@rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
   getTopicVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getTopicVersions: jest.fn().mockImplementation(() => Promise.resolve()),

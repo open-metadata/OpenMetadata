@@ -31,7 +31,7 @@ const mockTierData = [
   },
 ];
 
-jest.mock('../../../axiosAPIs/tagAPI', () => ({
+jest.mock('@rest/tagAPI', () => ({
   getTags: jest.fn().mockResolvedValue({ data: mockTierData }),
 }));
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { updateUser } from '@rest/userAPI';
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -18,7 +19,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { updateUser } from '../../axiosAPIs/userAPI';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
