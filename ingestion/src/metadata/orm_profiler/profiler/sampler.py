@@ -17,7 +17,6 @@ from typing import Dict, Optional, Union
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
-from sqlalchemy.sql.expression import func
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.orm_profiler.api.models import ProfileSampleConfig
