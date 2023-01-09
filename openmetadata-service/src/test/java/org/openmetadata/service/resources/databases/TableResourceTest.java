@@ -35,6 +35,7 @@ import static org.openmetadata.schema.type.ColumnDataType.FLOAT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -497,6 +498,22 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(Entity.DATABASE_SCHEMA, NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  void put_columnUpdateWithDescriptionPersists_200(TestInfo test) throws IOException {
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("c1", VARCHAR, null).withDescription("c1VarcharDescription").withDataLength(255));
+    CreateTable request = createRequest(test).withColumns(columns);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Update Request
+    request.getColumns().get(0).withDataType(CHAR).withDataLength(200).withDescription(null);
+
+    Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(table.getColumns().get(0).getDescription(), updatedTable.getColumns().get(0).getDescription());
+    assertEquals(updatedTable.getColumns().get(0).getDataType(), CHAR);
+    assertEquals(updatedTable.getColumns().get(0).getDataLength(), 200);
   }
 
   @Test
