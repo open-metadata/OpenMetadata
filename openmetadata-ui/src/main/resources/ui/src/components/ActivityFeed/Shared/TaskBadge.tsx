@@ -14,14 +14,18 @@
 import { Popover } from 'antd';
 import { isEqual } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import './Badge.less';
 
 const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
+  const { t } = useTranslation();
   const isTaskOpen = isEqual(status, ThreadTaskStatus.Open);
 
-  const popoverContent = isTaskOpen ? 'Status: open' : 'Status: closed';
+  const popoverContent = isTaskOpen
+    ? `${t('label.status')}: ${t('label.open-lowercase')}`
+    : `${t('label.status')}: ${t('label.closed-lowercase')}`;
 
   return (
     <Popover
@@ -36,7 +40,7 @@ const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
           icon={isTaskOpen ? Icons.TASK_OPEN : Icons.TASK_CLOSED}
           width="12px"
         />
-        <span className="tw-pl-1">Task</span>
+        <span className="tw-pl-1">{t('label.task')}</span>
       </span>
     </Popover>
   );

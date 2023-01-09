@@ -90,7 +90,7 @@ function PipelineSummary({ entityDetails }: PipelineSummaryProps) {
       <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text className="section-header">
-            {t('label.tasks')}
+            {t('label.task-plural')}
           </Typography.Text>
         </Col>
         <Col span={24}>

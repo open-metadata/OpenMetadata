@@ -13,6 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../buttons/Button/Button';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import { Field } from '../../Field/Field';
@@ -28,6 +29,8 @@ const ScheduleInterval = ({
   onDeploy,
   includePeriodOptions,
 }: ScheduleIntervalProps) => {
+  const { t } = useTranslation();
+
   return (
     <div data-testid="schedule-intervel-container">
       <Field>
@@ -47,7 +50,7 @@ const ScheduleInterval = ({
           theme="primary"
           variant="text"
           onClick={onBack}>
-          <span>Back</span>
+          <span>{t('label.back')}</span>
         </Button>
 
         {status === 'waiting' ? (
