@@ -13,13 +13,13 @@ Helper module to handle data sampling
 for the profiler
 """
 import math
-import random
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.utils.constants import CHUNKSIZE
+from metadata.utils.helpers import random_int
 
 RANDOM_LABEL = "random"
 
@@ -60,7 +60,7 @@ class DatalakeSampler:
             frac=self.profile_sample
             if self.profile_sample_type == ProfileSampleType.PERCENTAGE
             else None,
-            random_state=random.randint(1, 300),
+            random_state=random_int(),
             replace=True,
         )
         return (
