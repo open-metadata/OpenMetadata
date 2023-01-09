@@ -229,7 +229,7 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
-  public static Fields getFields(String entityType, String fields) throws IOException {
+  public static Fields getFields(String entityType, String fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(fields);
   }

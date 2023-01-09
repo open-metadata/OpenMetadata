@@ -12,18 +12,18 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import {
+  getPolicyFunctions,
+  getPolicyResources,
+  validateRuleCondition,
+} from '@rest/rolesAPIV1';
 import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getPolicyFunctions,
-  getPolicyResources,
-  validateRuleCondition,
-} from '../../../axiosAPIs/rolesAPIV1';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   Effect,

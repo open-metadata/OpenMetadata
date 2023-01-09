@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { camelCase, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
   checkAirflowStatus,
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
-} from '../../axiosAPIs/ingestionPipelineAPI';
+} from '@rest/ingestionPipelineAPI';
+import { Col, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { camelCase, isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,

@@ -11,40 +11,40 @@
  *  limitations under the License.
  */
 
+import { ServicePageData } from '@pages/service';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse, RestoreRequestType } from 'Models';
-import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
+import { RestoreRequestType } from 'Models';
+import { TabSpecificField } from '../enums/entity.enum';
+import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
-import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
-import { ListTestCaseResultsParams } from './testAPI';
 
-export const getPipelineVersions = async (id: string) => {
-  const url = `/pipelines/${id}/versions`;
+export const getTopicVersions = async (id: string) => {
+  const url = `/topics/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
-export const getPipelineVersion = async (id: string, version: string) => {
-  const url = `/pipelines/${id}/versions/${version}`;
+export const getTopicVersion = async (id: string, version: string) => {
+  const url = `/topics/${id}/versions/${version}`;
 
-  const response = await APIClient.get<Pipeline>(url);
+  const response = await APIClient.get<Topic>(url);
 
   return response.data;
 };
 
-export const getPipelines = async (
+export const getTopics = async (
   serviceName: string,
   arrQueryFields: string | string[],
   paging?: string
 ) => {
   const url = `${getURLWithQueryFields(
-    `/pipelines`,
+    `/topics`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
 
@@ -56,31 +56,31 @@ export const getPipelines = async (
   return response.data;
 };
 
-export const getPipelineDetails = (
+export const getTopicDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/pipelines/${id}`, arrQueryFields);
+  const url = getURLWithQueryFields(`/topics/${id}`, arrQueryFields);
 
   return APIClient.get(url);
 };
 
-export const getPipelineByFqn = async (
+export const getTopicByFqn = async (
   fqn: string,
-  arrQueryFields: string | string[]
+  arrQueryFields: string | TabSpecificField[]
 ) => {
   const url = getURLWithQueryFields(
-    `/pipelines/name/${fqn}`,
+    `/topics/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
 
-  const response = await APIClient.get<Pipeline>(url);
+  const response = await APIClient.get<Topic>(url);
 
   return response.data;
 };
 
-export const addFollower = async (pipelineID: string, userId: string) => {
+export const addFollower = async (topicId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
@@ -90,12 +90,12 @@ export const addFollower = async (pipelineID: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/pipelines/${pipelineID}/followers`, userId, configOptions);
+  >(`/topics/${topicId}/followers`, userId, configOptions);
 
   return response.data;
 };
 
-export const removeFollower = async (pipelineID: string, userId: string) => {
+export const removeFollower = async (topicId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
@@ -103,20 +103,22 @@ export const removeFollower = async (pipelineID: string, userId: string) => {
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
-      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+      changeDescription: {
+        fieldsDeleted: { oldValue: EntityReference[] }[];
+      };
     }>
-  >(`/pipelines/${pipelineID}/followers/${userId}`, configOptions);
+  >(`/topics/${topicId}/followers/${userId}`, configOptions);
 
   return response.data;
 };
 
-export const patchPipelineDetails = async (id: string, data: Operation[]) => {
+export const patchTopicDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<Pipeline>>(
-    `/pipelines/${id}`,
+  const response = await APIClient.patch<Operation[], AxiosResponse<Topic>>(
+    `/topics/${id}`,
     data,
     configOptions
   );
@@ -124,27 +126,11 @@ export const patchPipelineDetails = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getPipelineStatus = async (
-  fqn: string,
-  params?: ListTestCaseResultsParams
-) => {
-  const url = `/pipelines/${fqn}/status`;
-
-  const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
-    url,
-    { params }
-  );
-
-  return response.data;
-};
-
-export const restorePipeline = async (id: string) => {
+export const restoreTopic = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
-    AxiosResponse<Pipeline>
-  >('/pipelines/restore', {
-    id,
-  });
+    AxiosResponse<Topic>
+  >('/topics/restore', { id });
 
   return response.data;
 };

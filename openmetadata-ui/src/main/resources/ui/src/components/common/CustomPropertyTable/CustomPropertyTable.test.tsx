@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { getTypeByFQN } from '@rest/metadataTypeAPI';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -54,7 +54,7 @@ jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
+jest.mock('@rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       customProperties: mockCustomProperties,

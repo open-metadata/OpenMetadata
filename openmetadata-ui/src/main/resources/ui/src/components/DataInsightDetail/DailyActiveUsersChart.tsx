@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getAggregateChartData } from '@rest/DataInsightAPI';
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -26,7 +27,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,

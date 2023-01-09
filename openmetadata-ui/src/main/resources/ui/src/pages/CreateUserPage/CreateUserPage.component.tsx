@@ -11,20 +11,16 @@
  *  limitations under the License.
  */
 
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import CreateUserComponent from '@components/CreateUser/CreateUser.component';
+import { createBotWithPut } from '@rest/botsAPI';
+import { getRoles } from '@rest/rolesAPIV1';
+import { createUser, createUserWithPut, getBotByName } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { createBotWithPut } from '../../axiosAPIs/botsAPI';
-import { getRoles } from '../../axiosAPIs/rolesAPIV1';
-import {
-  createUser,
-  createUserWithPut,
-  getBotByName,
-} from '../../axiosAPIs/userAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
   GlobalSettingOptions,

@@ -11,13 +11,42 @@
  *  limitations under the License.
  */
 
+import ActivityFeedList from '@components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '@components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import Description from '@components/common/description/Description';
+import ManageButton from '@components/common/entityPageInfo/ManageButton/ManageButton';
+import EntitySummaryDetails from '@components/common/EntitySummaryDetails/EntitySummaryDetails';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '@components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from '@components/common/TabsPane/TabsPane';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import {
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseSchemaDetails,
+} from '@rest/databaseAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+  postThread,
+} from '@rest/feedsAPI';
+import { searchQuery } from '@rest/searchAPI';
 import { Col, Row, Space, Table as TableAntd } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, ExtraInfo } from 'Models';
+import { ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -30,35 +59,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
-import {
-  getDatabaseSchemaDetailsByFQN,
-  patchDatabaseSchemaDetails,
-} from '../../axiosAPIs/databaseAPI';
-import {
-  getAllFeeds,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
-import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from '../../components/common/description/Description';
-import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -81,6 +81,7 @@ import { Table } from '../../generated/entity/data/table';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,

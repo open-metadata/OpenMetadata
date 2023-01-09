@@ -43,7 +43,7 @@ jest.mock('../nav-bar/NavBar', () => {
   return jest.fn().mockReturnValue(<p>NavBar</p>);
 });
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('@rest/miscAPI', () => ({
   getVersion: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {

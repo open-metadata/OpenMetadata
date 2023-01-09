@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import { cloneDeep, isEmpty } from 'lodash';
-import { DataNode } from 'rc-tree/lib/interface';
+import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import {
   getGlossaries,
   getGlossaryTermByFQN,
   getGlossaryTerms,
-} from '../axiosAPIs/glossaryAPI';
-import { searchData } from '../axiosAPIs/miscAPI';
+} from '@rest/glossaryAPI';
+import { searchData } from '@rest/miscAPI';
+import { AxiosError } from 'axios';
+import { t } from 'i18next';
+import { cloneDeep, isEmpty } from 'lodash';
+import { DataNode } from 'rc-tree/lib/interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
@@ -31,7 +32,6 @@ import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
-import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getEntityName } from './CommonUtils';

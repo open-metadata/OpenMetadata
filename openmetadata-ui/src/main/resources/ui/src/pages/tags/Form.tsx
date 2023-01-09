@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
 import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
@@ -19,7 +20,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { errorMsg } from '../../utils/CommonUtils';
 
