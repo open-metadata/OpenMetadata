@@ -157,7 +157,7 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
 };
 
 export const goToAdvanceSearch = () => {
-  interceptURL('GET', '/api/v1/search/query?q=&index=table_search_index&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc', 'explorePage')
+  interceptURL('GET', '/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc', 'explorePage')
   //Navigate to explore page
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')

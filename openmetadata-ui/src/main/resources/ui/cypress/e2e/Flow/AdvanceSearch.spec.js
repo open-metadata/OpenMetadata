@@ -31,6 +31,7 @@ import {
     verifyResponseStatusCode
 } from '../../common/common';
 
+import { API_SERVICE } from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
@@ -171,8 +172,9 @@ describe('Advance search should work properly for Add Group functionality', () =
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
         if (field.owner) {
-          val = field.responseValueSecondGroup;
+          val = field.searchCriteriaSecondGroup.split(' ')[0];;
         }
+        
         checkAddGroupWithOperator(
           CONDITIONS_MUST.contains.name,
           CONDITIONS_MUST_NOT.notContains.name,
@@ -248,7 +250,7 @@ describe('Advance search should work properly for Add Rule functionality', () =>
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
         if (field.owner) {
-          val = field.responseValueSecondGroup;
+          val = field.searchCriteriaSecondGroup.split(' ')[0];;
         }
         checkAddRuleWithOperator(
           CONDITIONS_MUST.contains.name,
