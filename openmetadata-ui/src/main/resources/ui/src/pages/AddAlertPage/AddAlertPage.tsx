@@ -12,6 +12,18 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { AsyncSelect } from '@components/AsyncSelect/AsyncSelect';
+import { createAlertAction, updateAlertAction } from '@rest/alertActionAPI';
+import {
+  createAlert,
+  getAlertActionForAlerts,
+  getAlertsFromId,
+  getDefaultTriggerConfigs,
+  getEntityFilterFunctions,
+  getFilterFunctions,
+  updateAlert,
+} from '@rest/alertsAPI';
+import { getSearchedUsersAndTeams, getSuggestions } from '@rest/miscAPI';
 import {
   Button,
   Card,
@@ -32,24 +44,6 @@ import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  createAlertAction,
-  updateAlertAction,
-} from '../../axiosAPIs/alertActionAPI';
-import {
-  createAlert,
-  getAlertActionForAlerts,
-  getAlertsFromId,
-  getDefaultTriggerConfigs,
-  getEntityFilterFunctions,
-  getFilterFunctions,
-  updateAlert,
-} from '../../axiosAPIs/alertsAPI';
-import {
-  getSearchedUsersAndTeams,
-  getSuggestions,
-} from '../../axiosAPIs/miscAPI';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -490,7 +484,9 @@ const AddAlertPage = () => {
 
                 <Collapse ghost>
                   <Collapse.Panel
-                    header={`${t('label.advanced-config')}:`}
+                    header={`${t('label.advanced-entity', {
+                      entity: t('label.config'),
+                    })}:`}
                     key="1">
                     <Space>
                       <Form.Item
@@ -600,7 +596,9 @@ const AddAlertPage = () => {
                                   label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
-                              placeholder={t('label.select-data-asset-plural')}
+                              placeholder={t('label.select-field', {
+                                field: t('label.data-asset-plural'),
+                              })}
                             />
                           </Form.Item>
                         )}

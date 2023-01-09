@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { getAggregateChartData } from '@rest/DataInsightAPI';
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -97,7 +97,9 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         ),
       },
       {
-        title: t('label.total-session-plural'),
+        title: t('label.total-entity', {
+          entity: t('label.session-plural'),
+        }),
         dataIndex: 'sessions',
         key: 'sessions',
         render: (sessions: number) => (

@@ -12,6 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { getTableProfilerConfig, putTableProfileConfig } from '@rest/tableAPI';
 import {
   Button,
   InputNumber,
@@ -31,10 +32,6 @@ import { isEmpty, isEqual, isUndefined, omit, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
-import {
-  getTableProfilerConfig,
-  putTableProfileConfig,
-} from '../../../axiosAPIs/tableAPI';
 import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
@@ -285,8 +282,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         htmlType: 'submit',
       }}
       okText={t('label.save')}
+      open={visible}
       title={t('label.setting-plural')}
-      visible={visible}
       width={630}
       onCancel={handleCancel}>
       <Row gutter={[16, 16]}>
@@ -481,7 +478,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">{t('label.column-name')}</span>
+                    <span className="text-xs">
+                      {t('label.column-entity', {
+                        entity: t('label.name'),
+                      })}
+                    </span>
                   }
                   labelCol={{
                     style: {
@@ -493,7 +494,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     {
                       required: enablePartition,
                       message: t('message.field-text-is-required', {
-                        fieldText: t('label.column-name'),
+                        fieldText: t('label.column-entity', {
+                          entity: t('label.name'),
+                        }),
                       }),
                     },
                   ]}>

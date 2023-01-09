@@ -11,46 +11,39 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
-  EntityFieldThreadCount,
-  EntityTags,
+  Edge,
+  EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
+} from '@components/EntityLineage/EntityLineage.interface';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
 import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import TopicDetails from '@components/TopicDetails/TopicDetails.component';
+import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
+import { getLineageByFQN } from '@rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
 import {
   addFollower,
   getTopicByFqn,
   patchTopicDetails,
   removeFollower,
-} from '../../axiosAPIs/topicsAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
+} from '@rest/topicsAPI';
+import { AxiosError } from 'axios';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
+import { observer } from 'mobx-react';
+import { EntityTags } from 'Models';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import {
   getServiceDetailsPath,
   getTopicDetailsPath,
@@ -67,6 +60,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,

@@ -16,7 +16,7 @@ import { Space } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -31,6 +31,7 @@ import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
@@ -511,7 +512,9 @@ const AddGlossaryTerm = ({
         </div>
 
         <RelatedTermsModal
-          header={t('label.add-related-term-plural')}
+          header={t('label.add-entity', {
+            entity: t('label.related-term-plural'),
+          })}
           relatedTerms={relatedTerms}
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
@@ -519,7 +522,9 @@ const AddGlossaryTerm = ({
         />
 
         <ReviewerModal
-          header={t('label.add-reviewer-plural')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

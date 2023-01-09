@@ -11,11 +11,11 @@
 """
 Snowflake usage module
 """
+from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_SQL_STATEMENT
 from metadata.ingestion.source.database.snowflake.query_parser import (
     SnowflakeQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
@@ -32,3 +32,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
         ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES',
         'INSERT', 'MERGE', 'CREATE_TABLE_AS_SELECT')
     """
+
+    database_field = "database_name"
+
+    schema_field = "schema_name"

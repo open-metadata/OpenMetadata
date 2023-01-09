@@ -26,8 +26,3 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
     "useSSL": "use_ssl",
     "verifyCerts": "verify_certs",
 }
-
-TABLEAU_GET_WORKBOOKS_PARAM_DICT = {
-    "fields": "fields=_default_,owner.email,description"
-}
-TABLEAU_GET_VIEWS_PARAM_DICT = {"fields": "fields=_default_,sheetType"}

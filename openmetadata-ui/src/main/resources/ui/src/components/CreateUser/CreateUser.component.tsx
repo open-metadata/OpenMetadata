@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { checkEmailInUse, generateRandomPwd } from '@rest/auth-API';
 import {
   Button,
   Form,
@@ -25,11 +26,8 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, trim } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
@@ -58,8 +56,10 @@ import {
 } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
@@ -599,7 +599,7 @@ const CreateUser = ({
                   required: true,
                   type: 'email',
                   message: t('label.field-required', {
-                    field: t('label.service-email'),
+                    field: t('label.service-account-email'),
                   }),
                 },
               ]}>
@@ -782,7 +782,9 @@ const CreateUser = ({
                   className="w-full"
                   data-testid="auth-mechanism"
                   defaultValue={authMechanism}
-                  placeholder={t('label.select-auth-mechanism')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.auth-mechanism'),
+                  })}
                   onChange={(value) => setAuthMechanism(value)}>
                   {getAuthMechanismTypeOptions(authConfig).map((option) => (
                     <Option key={option.value}>{option.label}</Option>

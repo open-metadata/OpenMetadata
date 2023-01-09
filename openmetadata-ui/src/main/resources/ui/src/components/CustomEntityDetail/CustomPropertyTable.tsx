@@ -166,8 +166,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         onConfirm={handlePropertyDelete}
       />
       <ModalWithMarkdownEditor
-        header={t('label.edit-property', {
-          propertyName: selectedProperty.name,
+        header={t('label.edit-entity-name', {
+          entityType: t('label.property'),
+          entityName: selectedProperty.name,
         })}
         placeholder={t('label.enter-property-description')}
         value={selectedProperty.description || ''}

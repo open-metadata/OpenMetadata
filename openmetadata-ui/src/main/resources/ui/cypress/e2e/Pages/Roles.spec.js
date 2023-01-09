@@ -30,7 +30,7 @@ const policies = {
 };
 
 const errorMessageValidation = {
-  ifPolicyNotSelected: 'At least one policy is required.',
+  ifPolicyNotSelected: 'Enter at least one policy',
   ifNameNotEntered: 'invalid name',
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };
@@ -102,7 +102,7 @@ describe('Roles page should work properly', () => {
     //Entering descrription
     cy.get(descriptionBox).type(description);
     //Select the policies
-    cy.get('.ant-select').should('be.visible').click();
+    cy.get('[data-testid="policies"]').should('be.visible').click();
 
     cy.get('[title="Data Consumer Policy"]')
       .scrollIntoView()

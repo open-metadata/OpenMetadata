@@ -31,7 +31,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
           {t('label.explore-now')}
         </Button>
       }
-      visible={visible}>
+      open={visible}>
       <Row className="text-center" gutter={[16, 16]}>
         <Col className="mt-4" span={24}>
           <SVGIcons

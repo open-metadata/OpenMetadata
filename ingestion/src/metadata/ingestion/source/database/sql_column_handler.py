@@ -274,6 +274,7 @@ class SqlColumnHandlerMixin:
                 return col_raw_type.length if col_raw_type.length else 1
             except AttributeError:
                 return 1
+            return 1
         return None
 
     @staticmethod

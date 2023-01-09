@@ -11,7 +11,24 @@
  *  limitations under the License.
  */
 
+import Description from '@components/common/description/Description';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '@components/Loader/Loader';
+import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
+} from '@rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '@rest/teamsAPI';
 import {
   Button,
   Card,
@@ -31,23 +48,6 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getPolicyByName,
-  getRoleByName,
-  patchPolicy,
-  patchRole,
-} from '../../../axiosAPIs/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
-import Description from '../../../components/common/description/Description';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -97,7 +97,7 @@ const PoliciesDetailPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.policies'),
+        name: t('label.policy-plural'),
         url: policiesPath,
       },
       {
@@ -357,7 +357,12 @@ const PoliciesDetailPage = () => {
           {isEmpty(policy) ? (
             <ErrorPlaceHolder>
               <div className="text-center">
-                <p>{`${t('message.no-policy-found-for')} ${fqn}`}</p>
+                <p>
+                  {t('message.no-entity-found-for-name', {
+                    entity: t('label.policy-lowercase'),
+                    name: fqn,
+                  })}
+                </p>
                 <Button
                   size="small"
                   type="primary"
@@ -395,7 +400,9 @@ const PoliciesDetailPage = () => {
                       <Tooltip
                         title={
                           policyPermission.EditAll
-                            ? t('label.add-rule')
+                            ? t('label.add-entity', {
+                                entity: t('label.rule'),
+                              })
                             : t('message.no-permission-for-action')
                         }>
                         <Button
@@ -405,7 +412,9 @@ const PoliciesDetailPage = () => {
                           onClick={() =>
                             history.push(getAddPolicyRulePath(fqn))
                           }>
-                          {t('label.add-rule')}
+                          {t('label.add-entity', {
+                            entity: t('label.rule'),
+                          })}
                         </Button>
                       </Tooltip>
 
@@ -538,19 +547,20 @@ const PoliciesDetailPage = () => {
           closable={false}
           confirmLoading={isloadingOnSave}
           okText={t('label.confirm')}
+          open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
           })} ${t('label.from-lowercase')} ${getEntityName(policy)}`}
-          visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {` ${t('message.sure-to-remove')} ${getEntityName(
-              selectedEntity.record
-            )} ${t('label.from-lowercase')} ${getEntityName(policy)}?`}
+            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+              child: getEntityName(selectedEntity.record),
+              parent: getEntityName(policy),
+            })}
           </Typography.Text>
         </Modal>
       )}

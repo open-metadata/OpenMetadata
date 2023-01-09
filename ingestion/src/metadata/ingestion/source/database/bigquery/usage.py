@@ -11,11 +11,11 @@
 """
 Handle big query usage extraction
 """
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_STATEMENT
 from metadata.ingestion.source.database.bigquery.query_parser import (
     BigqueryQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import BIGQUERY_STATEMENT
 
 
 class BigqueryUsageSource(BigqueryQueryParserSource, UsageSource):
@@ -29,3 +29,7 @@ class BigqueryUsageSource(BigqueryQueryParserSource, UsageSource):
     filters = """
         AND statement_type = "SELECT"
     """
+
+    database_field = "project_id"
+
+    schema_field = ""  # schema filtering not available

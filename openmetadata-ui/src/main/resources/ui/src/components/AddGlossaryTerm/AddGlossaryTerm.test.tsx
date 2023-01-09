@@ -20,19 +20,7 @@ import {
 } from '../../mocks/Glossary.mock';
 import AddGlossaryTerm from './AddGlossaryTerm.component';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('@rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

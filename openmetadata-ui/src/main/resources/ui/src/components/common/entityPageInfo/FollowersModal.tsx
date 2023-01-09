@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import UserCard from '@pages/teams/UserCard';
 import { Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useState } from 'react';
-import UserCard from '../../../pages/teams/UserCard';
 import { getEntityName } from '../../../utils/CommonUtils';
 import Searchbar from '../searchbar/Searchbar';
 import { FollowersModalProps } from './FollowersModal.interface';
@@ -61,17 +61,19 @@ const FollowersModal = ({
       centered
       destroyOnClose
       data-testid="modal-container"
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}
       onCancel={onCancel}>
       <div>
         <Searchbar
-          placeholder={`${t('label.search-for-follower-plural')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.follower-plural'),
+          })}...`}
           searchValue={searchText}
           typingInterval={1500}
           onSearch={handleSearchAction}

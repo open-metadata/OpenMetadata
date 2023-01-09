@@ -82,8 +82,8 @@ const EditAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText={t('label.save')}
+      open={open}
       title={t('label.edit-an-announcement')}
-      visible={open}
       width={720}
       onCancel={onCancel}>
       <Form

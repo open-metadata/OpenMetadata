@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 
+import {
+  EntityData,
+  Option,
+  TaskAction,
+  TaskActionMode,
+} from '@pages/TasksPage/TasksPage.interface';
+import { getDashboardByFqn } from '@rest/dashboardAPI';
+import { getUserSuggestions } from '@rest/miscAPI';
+import { getMlModelByFQN } from '@rest/mlModelAPI';
+import { getPipelineByFqn } from '@rest/pipelineAPI';
+import { getTableDetailsByFQN } from '@rest/tableAPI';
+import { getTopicByFqn } from '@rest/topicsAPI';
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
-import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
-import { getUserSuggestions } from '../axiosAPIs/miscAPI';
-import { getMlModelByFQN } from '../axiosAPIs/mlModelAPI';
-import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
-import { getTableDetailsByFQN } from '../axiosAPIs/tableAPI';
-import { getTopicByFqn } from '../axiosAPIs/topicsAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -34,12 +40,6 @@ import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { TaskType } from '../generated/entity/feed/thread';
-import {
-  EntityData,
-  Option,
-  TaskAction,
-  TaskActionMode,
-} from '../pages/TasksPage/TasksPage.interface';
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
 import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';

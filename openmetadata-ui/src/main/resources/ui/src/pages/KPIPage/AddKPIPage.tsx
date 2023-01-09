@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { getListDataInsightCharts } from '@rest/DataInsightAPI';
+import { getListKPIs, postKPI } from '@rest/KpiAPI';
 import {
   Button,
   Card,
@@ -27,17 +31,11 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getListDataInsightCharts } from '../../axiosAPIs/DataInsightAPI';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import './KPIPage.less';
-
-import { t } from 'i18next';
-import { getListKPIs, postKPI } from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -65,6 +63,8 @@ import {
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './KPIPage.less';
+
 const { Option } = Select;
 
 const breadcrumb = [
@@ -77,7 +77,7 @@ const breadcrumb = [
     url: ROUTES.KPI_LIST,
   },
   {
-    name: t('label.add-new-kpi'),
+    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
     url: '',
     activeTitle: true,
   },
@@ -214,7 +214,7 @@ const AddKPIPage = () => {
         <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph className="text-base" data-testid="form-title">
-            {t('label.add-new-kpi')}
+            {t('label.add-new-entity', { entity: t('label.kpi-uppercase') })}
           </Typography.Paragraph>
           <Form
             data-testid="kpi-form"
@@ -313,8 +313,9 @@ const AddKPIPage = () => {
                           }}
                           max={100}
                           min={0}
-                          tooltipPlacement="bottom"
-                          tooltipVisible={false}
+                          tooltip={{
+                            open: false,
+                          }}
                           value={metricValue}
                           onChange={(value) => {
                             setMetricValue(value);
@@ -430,7 +431,9 @@ const AddKPIPage = () => {
       </Col>
       <Col className="m-t-md" data-testid="right-panel" span={4}>
         <Typography.Paragraph className="text-base font-medium">
-          {t('label.add-kpi')}
+          {t('label.add-entity', {
+            entity: t('label.kpi-uppercase'),
+          })}
         </Typography.Paragraph>
         <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
       </Col>

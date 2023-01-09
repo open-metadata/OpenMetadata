@@ -16,18 +16,6 @@ import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -49,7 +37,7 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('@rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

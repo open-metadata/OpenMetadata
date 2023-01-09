@@ -12,12 +12,12 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import {
   Button as ButtonAntd,
   Col,
   Dropdown,
   Input,
-  Menu,
   Row,
   Space,
   Tooltip,
@@ -40,7 +40,6 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAfterMount } from '../../hooks/useAfterMount';
-import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
 import {
@@ -295,41 +294,32 @@ const GlossaryV1 = ({
     );
   });
 
-  const manageButtonContent = () => {
-    return (
-      <Menu
-        items={[
-          {
-            label: (
-              <Space
-                className="tw-cursor-pointer manage-button"
-                size={8}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDelete(true);
-                  setShowActions(false);
-                }}>
-                <SVGIcons alt="Delete" icon={Icons.DELETE} />
-                <div className="tw-text-left" data-testid="delete-button">
-                  <p
-                    className="tw-font-medium"
-                    data-testid="delete-button-title">
-                    Delete
-                  </p>
-                  <p className="tw-text-grey-muted tw-text-xs">
-                    Deleting this{' '}
-                    {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'} will
-                    permanently remove its metadata from OpenMetadata.
-                  </p>
-                </div>
-              </Space>
-            ),
-            key: 'delete-button',
-          },
-        ]}
-      />
-    );
-  };
+  const manageButtonContent = [
+    {
+      label: (
+        <Space
+          className="tw-cursor-pointer manage-button"
+          size={8}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsDelete(true);
+            setShowActions(false);
+          }}>
+          <SVGIcons alt="Delete" icon={Icons.DELETE} />
+          <div className="tw-text-left" data-testid="delete-button">
+            <p className="tw-font-medium" data-testid="delete-button-title">
+              Delete
+            </p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Deleting this {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}{' '}
+              will permanently remove its metadata from OpenMetadata.
+            </p>
+          </div>
+        </Space>
+      ),
+      key: 'delete-button',
+    },
+  ];
 
   const fetchLeftPanel = () => {
     return (
@@ -448,12 +438,12 @@ const GlossaryV1 = ({
                 ? !glossaryPermission.Delete
                 : !glossaryTermPermission.Delete
             }
-            overlay={manageButtonContent()}
+            menu={{ items: manageButtonContent }}
+            open={showActions}
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
             trigger={['click']}
-            visible={showActions}
-            onVisibleChange={setShowActions}>
+            onOpenChange={setShowActions}>
             <Tooltip
               title={
                 glossaryPermission.Delete || glossaryTermPermission.Delete
@@ -559,7 +549,8 @@ const GlossaryV1 = ({
                 {' '}
                 <ProfilePicture
                   displayName={selectedData.updatedBy}
-                  id={selectedData.id}
+                  // There is no user id present in response
+                  id=""
                   name={selectedData.updatedBy || ''}
                   textClass="text-xs"
                   width="20"

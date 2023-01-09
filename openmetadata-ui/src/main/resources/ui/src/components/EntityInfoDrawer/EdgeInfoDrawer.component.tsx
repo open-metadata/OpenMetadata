@@ -112,9 +112,9 @@ const EdgeInfoDrawer = ({
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
+      open={visible}
       style={{ position: 'absolute' }}
-      title={t('label.edge-information')}
-      visible={visible}>
+      title={t('label.edge-information')}>
       {isLoading ? (
         <Loader />
       ) : (
@@ -149,7 +149,9 @@ const EdgeInfoDrawer = ({
               />
             ) : (
               <Typography.Paragraph className="text-grey-muted m-b-0">
-                {t('label.no-description')}
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
               </Typography.Paragraph>
             )}
           </Col>

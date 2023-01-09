@@ -12,13 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Row, Table, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { AxiosError } from 'axios';
-import cronstrue from 'cronstrue';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
   checkAirflowStatus,
   deleteIngestionPipelineById,
@@ -26,8 +19,15 @@ import {
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
+} from '@rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '@rest/miscAPI';
+import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import cronstrue from 'cronstrue';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../utils/CommonUtils';
@@ -39,7 +39,6 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import PopOver from '../common/popover/PopOver';
 import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -366,8 +365,8 @@ const TestSuitePipelineTab = () => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <PopOver
-                  html={
+                <Popover
+                  content={
                     <div>
                       {cronstrue.toString(
                         record.airflowConfig.scheduleInterval || '',
@@ -378,11 +377,10 @@ const TestSuitePipelineTab = () => {
                       )}
                     </div>
                   }
-                  position="bottom"
-                  theme="light"
-                  trigger="mouseenter">
+                  placement="bottom"
+                  trigger="hover">
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </PopOver>
+                </Popover>
               ) : (
                 <span>--</span>
               )}
@@ -573,7 +571,9 @@ const TestSuitePipelineTab = () => {
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer
-      buttonName={t('label.add-pipeline-ingestion', { pipelineType: '' })}
+      buttonName={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
       onButtonClick={() => {

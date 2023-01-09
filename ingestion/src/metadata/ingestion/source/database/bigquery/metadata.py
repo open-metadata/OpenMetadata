@@ -52,10 +52,10 @@ from metadata.generated.schema.security.credentials.gcsCredentials import (
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getListTestSuites } from '@rest/testAPI';
 import {
   Button,
   Divider,
@@ -25,11 +26,8 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
-import { getListTestSuites } from '../../../axiosAPIs/testAPI';
 import {
   API_RES_MAX_SIZE,
   getTableTabPath,
@@ -39,7 +37,9 @@ import { useAuth } from '../../../hooks/authHooks';
 import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import {
   SelectTestSuiteProps,
   SelectTestSuiteType,

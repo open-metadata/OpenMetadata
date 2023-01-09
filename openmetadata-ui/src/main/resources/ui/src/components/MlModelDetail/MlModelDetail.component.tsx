@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { restoreMlmodel } from '@rest/mlModelAPI';
 import { Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -30,7 +31,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
-import { restoreMlmodel } from '../../axiosAPIs/mlModelAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -384,7 +384,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         }),
         // Autoclose timer
         2000
@@ -394,7 +394,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         })
       );
     }

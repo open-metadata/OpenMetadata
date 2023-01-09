@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { updateUser } from '@rest/userAPI';
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -18,7 +19,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { updateUser } from '../../axiosAPIs/userAPI';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -202,7 +202,7 @@ const UserListV1: FC<UserListV1Props> = ({
                   disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddNewUser}>
-                  {t('label.add-user')}
+                  {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               }
               heading="User"
@@ -236,13 +236,17 @@ const UserListV1: FC<UserListV1Props> = ({
             <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
           </span>
           <Tooltip
-            title={isAdminUser ? t('label.add-user') : ADMIN_ONLY_ACTION}>
+            title={
+              isAdminUser
+                ? t('label.add-entity', { entity: t('label.user') })
+                : t('message.admin-only-action')
+            }>
             <Button
               data-testid="add-user"
               disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
-              {t('label.add-user')}
+              {t('label.add-entity', { entity: t('label.user') })}
             </Button>
           </Tooltip>
         </Space>
@@ -293,15 +297,19 @@ const UserListV1: FC<UserListV1Props> = ({
         closable={false}
         confirmLoading={isLoading}
         okText={t('label.restore')}
-        title={t('label.restore-user')}
-        visible={showReactiveModal}
+        open={showReactiveModal}
+        title={t('label.restore-entity', {
+          entity: t('label.user'),
+        })}
         onCancel={() => {
           setShowReactiveModal(false);
           setSelectedUser(undefined);
         }}
         onOk={handleReactiveUser}>
         <p>
-          {t('message.are-you-want-to-restore')} {getEntityName(selectedUser)}?
+          {t('message.are-you-want-to-restore', {
+            entity: getEntityName(selectedUser),
+          })}
         </p>
       </Modal>
 

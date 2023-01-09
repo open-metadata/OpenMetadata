@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { restoreDashboard } from '@rest/dashboardAPI';
 import { Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -26,7 +27,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -531,7 +531,9 @@ const DashboardDetails = ({
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
-        title: t('label.chart-name'),
+        title: t('label.chart-entity', {
+          entity: t('label.name'),
+        }),
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
@@ -550,7 +552,9 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: t('label.chart-type'),
+        title: t('label.chart-entity', {
+          entity: t('label.type'),
+        }),
         dataIndex: 'chartType',
         key: 'chartType',
         width: 100,
@@ -569,7 +573,9 @@ const DashboardDetails = ({
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
                 <span className="tw-no-description">
-                  {t('label.no-description')}
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
                 </span>
               )}
             </div>
@@ -823,7 +829,9 @@ const DashboardDetails = ({
           header={t('label.edit-chart', {
             chartName: editChart.chart.displayName,
           })}
-          placeholder={t('label.enter-chart-description')}
+          placeholder={t('label.enter-field-description', {
+            field: t('label.chart'),
+          })}
           value={editChart.chart.description || ''}
           visible={Boolean(editChart)}
           onCancel={closeEditChartModal}

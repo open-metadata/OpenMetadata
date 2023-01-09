@@ -22,7 +22,7 @@ jobs:
       matrix:
         py-version: ['3.9']
         e2e-test: ['mysql', 'bigquery', 'snowflake']
-    environment: e2e
+    environment: test
 
     steps:
     - name: Checkout
@@ -67,17 +67,17 @@ jobs:
       continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
-        E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.E2E_BQ_PROJECT_ID_TAXONOMY }}
-        E2E_BQ_PRIVATE_KEY: ${{ secrets.E2E_BQ_PRIVATE_KEY }}
-        E2E_BQ_PROJECT_ID: ${{ secrets.E2E_BQ_PROJECT_ID }}
-        E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.E2E_BQ_PRIVATE_KEY_ID }}
-        E2E_BQ_CLIENT_EMAIL: ${{ secrets.E2E_BQ_CLIENT_EMAIL }}
-        E2E_BQ_CLIENT_ID: ${{ secrets.E2E_BQ_CLIENT_ID }}
-        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.E2E_SNOWFLAKE_PASSWORD }}
-        E2E_SNOWFLAKE_USERNAME: ${{ secrets.E2E_SNOWFLAKE_USERNAME }}
-        E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.E2E_SNOWFLAKE_ACCOUNT }}
-        E2E_SNOWFLAKE_DATABASE: ${{ secrets.E2E_SNOWFLAKE_DATABASE }}
-        E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.E2E_SNOWFLAKE_WAREHOUSE }}
+        E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
+        E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+        E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+        E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+        E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+        E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
+        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
+        E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+        E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+        E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
+        E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
@@ -91,7 +91,7 @@ jobs:
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
           }
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_URL: ${{ secrets.TEST_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure

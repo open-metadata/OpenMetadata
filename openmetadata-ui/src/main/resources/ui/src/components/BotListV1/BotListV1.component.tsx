@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getBots } from '@rest/botsAPI';
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -18,7 +19,6 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getBots } from '../../axiosAPIs/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
@@ -113,7 +113,9 @@ const BotListV1 = ({
             <RichTextEditorPreviewer markdown={record?.description || ''} />
           ) : (
             <span data-testid="no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </span>
           ),
       },
@@ -193,6 +195,8 @@ const BotListV1 = ({
     fetchBots(showDeleted);
   }, [showDeleted]);
 
+  const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
+
   return handleErrorPlaceholder ? (
     <Row>
       <Col className="w-full tw-flex tw-justify-end">
@@ -213,9 +217,7 @@ const BotListV1 = ({
               <Tooltip
                 placement="left"
                 title={
-                  isAdminUser
-                    ? t('label.add-bot')
-                    : t('message.admin-only-action')
+                  isAdminUser ? addBotLabel : t('message.admin-only-action')
                 }>
                 <Button
                   ghost
@@ -223,7 +225,7 @@ const BotListV1 = ({
                   disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddBotClick}>
-                  {t('label.add-bot')}
+                  {addBotLabel}
                 </Button>
               </Tooltip>
             </div>
@@ -252,15 +254,13 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={
-              isAdminUser ? t('label.add-bot') : t('message.admin-only-action')
-            }>
+            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}
               type="primary"
               onClick={handleAddBotClick}>
-              {t('label.add-bot')}
+              {addBotLabel}
             </Button>
           </Tooltip>
         </Space>
@@ -268,7 +268,9 @@ const BotListV1 = ({
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder={`${t('label.search-for-bot-plural')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.bot-plural'),
+          })}...`}
           typingInterval={500}
           onSearch={handleSearch}
         />

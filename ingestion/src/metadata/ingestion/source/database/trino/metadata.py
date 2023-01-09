@@ -35,10 +35,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.ansi import ANSI, print_ansi_encoded_string
-from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 

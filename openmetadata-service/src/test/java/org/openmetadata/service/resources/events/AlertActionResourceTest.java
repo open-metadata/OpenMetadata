@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -20,7 +18,6 @@ import org.openmetadata.service.resources.alerts.AlertActionResource;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Disabled
 public class AlertActionResourceTest extends EntityResourceTest<AlertAction, CreateAlertAction> {
 
   public AlertActionResourceTest() {
@@ -60,20 +57,18 @@ public class AlertActionResourceTest extends EntityResourceTest<AlertAction, Cre
 
   @Override
   public void validateCreatedEntity(
-      AlertAction createdEntity, CreateAlertAction request, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+      AlertAction createdEntity, CreateAlertAction request, Map<String, String> authHeaders) {}
 
   @Override
-  public void compareEntities(AlertAction expected, AlertAction updated, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+  public void compareEntities(AlertAction expected, AlertAction updated, Map<String, String> authHeaders) {}
 
   @Override
-  public AlertAction validateGetWithDifferentFields(AlertAction entity, boolean byName) throws HttpResponseException {
+  public AlertAction validateGetWithDifferentFields(AlertAction entity, boolean byName) {
     return entity;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   @Test
   @Override

@@ -118,8 +118,8 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
         }}
         closeIcon={<></>}
         footer={null}
+        open={visible}
         transitionName=""
-        visible={visible}
         width={650}
         onCancel={handleCancel}>
         <GlobalSearchSuggestions

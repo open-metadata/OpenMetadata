@@ -103,7 +103,9 @@ EXPECTED_TABLE_TYPES = [TableType.External, TableType.Iceberg, TableType.View]
 
 
 class GlueUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.glue.metadata.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

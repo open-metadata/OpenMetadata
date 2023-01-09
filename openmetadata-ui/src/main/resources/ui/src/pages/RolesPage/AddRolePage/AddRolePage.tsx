@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
+import { addRole, getPolicies } from '@rest/rolesAPIV1';
 import { Button, Card, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -43,7 +43,7 @@ const breadcrumb = [
     url: rolesPath,
   },
   {
-    name: t('label.add-new-role'),
+    name: t('label.add-new-entity', { entity: t('label.role') }),
     url: '',
   },
 ];
@@ -107,7 +107,7 @@ const AddRolePage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {t('label.add-new-role')}
+              {t('label.add-new-entity', { entity: t('label.role') })}
             </Typography.Paragraph>
             <Form
               data-testid="role-form"
@@ -163,9 +163,7 @@ const AddRolePage = () => {
                 rules={[
                   {
                     required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('message.at-least-one-policy'),
-                    }),
+                    message: t('message.at-least-one-policy'),
                   },
                 ]}>
                 <Select

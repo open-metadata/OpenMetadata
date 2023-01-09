@@ -102,6 +102,9 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
                                 endTime=row.get("execution_end_time_ms"),
                                 analysisDate=datetime.now(),
                                 serviceName=self.config.serviceName,
+                                duration=row.get("duration") / 1000
+                                if row.get("duration")
+                                else None,
                             )
                         )
                 except Exception as err:

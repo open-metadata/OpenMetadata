@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getAggregateChartData } from '@rest/DataInsightAPI';
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
@@ -27,7 +28,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -210,7 +210,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                 <Typography.Paragraph
                   className="data-insight-label-text"
                   style={{ marginBottom: '4px' }}>
-                  {t('label.completed-description')}
+                  {t('label.completed-entity', {
+                    entity: t('label.description'),
+                  })}
                   {isPercentageGraph ? ' %' : ''}
                 </Typography.Paragraph>
                 <DataInsightProgressBar
