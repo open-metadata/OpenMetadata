@@ -11,7 +11,7 @@ We are using [quicktype](https://quicktype.io/) to generate types from JSON Sche
 Make sure you have `quicktype` installed if not then install it using command given below from `openmetadata` root folder.
 
 ```python
-yarn install
+yarn add quicktype
 ```
 
 Now go to the UI folder openmetadata-ui/src/main/resources/ui and from there run the command given below.
