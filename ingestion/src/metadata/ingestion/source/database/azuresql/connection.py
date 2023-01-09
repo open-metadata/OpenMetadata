@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.database.azureSQLConn
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    get_connection_options_dict,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
@@ -45,11 +46,7 @@ def get_connection_url(connection: AzureSQLConnection) -> str:
     url += f"{connection.hostPort}"
     url += f"/{quote_plus(connection.database)}" if connection.database else ""
     url += f"?driver={quote_plus(connection.driver)}"
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
+    options = get_connection_options_dict(connection)
     if options:
         if not connection.database:
             url += "/"
