@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.ALERT_ACTION;
 
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,26 +107,67 @@ public class AlertsPublisherManager {
 
   @SneakyThrows
   public void updateAllAlertUsingAlertAction(AlertAction alertAction) {
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
-    EntityRepository<Alert> alertEntityRepository = Entity.getEntityRepository(ALERT);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      deleteAlertAllPublishers(record.getId());
-      Alert alert = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
-      addAlertActionPublisher(alert, alertAction);
+    List<AlertsActionPublisher> publishers = getAlertPublisherFromAlertAction(alertAction.getId());
+    // Avoid handling from DB
+    if (publishers.size() != 0) {
+      for (AlertsActionPublisher publisher : publishers) {
+        Alert alert = publisher.getAlert();
+        AlertAction action = publisher.getAlertAction();
+        deleteAlertAllPublishers(alert.getId());
+        if (action.getId().equals(alertAction.getId())) {
+          addAlertActionPublisher(alert, alertAction);
+        } else {
+          addAlertActionPublisher(alert, action);
+        }
+      }
+    } else {
+      List<CollectionDAO.EntityRelationshipRecord> records =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
+      EntityRepository<Alert> alertEntityRepository = Entity.getEntityRepository(ALERT);
+      for (CollectionDAO.EntityRelationshipRecord record : records) {
+        Alert alert = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
+        addAlertActionPublisher(alert, alertAction);
+      }
     }
+  }
+
+  public List<AlertsActionPublisher> getAlertPublisherFromAlertAction(UUID alertActionId) {
+    List<AlertsActionPublisher> publisherManagers = new ArrayList<>();
+    for (Map.Entry<UUID, Map<UUID, AlertsActionPublisher>> alertValues : alertPublisherMap.entrySet()) {
+      if (alertValues.getValue().containsKey(alertActionId)) {
+        publisherManagers.add(alertValues.getValue().get(alertActionId));
+      }
+    }
+    return publisherManagers;
   }
 
   @SneakyThrows
   public void deleteAlertActionFromAllAlertPublisher(AlertAction alertAction) {
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      deleteAlertActionPublisher(record.getId(), alertAction);
+    List<AlertsActionPublisher> publishers = getAlertPublisherFromAlertAction(alertAction.getId());
+    // Avoid handling from DB
+    if (publishers.size() != 0) {
+      for (AlertsActionPublisher alertsActionPublisher : publishers) {
+        if (alertsActionPublisher != null) {
+          alertsActionPublisher.getProcessor().halt();
+          alertsActionPublisher.awaitShutdown();
+          EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
+          LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
+          UUID alertId = alertsActionPublisher.getAlert().getId();
+          Map<UUID, AlertsActionPublisher> alertActionPublishersMap = alertPublisherMap.get(alertId);
+          alertActionPublishersMap.remove(alertAction.getId());
+          alertPublisherMap.put(alertId, alertActionPublishersMap);
+        }
+      }
+    } else {
+      List<CollectionDAO.EntityRelationshipRecord> records =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
+      for (CollectionDAO.EntityRelationshipRecord record : records) {
+        deleteAlertActionPublisher(record.getId(), alertAction);
+      }
     }
   }
 
