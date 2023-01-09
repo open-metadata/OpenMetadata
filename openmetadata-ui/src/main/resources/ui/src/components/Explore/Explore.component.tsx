@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import FacetFilter from '@components/common/facetfilter/FacetFilter';
+import SearchedData from '@components/searched-data/SearchedData';
 import {
   faSortAmountDownAlt,
   faSortAmountUpAlt,
@@ -30,8 +32,6 @@ import {
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import SearchedData from '../../components/searched-data/SearchedData';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -94,6 +94,28 @@ const Explore: React.FC<ExploreProps> = ({
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
+
+  const tabItems = useMemo(
+    () =>
+      Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => ({
+        key: tabSearchIndex,
+        label: (
+          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+            {tabDetail.label}
+            <span className="p-l-xs ">
+              {!isNil(tabCounts)
+                ? getCountBadge(
+                    tabCounts[tabSearchIndex as ExploreSearchIndex],
+                    '',
+                    tabSearchIndex === searchIndex
+                  )
+                : getCountBadge()}
+            </span>
+          </div>
+        ),
+      })),
+    [tabsInfo, tabCounts]
+  );
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
@@ -231,6 +253,7 @@ const Explore: React.FC<ExploreProps> = ({
       }>
       <Tabs
         defaultActiveKey={defaultActiveTab}
+        items={tabItems}
         size="small"
         tabBarExtraContent={
           <div className="tw-flex">
@@ -268,27 +291,9 @@ const Explore: React.FC<ExploreProps> = ({
         onChange={(tab) => {
           tab && onChangeSearchIndex(tab as ExploreSearchIndex);
           setShowSummaryPanel(false);
-        }}>
-        {Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => (
-          <Tabs.TabPane
-            key={tabSearchIndex}
-            tab={
-              <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-                {tabDetail.label}
-                <span className="p-l-xs ">
-                  {!isNil(tabCounts)
-                    ? getCountBadge(
-                        tabCounts[tabSearchIndex as ExploreSearchIndex],
-                        '',
-                        tabSearchIndex === searchIndex
-                      )
-                    : getCountBadge()}
-                </span>
-              </div>
-            }
-          />
-        ))}
-      </Tabs>
+        }}
+      />
+
       <Row gutter={[8, 0]} wrap={false}>
         <Col className="searched-data-container" flex="auto">
           <Row gutter={[16, 16]}>

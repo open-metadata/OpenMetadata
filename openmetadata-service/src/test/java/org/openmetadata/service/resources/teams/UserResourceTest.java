@@ -59,6 +59,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -283,12 +284,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
     CreateUser create = createRequest(test).withRoles(roles);
-    List<UUID> createdRoles = Arrays.asList(role1.getId(), role2.getId());
-    CreateUser created = createRequest(test).withRoles(createdRoles);
     User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure User has relationship to these roles
-    String[] expectedRoles = createdRoles.stream().map(UUID::toString).sorted().toArray(String[]::new);
+    String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
     List<EntityReference> roleReferences = user.getRoles();
     String[] actualRoles = roleReferences.stream().map(ref -> ref.getId().toString()).sorted().toArray(String[]::new);
     assertArrayEquals(expectedRoles, actualRoles);
@@ -417,6 +416,53 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // list users (not bots)
     users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(initialUserCount - initialBotCount, users.getPaging().getTotal());
+  }
+
+  @Test
+  void get_listUsersWithFalseBotFilterPagination(TestInfo test) throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = Map.of("isBot", "false", "team", team.getName());
+
+    // create 5 bot users
+    for (int i = 0; i < 5; i++) {
+      CreateUser create = createBotUserRequest(test, i).withTeams(List.of(team.getId()));
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    // create 10 non-bot users
+    for (int i = 5; i < 15; i++) {
+      CreateUser create = createRequest(test, i).withTeams(List.of(team.getId()));
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // First page must contain "after" and should not have "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    User user1 = users.getData().get(0);
+
+    String after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // Third page must contain only "before" since it is the last page
+    assertNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user2 = users.getData().get(0);
+    assertNotEquals(user1, user2);
+
+    String before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // First page must contain only "after"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    assertEquals(user1, users.getData().get(0));
   }
 
   private CreateUser createBotUserRequest(TestInfo test, int index) {
@@ -681,7 +727,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
+  void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthType.SSO)
@@ -749,7 +795,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -758,7 +805,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -772,7 +819,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test1@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -802,7 +849,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -811,7 +859,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword(encodePassword("Test@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -825,7 +873,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test1@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -836,6 +884,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 ADMIN_AUTH_HEADERS),
         UNAUTHORIZED,
         CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  private String encodePassword(String password) {
+    return Base64.getEncoder().encodeToString(password.getBytes());
   }
 
   private void validateJwtBasicAuth(JwtResponse jwtResponse, String username) {

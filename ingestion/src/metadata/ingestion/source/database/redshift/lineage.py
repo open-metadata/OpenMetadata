@@ -31,10 +31,10 @@ workflowConfig:
 """
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.redshift.queries import REDSHIFT_SQL_STATEMENT
 from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
-from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
 
 class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
@@ -47,3 +47,9 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT
+
+    database_field = "database_name"
+
+    schema_field = "schema_name"
+
+    db_filters = ""

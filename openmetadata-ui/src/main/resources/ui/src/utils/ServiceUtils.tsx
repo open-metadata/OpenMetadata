@@ -11,22 +11,21 @@
  *  limitations under the License.
  */
 
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '@components/PermissionProvider/PermissionProvider.interface';
+import { getEntityCount } from '@rest/miscAPI';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import {
   Bucket,
   DynamicFormFieldType,
-  DynamicObj,
   ServicesData,
   ServiceTypes,
 } from 'Models';
 import React from 'react';
-import { getEntityCount } from '../axiosAPIs/miscAPI';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../components/PermissionProvider/PermissionProvider.interface';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addDBTIngestionGuide,
@@ -372,7 +371,7 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getKeyValuePair = (obj: DynamicObj) => {
+export const getKeyValuePair = (obj: Record<string, string>) => {
   return Object.entries(obj).map((v) => {
     return {
       key: v[0],
@@ -382,7 +381,7 @@ export const getKeyValuePair = (obj: DynamicObj) => {
 };
 
 export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
-  const keyValuePair: DynamicObj = {};
+  const keyValuePair: Record<string, string> = {};
 
   arr.forEach((obj) => {
     if (obj.key && obj.value) {

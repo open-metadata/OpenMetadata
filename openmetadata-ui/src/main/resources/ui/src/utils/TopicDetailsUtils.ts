@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { TopicConfigObjectInterface } from '@components/TopicDetails/TopicDetails.interface';
 import { t } from 'i18next';
-import { TopicConfigObjectInterface } from '../components/TopicDetails/TopicDetails.interface';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 

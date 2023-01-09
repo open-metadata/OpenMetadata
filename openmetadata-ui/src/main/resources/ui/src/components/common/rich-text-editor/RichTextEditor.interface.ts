@@ -55,3 +55,8 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   height?: string;
   onTextChange?: (value: string) => void;
 }
+
+export interface EditorContentRef {
+  getEditorContent: () => string;
+  clearEditorContent: () => void;
+}

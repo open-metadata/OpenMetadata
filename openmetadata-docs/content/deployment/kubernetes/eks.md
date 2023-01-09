@@ -27,7 +27,9 @@ OpenMetadata helm chart depends on Airflow and Airflow expects a presistent disk
 
 In AWS, this is achieved by Elastic File System (EFS) service. AWS Elastic Block Store (EBS) does not provide ReadWriteMany Volume access mode as EBS will only be attached to one Kubernetes Node at any given point of time.
 
-In order to provision persistent volumes from AWS EFS, you will need to setup and install [aws-efs-csi-driver](https://github.com/kubernetes-sigs/aws-efs-csi-driver).
+In order to provision persistent volumes from AWS EFS, you will need to setup and install [aws-efs-csi-driver](https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html). Note that this is required for Airflow as One OpenMetadata Dependencies.
+
+Also, [aws-ebs-csi-driver](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html) might be required for Persistent Volumes that are to be used for MySQL and ElasticSearch as OpenMetadata Dependencies.
 
 The below guide provides Persistent Volumes provisioning as static volumes (meaning you will be responsible to create, maintain and destroy Persistent Volumes).
 
@@ -44,13 +46,15 @@ metadata:
   labels: 
     app: airflow-dags 
 spec: 
+  capacity:
+    storage: 5Gi
   storageClassName: ""
   accessModes: 
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: [FileSystemId] # Replace with EFS File System Id
+    volumeHandle: <FileSystemId>:/airflow-dags # Replace with EFS File System Id
 
 ---
 apiVersion: v1
@@ -87,14 +91,16 @@ metadata:
   name: openmetadata-dependencies-logs-pv
   labels: 
     app: airflow-logs
-spec: 
+spec:
+  capacity:
+    storage: 5Gi
   storageClassName: ""
   accessModes: 
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: [FileSystemId] # Replace with EFS File System Id
+    volumeHandle: <FileSystemId>:/airflow-logs # Replace with EFS File System Id
 
 ---
 apiVersion: v1
@@ -138,7 +144,7 @@ metadata:
   name: my-permission-pod
 spec:
   containers:
-  - image: busybox
+  - image: nginx
     name: my-permission-pod
     volumeMounts:
     - name: airflow-dags
@@ -152,10 +158,10 @@ spec:
   volumes:
   - name: airflow-logs
     persistentVolumeClaim:
-      claimName: openmetadata-dependencies-logs
+      claimName: openmetadata-dependencies-logs-pvc
   - name: airflow-dags
     persistentVolumeClaim:
-      claimName: openmetadata-dependencies-dags
+      claimName: openmetadata-dependencies-dags-pvc
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 ```
@@ -188,10 +194,10 @@ airflow:
     extraVolumes:
       - name: efs-airflow-logs
         persistentVolumeClaim:
-          claimName: openmetadata-dependencies-logs
+          claimName: openmetadata-dependencies-logs-pvc
       - name: efs-airflow-dags
         persistentVolumeClaim:
-          claimName: openmetadata-dependencies-dags
+          claimName: openmetadata-dependencies-dags-pvc
     config:
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/airflow-dags/dags"
   dags:

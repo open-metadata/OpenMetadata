@@ -70,7 +70,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
-            filters=self.filters,
+            filters=self.filters,  # pylint: disable=no-member
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
@@ -154,6 +154,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                                 databaseName=self.get_database_name(row),
                                 serviceName=self.config.serviceName,
                                 databaseSchema=self.get_schema_name(row),
+                                duration=row.get("duration"),
                             )
                         )
                     except Exception as err:

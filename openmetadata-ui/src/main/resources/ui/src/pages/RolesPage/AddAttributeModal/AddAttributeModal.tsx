@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
+import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { getPolicies, getRoles } from '@rest/rolesAPIV1';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
-import { getPolicies, getRoles } from '../../../axiosAPIs/rolesAPIV1';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '../../../components/Loader/Loader';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -129,6 +129,7 @@ const AddAttributeModal: FC<Props> = ({
       confirmLoading={isModalLoading}
       data-testid="modal-container"
       okText="Submit"
+      open={isOpen}
       title={
         <span data-testid="modal-title">
           {title}{' '}
@@ -137,7 +138,6 @@ const AddAttributeModal: FC<Props> = ({
           </span>
         </span>
       }
-      visible={isOpen}
       width={750}
       onCancel={onCancel}
       onOk={() => onSave(selectedValues)}>

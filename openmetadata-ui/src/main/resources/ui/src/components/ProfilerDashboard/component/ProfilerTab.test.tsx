@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { getListTestCase } from '@rest/testAPI';
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getListTestCase } from '../../../axiosAPIs/testAPI';
 import { Column } from '../../../generated/entity/data/table';
 import {
   COLUMN_PROFILER_RESULT,
@@ -30,7 +30,7 @@ const profilerTabProps: ProfilerTabProps = {
   tableProfile: MOCK_TABLE.profile,
 };
 
-jest.mock('../../../axiosAPIs/testAPI', () => {
+jest.mock('@rest/testAPI', () => {
   return {
     getListTestCase: jest
       .fn()

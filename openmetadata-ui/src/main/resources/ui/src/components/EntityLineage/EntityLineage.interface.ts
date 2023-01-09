@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
 import { EntityType } from '../../enums/entity.enum';
@@ -134,4 +134,15 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   zoomValue: number;
   lineageData: EntityLineage;
   onOptionSelect: (value?: string) => void;
+}
+
+export type LineagePos = 'from' | 'to';
+
+export interface LeafNodes {
+  upStreamNode: Array<string>;
+  downStreamNode: Array<string>;
+}
+export interface LoadingNodeState {
+  id: string | undefined;
+  state: boolean;
 }

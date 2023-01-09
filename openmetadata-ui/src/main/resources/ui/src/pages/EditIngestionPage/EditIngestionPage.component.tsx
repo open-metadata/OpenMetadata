@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
-import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
-import { ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import AddIngestion from '@components/AddIngestion/AddIngestion.component';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '@components/containers/PageContainerV1';
+import PageLayoutV1 from '@components/containers/PageLayoutV1';
+import Loader from '@components/Loader/Loader';
 import {
   checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
   updateIngestionPipeline,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
-import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import Loader from '../../components/Loader/Loader';
+} from '@rest/ingestionPipelineAPI';
+import { getServiceByFQN } from '@rest/serviceAPI';
+import { Space } from 'antd';
+import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
+import { ServicesUpdateRequest, ServiceTypes } from 'Models';
+import React, { useEffect, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   DEPLOYED_PROGRESS_VAL,
   getServiceDetailsPath,
@@ -63,7 +63,7 @@ const EditIngestionPage = () => {
   const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
   const history = useHistory();
-  const [serviceData, setServiceData] = useState<DataObj>();
+  const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(
     {} as IngestionPipeline
   );
@@ -87,8 +87,7 @@ const EditIngestionPage = () => {
       getServiceByFQN(serviceCategory, serviceFQN)
         .then((resService) => {
           if (resService) {
-            // TODO: fix type issue below
-            setServiceData(resService as DataObj);
+            setServiceData(resService as ServicesUpdateRequest);
             resolve();
           } else {
             showErrorToast(

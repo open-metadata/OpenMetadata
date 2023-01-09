@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '@components/common/rich-text-editor/RichTextEditor.interface';
+import { getTeams } from '@rest/teamsAPI';
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, toLower, trim } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import jsonData from '../../jsons/en';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
@@ -101,8 +101,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
+      open={visible}
       title={t('label.add-entity', { entity: t('label.team') })}
-      visible={visible}
       width={750}
       onCancel={onCancel}>
       <Form

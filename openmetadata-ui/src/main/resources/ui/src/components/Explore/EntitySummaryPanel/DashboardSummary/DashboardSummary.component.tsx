@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ChartType } from '@pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,7 +20,6 @@ import { Link } from 'react-router-dom';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Dashboard } from '../../../../generated/entity/data/dashboard';
-import { ChartType } from '../../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SVGIcons from '../../../../utils/SvgUtils';

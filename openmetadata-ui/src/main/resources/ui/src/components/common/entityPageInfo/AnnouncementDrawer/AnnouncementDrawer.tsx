@@ -12,6 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
+import { postFeedById, postThread } from '@rest/feedsAPI';
 import { Button, Drawer, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -19,7 +20,6 @@ import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import AppState from '../../../../AppState';
-import { postFeedById, postThread } from '../../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,
@@ -108,9 +108,9 @@ const AnnouncementDrawer: FC<Props> = ({
       <div data-testid="announcement-drawer">
         <Drawer
           closable={false}
+          open={open}
           placement="right"
           title={title}
-          visible={open}
           width={576}
           onClose={onClose}>
           <div className="tw-flex tw-justify-end">

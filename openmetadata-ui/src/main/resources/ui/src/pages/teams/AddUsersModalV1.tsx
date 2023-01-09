@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
+import Searchbar from '@components/common/searchbar/Searchbar';
+import { searchData } from '@rest/miscAPI';
+import { getUsers } from '@rest/userAPI';
 import { List, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
-import Searchbar from '../../components/common/searchbar/Searchbar';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   PAGE_SIZE_MEDIUM,
@@ -182,8 +182,8 @@ const AddUsersModalV1 = ({
         id: 'save-button',
       }}
       okText="Save"
+      open={isVisible}
       title={header}
-      visible={isVisible}
       width={750}
       onCancel={onCancel}
       onOk={handleSave}>

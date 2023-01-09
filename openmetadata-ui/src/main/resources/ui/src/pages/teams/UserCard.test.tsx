@@ -25,7 +25,7 @@ const mockItem = {
 
 const mockRemove = jest.fn();
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       user: {
@@ -45,7 +45,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+jest.mock('@components/common/ProfilePicture/ProfilePicture', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>);

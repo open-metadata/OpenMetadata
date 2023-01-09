@@ -13,7 +13,14 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import {
+  getDayCron,
+  getHourCron,
+} from '@components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { getFeedCount } from '@rest/feedsAPI';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -29,7 +36,6 @@ import {
 } from 'lodash';
 import {
   CurrentState,
-  EntityFieldThreadCount,
   ExtraInfo,
   FormattedTableData,
   RecentlySearched,
@@ -41,13 +47,6 @@ import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
-import { getFeedCount } from '../axiosAPIs/feedsAPI';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -82,6 +81,7 @@ import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -329,12 +329,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   if (recentlyViewed?.data) {
     const arrData = recentlyViewed.data
       .filter((item) => item.fqn !== entityData.fqn)
-      .sort(
-        arraySorterByKey('timestamp', true) as (
-          a: RecentlyViewedData,
-          b: RecentlyViewedData
-        ) => number
-      );
+      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
     arrData.unshift(entityData);
 
     if (arrData.length > 5) {
@@ -911,3 +906,10 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
       return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
   }
 };
+
+/**
+ *
+ * @param text plain text
+ * @returns base64 encoded text
+ */
+export const getBase64EncodedString = (text: string): string => btoa(text);
