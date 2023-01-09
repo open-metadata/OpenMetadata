@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-const mockHandleClosePanel = jest.fn();
-
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -23,6 +21,8 @@ import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
 import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
+
+const mockHandleClosePanel = jest.fn();
 
 jest.mock('./TableSummary/TableSummary.component', () =>
   jest

@@ -89,5 +89,6 @@ export const getConfigObject = (
     'Retention Size': topicDetails.retentionSize,
     'CleanUp Policies': topicDetails.cleanupPolicies,
     'Max Message Size': topicDetails.maximumMessageSize,
+    'Schema Type': topicDetails.messageSchema?.schemaType,
   };
 };

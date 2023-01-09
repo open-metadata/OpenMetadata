@@ -45,7 +45,7 @@ export default function SummaryList({
           ) : (
             <Collapse
               ghost
-              className="summary-list-collapse"
+              className="summary-list-collapse w-full"
               collapsible="icon"
               key={`${entity.name}-collapse`}>
               <Collapse.Panel

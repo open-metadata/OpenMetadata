@@ -29,6 +29,7 @@ import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
+import { SchemaType } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -99,4 +100,5 @@ export interface TopicConfigObjectInterface {
   'Retention Size'?: number;
   'CleanUp Policies'?: CleanupPolicy[];
   'Max Message Size'?: number;
+  'Schema Type'?: SchemaType;
 }

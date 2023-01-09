@@ -83,25 +83,22 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
             {Object.keys(basicMlModelInfo).map((fieldName) => {
               const value =
                 basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
-              if (value) {
-                return (
-                  <Col key={fieldName} span={24}>
-                    <Row gutter={16}>
-                      <Col
-                        className="text-gray"
-                        data-testid={`${fieldName}-label`}
-                        span={10}>
-                        {startCase(fieldName)}
-                      </Col>
-                      <Col data-testid={`${fieldName}-value`} span={12}>
-                        {value}
-                      </Col>
-                    </Row>
-                  </Col>
-                );
-              } else {
-                return null;
-              }
+
+              return (
+                <Col key={fieldName} span={24}>
+                  <Row gutter={16}>
+                    <Col
+                      className="text-gray"
+                      data-testid={`${fieldName}-label`}
+                      span={10}>
+                      {startCase(fieldName)}
+                    </Col>
+                    <Col data-testid={`${fieldName}-value`} span={12}>
+                      {value ? value : '-'}
+                    </Col>
+                  </Row>
+                </Col>
+              );
             })}
           </Row>
         </Col>
