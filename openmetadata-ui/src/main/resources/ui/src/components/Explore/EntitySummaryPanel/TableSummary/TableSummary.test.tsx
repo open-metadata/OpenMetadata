@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
+import { getLatestTableProfileByFqn } from '@rest/tableAPI';
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getLatestTableProfileByFqn } from '../../../../axiosAPIs/tableAPI';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
 
-jest.mock('../../../../axiosAPIs/testAPI', () => ({
+jest.mock('@rest/testAPI', () => ({
   getListTestCase: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../../axiosAPIs/tableAPI', () => ({
+jest.mock('@rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest
     .fn()
     .mockImplementation(() => mockTableEntityDetails),

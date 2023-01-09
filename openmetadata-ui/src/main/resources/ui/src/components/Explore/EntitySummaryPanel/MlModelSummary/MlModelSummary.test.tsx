@@ -63,7 +63,7 @@ describe('MlModelSummary component tests', () => {
     expect(dashboardValue).toBeInTheDocument();
   });
 
-  it('Only available details should be shown for Ml Model', () => {
+  it('Fields with no data should display "-" in value', () => {
     render(<MlModelSummary entityDetails={mockMlModelEntityDetails1} />, {
       wrapper: MemoryRouter,
     });
@@ -73,11 +73,17 @@ describe('MlModelSummary component tests', () => {
     const serverLabel = screen.queryByTestId('server-label');
     const dashboardLabel = screen.queryByTestId('dashboard-label');
     const algorithmValue = screen.getByTestId('algorithm-value');
+    const targetValue = screen.getByTestId('target-value');
+    const serverValue = screen.getByTestId('server-value');
+    const dashboardValue = screen.getByTestId('dashboard-value');
 
     expect(algorithmLabel).toBeInTheDocument();
-    expect(targetLabel).toBeNull();
-    expect(serverLabel).toBeNull();
-    expect(dashboardLabel).toBeNull();
+    expect(targetLabel).toBeInTheDocument();
+    expect(serverLabel).toBeInTheDocument();
+    expect(dashboardLabel).toBeInTheDocument();
     expect(algorithmValue).toContainHTML('Time Series');
+    expect(targetValue).toContainHTML('-');
+    expect(serverValue).toContainHTML('-');
+    expect(dashboardValue).toContainHTML('-');
   });
 });

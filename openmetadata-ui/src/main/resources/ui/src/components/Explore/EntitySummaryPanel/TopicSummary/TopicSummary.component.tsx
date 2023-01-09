@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { getTopicByFqn } from '@rest/topicsAPI';
 import { Col, Divider, Row, Typography } from 'antd';
 import { isArray } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTopicByFqn } from '../../../../axiosAPIs/topicsAPI';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Topic } from '../../../../generated/entity/data/topic';

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { getTopicByFqn } from '@rest/topicsAPI';
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getTopicByFqn } from '../../../../axiosAPIs/topicsAPI';
 import { mockTopicEntityDetails } from '../mocks/TopicSummary.mock';
 import TopicSummary from './TopicSummary.component';
 
@@ -33,7 +33,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
 
-jest.mock('../../../../axiosAPIs/topicsAPI', () => ({
+jest.mock('@rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => ({ partitions: 128 })),
 }));
 
