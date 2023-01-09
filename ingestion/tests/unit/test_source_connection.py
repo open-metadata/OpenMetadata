@@ -93,7 +93,7 @@ from metadata.ingestion.connections.builders import (
 
 
 # pylint: disable=import-outside-toplevel
-class SouceConnectionTest(TestCase):
+class SourceConnectionTest(TestCase):
     def test_databricks_url_without_db(self):
 
         from metadata.ingestion.source.database.databricks.connection import (
