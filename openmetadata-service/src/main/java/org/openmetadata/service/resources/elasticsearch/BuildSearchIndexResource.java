@@ -21,7 +21,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.api.CreateEventPublisherJob.RunMode;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
@@ -48,7 +47,6 @@ public class BuildSearchIndexResource {
   private final Authorizer authorizer;
   private final UserRepository userRepository;
   private ElasticSearchIndexUtil elasticSearchIndexUtil;
-  private ElasticSearchConfiguration esConfig;
 
   public BuildSearchIndexResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = dao;
@@ -59,10 +57,13 @@ public class BuildSearchIndexResource {
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-ElasticSearchIndexDefinition elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
-this.elasticSearchIndexUtil = new ElasticSearchIndexUtil(dao, client, elasticSearchIndexDefinition);
-this.esConfig = config.getElasticSearchConfiguration();
-
+      ElasticSearchIndexDefinition elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+      this.elasticSearchIndexUtil =
+          new ElasticSearchIndexUtil(
+              dao,
+              client,
+              elasticSearchIndexDefinition,
+              config.getElasticSearchConfiguration().getSearchIndexMappingLanguage().value());
     }
   }
 
