@@ -76,9 +76,9 @@ public class AlertsRuleEvaluator {
     }
     Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(changeEvent.getEntityType());
     EntityInterface entity;
-    if(changeEvent.getEntity() instanceof String){
+    if (changeEvent.getEntity() instanceof String) {
       entity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
-    }else{
+    } else {
       entity = JsonUtils.convertValue(changeEvent.getEntity(), entityClass);
     }
 

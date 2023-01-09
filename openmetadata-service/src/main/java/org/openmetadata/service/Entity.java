@@ -287,10 +287,9 @@ public final class Entity {
     return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
-  public static Class<? extends EntityInterface > getEntityClassFromType(String entityType) {
+  public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
     return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType);
   }
-
 
   /**
    * Get list of all the entity field names from JsonPropertyOrder annotation from generated java class from entity.json
