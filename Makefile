@@ -61,6 +61,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
+	rm -rf ingestion/src/metadata/generated
 	mkdir -p ingestion/src/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
