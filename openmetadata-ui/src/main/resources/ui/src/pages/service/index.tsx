@@ -33,7 +33,6 @@ import TagsViewer from '@components/tags-viewer/tags-viewer';
 import { getDashboards } from '@rest/dashboardAPI';
 import { getDatabases } from '@rest/databaseAPI';
 import {
-  checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -84,6 +83,7 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
@@ -111,6 +111,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
 
 const ServicePage: FunctionComponent = () => {
+  const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -139,7 +140,6 @@ const ServicePage: FunctionComponent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
   const [schemaCount, setSchemaCount] = useState<number>(0);
@@ -460,20 +460,6 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const getAirflowStatus = () => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
-  };
-
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -691,15 +677,6 @@ const ServicePage: FunctionComponent = () => {
       if (tabs[currentTabIndex]?.isProtected) {
         activeTabHandler(1);
       }
-
-      getAirflowStatus()
-        .then(() => {
-          setIsAirflowRunning(true);
-          getAllIngestionWorkflows();
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        });
     }
   }, [servicePermission]);
 
@@ -829,7 +806,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getIngestionTab = () => {
-    if (!isAirflowRunning) {
+    if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
     } else if (isUndefined(airflowEndpoint)) {
       return <Loader />;
@@ -969,6 +946,12 @@ const ServicePage: FunctionComponent = () => {
       },
     ];
   }, []);
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      getAllIngestionWorkflows();
+    }
+  }, [isAirflowAvailable]);
 
   return (
     <PageContainerV1>
@@ -1153,7 +1136,7 @@ const ServicePage: FunctionComponent = () => {
                             })}
                           </Button>
                         </Tooltip>
-                        {allowTestConn && isAirflowRunning && (
+                        {allowTestConn && isAirflowAvailable && (
                           <Tooltip
                             title={
                               servicePermission.EditAll

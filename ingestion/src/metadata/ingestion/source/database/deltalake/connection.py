@@ -19,6 +19,7 @@ from pyspark.sql import SparkSession
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
+from metadata.ingestion.connections.builders import get_connection_args_common
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 
 
@@ -71,9 +72,8 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
             f"-Dderby.system.home={connection.metastoreConnection.metastoreFilePath}",
         )
 
-    if connection.connectionArguments:
-        for key, value in connection.connectionArguments:
-            builder.config(key, value)
+    for key, value in get_connection_args_common(connection).items():
+        builder.config(key, value)
 
     return configure_spark_with_delta_pip(builder).getOrCreate()
 

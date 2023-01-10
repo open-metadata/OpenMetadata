@@ -13,7 +13,6 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -30,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { getLoadingStatus } from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -48,6 +48,7 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
 const TestSuitePipelineTab = () => {
+  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const { permissions } = usePermissionProvider();
@@ -68,7 +69,6 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const testSuitePath = useMemo(
     () => location.pathname.split('/')[1],
@@ -302,22 +302,6 @@ const TestSuitePipelineTab = () => {
   useEffect(() => {
     getAllIngestionWorkflows();
     fetchAirFlowEndPoint();
-  }, []);
-
-  useEffect(() => {
-    setIsLoading(true);
-    checkAirflowStatus()
-      .then((res) => {
-        if (res.status === 200) {
-          setIsAirflowRunning(true);
-        } else {
-          setIsAirflowRunning(false);
-        }
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-        setIsLoading(false);
-      });
   }, []);
 
   const pipelineColumns = useMemo(() => {
@@ -563,11 +547,11 @@ const TestSuitePipelineTab = () => {
     currTriggerId,
   ]);
 
-  if (isLoading) {
+  if (isLoading || isFetchingStatus) {
     return <Loader />;
   }
 
-  return !isAirflowRunning ? (
+  return !isAirflowAvailable ? (
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer

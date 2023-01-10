@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
 import { createTestCase, createTestSuites } from '@rest/testAPI';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   getDatabaseDetailsPath,
@@ -68,7 +67,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const [testCaseData, setTestCaseData] = useState<TestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
@@ -143,25 +141,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           ''
       )
     );
-  };
-
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            setIsAirflowRunning(true);
-            resolve();
-          } else {
-            setIsAirflowRunning(false);
-            reject();
-          }
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-          reject();
-        });
-    });
   };
 
   const handleCancelClick = () => {
@@ -255,13 +234,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         <SuccessScreen
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowRunning}
           name={successName}
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={handleAirflowStatusCheck}
         />
       );
     }
@@ -272,11 +249,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         onSubmit={handleSelectTestSuite}
       />
     );
-  }, [activeServiceStep, isAirflowRunning, testCaseRes]);
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
+  }, [activeServiceStep, testCaseRes]);
 
   return (
     <PageLayout

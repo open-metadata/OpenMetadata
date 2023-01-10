@@ -58,7 +58,12 @@ public class BuildSearchIndexResource {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
       ElasticSearchIndexDefinition elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
-      this.elasticSearchIndexUtil = new ElasticSearchIndexUtil(dao, client, elasticSearchIndexDefinition);
+      this.elasticSearchIndexUtil =
+          new ElasticSearchIndexUtil(
+              dao,
+              client,
+              elasticSearchIndexDefinition,
+              config.getElasticSearchConfiguration().getSearchIndexMappingLanguage().value());
     }
   }
 
