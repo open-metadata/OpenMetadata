@@ -54,7 +54,7 @@ We will be running the demo against the OpenMetadata version `0.12.2`, therefore
 
 ```Dockerfile
 # Base image from the right version
-FROM openmetadata/ingestion:0.12.2
+FROM openmetadata/ingestion:0.13.1
 
 # Let's use the same workdir as the ingestion image
 WORKDIR ingestion

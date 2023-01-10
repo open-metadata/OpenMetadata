@@ -121,7 +121,7 @@ with models.DAG(
 ) as dag:
     DockerOperator(
         command="python main.py",
-        image="openmetadata/ingestion-base:0.12.1",
+        image="openmetadata/ingestion-base:0.13.1",
         environment={"config": config, "pipelineType": "metadata"},
         docker_url="unix://var/run/docker.sock",  # To allow to start Docker. Needs chmod 666 permissions
         tty=True,
@@ -138,7 +138,7 @@ Make sure to tune out the DAG configurations (`schedule_interval`, `start_date`,
 
 </Note>
 
-Note that the example uses the image `openmetadata/ingestion-base:0.12.1`. Update that accordingly for higher version
+Note that the example uses the image `openmetadata/ingestion-base:0.13.1`. Update that accordingly for higher version
 once they are released. Also, the image version should be aligned with your OpenMetadata server version to avoid
 incompatibilities.
 

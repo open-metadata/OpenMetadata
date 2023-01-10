@@ -132,7 +132,7 @@ We will now describe the steps, following the official AWS documentation.
 
 - The cluster just needs a task to run in `FARGATE` mode.
 - The required image is `registry.hub.docker.com/openmetadata/ingestion-base:x.y.z`
-  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `registry.hub.docker.com/openmetadata/ingestion-base:0.12.2`
+  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `registry.hub.docker.com/openmetadata/ingestion-base:0.13.1`
   
 We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 

@@ -82,7 +82,7 @@ This step is only required if you have not done that yet.
     ```
     mysql:
       container_name: openmetadata_mysql
-      image: openmetadata/db:0.12.3
+      image: openmetadata/db:0.13.1
       restart: always
       environment:
         MYSQL_ROOT_PASSWORD: password
