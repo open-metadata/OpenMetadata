@@ -63,6 +63,7 @@
             <configuration>
               <attach>true</attach>
               <runOnlyAtExecutionRoot>false</runOnlyAtExecutionRoot>
+              <tarLongFileMode>posix</tarLongFileMode>
               <descriptors>
                 <descriptor>${project.basedir}/src/main/assembly/binary.xml</descriptor>
               </descriptors>
