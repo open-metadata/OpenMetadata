@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageContainer from 'components/containers/PageContainer';
 
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -376,7 +376,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainerV1>
+    <PageContainer>
       <div
         className={classNames(
           'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
@@ -435,7 +435,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageContainerV1>
+    </PageContainer>
   );
 };
 
