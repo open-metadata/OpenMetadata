@@ -120,7 +120,7 @@ plugins: Dict[str, Set[str]] = {
     "datalake-azure": {
         "azure-storage-blob~=12.14",
         "azure-identity~=1.12",
-        "adlfs~=2022.11",
+        "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
