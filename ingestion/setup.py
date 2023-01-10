@@ -64,8 +64,8 @@ COMMONS = {
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
-    VERSIONS["avro-python3"],
-    VERSIONS["boto3"],
+    VERSIONS["avro-python3"],  # Used in sample data
+    VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
     "chardet==4.0.0",
     "croniter~=1.3.0",
@@ -74,7 +74,7 @@ base_requirements = {
     "email-validator>=1.0.3",
     "google>=3.0.0",
     "google-auth>=1.33.0",
-    VERSIONS["grpc-tools"],
+    VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "Jinja2>=2.11.3",
