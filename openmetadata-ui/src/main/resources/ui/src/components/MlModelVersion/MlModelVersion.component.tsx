@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
-import SourceList from '@components/MlModelDetail/SourceList.component';
-import TagsContainer from '@components/tags-container/tags-container';
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import SourceList from 'components/MlModelDetail/SourceList.component';
+import TagsContainer from 'components/tags-container/tags-container';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -63,9 +63,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     {
       name: 'Features',
       icon: {
-        alt: 'features',
+        alt: t('label.feature-plural'),
         name: 'icon-schema',
-        title: 'Features',
+        title: t('label.feature-plural'),
         selectedName: 'icon-schemacolor',
       },
       isProtected: false,

@@ -21,6 +21,7 @@ import PipelineVersion from 'components/PipelineVersion/PipelineVersion.componen
 import TopicVersion from 'components/TopicVersion/TopicVersion.component';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   getDashboardByFqn,
@@ -80,6 +81,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 export type VersionData = Table | Topic | Dashboard | Pipeline | Mlmodel;
 
 const EntityVersionPage: FunctionComponent = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [tier, setTier] = useState<TagLabel>();
   const [owner, setOwner] = useState<
@@ -215,12 +217,21 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} versions`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: '',
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
-            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
+            showErrorToast(
+              err,
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: '',
+              })
+            );
           });
 
         break;
@@ -263,12 +274,21 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} versions`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: '',
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
-            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
+            showErrorToast(
+              err,
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: '',
+              })
+            );
           });
 
         break;
@@ -311,12 +331,21 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} versions`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: '',
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
-            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
+            showErrorToast(
+              err,
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: '',
+              })
+            );
           });
 
         break;
@@ -359,12 +388,21 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} versions`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: '',
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
-            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
+            showErrorToast(
+              err,
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: '',
+              })
+            );
           });
 
         break;
@@ -408,13 +446,22 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} versions`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: '',
+                  })
                 );
               });
           })
 
           .catch((err: AxiosError) => {
-            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
+            showErrorToast(
+              err,
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: '',
+              })
+            );
           });
 
         break;
@@ -485,14 +532,20 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} version ${version}`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: version,
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while fetching ${entityFQN}  version ${version}`
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: version,
+              })
             );
           });
 
@@ -538,14 +591,20 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} version ${version}`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: version,
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while fetching ${entityFQN}  version ${version}`
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: version,
+              })
             );
           });
 
@@ -590,14 +649,20 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} version ${version}`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: version,
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while fetching ${entityFQN}  version ${version}`
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: version,
+              })
             );
           });
 
@@ -642,14 +707,20 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} version ${version}`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: version,
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while fetching ${entityFQN}  version ${version}`
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: version,
+              })
             );
           });
 
@@ -695,14 +766,20 @@ const EntityVersionPage: FunctionComponent = () => {
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while fetching ${entityFQN} version ${version}`
+                  t('server.entity-fetch-version-error', {
+                    entity: entityFQN,
+                    version: version,
+                  })
                 );
               });
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while fetching ${entityFQN}  version ${version}`
+              t('server.entity-fetch-version-error', {
+                entity: entityFQN,
+                version: version,
+              })
             );
           });
 

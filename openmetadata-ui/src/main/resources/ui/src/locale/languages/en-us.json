@@ -771,6 +771,7 @@
     "entity-creation-error": "Error while creating {{entity}}",
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
     "entity-fetch-error": "Error while fetching {{entity}}",
+    "entity-fetch-version-error": "Error while fetching {{entity}} versions {{version}}",
     "entity-updating-error": "Error while updating {{entity}}",
     "feed-post-error": "Error while posting the message!",
     "fetch-entity-permissions-error": "Unable to get permission for {{entity}}.",
