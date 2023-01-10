@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
+import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,10 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -67,11 +70,18 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following owners from the List.",
       examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyOwnerName(String... ownerNameList) {
+  public boolean matchAnyOwnerName(String... ownerNameList) throws IOException {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    EntityInterface entity = (EntityInterface) changeEvent.getEntity();
+    Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(changeEvent.getEntityType());
+    EntityInterface entity;
+    if (changeEvent.getEntity() instanceof String) {
+      entity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
+    } else {
+      entity = JsonUtils.convertValue(changeEvent.getEntity(), entityClass);
+    }
+
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
