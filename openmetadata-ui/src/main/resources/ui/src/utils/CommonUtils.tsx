@@ -908,7 +908,19 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
 };
 
 /**
- *
+ * It takes a state and an action, and returns a new state with the action merged into it
+ * @param {S} state - S - The current state of the reducer.
+ * @param {A} action - A - The action that was dispatched.
+ * @returns An object with the state and action properties.
+ */
+export const reducerWithoutAction = <S, A>(state: S, action: A) => {
+  return {
+    ...state,
+    ...action,
+  };
+};
+
+/**
  * @param text plain text
  * @returns base64 encoded text
  */
