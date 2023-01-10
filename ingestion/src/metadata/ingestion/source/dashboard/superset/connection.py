@@ -49,6 +49,7 @@ def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
         return pg_get_connection(connection=connection.connection)
     if isinstance(connection.connection, MysqlConnection):
         return mysql_get_connection(connection=connection.connection)
+    return None
 
 
 def test_connection(client: Union[SupersetAPIClient, Engine]) -> None:
