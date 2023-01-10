@@ -73,13 +73,11 @@ const AddIngestion = ({
   isIngestionDeployed = false,
   ingestionAction = '',
   showDeployButton,
-  isAirflowSetup,
   setActiveIngestionStep,
   onIngestionDeploy,
   onUpdateIngestion,
   onSuccessSave,
   onAddIngestionSave,
-  onAirflowStatusCheck,
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
@@ -856,13 +854,11 @@ const AddIngestion = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}
-            isAirflowSetup={isAirflowSetup}
             name={ingestionName}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
             successMessage={getSuccessMessage()}
-            onCheckAirflowStatus={onAirflowStatusCheck}
           />
         )}
 

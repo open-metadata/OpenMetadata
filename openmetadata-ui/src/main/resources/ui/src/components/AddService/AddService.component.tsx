@@ -283,11 +283,9 @@ const AddService = ({
               showIngestionButton
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
-              isAirflowSetup={isAirflowRunning}
               name={serviceName}
               state={FormSubmitType.ADD}
               suffix={getServiceCreatedLabel(serviceCategory)}
-              onCheckAirflowStatus={onAirflowStatusCheck}
             />
           )}
         </div>
@@ -325,7 +323,6 @@ const AddService = ({
         <div className="tw-form-container">
           {addIngestion ? (
             <AddIngestion
-              isAirflowSetup
               activeIngestionStep={activeIngestionStep}
               handleCancelClick={() => handleAddIngestion(false)}
               handleViewServiceClick={handleViewServiceClick}
@@ -341,7 +338,6 @@ const AddService = ({
               showDeployButton={showDeployButton}
               status={FormSubmitType.ADD}
               onAddIngestionSave={onAddIngestionSave}
-              onAirflowStatusCheck={onAirflowStatusCheck}
               onIngestionDeploy={onIngestionDeploy}
             />
           ) : (

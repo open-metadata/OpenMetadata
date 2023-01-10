@@ -13,14 +13,13 @@
 
 import {
   addIngestionPipeline,
-  checkAirflowStatus,
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
 } from '@rest/ingestionPipelineAPI';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { camelCase, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -82,7 +81,6 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       </span>
     );
   }, [ingestionData, showDeployButton]);
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const handleIngestionDeploy = (id?: string) => {
     setShowDeployModal(true);
@@ -196,24 +194,6 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy();
   };
 
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return checkAirflowStatus()
-      .then((res) => {
-        if (res.status === 200) {
-          setIsAirflowRunning(true);
-        } else {
-          setIsAirflowRunning(false);
-        }
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-      });
-  };
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
-
   return (
     <Row className="tw-form-container" gutter={[16, 16]}>
       <Col span={24}>
@@ -229,14 +209,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewTestSuiteClick}
-            isAirflowSetup={isAirflowRunning}
             name={`${testSuite?.name}_${PipelineType.TestSuite}`}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={FormSubmitType.ADD}
             successMessage={getSuccessMessage}
             viewServiceText="View Test Suite"
-            onCheckAirflowStatus={handleAirflowStatusCheck}
           />
         ) : (
           <TestSuiteScheduler
