@@ -200,8 +200,8 @@ class SampleDataSource(
         self.metadata = OpenMetadata(metadata_config)
         self.list_policies = []
 
-        sample_data_folder = getattr(
-            self.service_connection.connectionOptions, "sampleDataFolder"
+        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+            "sampleDataFolder"
         )
         if not sample_data_folder:
             raise InvalidSampleDataException(

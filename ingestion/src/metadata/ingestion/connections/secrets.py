@@ -18,22 +18,26 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
 def update_connection_opts_args(connection):
-    if hasattr(connection, "connectionOptions") and connection.connectionOptions:
-        for key, value in connection.connectionOptions.dict().items():
+    if (
+        hasattr(connection, "connectionOptions")
+        and connection.connectionOptions
+        and connection.connectionOptions.__root__
+    ):
+        for key, value in connection.connectionOptions.__root__.items():
             if isinstance(value, str):
-                setattr(
-                    connection.connectionOptions,
-                    key,
-                    CustomSecretStr(value).get_secret_value(),
-                )
-    if hasattr(connection, "connectionArguments") and connection.connectionArguments:
-        for key, value in connection.connectionArguments.dict().items():
+                connection.connectionOptions.__root__[key] = CustomSecretStr(
+                    value
+                ).get_secret_value()
+    if (
+        hasattr(connection, "connectionArguments")
+        and connection.connectionArguments
+        and connection.connectionArguments.__root__
+    ):
+        for key, value in connection.connectionArguments.__root__.items():
             if isinstance(value, str):
-                setattr(
-                    connection.connectionArguments,
-                    key,
-                    CustomSecretStr(value).get_secret_value(),
-                )
+                connection.connectionArguments.__root__[key] = CustomSecretStr(
+                    value
+                ).get_secret_value()
 
 
 def connection_with_options_secrets(fn):
