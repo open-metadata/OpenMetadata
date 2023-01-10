@@ -20,7 +20,11 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
-from metadata.ingestion.connections.builders import create_generic_db_connection
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    init_empty_connection_arguments,
+)
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
@@ -50,12 +54,12 @@ def get_connection_args(connection: TrinoConnection):
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
-        if connection.connectionArguments:
-            connection_args = connection.connectionArguments.dict()
-            connection_args.update({"http_session": session})
-            return connection_args
-        return {"http_session": session}
-    return connection.connectionArguments if connection.connectionArguments else {}
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        connection.connectionArguments.__root__["http_session"] = session
+
+    return get_connection_args_common(connection)
 
 
 def get_connection(connection: TrinoConnection) -> Engine:

@@ -12,7 +12,7 @@
 """
 Get and test connection utilities
 """
-from typing import Callable
+from typing import Any, Callable, Dict, Optional
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -21,12 +21,15 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
+)
 from metadata.ingestion.connections.headers import inject_query_header
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 
 
 @connection_with_options_secrets
-def get_connection_args_common(connection):
+def get_connection_args_common(connection) -> Dict[str, Any]:
     """
     Read the connection arguments of a connection.
 
@@ -34,7 +37,11 @@ def get_connection_args_common(connection):
     arguments should be decorated with `connection_with_options_secrets`
     """
 
-    return connection.connectionArguments or {}
+    return (
+        connection.connectionArguments.__root__
+        if connection.connectionArguments and connection.connectionArguments.__root__
+        else {}
+    )
 
 
 def create_generic_db_connection(
@@ -65,6 +72,31 @@ def create_generic_db_connection(
     return engine
 
 
+def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:
+    """
+    Given a connection object, returns the connection options
+    dictionary if exists
+    """
+    return (
+        connection.connectionOptions.__root__
+        if connection.connectionOptions and connection.connectionOptions.__root__
+        else None
+    )
+
+
+def init_empty_connection_arguments() -> ConnectionArguments:
+    """
+    Initialize a ConnectionArguments model with an empty dictionary.
+    This helps set keys without further validations.
+
+    Running `ConnectionArguments()` returns `ConnectionArguments(__root__=None)`.
+
+    Instead, we want `ConnectionArguments(__root__={}})` so that
+    we can pass new keys easily as `connectionArguments.__root__["key"] = "value"`
+    """
+    return ConnectionArguments(__root__={})
+
+
 def get_connection_url_common(connection):
     """
     Common method for building the source connection urls
@@ -86,11 +118,7 @@ def get_connection_url_common(connection):
     elif hasattr(connection, "databaseSchema"):
         url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
+    options = get_connection_options_dict(connection)
     if options:
         if (hasattr(connection, "database") and not connection.database) or (
             hasattr(connection, "databaseSchema") and not connection.databaseSchema
