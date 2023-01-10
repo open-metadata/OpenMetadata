@@ -12,10 +12,13 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import './Badge.less';
 
 const AnnouncementBadge = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="announcement-badge-container">
       <SVGIcons
@@ -23,7 +26,7 @@ const AnnouncementBadge = () => {
         className="announcement-badge"
         icon={Icons.ANNOUNCEMENT_YELLOW}
       />
-      <span className="announcement-content">Announcement</span>
+      <span className="announcement-content">{t('label.announcement')}</span>
     </div>
   );
 };
