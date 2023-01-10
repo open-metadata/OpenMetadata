@@ -37,11 +37,11 @@ import {
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotDetailsPage = () => {
+  const { t } = useTranslation();
   const { botsName } = useParams<{ [key: string]: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);
@@ -51,8 +51,6 @@ const BotDetailsPage = () => {
   const [botPermission, setBotPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const { t } = useTranslation();
 
   const fetchBotPermission = async (entityFqn: string) => {
     setIsLoading(true);
@@ -100,7 +98,7 @@ const BotDetailsPage = () => {
           ...response,
         }));
       } else {
-        throw jsonData['api-error-messages']['unexpected-error'];
+        throw t('message.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -141,7 +139,9 @@ const BotDetailsPage = () => {
           <Typography.Paragraph
             className="text-base"
             data-testid="error-message">
-            No bots available with name{' '}
+            {t('message.no-entity-available-with-name', {
+              entity: t('label.bot-plural'),
+            })}{' '}
             <span className="font-medium" data-testid="username">
               {botsName}
             </span>{' '}

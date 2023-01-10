@@ -22,6 +22,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getUserPath } from '../../constants/constants';
@@ -62,6 +63,7 @@ const MyData: React.FC<MyDataProps> = ({
   updateThreadHandler,
   isLoadingOwnedData,
 }: MyDataProps): React.ReactElement => {
+  const { t } = useTranslation();
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
@@ -98,7 +100,7 @@ const MyData: React.FC<MyDataProps> = ({
                       'tasks?feedFilter=ASSIGNED_TO'
                     )}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">
-                      View All
+                      {t('label.view-all')}
                     </span>
                   </Link>
                 </>
@@ -110,10 +112,13 @@ const MyData: React.FC<MyDataProps> = ({
                     alt="Pending tasks"
                     className="tw-mr-2.5"
                     icon={Icons.TASK}
-                    title="Tasks"
+                    title={t('label.task-plural')}
                     width="16px"
                   />
-                  {pendingTaskCount} Pending task{pendingTaskCount > 1 && 's'}
+                  {pendingTaskCount}{' '}
+                  {pendingTaskCount > 1
+                    ? t('label.pending-task-plural')
+                    : t('label.pending-task')}
                 </div>
               }
             />
@@ -129,7 +134,7 @@ const MyData: React.FC<MyDataProps> = ({
                     data-testid="my-data"
                     to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">
-                      View All{' '}
+                      {t('label.view-all')}{' '}
                       <span data-testid="my-data-total-count">
                         ({ownedDataCount})
                       </span>
@@ -138,9 +143,9 @@ const MyData: React.FC<MyDataProps> = ({
                 ) : null}
               </>
             }
-            headerTextLabel="My Data"
+            headerTextLabel={t('label.my-data')}
             loading={isLoadingOwnedData}
-            noDataPlaceholder={<>You have not owned anything yet.</>}
+            noDataPlaceholder={t('server.no-owned-entities')}
             testIDText="My data"
           />
         </div>
@@ -158,7 +163,7 @@ const MyData: React.FC<MyDataProps> = ({
                       'following'
                     )}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">
-                      View All{' '}
+                      {t('label.view-all')}{' '}
                       <span data-testid="following-data-total-count">
                         ({followedDataCount})
                       </span>
@@ -167,9 +172,9 @@ const MyData: React.FC<MyDataProps> = ({
                 ) : null}
               </>
             }
-            headerTextLabel="Following"
+            headerTextLabel={t('label.following')}
             loading={isLoadingOwnedData}
-            noDataPlaceholder={<>You have not followed anything yet.</>}
+            noDataPlaceholder={t('message.not-followed-anything')}
             testIDText="Following data"
           />
         </div>

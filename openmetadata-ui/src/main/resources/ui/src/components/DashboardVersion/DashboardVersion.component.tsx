@@ -18,6 +18,7 @@ import PageContainer from 'components/containers/PageContainer';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -56,18 +57,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   backHandler,
   versionHandler,
 }: DashboardVersionProp) => {
+  const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
   const tabs = [
     {
-      name: 'Details',
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Details',
-        selectedName: 'icon-schemacolor',
-      },
+      name: t('label.detail-plural'),
       isProtected: false,
       position: 1,
     },
@@ -217,7 +213,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const tableColumn: ColumnsType<EntityReference> = useMemo(
     () => [
       {
-        title: 'Chart Name',
+        title: t('label.chart-name'),
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
@@ -235,23 +231,25 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
       },
       {
-        title: 'Chart Type',
+        title: t('label.chart-type'),
         dataIndex: 'type',
         key: 'type',
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
           ),
       },
       {
-        title: 'Tags',
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
       },

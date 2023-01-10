@@ -15,6 +15,7 @@ import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TestConnection } from 'rest/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
@@ -25,7 +26,6 @@ import { MessagingServiceType } from '../../generated/entity/services/messagingS
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
@@ -63,6 +63,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onSave,
   disableTestConnection = false,
 }: Props) => {
+  const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
 
   const allowTestConn = useMemo(() => {
@@ -89,14 +90,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           if (res.status === 200) {
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['test-connection-error']
-          );
+          showErrorToast(err, t('server.test-connection-error'));
           reject(err);
         });
     });
