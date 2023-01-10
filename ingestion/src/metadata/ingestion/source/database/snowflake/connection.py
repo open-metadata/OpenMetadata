@@ -25,6 +25,8 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    get_connection_options_dict,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.utils.logger import ingestion_logger
@@ -52,11 +54,7 @@ def get_connection_url(connection: SnowflakeConnection) -> str:
     url += connection.account
     url += f"/{connection.database}" if connection.database else ""
 
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
+    options = get_connection_options_dict(connection)
     if options:
         if not connection.database:
             url += "/"
@@ -103,8 +101,9 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
         )
 
         if connection.privateKey:
-            connection.connectionArguments = {}
-            connection.connectionArguments["private_key"] = pkb
+            if not connection.connectionArguments:
+                connection.connectionArguments = init_empty_connection_arguments()
+            connection.connectionArguments.__root__["private_key"] = pkb
 
     return create_generic_db_connection(
         connection=connection,

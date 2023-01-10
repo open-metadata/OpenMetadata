@@ -170,7 +170,7 @@ plugins: Dict[str, Set[str]] = {
     },
 }
 dev = {
-    "datamodel-code-generator==0.13.4",
+    "datamodel-code-generator==0.15.0",
     "black==22.3.0",
     "pycln==1.3.2",
     "docker",
