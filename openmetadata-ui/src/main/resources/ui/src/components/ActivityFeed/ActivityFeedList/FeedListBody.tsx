@@ -15,6 +15,7 @@ import { Card } from 'antd';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   Post,
@@ -43,6 +44,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onConfirmation,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
@@ -185,7 +187,9 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               </div>
               {feed.task && (
                 <div className="tw-border-t tw-border-main tw-py-1 tw-flex">
-                  <span className="tw-text-grey-muted">Assignees: </span>
+                  <span className="tw-text-grey-muted">
+                    {t('label.assignee-plural')}:{' '}
+                  </span>
                   <AssigneeList
                     assignees={feed.task.assignees || []}
                     className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"

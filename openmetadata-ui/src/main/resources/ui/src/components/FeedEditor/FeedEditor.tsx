@@ -63,10 +63,10 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     }: FeedEditorProp,
     ref
   ) => {
+    const { t } = useTranslation();
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
-    const { t } = useTranslation();
 
     /**
      * Prepare modules for editor
@@ -101,7 +101,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           },
           source: matcher,
           showDenotationChar: false,
-          renderLoading: () => 'Loading...',
+          renderLoading: () => `${t('label.loading')}...`,
         },
         markdownOptions: {},
         clipboard: {

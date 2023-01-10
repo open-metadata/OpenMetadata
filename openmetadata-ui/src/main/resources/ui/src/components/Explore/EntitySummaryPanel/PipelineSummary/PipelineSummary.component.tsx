@@ -85,7 +85,7 @@ function PipelineSummary({ entityDetails }: PipelineSummaryProps) {
           <Typography.Text
             className="section-header"
             data-testid="tasks-header">
-            {t('label.tasks')}
+            {t('label.task-plural')}
           </Typography.Text>
         </Col>
         <Col span={24}>
