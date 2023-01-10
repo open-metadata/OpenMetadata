@@ -24,17 +24,17 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('@rest/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getRoles: jest
     .fn()
     .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
 
-jest.mock('@components/common/next-previous/NextPrevious', () =>
+jest.mock('components/common/next-previous/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
 
-jest.mock('@components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
@@ -46,7 +46,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       role: {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
+import { t } from 'i18next';
 import React from 'react';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -109,7 +109,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
 
 export const filterList = [
   {
-    name: i18next.t('label.all-activity'),
+    name: t('label.all-activity'),
     value: 'ALL',
     icon: (
       <SVGIcons
@@ -121,7 +121,7 @@ export const filterList = [
     ),
   },
   {
-    name: i18next.t('label.my-data'),
+    name: t('label.my-data'),
     value: 'OWNER',
     icon: (
       <SVGIcons
@@ -133,7 +133,7 @@ export const filterList = [
     ),
   },
   {
-    name: i18next.t('label.mention-plural'),
+    name: t('label.mention-plural'),
     value: 'MENTIONS',
     icon: (
       <SVGIcons
@@ -145,7 +145,7 @@ export const filterList = [
     ),
   },
   {
-    name: i18next.t('label.following'),
+    name: t('label.following'),
     value: 'FOLLOWS',
     icon: (
       <SVGIcons
@@ -160,7 +160,7 @@ export const filterList = [
 
 export const threadFilterList = [
   {
-    name: i18next.t('label.all-threads'),
+    name: t('label.all-threads'),
     value: 'ALL',
     icon: (
       <SVGIcons
@@ -172,14 +172,14 @@ export const threadFilterList = [
     ),
   },
   {
-    name: i18next.t('label.task'),
+    name: t('label.task'),
     value: 'Task',
     icon: (
       <SVGIcons alt="Task" className="m-r-xs" icon={Icons.TASK} width="16px" />
     ),
   },
   {
-    name: i18next.t('label.conversation'),
+    name: t('label.conversation'),
     value: 'Conversation',
     icon: (
       <SVGIcons
@@ -191,7 +191,7 @@ export const threadFilterList = [
     ),
   },
   {
-    name: i18next.t('label.announcement'),
+    name: t('label.announcement'),
     value: 'Announcement',
     icon: (
       <SVGIcons
@@ -205,7 +205,7 @@ export const threadFilterList = [
 ];
 
 export const filterListTasks = [
-  { name: i18next.t('label.all-activity'), value: 'ALL' },
-  { name: i18next.t('label.assigned-to-me'), value: 'ASSIGNED_TO' },
-  { name: i18next.t('label.created-by-me'), value: 'ASSIGNED_BY' },
+  { name: t('label.all-activity'), value: 'ALL' },
+  { name: t('label.assigned-to-me'), value: 'ASSIGNED_TO' },
+  { name: t('label.created-by-me'), value: 'ASSIGNED_BY' },
 ];

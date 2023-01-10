@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AddGlossaryError } from '@components/AddGlossary/AddGlossary.interface';
+import { AddGlossaryError } from 'components/AddGlossary/AddGlossary.interface';
 import { t } from 'i18next';
 import { errorMsg } from '../utils/CommonUtils';
 

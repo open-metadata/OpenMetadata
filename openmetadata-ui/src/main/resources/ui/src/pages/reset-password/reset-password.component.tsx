@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { useBasicAuth } from '@components/authentication/auth-provider/basic-auth.provider';
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { VALIDATION_MESSAGES } from '../../constants/auth.constants';

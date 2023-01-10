@@ -13,17 +13,16 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import {
-  getDayCron,
-  getHourCron,
-} from '@components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getFeedCount } from '@rest/feedsAPI';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import {
+  getDayCron,
+  getHourCron,
+} from 'components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -46,6 +45,7 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { getFeedCount } from 'rest/feedsAPI';
 import AppState from '../AppState';
 import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getTestDefinitionById, updateTestCaseById } from '@rest/testAPI';
 import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
@@ -24,6 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTestDefinitionById, updateTestCaseById } from 'rest/testAPI';
 import { CSMode } from '../../enums/codemirror.enum';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
