@@ -47,7 +47,7 @@ describe('Test FeedPanelHeader Component', () => {
     const bottomSeparator = await findByTestId(container, 'bottom-separator');
 
     expect(title).toBeInTheDocument();
-    expect(noun).toHaveTextContent('Conversations on');
+    expect(noun).toHaveTextContent('Conversations label.on-lowercase');
     expect(newConversationButton).toBeInTheDocument();
     expect(drawerCloseButton).toBeInTheDocument();
     expect(bottomSeparator).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('Test FeedPanelHeader Component', () => {
     const noun = await findByTestId(container, 'header-noun');
 
     // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('label.conversation on');
+    expect(noun).toHaveTextContent('label.conversation label.on-lowercase');
   });
 
   it('Should render entityFQN if entityField is empty', async () => {
@@ -120,6 +120,6 @@ describe('Test FeedPanelHeader Component', () => {
 
     const noun = await findByTestId(container, 'header-noun');
 
-    expect(noun).toHaveTextContent(/Announcement on/i);
+    expect(noun).toHaveTextContent(/Announcement label.on-lowercase/i);
   });
 });
