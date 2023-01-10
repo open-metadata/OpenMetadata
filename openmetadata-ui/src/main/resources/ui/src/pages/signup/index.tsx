@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
-import { UserProfile } from '@components/authentication/auth-provider/AuthProvider.interface';
-import { Button } from '@components/buttons/Button/Button';
-import PageContainer from '@components/containers/PageContainer';
-import TeamsSelectable from '@components/TeamsSelectable/TeamsSelectable';
-import { createUser } from '@rest/userAPI';
 import { AxiosError } from 'axios';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { Button } from 'components/buttons/Button/Button';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { createUser } from 'rest/userAPI';
 import appState from '../../AppState';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
@@ -99,7 +99,7 @@ const Signup = () => {
   return (
     <>
       {!loading && (
-        <PageContainer>
+        <PageContainerV1>
           <div className="tw-h-screen tw-flex tw-justify-center">
             <div className="tw-flex tw-flex-col tw-items-center signup-box">
               <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
@@ -215,7 +215,7 @@ const Signup = () => {
               </div>
             </div>
           </div>
-        </PageContainer>
+        </PageContainerV1>
       )}
       {loading && (
         <p

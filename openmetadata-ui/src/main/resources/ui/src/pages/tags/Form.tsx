@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { FormErrorData } from 'Models';
 import React, {
   forwardRef,

@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
@@ -31,7 +32,6 @@ import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '@components/common/next-previous/NextPrevious';
-import PageHeader from '@components/header/PageHeader.component';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
-import { getRoles } from '@rest/rolesAPIV1';
 import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getRoles } from 'rest/rolesAPIV1';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,

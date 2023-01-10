@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import AddGlossary from '@components/AddGlossary/AddGlossary.component';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
-import { addGlossaries } from '@rest/glossaryAPI';
 import { AxiosError } from 'axios';
+import AddGlossary from 'components/AddGlossary/AddGlossary.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { LoadingState } from 'Models';
 import React, {
   FunctionComponent,
@@ -28,6 +27,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { addGlossaries } from 'rest/glossaryAPI';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';

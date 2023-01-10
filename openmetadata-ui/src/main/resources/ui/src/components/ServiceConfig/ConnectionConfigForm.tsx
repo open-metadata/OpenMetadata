@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { TestConnection } from '@rest/serviceAPI';
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent, useMemo } from 'react';
+import { TestConnection } from 'rest/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';

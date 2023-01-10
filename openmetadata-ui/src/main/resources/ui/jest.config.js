@@ -60,9 +60,6 @@ module.exports = {
     '@fortawesome/react-fontawesome':
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
-    '^@rest/(.*)$': '<rootDir>/src/rest/$1',
-    '^@pages/(.*)$': '<rootDir>/src/pages/$1',
-    '^@components/(.*)$': '<rootDir>/src/components/$1',
   },
 
   // TypeScript
@@ -76,4 +73,6 @@ module.exports = {
 
   // use fake timers
   timers: 'fake',
+
+  moduleDirectories: ['node_modules', 'src'],
 };
