@@ -81,7 +81,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     const updatedTags = tags.filter(
       (tag, index) => !(tag.tagFQN === removedTag && index === tagIdx)
     );
-    onSelectionChange(updatedTags);
+    onSelectionChange && onSelectionChange(updatedTags);
     setTags(updatedTags);
   };
 
@@ -89,7 +89,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
       event.preventDefault();
       event.stopPropagation();
-      onSelectionChange(tags);
+      onSelectionChange && onSelectionChange(tags);
     },
     [tags]
   );
@@ -98,7 +98,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     event.preventDefault();
     event.stopPropagation();
     setTags(selectedTags);
-    onCancel(event);
+    onCancel && onCancel(event);
   };
 
   const getTagsElement = (tag: EntityTags, index: number) => {

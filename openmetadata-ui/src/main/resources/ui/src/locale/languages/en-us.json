@@ -193,6 +193,7 @@
     "enter-type-password": "Enter {{type}} Password",
     "entity-plural": "Entities",
     "entity-service": "{{entity}} Service",
+    "entity-with-value": "{{entity}} - {{value}}",
     "event-type": "Event Type",
     "exclude": "Exclude",
     "execution-date": "Execution Date",

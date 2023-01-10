@@ -15,6 +15,7 @@ import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-
 import DashboardVersion from '@components/DashboardVersion/DashboardVersion.component';
 import DatasetVersion from '@components/DatasetVersion/DatasetVersion.component';
 import Loader from '@components/Loader/Loader';
+import MlModelVersion from '@components/MlModelVersion/MlModelVersion.component';
 import PipelineVersion from '@components/PipelineVersion/PipelineVersion.component';
 import TopicVersion from '@components/TopicVersion/TopicVersion.component';
 import {
@@ -22,6 +23,11 @@ import {
   getDashboardVersion,
   getDashboardVersions,
 } from '@rest/dashboardAPI';
+import {
+  getMlModelByFQN,
+  getMlModelVersion,
+  getMlModelVersions,
+} from '@rest/mlModelAPI';
 import {
   getPipelineByFqn,
   getPipelineVersion,
@@ -38,6 +44,7 @@ import {
   getTopicVersions,
 } from '@rest/topicsAPI';
 import { AxiosError } from 'axios';
+import { Mlmodel } from 'generated/entity/data/mlmodel';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -45,6 +52,7 @@ import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getMlModelDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -64,11 +72,12 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { defaultFields as MlModelFields } from '../../utils/MlModelDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-export type VersionData = Table | Topic | Dashboard | Pipeline;
+export type VersionData = Table | Topic | Dashboard | Pipeline | Mlmodel;
 
 const EntityVersionPage: FunctionComponent = () => {
   const history = useHistory();
@@ -112,6 +121,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
       case EntityType.PIPELINE:
         history.push(getPipelineDetailsPath(entityFQN));
+
+        break;
+
+      case EntityType.MLMODEL:
+        history.push(getMlModelDetailsPath(entityFQN));
 
         break;
 
@@ -356,6 +370,56 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
       }
 
+      case EntityType.MLMODEL: {
+        getMlModelByFQN(
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          ),
+          MlModelFields
+        )
+          .then((res) => {
+            const { id, owner, tags = [], service, serviceType } = res;
+            const serviceName = service.name ?? '';
+            setEntityState(tags, owner, res, [
+              {
+                name: serviceName,
+                url: serviceName
+                  ? getServiceDetailsPath(
+                      serviceName,
+                      ServiceCategory.ML_MODEL_SERVICES
+                    )
+                  : '',
+                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+              },
+              {
+                name: getEntityName(res),
+                url: '',
+                activeTitle: true,
+              },
+            ]);
+
+            getMlModelVersions(id)
+              .then((vres) => {
+                setVersionList(vres);
+                setIsloading(false);
+              })
+              .catch((err: AxiosError) => {
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} versions`
+                );
+              });
+          })
+
+          .catch((err: AxiosError) => {
+            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
+          });
+
+        break;
+      }
+
       default:
         break;
     }
@@ -592,6 +656,59 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
       }
 
+      case EntityType.MLMODEL: {
+        getMlModelByFQN(
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          ),
+          MlModelFields
+        )
+          .then((res) => {
+            const { id, service, serviceType } = res;
+            getMlModelVersion(id, version)
+              .then((vRes) => {
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
+                setEntityState(tags, owner, vRes, [
+                  {
+                    name: serviceName,
+                    url: serviceName
+                      ? getServiceDetailsPath(
+                          serviceName,
+                          ServiceCategory.ML_MODEL_SERVICES
+                        )
+                      : '',
+                    imgSrc: serviceType
+                      ? serviceTypeLogo(serviceType)
+                      : undefined,
+                  },
+                  {
+                    name: getEntityName(res),
+                    url: '',
+                    activeTitle: true,
+                  },
+                ]);
+                setIsVersionLoading(false);
+              })
+              .catch((err: AxiosError) => {
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} version ${version}`
+                );
+              });
+          })
+          .catch((err: AxiosError) => {
+            showErrorToast(
+              err,
+              `Error while fetching ${entityFQN}  version ${version}`
+            );
+          });
+
+        break;
+      }
+
       default:
         break;
     }
@@ -661,6 +778,24 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedPipelineName={slashedEntityName}
+            tier={tier as TagLabel}
+            topicFQN={entityFQN}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+
+      case EntityType.MLMODEL: {
+        return (
+          <MlModelVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
+            isVersionLoading={isVersionLoading}
+            owner={owner}
+            slashedMlModelName={slashedEntityName}
             tier={tier as TagLabel}
             topicFQN={entityFQN}
             version={version}
