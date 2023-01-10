@@ -287,7 +287,7 @@ const MyDataPage = () => {
   }, []);
 
   useEffect(() => {
-    getFeedData();
+    getFeedData(FeedFilter.OWNER);
   }, []);
 
   useEffect(() => {
