@@ -24,6 +24,17 @@ const mockErrors = {
   sandboxMode: 'SandboxModeError',
 };
 
+jest.mock('react', () => {
+  const originalReact = jest.requireActual('react');
+
+  return {
+    ...originalReact,
+    useReducer: jest.fn((_reducer, initialState) => {
+      return [initialState, jest.fn()];
+    }),
+  };
+});
+
 jest.mock('@components/MyData/MyData.component', () => {
   return jest
     .fn()
