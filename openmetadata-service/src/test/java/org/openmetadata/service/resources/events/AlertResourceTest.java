@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -55,7 +54,6 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Disabled
 public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public static final TriggerConfig ALL_EVENTS_FILTER =
       new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);
@@ -100,8 +98,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
 
     // For the DISABLED Action Publisher are not available so it will have no status
     AlertActionStatus status =
-        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.NO_CONTENT.getStatusCode());
-    assertNull(status);
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(AlertActionStatus.Status.DISABLED, status.getStatus());
     WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
     //
@@ -148,8 +146,8 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
             TestUtils.UpdateType.MINOR_UPDATE,
             change);
     AlertActionStatus status3 =
-        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.NO_CONTENT.getStatusCode());
-    assertNull(status);
+        getStatus(alert.getId(), genericWebhookAction.getId(), Response.Status.OK.getStatusCode());
+    assertEquals(AlertActionStatus.Status.DISABLED, status3.getStatus());
 
     int iterations = 0;
     while (iterations < 10) {

@@ -11,15 +11,6 @@
  *  limitations under the License.
  */
 
-import { getDashboardByFqn } from '@rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from '@rest/databaseAPI';
-import { getMlModelByFQN } from '@rest/mlModelAPI';
-import { getPipelineByFqn } from '@rest/pipelineAPI';
-import { getTableDetailsByFQN } from '@rest/tableAPI';
-import { getTopicByFqn } from '@rest/topicsAPI';
 import { Button, Divider, Popover, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
@@ -27,6 +18,15 @@ import { EntityTags } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getDashboardByFqn } from 'rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from 'rest/databaseAPI';
+import { getMlModelByFQN } from 'rest/mlModelAPI';
+import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
+import { getTopicByFqn } from 'rest/topicsAPI';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';

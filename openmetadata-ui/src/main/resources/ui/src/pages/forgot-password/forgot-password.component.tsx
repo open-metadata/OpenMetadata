@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { useBasicAuth } from '@components/authentication/auth-provider/basic-auth.provider';
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';

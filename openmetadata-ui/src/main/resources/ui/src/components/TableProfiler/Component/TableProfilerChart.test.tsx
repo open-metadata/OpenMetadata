@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { getSystemProfileList, getTableProfilesList } from '@rest/tableAPI';
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   getPastDatesTimeStampFromCurrentDate,
   getPastDaysDateTimeMillis,
@@ -45,7 +45,7 @@ jest.mock('../../../utils/TimeUtils', () => ({
     .fn()
     .mockImplementation(() => mockTimeValue.startMilli),
 }));
-jest.mock('@rest/tableAPI');
+jest.mock('rest/tableAPI');
 jest.mock('../../ProfilerDashboard/component/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
 });

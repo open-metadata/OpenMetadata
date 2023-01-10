@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { IngestionPipelineLogByIdInterface } from '@pages/LogsViewer/LogsViewer.interfaces';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { IngestionPipelineLogByIdInterface } from 'pages/LogsViewer/LogsViewer.interfaces';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineStatus } from '../generated/entity/data/pipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';

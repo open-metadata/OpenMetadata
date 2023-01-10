@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '@components/Loader/Loader';
-import { getChartById } from '@rest/DataInsightAPI';
-import { getKPIByName, patchKPI } from '@rest/KpiAPI';
 import {
   Button,
   Card,
@@ -33,12 +27,18 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toInteger, toNumber } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getChartById } from 'rest/DataInsightAPI';
+import { getKPIByName, patchKPI } from 'rest/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -344,14 +344,18 @@ const EditKPIPage = () => {
                 <Row gutter={[8, 8]}>
                   <Col span={12}>
                     <Form.Item
-                      label={t('label.start-date')}
+                      label={t('label.start-entity', {
+                        entity: t('label.date'),
+                      })}
                       messageVariables={{ fieldName: 'startDate' }}
                       name="startDate"
                       rules={[
                         {
                           required: true,
                           message: t('label.field-required', {
-                            field: t('label.start-date'),
+                            field: t('label.start-entity', {
+                              entity: t('label.date'),
+                            }),
                           }),
                         },
                       ]}>

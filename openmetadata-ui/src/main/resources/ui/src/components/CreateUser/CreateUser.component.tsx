@@ -12,7 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { checkEmailInUse, generateRandomPwd } from '@rest/auth-API';
 import {
   Button,
   Form,
@@ -28,6 +27,7 @@ import classNames from 'classnames';
 import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {

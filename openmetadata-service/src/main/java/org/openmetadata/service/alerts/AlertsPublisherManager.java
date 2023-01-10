@@ -1,11 +1,10 @@
 package org.openmetadata.service.alerts;
 
-import static org.openmetadata.schema.type.Relationship.CONTAINS;
-import static org.openmetadata.service.Entity.ALERT;
 import static org.openmetadata.service.Entity.ALERT_ACTION;
 
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,17 +67,6 @@ public class AlertsPublisherManager {
   }
 
   public void addAlertActionPublisher(Alert alert, AlertAction alertAction) {
-    if (Boolean.FALSE.equals(alertAction.getEnabled())) {
-      // Only add alert that is enabled for publishing events
-      AlertActionStatus status =
-          new AlertActionStatus()
-              .withStatus(AlertActionStatus.Status.DISABLED)
-              .withTimestamp(System.currentTimeMillis())
-              .withFailureDetails(null);
-      alertAction.setStatusDetails(status);
-      return;
-    }
-
     // Activity Feed AlertAction Cannot be Created
     if (alertAction.getAlertActionType() == AlertAction.AlertActionType.ACTIVITY_FEED) {
       LOG.info("Activity Feed Alert Action cannot be created.");
@@ -86,9 +74,19 @@ public class AlertsPublisherManager {
     }
     // Create AlertAction Publisher
     AlertsActionPublisher publisher = AlertUtil.getAlertPublisher(alert, alertAction, daoCollection);
-    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
-    publisher.setProcessor(processor);
-    LOG.info("Alert publisher started for {}", alert.getName());
+    if (Boolean.TRUE.equals(alertAction.getEnabled())) {
+      BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
+      publisher.setProcessor(processor);
+      LOG.info("Alert publisher started for {}", alert.getName());
+    } else {
+      // Only add alert that is enabled for publishing events
+      AlertActionStatus status =
+          new AlertActionStatus()
+              .withStatus(AlertActionStatus.Status.DISABLED)
+              .withTimestamp(System.currentTimeMillis())
+              .withFailureDetails(null);
+      alertAction.setStatusDetails(status);
+    }
 
     Map<UUID, AlertsActionPublisher> alertsActionPublisherMap =
         alertPublisherMap.get(alert.getId()) == null ? new HashMap<>() : alertPublisherMap.get(alert.getId());
@@ -106,42 +104,56 @@ public class AlertsPublisherManager {
 
   @SneakyThrows
   public void updateAllAlertUsingAlertAction(AlertAction alertAction) {
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
-    EntityRepository<Alert> alertEntityRepository = Entity.getEntityRepository(ALERT);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      deleteAlertAllPublishers(record.getId());
-      Alert alert = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
-      addAlertActionPublisher(alert, alertAction);
+    List<AlertsActionPublisher> publishers = getAlertPublisherFromAlertAction(alertAction.getId());
+    // Avoid handling from DB
+    if (publishers.size() != 0) {
+      for (AlertsActionPublisher publisher : publishers) {
+        Alert alert = publisher.getAlert();
+        AlertAction action = publisher.getAlertAction();
+        deleteAlertAllPublishers(alert.getId());
+        if (action.getId().equals(alertAction.getId())) {
+          addAlertActionPublisher(alert, alertAction);
+        } else {
+          addAlertActionPublisher(alert, action);
+        }
+      }
     }
+  }
+
+  public List<AlertsActionPublisher> getAlertPublisherFromAlertAction(UUID alertActionId) {
+    List<AlertsActionPublisher> publisherManagers = new ArrayList<>();
+    for (Map.Entry<UUID, Map<UUID, AlertsActionPublisher>> alertValues : alertPublisherMap.entrySet()) {
+      if (alertValues.getValue().containsKey(alertActionId)) {
+        publisherManagers.add(alertValues.getValue().get(alertActionId));
+      }
+    }
+    return publisherManagers;
   }
 
   @SneakyThrows
   public void deleteAlertActionFromAllAlertPublisher(AlertAction alertAction) {
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      deleteAlertActionPublisher(record.getId(), alertAction);
+    List<AlertsActionPublisher> publishers = getAlertPublisherFromAlertAction(alertAction.getId());
+    // Avoid handling from DB
+    if (publishers.size() != 0) {
+      for (AlertsActionPublisher alertsActionPublisher : publishers) {
+        if (alertsActionPublisher != null) {
+          deleteProcessorFromPubSub(alertsActionPublisher);
+          UUID alertId = alertsActionPublisher.getAlert().getId();
+          Map<UUID, AlertsActionPublisher> alertActionPublishersMap = alertPublisherMap.get(alertId);
+          alertActionPublishersMap.remove(alertAction.getId());
+          alertPublisherMap.put(alertId, alertActionPublishersMap);
+        }
+      }
     }
   }
 
-  public void deleteAlertActionPublisher(UUID alertId, AlertAction action) throws InterruptedException {
-    Map<UUID, AlertsActionPublisher> alertActionPublishers = alertPublisherMap.get(alertId);
-    if (alertActionPublishers != null) {
-      AlertsActionPublisher alertsActionPublisher = alertActionPublishers.get(action.getId());
-      if (alertsActionPublisher != null) {
-        alertsActionPublisher.getProcessor().halt();
-        alertsActionPublisher.awaitShutdown();
-        EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
-        LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
-
-        alertActionPublishers.remove(action.getId());
-        alertPublisherMap.put(alertId, alertActionPublishers);
-      }
+  public void deleteProcessorFromPubSub(AlertsActionPublisher publisher) throws InterruptedException {
+    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = publisher.getProcessor();
+    if (processor != null) {
+      processor.halt();
+      publisher.awaitShutdown();
+      EventPubSub.removeProcessor(publisher.getProcessor());
+      LOG.info("Alert publisher deleted for {}", publisher.getAlert().getName());
     }
   }
 
@@ -149,10 +161,7 @@ public class AlertsPublisherManager {
     Map<UUID, AlertsActionPublisher> alertPublishers = alertPublisherMap.get(alertId);
     if (alertPublishers != null) {
       for (AlertsActionPublisher publisher : alertPublishers.values()) {
-        publisher.getProcessor().halt();
-        publisher.awaitShutdown();
-        EventPubSub.removeProcessor(publisher.getProcessor());
-        LOG.info("Alert publisher deleted for {}", publisher.getAlert().getName());
+        deleteProcessorFromPubSub(publisher);
       }
       alertPublisherMap.remove(alertId);
     }

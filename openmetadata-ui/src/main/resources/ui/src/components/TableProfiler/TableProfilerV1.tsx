@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { getLatestTableProfileByFqn } from '@rest/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '@rest/testAPI';
 import {
   Button,
   Col,
@@ -33,6 +31,8 @@ import { isUndefined, map } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { getLatestTableProfileByFqn } from 'rest/tableAPI';
+import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';

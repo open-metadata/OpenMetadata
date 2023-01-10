@@ -75,7 +75,7 @@ jest.mock('./FeedPanelOverlay', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
 });
 
-jest.mock('@rest/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

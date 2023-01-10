@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getUserByName } from '@rest/userAPI';
 import { Popover } from 'antd';
 import { isEmpty } from 'lodash';
 import React, {
@@ -22,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getUserByName } from 'rest/userAPI';
 import AppState from '../../../AppState';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Loader from '@components/Loader/Loader';
+import Loader from 'components/Loader/Loader';
 import PropTypes from 'prop-types';
 import React, { ComponentType, PropsWithChildren } from 'react';
 

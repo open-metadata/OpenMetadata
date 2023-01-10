@@ -11,11 +11,14 @@
         }
       },
       "analyzer": {
-        "om_analyzer": {
-          "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
+        "om_analyzer_jp" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
           ]
         }
       },
@@ -47,11 +50,11 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer_jp"
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer_jp"
       },
       "version": {
         "type": "float"
@@ -66,71 +69,142 @@
       "href": {
         "type": "text"
       },
-      "messageSchema": {
+      "pipelineUrl": {
+        "type": "text"
+      },
+      "mlFeatures": {
         "properties": {
-          "schemaType": {
+          "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
-          "schemaText": {
+          "dataType": {
             "type": "text"
           },
-          "schemaFields": {
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp"
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "featureSources": {
             "properties": {
               "name": {
-                "type": "keyword",
-                "normalizer": "lowercase_normalizer",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
+                "type": "text"
               },
               "dataType": {
                 "type": "text"
-              },
-              "description": {
-                "type": "text",
-                "analyzer": "om_analyzer"
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "tags": {
-                "properties": {
-                  "tagFQN": {
-                    "type": "keyword"
-                  },
-                  "labelType": {
-                    "type": "keyword"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "source": {
-                    "type": "keyword"
-                  },
-                  "state": {
-                    "type": "keyword"
-                  }
-                }
               }
             }
           }
         }
       },
-      "cleanupPolicies": {
-        "type": "keyword"
+      "mlHyperParameters": {
+        "properties": {
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp"
+          },
+          "value": {
+            "type": "text"
+          }
+        }
       },
-      "replicationFactor": {
-        "type": "integer"
+      "target": {
+        "type": "text"
       },
-      "maximumMessageSize": {
-        "type": "integer"
+      "dashboard": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
-      "retentionSize": {
-        "type": "integer"
+      "mlStore": {
+        "properties": {
+          "storage": {
+            "type": "text"
+          },
+          "imageRepository": {
+            "type": "text"
+          }
+        }
+      },
+      "server": {
+        "type": "text"
+      },
+      "owner": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "service": {
         "properties": {
@@ -169,40 +243,37 @@
           }
         }
       },
-      "owner": {
+      "usageSummary": {
         "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
+          "dailyStats": {
+            "properties": {
+              "count": {
+                "type": "long"
+              },
+              "percentileRank": {
+                "type": "long"
               }
             }
           },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
+          "weeklyStats": {
+            "properties": {
+              "count": {
+                "type": "long"
+              },
+              "percentileRank": {
+                "type": "long"
               }
             }
           },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
+          "monthlyStats": {
+            "properties": {
+              "count": {
+                "type": "long"
+              },
+              "percentileRank": {
+                "type": "long"
+              }
+            }
           }
         }
       },

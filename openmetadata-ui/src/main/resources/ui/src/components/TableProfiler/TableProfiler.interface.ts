@@ -13,7 +13,14 @@
 
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
-import { Column, TableProfile } from '../../generated/entity/data/table';
+import {
+  Column,
+  ColumnProfilerConfig,
+  PartitionProfilerConfig,
+  ProfileSampleType,
+  TableProfile,
+  TableProfilerConfig,
+} from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
@@ -76,3 +83,14 @@ export type TableProfilerData = {
 export type TableProfilerChartProps = {
   selectedTimeRange: keyof typeof PROFILER_FILTER_RANGE;
 };
+
+export interface ProfilerSettingModalState {
+  data: TableProfilerConfig | undefined;
+  sqlQuery: string;
+  profileSample: number | undefined;
+  excludeCol: string[];
+  includeCol: ColumnProfilerConfig[];
+  enablePartition: boolean;
+  partitionData: PartitionProfilerConfig | undefined;
+  selectedProfileSampleType: ProfileSampleType | undefined;
+}

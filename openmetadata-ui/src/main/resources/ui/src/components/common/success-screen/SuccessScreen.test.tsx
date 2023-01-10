@@ -14,13 +14,21 @@
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SuccessScreen from './SuccessScreen';
+
+jest.mock('../../../hooks/useAirflowStatus', () => ({
+  useAirflowStatus: jest.fn().mockImplementation(() => ({
+    isAirflowAvailable: true,
+    fetchAirflowStatus: jest.fn(),
+    isFetchingStatus: false,
+  })),
+}));
 
 describe('Test SuccessScreen component', () => {
   it('SuccessScreen component should render', async () => {
     const { container } = render(
       <SuccessScreen
-        isAirflowSetup
         showIngestionButton
         handleViewServiceClick={jest.fn()}
         name="NewService"
@@ -55,15 +63,19 @@ describe('Test SuccessScreen component', () => {
   });
 
   it('SuccessScreen component should render with airflow helper text', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+    }));
+
     const { container } = render(
       <SuccessScreen
         showIngestionButton
         handleViewServiceClick={jest.fn()}
-        isAirflowSetup={false}
         name="NewService"
         state={FormSubmitType.ADD}
         successMessage={<span>title</span>}
-        onCheckAirflowStatus={jest.fn()}
       />
     );
 

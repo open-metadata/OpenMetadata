@@ -12,13 +12,13 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getPipelineServiceHostIp } from '@rest/ingestionPipelineAPI';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';

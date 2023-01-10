@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import DeleteWidgetModal from '@components/common/DeleteWidget/DeleteWidgetModal';
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
 import { Button, Popover, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
