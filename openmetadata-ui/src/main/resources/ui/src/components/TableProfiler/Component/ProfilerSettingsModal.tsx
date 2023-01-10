@@ -29,7 +29,14 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isUndefined, omit, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  Reducer,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import {
@@ -42,16 +49,18 @@ import {
   SUPPORTED_PARTITION_TYPE,
 } from '../../../constants/profiler.constant';
 import {
-  ColumnProfilerConfig,
-  PartitionProfilerConfig,
   ProfileSampleType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
 import jsonData from '../../../jsons/en';
+import { reducerWithoutAction } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
-import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
+import {
+  ProfilerSettingModalState,
+  ProfilerSettingsModalProps,
+} from '../TableProfiler.interface';
 import '../tableProfiler.less';
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
@@ -62,20 +71,32 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const [data, setData] = useState<TableProfilerConfig>();
-  const [sqlQuery, setSqlQuery] = useState<string>('');
-  const [profileSample, setProfileSample] = useState<number | undefined>(100);
-  const [excludeCol, setExcludeCol] = useState<string[]>([]);
-  const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
-    DEFAULT_INCLUDE_PROFILE
-  );
+
   const [isLoading, setIsLoading] = useState(false);
 
-  const [enablePartition, setEnablePartition] = useState(false);
-  const [partitionData, setPartitionData] = useState<PartitionProfilerConfig>();
-  const [selectedProfileSampleType, setSelectedProfileSampleType] = useState<
-    ProfileSampleType | undefined
-  >(ProfileSampleType.Percentage);
+  const initialState: ProfilerSettingModalState = useMemo(
+    () => ({
+      data: undefined,
+      sqlQuery: '',
+      profileSample: 100,
+      excludeCol: [],
+      includeCol: DEFAULT_INCLUDE_PROFILE,
+      enablePartition: false,
+      partitionData: undefined,
+      selectedProfileSampleType: ProfileSampleType.Percentage,
+    }),
+    []
+  );
+  const [state, dispatch] = useReducer<
+    Reducer<ProfilerSettingModalState, Partial<ProfilerSettingModalState>>
+  >(reducerWithoutAction, initialState);
+
+  const handleStateChange = useCallback(
+    (newState: Partial<ProfilerSettingModalState>) => {
+      dispatch(newState);
+    },
+    []
+  );
 
   const selectOptions = useMemo(() => {
     return columns.map(({ name }) => ({
@@ -131,12 +152,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       profileSampleType,
       excludeColumns,
     } = tableProfilerConfig;
-    setSqlQuery(profileQuery || '');
-    setProfileSample(profileSample);
-    setExcludeCol(excludeColumns || []);
-    setSelectedProfileSampleType(
-      profileSampleType || ProfileSampleType.Percentage
-    );
+    handleStateChange({
+      sqlQuery: profileQuery || '',
+      profileSample: profileSample,
+      excludeCol: excludeColumns || [],
+      selectedProfileSampleType:
+        profileSampleType || ProfileSampleType.Percentage,
+    });
 
     const profileSampleTypeCheck =
       profileSampleType === ProfileSampleType.Percentage;
@@ -162,10 +184,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         return col;
       });
       form.setFieldsValue({ includeColumns: includeColValue });
-      setIncludeCol(includeColValue);
+      handleStateChange({
+        includeCol: includeColValue,
+      });
     }
     if (partitioning) {
-      setEnablePartition(partitioning.enablePartitioning || false);
+      handleStateChange({
+        enablePartition: partitioning.enablePartitioning || false,
+      });
+
       form.setFieldsValue({ ...partitioning });
     }
   };
@@ -176,7 +203,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       if (response) {
         const { tableProfilerConfig } = response;
         if (tableProfilerConfig) {
-          setData(tableProfilerConfig);
+          handleStateChange({
+            data: tableProfilerConfig,
+          });
+
           updateInitialConfig(tableProfilerConfig);
         }
       } else {
@@ -193,10 +223,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   };
 
   const getIncludesColumns = () => {
-    const includeCols = includeCol.filter(
+    const includeCols = state.includeCol.filter(
       ({ columnName }) => !isUndefined(columnName)
     );
-    setIncludeCol(includeCols);
+
+    handleStateChange({
+      includeCol: includeCols,
+    });
 
     return includeCols.map((col) => {
       if (col.metrics && col.metrics[0] === 'all') {
@@ -209,7 +242,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     });
   };
 
-  const handleSave: FormProps['onFinish'] = async (data) => {
+  const handleSave: FormProps['onFinish'] = useCallback(async (data) => {
+    const { excludeCol, sqlQuery, includeCol, enablePartition, partitionData } =
+      state;
     setIsLoading(true);
     const { profileSamplePercentage, profileSampleRows, profileSampleType } =
       data;
@@ -252,11 +287,55 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
-  const handleCancel = () => {
+  }, []);
+  const handleCancel = useCallback(() => {
+    const { data } = state;
     data && updateInitialConfig(data);
     onVisibilityChange(false);
-  };
+  }, []);
+
+  const handleProfileSampleType = useCallback(
+    (selectedProfileSampleType) =>
+      handleStateChange({
+        selectedProfileSampleType,
+      }),
+    []
+  );
+
+  const handleProfileSample = useCallback(
+    (value) =>
+      handleStateChange({
+        profileSample: Number(value),
+      }),
+    []
+  );
+
+  const handleCodeMirrorChange = useCallback(
+    (_Editor, _EditorChange, value) => {
+      handleStateChange({
+        sqlQuery: value,
+      });
+    },
+    []
+  );
+
+  const handleIncludeColumnsProfiler = useCallback((_, data) => {
+    handleStateChange({
+      includeCol: data.includeColumns,
+      partitionData: omit(data, 'includeColumns'),
+    });
+  }, []);
+
+  const handleChange =
+    (field: keyof ProfilerSettingModalState) =>
+    (value: ProfilerSettingModalState[keyof ProfilerSettingModalState]) =>
+      handleStateChange({
+        [field]: value,
+      });
+
+  const handleExcludeCol = handleChange('excludeCol');
+
+  const handleEnablePartition = handleChange('enablePartition');
 
   useEffect(() => {
     fetchProfileConfig();
@@ -292,8 +371,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             data-testid="configure-ingestion-container"
             form={form}
             initialValues={{
-              profileSampleType: selectedProfileSampleType,
-              profileSamplePercentage: profileSample || 100,
+              profileSampleType: state?.selectedProfileSampleType,
+              profileSamplePercentage: state?.profileSample || 100,
             }}
             layout="vertical">
             <Form.Item
@@ -305,11 +384,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 className="w-full"
                 data-testid="profile-sample"
                 options={PROFILE_SAMPLE_OPTIONS}
-                onChange={setSelectedProfileSampleType}
+                onChange={handleProfileSampleType}
               />
             </Form.Item>
 
-            {selectedProfileSampleType === ProfileSampleType.Percentage ? (
+            {state?.selectedProfileSampleType ===
+            ProfileSampleType.Percentage ? (
               <Form.Item
                 className="m-b-0"
                 label={t('label.profile-sample-type', {
@@ -318,8 +398,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 name="profileSamplePercentage">
                 <SliderWithInput
                   className="p-x-xs"
-                  value={profileSample || 0}
-                  onChange={(value) => setProfileSample(Number(value))}
+                  value={state?.profileSample || 0}
+                  onChange={handleProfileSample}
                 />
               </Form.Item>
             ) : (
@@ -351,13 +431,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             className="profiler-setting-sql-editor"
             data-testid="profiler-setting-sql-editor"
             options={codeMirrorOption}
-            value={sqlQuery}
-            onBeforeChange={(_Editor, _EditorChange, value) => {
-              setSqlQuery(value);
-            }}
-            onChange={(_Editor, _EditorChange, value) => {
-              setSqlQuery(value);
-            }}
+            value={state?.sqlQuery}
+            onBeforeChange={handleCodeMirrorChange}
+            onChange={handleCodeMirrorChange}
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
@@ -371,8 +447,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             options={selectOptions}
             placeholder={t('label.select-column-plural-to-exclude')}
             size="middle"
-            value={excludeCol}
-            onChange={(value) => setExcludeCol(value)}
+            value={state?.excludeCol}
+            onChange={handleExcludeCol}
           />
         </Col>
 
@@ -382,16 +458,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             form={form}
             id="profiler-setting-form"
             initialValues={{
-              includeColumns: includeCol,
-              ...data?.partitioning,
+              includeColumns: state?.includeCol,
+              ...state?.data?.partitioning,
             }}
             layout="vertical"
             name="includeColumnsProfiler"
             onFinish={handleSave}
-            onValuesChange={(_, data) => {
-              setIncludeCol(data.includeColumns);
-              setPartitionData(omit(data, 'includeColumns'));
-            }}>
+            onValuesChange={handleIncludeColumnsProfiler}>
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
@@ -409,7 +482,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   </div>
                   <div
                     className={classNames({
-                      'tw-max-h-40 tw-overflow-y-auto': includeCol.length > 1,
+                      'tw-max-h-40 tw-overflow-y-auto':
+                        state?.includeCol.length > 1,
                     })}
                     data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
@@ -466,10 +540,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               <Space size={12}>
                 <p>{t('label.enable-partition')}</p>
                 <Switch
-                  checked={enablePartition}
+                  checked={state?.enablePartition}
                   data-testid="enable-partition-switch"
                   disabled={isPartitionDisabled}
-                  onChange={(value) => setEnablePartition(value)}
+                  onChange={handleEnablePartition}
                 />
               </Space>
             </Form.Item>
@@ -492,7 +566,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionColumnName"
                   rules={[
                     {
-                      required: enablePartition,
+                      required: state?.enablePartition,
                       message: t('message.field-text-is-required', {
                         fieldText: t('label.column-entity', {
                           entity: t('label.name'),
@@ -504,7 +578,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     allowClear
                     className="w-full"
                     data-testid="column-name"
-                    disabled={!enablePartition}
+                    disabled={!state?.enablePartition}
                     options={partitionColumnOptions}
                     placeholder={t('message.select-column-name')}
                     size="middle"
@@ -525,7 +599,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionIntervalType"
                   rules={[
                     {
-                      required: enablePartition,
+                      required: state?.enablePartition,
                       message: t('message.field-text-is-required', {
                         fieldText: t('label.interval-type'),
                       }),
@@ -535,7 +609,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     allowClear
                     className="w-full"
                     data-testid="interval-type"
-                    disabled={!enablePartition}
+                    disabled={!state?.enablePartition}
                     options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-interval-type')}
                     size="middle"
@@ -554,7 +628,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionInterval"
                   rules={[
                     {
-                      required: enablePartition,
+                      required: state?.enablePartition,
                       message: t('message.field-text-is-required', {
                         fieldText: t('label.interval'),
                       }),
@@ -563,7 +637,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   <InputNumber
                     className="w-full"
                     data-testid="interval-required"
-                    disabled={!enablePartition}
+                    disabled={!state?.enablePartition}
                     placeholder={t('message.enter-interval')}
                     size="middle"
                   />
@@ -583,7 +657,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionIntervalUnit"
                   rules={[
                     {
-                      required: enablePartition,
+                      required: state?.enablePartition,
                       message: t('message.field-text-is-required', {
                         fieldText: t('label.interval-unit'),
                       }),
@@ -593,7 +667,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     allowClear
                     className="w-full"
                     data-testid="select-interval-unit"
-                    disabled={!enablePartition}
+                    disabled={!state?.enablePartition}
                     options={INTERVAL_UNIT_OPTIONS}
                     placeholder={t('message.select-interval-unit')}
                     size="middle"
