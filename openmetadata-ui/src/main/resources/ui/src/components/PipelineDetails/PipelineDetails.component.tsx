@@ -832,7 +832,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.Tasks}
             tab={
               <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
-                {t('label.tasks')}
+                {t('label.task-plural')}
               </span>
             }>
             <Row

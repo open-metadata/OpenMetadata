@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import React from 'react';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -108,7 +109,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
 
 export const filterList = [
   {
-    name: 'All Activity',
+    name: i18next.t('label.all-activity'),
     value: 'ALL',
     icon: (
       <SVGIcons
@@ -120,7 +121,7 @@ export const filterList = [
     ),
   },
   {
-    name: 'My Data',
+    name: i18next.t('label.my-data'),
     value: 'OWNER',
     icon: (
       <SVGIcons
@@ -132,7 +133,7 @@ export const filterList = [
     ),
   },
   {
-    name: 'Mentions',
+    name: i18next.t('label.mention-plural'),
     value: 'MENTIONS',
     icon: (
       <SVGIcons
@@ -144,7 +145,7 @@ export const filterList = [
     ),
   },
   {
-    name: 'Following',
+    name: i18next.t('label.following'),
     value: 'FOLLOWS',
     icon: (
       <SVGIcons
@@ -159,7 +160,7 @@ export const filterList = [
 
 export const threadFilterList = [
   {
-    name: 'All Threads',
+    name: i18next.t('label.all-threads'),
     value: 'ALL',
     icon: (
       <SVGIcons
@@ -171,14 +172,14 @@ export const threadFilterList = [
     ),
   },
   {
-    name: 'Task',
+    name: i18next.t('label.task'),
     value: 'Task',
     icon: (
       <SVGIcons alt="Task" className="m-r-xs" icon={Icons.TASK} width="16px" />
     ),
   },
   {
-    name: 'Conversation',
+    name: i18next.t('label.conversation'),
     value: 'Conversation',
     icon: (
       <SVGIcons
@@ -190,7 +191,7 @@ export const threadFilterList = [
     ),
   },
   {
-    name: 'Announcement',
+    name: i18next.t('label.announcement'),
     value: 'Announcement',
     icon: (
       <SVGIcons
@@ -204,7 +205,7 @@ export const threadFilterList = [
 ];
 
 export const filterListTasks = [
-  { name: 'All Activity', value: 'ALL' },
-  { name: 'Assigned to me', value: 'ASSIGNED_TO' },
-  { name: 'Created by me', value: 'ASSIGNED_BY' },
+  { name: i18next.t('label.all-activity'), value: 'ALL' },
+  { name: i18next.t('label.assigned-to-me'), value: 'ASSIGNED_TO' },
+  { name: i18next.t('label.created-by-me'), value: 'ASSIGNED_BY' },
 ];

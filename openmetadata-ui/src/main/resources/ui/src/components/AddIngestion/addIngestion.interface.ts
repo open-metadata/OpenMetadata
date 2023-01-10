@@ -35,7 +35,6 @@ import {
 
 export interface AddIngestionProps {
   activeIngestionStep: number;
-  isAirflowSetup: boolean;
   pipelineType: PipelineType;
   heading: string;
   ingestionAction?: string;
@@ -49,7 +48,6 @@ export interface AddIngestionProps {
   handleCancelClick: () => void;
   onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
   onIngestionDeploy?: () => Promise<void>;
-  onAirflowStatusCheck: () => Promise<void>;
   onUpdateIngestion?: (
     data: IngestionPipeline,
     oldData: IngestionPipeline,

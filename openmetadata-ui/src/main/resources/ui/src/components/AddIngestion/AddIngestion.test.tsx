@@ -22,8 +22,6 @@ import { AddIngestionProps } from './addIngestion.interface';
 
 const mockAddIngestionProps: AddIngestionProps = {
   activeIngestionStep: 1,
-  isAirflowSetup: true,
-  onAirflowStatusCheck: jest.fn(),
   setActiveIngestionStep: jest.fn(),
   serviceData: {
     name: 'serviceName',

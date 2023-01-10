@@ -12,15 +12,19 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
+  const { t } = useTranslation();
+
   return editorValue.length > 2 ? (
     <div className="tw-absolute tw-right-8">
       <p
         className="tw-text-grey-muted tw--mt-1"
         data-testid="key-help"
         style={{ fontSize: '10px' }}>
-        <kbd>Shift</kbd> + <kbd>Return</kbd> to add a new line
+        <kbd>{t('label.shift')}</kbd> + <kbd>{t('label.return')}</kbd>{' '}
+        {t('message.to-add-new-line')}
       </p>
     </div>
   ) : null;

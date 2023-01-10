@@ -76,11 +76,9 @@ const AddIngestion = ({
   heading,
   ingestionAction = '',
   ingestionProgress = 0,
-  isAirflowSetup,
   isIngestionCreated = false,
   isIngestionDeployed = false,
   onAddIngestionSave,
-  onAirflowStatusCheck,
   onIngestionDeploy,
   onSuccessSave,
   onUpdateIngestion,
@@ -697,13 +695,11 @@ const AddIngestion = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}
-            isAirflowSetup={isAirflowSetup}
             name={state.ingestionName}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
             successMessage={getSuccessMessage()}
-            onCheckAirflowStatus={onAirflowStatusCheck}
           />
         )}
 
