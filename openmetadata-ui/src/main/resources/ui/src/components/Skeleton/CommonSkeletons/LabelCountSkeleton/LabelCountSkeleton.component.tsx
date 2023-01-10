@@ -25,7 +25,7 @@
 
 import { Col, Row, Skeleton } from 'antd';
 import React from 'react';
-import { LabelCountSkeletonProps } from '../../Interfaces/Skeleton.interfaces';
+import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({
   key,

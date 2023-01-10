@@ -25,7 +25,7 @@
 
 import { SkeletonProps } from 'antd';
 import { SkeletonButtonProps } from 'antd/lib/skeleton/Button';
-import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface Key {
   key?: React.Key | null | undefined;
