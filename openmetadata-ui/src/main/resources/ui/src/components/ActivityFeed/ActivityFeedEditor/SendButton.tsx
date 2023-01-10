@@ -13,7 +13,9 @@
 
 import { Popover } from 'antd';
 import classNames from 'classnames';
+import i18next from 'i18next';
 import React, { FC, Fragment } from 'react';
+import { Transi18next } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 
@@ -39,12 +41,18 @@ export const SendButton: FC<SendButtonProp> = ({
       <Popover
         content={
           <Fragment>
-            <strong>Send now</strong>
+            <strong>{i18next.t('label.send-now')}</strong>
             <p>
-              Press{' '}
-              <kbd className="tw-bg-white tw-text-grey-body tw-rounded-sm tw-px-1 tw-py-0.5">
-                Return
-              </kbd>
+              {i18next.t('label.press')}
+              <Transi18next
+                i18nKey="message.tour-step-discover-all-assets-at-one-place"
+                renderElement={
+                  <kbd className="tw-bg-white tw-text-grey-body tw-rounded-sm tw-px-1 tw-py-0.5" />
+                }
+                values={{
+                  text: i18next.t('label.return'),
+                }}
+              />
             </p>
           </Fragment>
         }

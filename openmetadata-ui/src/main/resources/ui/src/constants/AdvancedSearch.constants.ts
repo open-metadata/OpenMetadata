@@ -189,13 +189,13 @@ const getCommonQueryBuilderFields = (
 ) => {
   const commonQueryBuilderFields: Fields = {
     deleted: {
-      label: 'Deleted',
+      label: i18next.t('label.deleted'),
       type: 'boolean',
       defaultValue: true,
     },
 
     'owner.name': {
-      label: 'Owner',
+      label: i18next.t('label.owner'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -208,7 +208,7 @@ const getCommonQueryBuilderFields = (
     },
 
     'tags.tagFQN': {
-      label: 'Tags',
+      label: i18next.t('label.tag-plural'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -221,7 +221,7 @@ const getCommonQueryBuilderFields = (
     },
 
     'tier.tagFQN': {
-      label: 'Tier',
+      label: i18next.t('label.tier'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -243,7 +243,7 @@ const getCommonQueryBuilderFields = (
 const getServiceQueryBuilderFields = (index: SearchIndex) => {
   const serviceQueryBuilderFields: Fields = {
     'service.name': {
-      label: 'Service',
+      label: i18next.t('label.service'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -265,7 +265,7 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
  */
 const tableQueryBuilderFields: Fields = {
   'database.name': {
-    label: 'Database',
+    label: i18next.t('label.database'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
@@ -279,7 +279,7 @@ const tableQueryBuilderFields: Fields = {
   },
 
   'databaseSchema.name': {
-    label: 'Database Schema',
+    label: i18next.t('label.database-schema'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
@@ -293,7 +293,7 @@ const tableQueryBuilderFields: Fields = {
   },
 
   'columns.name': {
-    label: 'Column',
+    label: i18next.t('label.column'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {

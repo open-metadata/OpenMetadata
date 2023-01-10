@@ -366,6 +366,16 @@ const NavBar = ({
               onFocus={() => setSearchIcon('icon-searchv1color')}
               onKeyDown={handleKeyDown}
             />
+            <SearchOptions
+              isOpen={isSearchBoxOpen}
+              options={inPageSearchOptions(pathname)}
+              searchText={searchValue}
+              selectOption={(text) => {
+                AppState.inPageSearchText = text;
+              }}
+              setIsOpen={handleSearchBoxOpen}
+            />
+
             {!isTourRoute &&
               searchValue &&
               (isInPageSearchAllowed(pathname) ? (
