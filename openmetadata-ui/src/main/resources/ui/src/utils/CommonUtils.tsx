@@ -950,7 +950,6 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
 };
 
 /**
- *
  * @param text plain text
  * @returns base64 encoded text
  */

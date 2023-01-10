@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-import { MyDataState } from '../MyData/MyData.interface';
+export const DEFAULT_SKELETON_DATA_LENGTH = 5;
 
-export interface MyAssetStatsProps {
-  entityState: MyDataState;
-}
+export const exploreMock = Array.from({ length: 6 }, (_, index) => {
+  return {
+    name: index,
+    innerData: Array.from({ length: 3 }, (_, index) => index + 1),
+  };
+});
 
-export interface Summary {
-  icon: string;
-  data: string;
-  count?: number;
-  link?: string;
-  dataTestId?: string;
-  adminOnly?: boolean;
-}
+export const getSkeletonMockData = (length = 10) =>
+  Array.from({ length: length }, (_, index) => index + 1);
