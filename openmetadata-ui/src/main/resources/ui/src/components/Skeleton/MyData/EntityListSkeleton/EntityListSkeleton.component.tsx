@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { uniqueId } from 'lodash';
 import React from 'react';
 import LabelCountSkeleton from '../../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
