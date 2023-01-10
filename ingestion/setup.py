@@ -81,13 +81,13 @@ base_requirements = {
     "jsonschema",
     "mypy_extensions>=0.4.3",
     VERSIONS["pandas"],  # to be removed from base
-    "pydantic~=1.9.0",
+    "pydantic~=1.10",
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "python-jose~=3.3",
     "PyYAML",
     "requests>=2.23",
-    "requests-aws4auth~=1.1",  # Does only depends on requests as external package. Leaving as base.
+    "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0",
     "sqllineage==1.3.7",
