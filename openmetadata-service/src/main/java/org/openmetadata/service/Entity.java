@@ -163,7 +163,7 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
-
+    EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
@@ -285,6 +285,10 @@ public final class Entity {
 
   public static String getEntityTypeFromObject(Object object) {
     return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+  }
+
+  public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
+    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType);
   }
 
   /**

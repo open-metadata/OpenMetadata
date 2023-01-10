@@ -27,6 +27,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '@components/PermissionProvider/PermissionProvider.interface';
+import TagsLeftPanelSkeleton from '@components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   createClassification,
@@ -589,63 +590,65 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <LeftPanelCard id="tags">
-        <div className="tw-py-2" data-testid="data-summary-container">
-          <div className="tw-px-3">
-            <h6 className="tw-heading tw-text-sm tw-font-semibold">
-              {t('label.classification-plural')}
-            </h6>
-            <div className="tw-mb-3">
-              <Tooltip
-                title={
-                  createClassificationPermission
-                    ? t('label.add-entity', {
+        <TagsLeftPanelSkeleton loading={isLoading}>
+          <div className="tw-py-2" data-testid="data-summary-container">
+            <div className="tw-px-3">
+              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+                {t('label.classification-plural')}
+              </h6>
+              <div className="tw-mb-3">
+                <Tooltip
+                  title={
+                    createClassificationPermission
+                      ? t('label.add-entity', {
+                          entity: t('label.classification'),
+                        })
+                      : t('message.no-permission-for-action')
+                  }>
+                  <button
+                    className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                    data-testid="add-classification"
+                    disabled={!createClassificationPermission}
+                    onClick={() => {
+                      setIsAddingClassification((prevState) => !prevState);
+                      setErrorDataClassification(undefined);
+                    }}>
+                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                    <span>
+                      {t('label.add-entity', {
                         entity: t('label.classification'),
-                      })
-                    : t('message.no-permission-for-action')
-                }>
-                <button
-                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
-                  data-testid="add-classification"
-                  disabled={!createClassificationPermission}
-                  onClick={() => {
-                    setIsAddingClassification((prevState) => !prevState);
-                    setErrorDataClassification(undefined);
-                  }}>
-                  <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                  <span>
-                    {t('label.add-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </span>
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-
-          {classifications &&
-            classifications.map((category: Classification) => (
-              <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
-                  category.name,
-                  currentClassification?.name
-                )}`}
-                data-testid="side-panel-classification"
-                key={category.name}
-                onClick={() => onClickClassifications(category)}>
-                <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
-                  data-testid="tag-name"
-                  ellipsis={{ rows: 1, tooltip: true }}>
-                  {getEntityName(category as unknown as EntityReference)}
-                </Typography.Paragraph>
-                {getCountBadge(
-                  0,
-                  'tw-self-center',
-                  currentClassification?.name === category.name
-                )}
+                      })}
+                    </span>
+                  </button>
+                </Tooltip>
               </div>
-            ))}
-        </div>
+            </div>
+
+            {classifications &&
+              classifications.map((category: Classification) => (
+                <div
+                  className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
+                    category.name,
+                    currentClassification?.name
+                  )}`}
+                  data-testid="side-panel-classification"
+                  key={category.name}
+                  onClick={() => onClickClassifications(category)}>
+                  <Typography.Paragraph
+                    className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
+                    data-testid="tag-name"
+                    ellipsis={{ rows: 1, tooltip: true }}>
+                    {getEntityName(category as unknown as EntityReference)}
+                  </Typography.Paragraph>
+                  {getCountBadge(
+                    0,
+                    'tw-self-center',
+                    currentClassification?.name === category.name
+                  )}
+                </div>
+              ))}
+          </div>
+        </TagsLeftPanelSkeleton>
       </LeftPanelCard>
     );
   };

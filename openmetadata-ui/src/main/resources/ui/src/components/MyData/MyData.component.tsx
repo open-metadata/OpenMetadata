@@ -47,7 +47,7 @@ const MyData: React.FC<MyDataProps> = ({
   activityFeeds,
   onRefreshFeeds,
   error,
-  entityCounts,
+  data,
   ownedData,
   pendingTaskCount,
   followedData,
@@ -70,7 +70,7 @@ const MyData: React.FC<MyDataProps> = ({
   const getLeftPanel = () => {
     return (
       <>
-        <MyAssetStats entityCounts={entityCounts} />
+        <MyAssetStats entityState={data} />
         <div className="tw-mb-5" />
         <RecentlyViewed />
         <div className="tw-mb-5" />
@@ -139,7 +139,7 @@ const MyData: React.FC<MyDataProps> = ({
               </>
             }
             headerTextLabel="My Data"
-            isLoadingOwnedData={isLoadingOwnedData}
+            loading={isLoadingOwnedData}
             noDataPlaceholder={<>You have not owned anything yet.</>}
             testIDText="My data"
           />
@@ -168,7 +168,7 @@ const MyData: React.FC<MyDataProps> = ({
               </>
             }
             headerTextLabel="Following"
-            isLoadingOwnedData={isLoadingOwnedData}
+            loading={isLoadingOwnedData}
             noDataPlaceholder={<>You have not followed anything yet.</>}
             testIDText="Following data"
           />
