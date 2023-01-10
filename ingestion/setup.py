@@ -116,7 +116,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "dbt": {"google-cloud", VERSIONS["boto3"], VERSIONS["google-cloud-storage"]},
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.2"},
+    "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
         "azure-identity~=1.12",
