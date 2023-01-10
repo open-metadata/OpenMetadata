@@ -18,8 +18,6 @@ source:
     config:
       chartFilterPattern: {}
       dashboardFilterPattern: {}
-      dbServiceNames:
-      - OMD
       type: DashboardMetadata
 sink:
   type: metadata-rest
