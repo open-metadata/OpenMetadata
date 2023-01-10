@@ -37,7 +37,7 @@ jest.mock('../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('@rest/teamsAPI', () => ({
+jest.mock('rest/teamsAPI', () => ({
   updateTeam: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),

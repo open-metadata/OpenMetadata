@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 
-import { AuthContext } from '@components/authentication/auth-provider/AuthProvider';
 import { render } from '@testing-library/react';
+import { AuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import App from './App';
 
 const authContext = jest.fn();
 
-jest.mock('@components/router/AppRouter', () => {
+jest.mock('components/router/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('@components/app-bar/Appbar', () => {
+jest.mock('components/app-bar/Appbar', () => {
   return jest.fn().mockReturnValue(<p>AppBar</p>);
 });
 
-jest.mock('@components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('components/authentication/auth-provider/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()

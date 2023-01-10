@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { getAggregateChartData } from '@rest/DataInsightAPI';
-import { getTeamByName } from '@rest/teamsAPI';
 import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
+import { getTeamByName } from 'rest/teamsAPI';
 import { getUserPath } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,

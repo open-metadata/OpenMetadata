@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { restoreTable } from '@rest/tableAPI';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -20,6 +19,7 @@ import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreTable } from 'rest/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';

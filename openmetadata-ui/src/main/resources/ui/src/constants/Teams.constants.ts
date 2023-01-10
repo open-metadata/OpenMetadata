@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import DraggableBodyRow from '@components/TeamDetails/DraggableBodyRow';
+import DraggableBodyRow from 'components/TeamDetails/DraggableBodyRow';
 
 export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';
 

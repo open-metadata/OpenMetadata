@@ -37,7 +37,7 @@ jest.mock('../../utils/FilterUtils', () => ({
   getFilterCount: jest.fn().mockImplementation(() => 10),
 }));
 
-jest.mock('@components/searched-data/SearchedData', () => {
+jest.mock('components/searched-data/SearchedData', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (

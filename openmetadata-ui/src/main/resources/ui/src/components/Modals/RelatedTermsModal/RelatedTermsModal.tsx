@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import CheckboxUserCard from '@pages/teams/CheckboxUserCard';
-import { searchData } from '@rest/miscAPI';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import { isUndefined, uniqueId } from 'lodash';
+import CheckboxUserCard from 'pages/teams/CheckboxUserCard';
 import React, { useEffect, useState } from 'react';
+import { searchData } from 'rest/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';

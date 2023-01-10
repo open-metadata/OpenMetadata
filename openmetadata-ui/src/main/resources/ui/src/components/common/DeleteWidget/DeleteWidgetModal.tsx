@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { deleteEntity } from '@rest/miscAPI';
 import { Modal, Radio, RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import jsonData from '../../../jsons/en';

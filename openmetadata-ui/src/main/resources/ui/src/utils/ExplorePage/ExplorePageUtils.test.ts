@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { QueryFilterInterface } from '@pages/explore/ExplorePage.interface';
+import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
 import {
   getCombinedFields,

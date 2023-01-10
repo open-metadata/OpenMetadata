@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { COOKIE_VERSION } from '@components/Modals/WhatsNewModal/whatsNewData';
+import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';

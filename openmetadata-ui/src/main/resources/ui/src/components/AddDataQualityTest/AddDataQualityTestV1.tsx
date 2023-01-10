@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { createTestCase, createTestSuites } from '@rest/testAPI';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { createTestCase, createTestSuites } from 'rest/testAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
