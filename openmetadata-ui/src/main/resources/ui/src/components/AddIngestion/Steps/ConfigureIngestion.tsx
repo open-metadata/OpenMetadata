@@ -13,7 +13,7 @@
 
 import { Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
-import React, { Fragment, useRef } from 'react';
+import React, { Fragment, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
@@ -29,77 +29,173 @@ import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.i
 import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
-import { ConfigureIngestionProps } from '../addIngestion.interface';
+import {
+  AddIngestionState,
+  ConfigureIngestionProps,
+  ShowFilter,
+} from '../addIngestion.interface';
 
 const ConfigureIngestion = ({
-  ingestionName,
-  description = '',
-  databaseServiceNames,
-  databaseFilterPattern,
-  dashboardFilterPattern,
-  schemaFilterPattern,
-  tableFilterPattern,
-  topicFilterPattern,
-  chartFilterPattern,
-  pipelineFilterPattern,
-  mlModelFilterPattern,
-  includeLineage,
-  includeView,
-  includeTags,
-  markDeletedTables,
-  markAllDeletedTables,
-  serviceCategory,
-  pipelineType,
-  showDatabaseFilter,
-  ingestSampleData,
-  showDashboardFilter,
-  showSchemaFilter,
-  showTableFilter,
-  showTopicFilter,
-  showChartFilter,
-  showPipelineFilter,
-  showMlModelFilter,
-  queryLogDuration,
-  stageFileLocation,
-  threadCount,
-  timeoutSeconds,
-  resultLimit,
-  enableDebugLog,
-  profileSample,
-  handleEnableDebugLog,
+  data,
+  formType,
   getExcludeValue,
   getIncludeValue,
-  handleIngestionName,
-  handleDescription,
   handleShowFilter,
-  handleIncludeLineage,
-  handleIncludeView,
-  handleIncludeTags,
-  handleMarkDeletedTables,
-  handleMarkAllDeletedTables,
-  handleIngestSampleData,
-  handleDatasetServiceName,
-  handleQueryLogDuration,
-  handleProfileSample,
-  handleStageFileLocation,
-  handleResultLimit,
-  handleThreadCount,
-  handleTimeoutSeconds,
-  useFqnFilter,
-  onUseFqnFilterClick,
   onCancel,
+  onChange,
   onNext,
-  formType,
-  profileSampleType,
-  handleProfileSampleType,
+  pipelineType,
+  serviceCategory,
 }: ConfigureIngestionProps) => {
   const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
 
+  const {
+    chartFilterPattern,
+    dashboardFilterPattern,
+    databaseFilterPattern,
+    databaseServiceNames,
+    description,
+    enableDebugLog,
+    includeLineage,
+    includeTags,
+    includeView,
+    ingestionName,
+    ingestSampleData,
+    markAllDeletedTables,
+    markDeletedTables,
+    mlModelFilterPattern,
+    pipelineFilterPattern,
+    profileSample,
+    profileSampleType,
+    queryLogDuration,
+    resultLimit,
+    schemaFilterPattern,
+    showChartFilter,
+    showDashboardFilter,
+    showDatabaseFilter,
+    showMlModelFilter,
+    showPipelineFilter,
+    showSchemaFilter,
+    showTableFilter,
+    showTopicFilter,
+    stageFileLocation,
+    tableFilterPattern,
+    threadCount,
+    timeoutSeconds,
+    topicFilterPattern,
+    useFqnFilter,
+  } = useMemo(
+    () => ({
+      chartFilterPattern: data.chartFilterPattern,
+      dashboardFilterPattern: data.dashboardFilterPattern,
+      databaseFilterPattern: data.databaseFilterPattern,
+      databaseServiceNames: data.databaseServiceNames,
+      description: data.description,
+      enableDebugLog: data.enableDebugLog,
+      includeLineage: data.includeLineage,
+      includeTags: data.includeTags,
+      includeView: data.includeView,
+      ingestionName: data.ingestionName,
+      ingestSampleData: data.ingestSampleData,
+      markAllDeletedTables: data.markAllDeletedTables,
+      markDeletedTables: data.markDeletedTables,
+      mlModelFilterPattern: data.mlModelFilterPattern,
+      pipelineFilterPattern: data.pipelineFilterPattern,
+      profileSample: data.profileSample,
+      profileSampleType: data.profileSampleType,
+      queryLogDuration: data.queryLogDuration,
+      resultLimit: data.resultLimit,
+      schemaFilterPattern: data.schemaFilterPattern,
+      showChartFilter: data.showChartFilter,
+      showDashboardFilter: data.showDashboardFilter,
+      showDatabaseFilter: data.showDatabaseFilter,
+      showMlModelFilter: data.showMlModelFilter,
+      showPipelineFilter: data.showPipelineFilter,
+      showSchemaFilter: data.showSchemaFilter,
+      showTableFilter: data.showTableFilter,
+      showTopicFilter: data.showTopicFilter,
+      stageFileLocation: data.stageFileLocation,
+      tableFilterPattern: data.tableFilterPattern,
+      threadCount: data.threadCount,
+      timeoutSeconds: data.timeoutSeconds,
+      topicFilterPattern: data.topicFilterPattern,
+      useFqnFilter: data.useFqnFilter,
+    }),
+    [data]
+  );
+
+  const toggleField = (field: keyof AddIngestionState) =>
+    onChange({ [field]: !data[field] });
+
+  const handleValueParseInt =
+    (property: keyof AddIngestionState) =>
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      onChange({
+        [property]: parseInt(event.target.value),
+      });
+
+  const handleValueChange =
+    (property: keyof AddIngestionState) =>
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      onChange({
+        [property]: event.target.value,
+      });
+
+  const handleProfileSample = (profileSample: number | undefined | null) =>
+    onChange({
+      profileSample: profileSample ?? undefined,
+    });
+
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
-    handleProfileSampleType(value);
+    onChange({
+      profileSampleType: value,
+    });
+
     handleProfileSample(undefined);
   };
+
+  const handleDashBoardServiceNames = (inputValue: string) => {
+    const separator = ',';
+
+    const databaseNames = inputValue.includes(separator)
+      ? inputValue.split(separator)
+      : Array(inputValue);
+
+    if (databaseNames) {
+      onChange({
+        databaseServiceNames: databaseNames,
+      });
+    }
+  };
+
+  const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
+
+  const handleIncludeLineage = () => toggleField('includeLineage');
+
+  const handleIncludeTags = () => toggleField('includeTags');
+
+  const handleIncludeViewToggle = () => toggleField('includeView');
+
+  const handleIngestSampleToggle = () => toggleField('ingestSampleData');
+
+  const handleMarkAllDeletedTables = () => toggleField('markAllDeletedTables');
+
+  const handleMarkDeletedTables = () => toggleField('markDeletedTables');
+
+  const handleFqnFilter = () => toggleField('useFqnFilter');
+
+  const handleQueryLogDuration = handleValueParseInt('queryLogDuration');
+
+  const handleResultLimit = handleValueParseInt('resultLimit');
+
+  const handleStageFileLocation = handleValueChange('stageFileLocation');
+
+  const handleThreadCount = handleValueParseInt('threadCount');
+
+  const handleTimeoutSeconds = handleValueParseInt('timeoutSeconds');
+
+  const handleIngestionName = handleValueChange('ingestionName');
 
   const getIngestSampleToggle = (label: string, desc: string) => {
     return (
@@ -109,7 +205,7 @@ const ConfigureIngestion = ({
             <label>{label}</label>
             <ToggleSwitchV1
               checked={ingestSampleData}
-              handleCheck={handleIngestSampleData}
+              handleCheck={handleIngestSampleToggle}
               testId="ingest-sample-data"
             />
           </div>
@@ -127,7 +223,7 @@ const ConfigureIngestion = ({
           <label>{t('label.enable-debug-log')}</label>
           <ToggleSwitchV1
             checked={enableDebugLog}
-            handleCheck={handleEnableDebugLog}
+            handleCheck={handleEnableDebugLogCheck}
             testId="enable-debug-log"
           />
         </div>
@@ -169,9 +265,7 @@ const ConfigureIngestion = ({
               </Typography.Paragraph>
               <SliderWithInput
                 value={profileSample || 100}
-                onChange={(value: number | null) =>
-                  handleProfileSample(value ?? undefined)
-                }
+                onChange={handleProfileSample}
               />
             </>
           )}
@@ -188,7 +282,7 @@ const ConfigureIngestion = ({
                   name: t('label.row-count-lowercase'),
                 })}
                 value={profileSample}
-                onChange={(value) => handleProfileSample(value ?? undefined)}
+                onChange={handleProfileSample}
               />
             </>
           )}
@@ -212,7 +306,7 @@ const ConfigureIngestion = ({
           placeholder="5"
           type="number"
           value={threadCount}
-          onChange={(e) => handleThreadCount(parseInt(e.target.value))}
+          onChange={handleThreadCount}
         />
       </div>
     );
@@ -233,7 +327,7 @@ const ConfigureIngestion = ({
           placeholder="43200"
           type="number"
           value={timeoutSeconds}
-          onChange={(e) => handleTimeoutSeconds(parseInt(e.target.value))}
+          onChange={handleTimeoutSeconds}
         />
       </div>
     );
@@ -250,7 +344,7 @@ const ConfigureIngestion = ({
               </label>
               <ToggleSwitchV1
                 checked={includeView}
-                handleCheck={handleIncludeView}
+                handleCheck={handleIncludeViewToggle}
                 testId="include-views"
               />
             </div>
@@ -286,11 +380,7 @@ const ConfigureIngestion = ({
                 <label>{t('label.mark-deleted-table-plural')}</label>
                 <ToggleSwitchV1
                   checked={markDeletedTables}
-                  handleCheck={() => {
-                    if (handleMarkDeletedTables) {
-                      handleMarkDeletedTables();
-                    }
-                  }}
+                  handleCheck={handleMarkDeletedTables}
                   testId="mark-deleted"
                 />
               </div>
@@ -306,11 +396,7 @@ const ConfigureIngestion = ({
                 <label>{t('label.mark-all-deleted-table-plural')}</label>
                 <ToggleSwitchV1
                   checked={markAllDeletedTables}
-                  handleCheck={() => {
-                    if (handleMarkAllDeletedTables) {
-                      handleMarkAllDeletedTables();
-                    }
-                  }}
+                  handleCheck={handleMarkAllDeletedTables}
                   testId="mark-deleted-filter-only"
                 />
               </div>
@@ -357,7 +443,7 @@ const ConfigureIngestion = ({
           <label>{t('label.use-fqn-for-filtering')}</label>
           <ToggleSwitchV1
             checked={useFqnFilter}
-            handleCheck={onUseFqnFilterClick}
+            handleCheck={handleFqnFilter}
             testId="include-lineage"
           />
         </div>
@@ -367,18 +453,6 @@ const ConfigureIngestion = ({
         {getSeparator('')}
       </Field>
     );
-  };
-
-  const handleDashBoardServiceNames = (inputValue: string) => {
-    const separator = ',';
-
-    const databaseNames = inputValue.includes(separator)
-      ? inputValue.split(separator)
-      : Array(inputValue);
-
-    if (databaseNames) {
-      handleDatasetServiceName(databaseNames);
-    }
   };
 
   const getDashboardDBServiceName = () => {
@@ -413,7 +487,7 @@ const ConfigureIngestion = ({
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
           handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternEnum.DATABASE)
+            handleShowFilter(value, ShowFilter.showDatabaseFilter)
           }
           includePattern={databaseFilterPattern?.includes ?? []}
           type={FilterPatternEnum.DATABASE}
@@ -424,7 +498,7 @@ const ConfigureIngestion = ({
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
           handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternEnum.SCHEMA)
+            handleShowFilter(value, ShowFilter.showSchemaFilter)
           }
           includePattern={schemaFilterPattern?.includes ?? []}
           type={FilterPatternEnum.SCHEMA}
@@ -435,7 +509,7 @@ const ConfigureIngestion = ({
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
           handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternEnum.TABLE)
+            handleShowFilter(value, ShowFilter.showTableFilter)
           }
           includePattern={tableFilterPattern?.includes ?? []}
           showSeparator={false}
@@ -465,7 +539,7 @@ const ConfigureIngestion = ({
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.DASHBOARD)
+                handleShowFilter(value, ShowFilter.showDashboardFilter)
               }
               includePattern={dashboardFilterPattern.includes ?? []}
               type={FilterPatternEnum.DASHBOARD}
@@ -476,7 +550,7 @@ const ConfigureIngestion = ({
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.CHART)
+                handleShowFilter(value, ShowFilter.showChartFilter)
               }
               includePattern={chartFilterPattern.includes ?? []}
               showSeparator={false}
@@ -497,7 +571,7 @@ const ConfigureIngestion = ({
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.TOPIC)
+                handleShowFilter(value, ShowFilter.showTopicFilter)
               }
               includePattern={topicFilterPattern.includes ?? []}
               showSeparator={false}
@@ -522,7 +596,7 @@ const ConfigureIngestion = ({
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.PIPELINE)
+                handleShowFilter(value, ShowFilter.showPipelineFilter)
               }
               includePattern={pipelineFilterPattern.includes ?? []}
               showSeparator={false}
@@ -542,7 +616,7 @@ const ConfigureIngestion = ({
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.MLMODEL)
+                handleShowFilter(value, ShowFilter.showMlModelFilter)
               }
               includePattern={mlModelFilterPattern.includes ?? []}
               showSeparator={false}
@@ -574,7 +648,7 @@ const ConfigureIngestion = ({
             name="name"
             type="text"
             value={ingestionName}
-            onChange={(e) => handleIngestionName(e.target.value)}
+            onChange={handleIngestionName}
           />
           {getSeparator('')}
         </Field>
@@ -602,7 +676,7 @@ const ConfigureIngestion = ({
             name="query-log-duration"
             type="number"
             value={queryLogDuration}
-            onChange={(e) => handleQueryLogDuration(parseInt(e.target.value))}
+            onChange={handleQueryLogDuration}
           />
           {getSeparator('')}
         </Field>
@@ -622,7 +696,7 @@ const ConfigureIngestion = ({
             name="stage-file-location"
             type="text"
             value={stageFileLocation}
-            onChange={(e) => handleStageFileLocation(e.target.value)}
+            onChange={handleStageFileLocation}
           />
           {getSeparator('')}
         </Field>
@@ -642,7 +716,7 @@ const ConfigureIngestion = ({
             name="result-limit"
             type="number"
             value={resultLimit}
-            onChange={(e) => handleResultLimit(parseInt(e.target.value))}
+            onChange={handleResultLimit}
           />
           {getSeparator('')}
         </Field>
@@ -670,7 +744,7 @@ const ConfigureIngestion = ({
             name="query-log-duration"
             type="number"
             value={queryLogDuration}
-            onChange={(e) => handleQueryLogDuration(parseInt(e.target.value))}
+            onChange={handleQueryLogDuration}
           />
           {getSeparator('')}
         </Field>
@@ -690,7 +764,7 @@ const ConfigureIngestion = ({
             name="result-limit"
             type="number"
             value={resultLimit}
-            onChange={(e) => handleResultLimit(parseInt(e.target.value))}
+            onChange={handleResultLimit}
           />
           {getSeparator('')}
         </Field>
@@ -717,7 +791,7 @@ const ConfigureIngestion = ({
               name="name"
               type="text"
               value={ingestionName}
-              onChange={(e) => handleIngestionName(e.target.value)}
+              onChange={handleIngestionName}
             />
             {getSeparator('')}
           </Field>
@@ -776,8 +850,9 @@ const ConfigureIngestion = ({
   };
 
   const handleNext = () => {
-    handleDescription &&
-      handleDescription(markdownRef.current?.getEditorContent() || '');
+    onChange({
+      description: markdownRef.current?.getEditorContent() || '',
+    });
     onNext();
   };
 
