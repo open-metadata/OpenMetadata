@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    get_connection_options_dict,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
@@ -61,11 +62,7 @@ def get_connection_url(connection: OracleConnection) -> str:
     elif isinstance(connection.oracleConnectionType, OracleServiceName):
         url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
 
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
+    options = get_connection_options_dict(connection)
     if options:
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
