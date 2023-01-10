@@ -11,14 +11,6 @@
  *  limitations under the License.
  */
 
-import Appbar from '@components/app-bar/Appbar';
-import { AuthProvider } from '@components/authentication/auth-provider/AuthProvider';
-import ErrorBoundry from '@components/ErrorBoundry/ErrorBoundry';
-import GlobalSearchProvider from '@components/GlobalSearchProvider/GlobalSearchProvider';
-import PermissionProvider from '@components/PermissionProvider/PermissionProvider';
-import AppRouter from '@components/router/AppRouter';
-import WebSocketProvider from '@components/web-scoket/web-scoket.provider';
-import WebAnalyticsProvider from '@components/WebAnalytics/WebAnalyticsProvider';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
   faCheck,
@@ -32,11 +24,19 @@ import {
   faSearch,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
+import Appbar from 'components/app-bar/Appbar';
+import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
+import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
+import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
+import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
+import AppRouter from 'components/router/AppRouter';
+import WebSocketProvider from 'components/web-scoket/web-scoket.provider';
+import WebAnalyticsProvider from 'components/WebAnalytics/WebAnalyticsProvider';
+import { TOAST_OPTIONS } from 'constants/Toasts.constants';
 import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import { TOAST_OPTIONS } from './constants/Toasts.constants';
 
 const App: FunctionComponent = () => {
   library.add(

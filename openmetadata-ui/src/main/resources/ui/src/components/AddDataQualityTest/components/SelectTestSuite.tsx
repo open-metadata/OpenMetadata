@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getListTestSuites } from '@rest/testAPI';
 import {
   Button,
   Divider,
@@ -28,6 +27,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getListTestSuites } from 'rest/testAPI';
 import {
   API_RES_MAX_SIZE,
   getTableTabPath,

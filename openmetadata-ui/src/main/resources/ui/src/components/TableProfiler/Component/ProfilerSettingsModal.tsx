@@ -12,7 +12,6 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { getTableProfilerConfig, putTableProfileConfig } from '@rest/tableAPI';
 import {
   Button,
   InputNumber,
@@ -32,6 +31,7 @@ import { isEmpty, isEqual, isUndefined, omit, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
+import { getTableProfilerConfig, putTableProfileConfig } from 'rest/tableAPI';
 import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,

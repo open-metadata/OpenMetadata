@@ -12,15 +12,15 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { getDashboardByFqn } from '@rest/dashboardAPI';
-import { getPipelineByFqn } from '@rest/pipelineAPI';
-import { getServiceById } from '@rest/serviceAPI';
-import { getTableDetailsByFQN } from '@rest/tableAPI';
 import { Divider, Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getServiceById } from 'rest/serviceAPI';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';

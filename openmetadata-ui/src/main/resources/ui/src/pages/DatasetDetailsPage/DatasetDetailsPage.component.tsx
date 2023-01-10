@@ -11,38 +11,38 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import DatasetDetails from '@components/DatasetDetails/DatasetDetails.component';
+import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import {
   Edge,
   EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from '@components/EntityLineage/EntityLineage.interface';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+} from 'components/EntityLineage/EntityLineage.interface';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '@components/PermissionProvider/PermissionProvider.interface';
-import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
-import { getLineageByFQN } from '@rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
-import {
-  addFollower,
-  getTableDetailsByFQN,
-  patchTableDetails,
-  removeFollower,
-} from '@rest/tableAPI';
-import { AxiosError } from 'axios';
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import {
+  addFollower,
+  getTableDetailsByFQN,
+  patchTableDetails,
+  removeFollower,
+} from 'rest/tableAPI';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {

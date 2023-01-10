@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { createBotWithPut } from '@rest/botsAPI';
-import {
-  createUserWithPut,
-  getAuthMechanismForBotUser,
-  getRoles,
-} from '@rest/userAPI';
 import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createBotWithPut } from 'rest/botsAPI';
+import {
+  createUserWithPut,
+  getAuthMechanismForBotUser,
+  getRoles,
+} from 'rest/userAPI';
 import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,

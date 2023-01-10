@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import PageContainerV1 from 'components/containers/PageContainerV1';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
@@ -31,7 +32,6 @@ import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
@@ -254,7 +254,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainer>
+    <PageContainerV1>
       <div
         className={classNames(
           'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
@@ -318,7 +318,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

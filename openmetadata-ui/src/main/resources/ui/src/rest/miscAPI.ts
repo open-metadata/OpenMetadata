@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Edge } from '@components/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '@components/Explore/explore.interface';
 import { AxiosResponse } from 'axios';
+import { Edge } from 'components/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';

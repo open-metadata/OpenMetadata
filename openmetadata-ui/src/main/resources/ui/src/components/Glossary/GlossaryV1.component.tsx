@@ -12,7 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import {
   Button as ButtonAntd,
   Col,
@@ -29,6 +28,7 @@ import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
 import { AssetsDataType, LoadingState } from 'Models';
+import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

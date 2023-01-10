@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import DatasetDetails from '@components/DatasetDetails/DatasetDetails.component';
-import { LeafNodes } from '@components/EntityLineage/EntityLineage.interface';
-import Explore from '@components/Explore/Explore.component';
-import MyData from '@components/MyData/MyData.component';
-import { MyDataProps } from '@components/MyData/MyData.interface';
-import NavBar from '@components/nav-bar/NavBar';
-import Tour from '@components/tour/Tour';
+import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
+import { LeafNodes } from 'components/EntityLineage/EntityLineage.interface';
+import Explore from 'components/Explore/Explore.component';
+import MyData from 'components/MyData/MyData.component';
+import { MyDataProps } from 'components/MyData/MyData.interface';
+import NavBar from 'components/nav-bar/NavBar';
+import Tour from 'components/tour/Tour';
 import { noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';

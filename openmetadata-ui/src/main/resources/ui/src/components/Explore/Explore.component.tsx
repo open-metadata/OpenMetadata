@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import FacetFilter from '@components/common/facetfilter/FacetFilter';
-import SearchedData from '@components/searched-data/SearchedData';
 import {
   faSortAmountDownAlt,
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card, Col, Row, Tabs } from 'antd';
+import FacetFilter from 'components/common/facetfilter/FacetFilter';
+import SearchedData from 'components/searched-data/SearchedData';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,

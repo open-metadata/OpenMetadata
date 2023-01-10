@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { useAuthContext } from '@components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from '@components/authentication/auth-provider/basic-auth.provider';
-import Loader from '@components/Loader/Loader';
-import LoginButton from '@components/LoginButton/LoginButton';
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import Loader from 'components/Loader/Loader';
+import LoginButton from 'components/LoginButton/LoginButton';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityData } from '@components/common/PopOverCard/EntityPopOverCard';
+import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';

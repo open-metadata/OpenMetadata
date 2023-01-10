@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { VersionData } from '@pages/EntityVersionPage/EntityVersionPage.component';
+import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';

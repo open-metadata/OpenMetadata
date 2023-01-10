@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { getAdvancedFieldDefaultOptions } from '@rest/miscAPI';
-import { suggestQuery } from '@rest/searchAPI';
 import i18next from 'i18next';
 import { isUndefined, uniq } from 'lodash';
 import {
@@ -23,6 +21,8 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
+import { suggestQuery } from 'rest/searchAPI';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
