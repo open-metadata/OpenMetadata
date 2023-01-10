@@ -25,10 +25,12 @@ def get_long_description():
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.3.3",
+    "avro-python3": "avro-python3~=1.10",
     "boto3": "boto3~=1.26",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "great-expectations": "great-expectations~=0.15.0",
+    "grpc-tools": "grpcio-tools==1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=4.4.0",
     "pandas": "pandas==1.3.5",
@@ -47,12 +49,14 @@ COMMONS = {
     },
     "kafka": {
         "avro~=1.11",
-        "avro-python3~=1.10",
+        VERSIONS["avro-python3"],
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # we use v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
-        "grpcio-tools==1.47.2",  # grpcio-tools already depends on grpcio. No need to add separately
+        VERSIONS[
+            "grpc-tools"
+        ],  # grpcio-tools already depends on grpcio. No need to add separately
         "protobuf",
     },
 }
@@ -60,6 +64,8 @@ COMMONS = {
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
+    VERSIONS["avro-python3"],
+    VERSIONS["boto3"],
     "cached-property==1.5.2",
     "chardet==4.0.0",
     "croniter~=1.3.0",
@@ -68,6 +74,7 @@ base_requirements = {
     "email-validator>=1.0.3",
     "google>=3.0.0",
     "google-auth>=1.33.0",
+    VERSIONS["grpc-tools"],
     "idna<3,>=2.5",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "Jinja2>=2.11.3",
