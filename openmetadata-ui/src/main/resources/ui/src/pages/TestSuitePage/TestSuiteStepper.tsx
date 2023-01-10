@@ -11,23 +11,22 @@
  *  limitations under the License.
  */
 
-import RightPanel from '@components/AddDataQualityTest/components/RightPanel';
+import { Col, Row, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
 import {
   getRightPanelForAddTestSuitePage,
   INGESTION_DATA,
-} from '@components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from '@components/AddDataQualityTest/TestSuiteIngestion';
-import SuccessScreen from '@components/common/success-screen/SuccessScreen';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '@components/containers/PageLayoutV1';
-import IngestionStepper from '@components/IngestionStepper/IngestionStepper.component';
-import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
-import { createTestSuites } from '@rest/testAPI';
-import { Col, Row, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+} from 'components/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
+import SuccessScreen from 'components/common/success-screen/SuccessScreen';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { createTestSuites } from 'rest/testAPI';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
   TEST_SUITE_STEPPER_BREADCRUMB,
@@ -46,17 +45,8 @@ const TestSuiteStepper = () => {
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState<boolean>(false);
-  const [addIngestion, setAddIngestion] = useState<boolean>(false);
 
-  const handleAirflowStatusCheck = async (): Promise<void> => {
-    try {
-      await checkAirflowStatus();
-      setIsAirflowRunning(true);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const [addIngestion, setAddIngestion] = useState<boolean>(false);
 
   const handleViewTestSuiteClick = () => {
     history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName || ''));
@@ -84,21 +74,15 @@ const TestSuiteStepper = () => {
           showIngestionButton
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowRunning}
           name={testSuiteResponse?.name || ''}
           state={FormSubmitType.ADD}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={handleAirflowStatusCheck}
         />
       );
     }
 
     return <AddTestSuiteForm onSubmit={onSubmitTestSuite} />;
-  }, [activeServiceStep, isAirflowRunning]);
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
+  }, [activeServiceStep]);
 
   return (
     <div data-testid="test-suite-stepper-container">

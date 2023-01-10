@@ -12,6 +12,8 @@
  */
 
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
+
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -38,7 +40,6 @@ import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import VersionTable from '../VersionTable/VersionTable.component';

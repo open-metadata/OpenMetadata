@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
   patchGlossaryTerm,
-} from '@rest/glossaryAPI';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+} from 'rest/glossaryAPI';
 import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPageV1 from './GlossaryPageV1.component';
 
@@ -227,13 +227,13 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('@rest/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSearchData)),
 }));
 
-jest.mock('@components/Glossary/GlossaryV1.component', () => {
+jest.mock('components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>
@@ -306,7 +306,7 @@ jest.mock('@components/Glossary/GlossaryV1.component', () => {
   ));
 });
 
-jest.mock('@rest/glossaryAPI', () => ({
+jest.mock('rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   patchGlossaryTerm: jest

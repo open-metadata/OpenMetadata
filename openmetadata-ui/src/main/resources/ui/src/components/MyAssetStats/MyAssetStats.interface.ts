@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
+import { MyDataState } from '../MyData/MyData.interface';
 
 export interface MyAssetStatsProps {
-  entityCounts: EntitiesCount;
+  entityState: MyDataState;
 }
 
 export interface Summary {

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { ProfilerDashboardTab } from '@components/ProfilerDashboard/profilerDashboard.interface';
-import { getTableDetailsByFQN } from '@rest/tableAPI';
 import { act, cleanup, render, screen } from '@testing-library/react';
+import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import ProfilerDashboardPage from './ProfilerDashboardPage';
@@ -32,7 +32,7 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('@rest/tableAPI', () => {
+jest.mock('rest/tableAPI', () => {
   return {
     getColumnProfilerList: jest
       .fn()
@@ -44,14 +44,14 @@ jest.mock('@rest/tableAPI', () => {
   };
 });
 
-jest.mock('@rest/testAPI', () => {
+jest.mock('rest/testAPI', () => {
   return {
     getListTestCase: jest.fn().mockImplementation(() => Promise.resolve()),
     ListTestCaseParams: jest.fn().mockImplementation(() => Promise.resolve()),
   };
 });
 
-jest.mock('@components/PermissionProvider/PermissionProvider', () => {
+jest.mock('components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn().mockImplementation(() => ({
       getEntityPermission: jest.fn().mockImplementation(() => ({
@@ -64,11 +64,11 @@ jest.mock('@components/PermissionProvider/PermissionProvider', () => {
   };
 });
 
-jest.mock('@components/common/error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => <div>No data placeholder</div>);
 });
 
-jest.mock('@components/containers/PageContainerV1', () => {
+jest.mock('components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -76,11 +76,11 @@ jest.mock('@components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('@components/Loader/Loader', () => {
+jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p data-testid="loader">Loader</p>);
 });
 
-jest.mock('@components/ProfilerDashboard/ProfilerDashboard', () => {
+jest.mock('components/ProfilerDashboard/ProfilerDashboard', () => {
   return jest
     .fn()
     .mockImplementation(() => (

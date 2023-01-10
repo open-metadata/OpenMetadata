@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import {
-  getLatestTableProfileByFqn,
-  getTableQueryByTableId,
-} from '@rest/tableAPI';
-import { getListTestCase } from '@rest/testAPI';
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  getLatestTableProfileByFqn,
+  getTableQueryByTableId,
+} from 'rest/tableAPI';
+import { getListTestCase } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SearchIndex } from '../../../../enums/search.enum';

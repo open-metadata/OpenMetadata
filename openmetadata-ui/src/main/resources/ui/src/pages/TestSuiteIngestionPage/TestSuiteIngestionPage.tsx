@@ -10,21 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import RightPanel from '@components/AddDataQualityTest/components/RightPanel';
-import { INGESTION_DATA } from '@components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from '@components/AddDataQualityTest/TestSuiteIngestion';
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import PageLayout from '@components/containers/PageLayout';
-import Loader from '@components/Loader/Loader';
-import { getIngestionPipelineByFqn } from '@rest/ingestionPipelineAPI';
-import { getTestSuiteByName } from '@rest/testAPI';
 import { AxiosError } from 'axios';
+import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
+import { INGESTION_DATA } from 'components/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayout from 'components/containers/PageLayout';
+import Loader from 'components/Loader/Loader';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
+import { getTestSuiteByName } from 'rest/testAPI';
 import { ROUTES } from '../../constants/constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';

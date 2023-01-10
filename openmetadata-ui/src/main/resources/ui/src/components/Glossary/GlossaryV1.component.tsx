@@ -12,7 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import {
   Button as ButtonAntd,
   Col,
@@ -28,7 +27,6 @@ import {
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -67,38 +65,11 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import GlossaryV1Skeleton from '../Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 
 const { Title } = Typography;
-
-type Props = {
-  assetData: AssetsDataType;
-  deleteStatus: LoadingState;
-  isSearchResultEmpty: boolean;
-  glossaryList: ModifiedGlossaryData[];
-  selectedKey: string;
-  expandedKey: string[];
-  loadingKey: string[];
-  handleExpandedKey: (key: string[]) => void;
-  handleSelectedKey?: (key: string) => void;
-  searchText: string;
-  selectedData: Glossary | GlossaryTerm;
-  isGlossaryActive: boolean;
-  currentPage: number;
-  handleAddGlossaryClick: () => void;
-  handleAddGlossaryTermClick: () => void;
-  updateGlossary: (value: Glossary) => Promise<void>;
-  handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
-  handleSelectedData: (key: string) => void;
-  handleChildLoading: (status: boolean) => void;
-  handleSearchText: (text: string) => void;
-  onGlossaryDelete: (id: string) => void;
-  onGlossaryTermDelete: (id: string) => void;
-  onAssetPaginate: (num: string | number, activePage?: number) => void;
-  onRelatedTermClick?: (fqn: string) => void;
-  handleUserRedirection?: (name: string) => void;
-  isChildLoading: boolean;
-};
 
 const GlossaryV1 = ({
   assetData,
@@ -126,7 +97,7 @@ const GlossaryV1 = ({
   onAssetPaginate,
   onRelatedTermClick,
   currentPage,
-}: Props) => {
+}: GlossaryV1Props) => {
   const { DirectoryTree } = Tree;
   const { t } = useTranslation();
 
@@ -324,12 +295,14 @@ const GlossaryV1 = ({
   const fetchLeftPanel = () => {
     return (
       <LeftPanelCard id="glossary">
-        <div className="tw-h-full tw-py-2">
-          <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-            <h6 className="tw-heading tw-text-sm tw-font-semibold">Glossary</h6>
-          </div>
-          <div>
-            {treeData.length ? (
+        <GlossaryV1Skeleton loading={treeData.length === 0}>
+          <div className="tw-h-full tw-py-2">
+            <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
+              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+                {t('label.glossary')}
+              </h6>
+            </div>
+            <div>
               <Fragment>
                 <div className="tw-px-3 tw-mb-2">
                   <Searchbar
@@ -342,8 +315,8 @@ const GlossaryV1 = ({
                   <Tooltip
                     title={
                       createGlossaryPermission
-                        ? 'Add Glossary'
-                        : NO_PERMISSION_FOR_ACTION
+                        ? t('label.add-glossary')
+                        : t('message.no-permission-for-action')
                     }>
                     <button
                       className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
@@ -351,16 +324,20 @@ const GlossaryV1 = ({
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                      <span>Add Glossary</span>
+                      <span>{t('label.add-glossary')}</span>
                     </button>
                   </Tooltip>
                 </div>
                 {isSearchResultEmpty ? (
                   <p className="tw-text-grey-muted tw-text-center">
                     {searchText ? (
-                      <span>{`No Glossary found for "${searchText}"`}</span>
+                      <span>
+                        {t('label.no-glossary-found-for-searchText', {
+                          searchText,
+                        })}
+                      </span>
                     ) : (
-                      <span>No Glossary found</span>
+                      <span>{t('label.no-glossary-found')}</span>
                     )}
                   </p>
                 ) : (
@@ -379,11 +356,9 @@ const GlossaryV1 = ({
                   />
                 )}
               </Fragment>
-            ) : (
-              <Loader />
-            )}
+            </div>
           </div>
-        </div>
+        </GlossaryV1Skeleton>
       </LeftPanelCard>
     );
   };

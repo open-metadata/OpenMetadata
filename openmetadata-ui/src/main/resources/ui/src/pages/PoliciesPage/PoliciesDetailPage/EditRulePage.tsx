@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '@components/Loader/Loader';
-import { getPolicyByName, patchPolicy } from '@rest/rolesAPIV1';
 import { Button, Card, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getPolicyByName, patchPolicy } from 'rest/rolesAPIV1';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';

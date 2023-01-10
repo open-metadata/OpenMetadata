@@ -51,7 +51,6 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -70,6 +69,7 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.EventPublisherJob;
 import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
@@ -104,7 +104,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     registerElasticSearchJobs();
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
-    esIndexDefinition.createIndexes();
+    esIndexDefinition.createIndexes(esConfig);
   }
 
   @Override
@@ -488,6 +488,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         break;
       case ENTITY_DELETED:
         DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+        new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
         GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
         request.setQuery(
             QueryBuilders.boolQuery()

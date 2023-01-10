@@ -11,25 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button } from '@components/buttons/Button/Button';
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from '@components/common/TabsPane/TabsPane';
-import { CustomPropertyTable } from '@components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from '@components/header/PageHeader.component';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
+import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import { Button } from 'components/buttons/Button/Button';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TabsPane from 'components/common/TabsPane/TabsPane';
+import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
+import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '@components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '@components/schema-editor/SchemaEditor';
-import { getTypeByFQN, updateType } from '@rest/metadataTypeAPI';
-import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
-import { AxiosError } from 'axios';
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
 import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
