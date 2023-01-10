@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ChartType } from '@pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 

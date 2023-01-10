@@ -23,20 +23,18 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
 }));
 
-jest.mock('@rest/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getPolicyByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_DATA)),
   patchPolicy: jest.fn().mockImplementation(() => Promise.resolve(POLICY_DATA)),
 }));
 
-jest.mock(
-  '@components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('@components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 

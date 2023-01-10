@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import SigninPage from '@pages/login';
-import PageNotFound from '@pages/page-not-found';
 import { isEmpty } from 'lodash';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
+import SigninPage from 'pages/login';
+import PageNotFound from 'pages/page-not-found';
 import React, {
   ComponentType,
   forwardRef,

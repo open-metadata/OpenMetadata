@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import {
-  getAdvancedFieldDefaultOptions,
-  getAdvancedFieldOptions,
-  getTagSuggestions,
-  getUserSuggestions,
-} from '@rest/miscAPI';
 import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  getAdvancedFieldDefaultOptions,
+  getAdvancedFieldOptions,
+  getTagSuggestions,
+  getUserSuggestions,
+} from 'rest/miscAPI';
 import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,

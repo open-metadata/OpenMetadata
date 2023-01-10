@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
 import classNames from 'classnames';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { capitalize } from 'lodash';
 import React, { useState } from 'react';
 import { EntityReference } from '../../generated/type/entityReference';

@@ -3,11 +3,6 @@
     "outDir": "./build",
     "rootDir": "./src",
     "baseUrl": "./src",
-    "paths": {
-      "@rest/*": ["rest/*"],
-      "@components/*": ["components/*"],
-      "@pages/*": ["pages/*"]
-    },
     "typeRoots": ["./src/@types", "./node_modules/@types"],
     "incremental": true,
     "target": "ES5",

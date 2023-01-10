@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getRunHistoryForPipeline } from '@rest/ingestionPipelineAPI';
 import { Popover, Skeleton, Space } from 'antd';
 import { capitalize, isEmpty } from 'lodash';
 import React, {
@@ -21,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import {
   IngestionPipeline,
   PipelineStatus,
