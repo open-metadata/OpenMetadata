@@ -26,6 +26,7 @@ extends:
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
   - prettier
+  - plugin:i18next/recommended
 
 parser: '@typescript-eslint/parser'
 
@@ -42,6 +43,7 @@ plugins:
   - jest
   - jest-formatting
   - '@typescript-eslint'
+  - i18next
 
 rules:
   # ESLint rules
@@ -177,6 +179,12 @@ rules:
     - off
 
   # React rules
+
+  # i18next rules
+
+  i18next/no-literal-string: warn
+
+  # i18next rules
 
 overrides:
   # eslint-plugin-jsonc requires its own parser
