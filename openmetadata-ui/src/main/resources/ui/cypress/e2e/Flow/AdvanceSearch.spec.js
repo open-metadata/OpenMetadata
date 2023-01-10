@@ -31,7 +31,6 @@ import {
     verifyResponseStatusCode
 } from '../../common/common';
 
-import { API_SERVICE } from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
@@ -39,7 +38,6 @@ const service_name = MYSQL.serviceName;
 describe('Advance search should work properly for all fields', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
 
   it('Pre-requisite for advance search', () => {

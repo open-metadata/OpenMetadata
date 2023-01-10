@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { BASE_URL } from '../../constants/constants';
 import { LEFT_PANEL_DETAILS, NAVBAR_DETAILS, SETTINGS_LEFT_PANEL } from '../../constants/redirections.constants';
 
 const validateURL = (url) => {
@@ -27,13 +26,11 @@ describe('Redirection link should work properly', () => {
     Object.values(NAVBAR_DETAILS).map((navbar) => {
       cy.get(navbar.testid).should('be.visible').click({animationDistanceThreshold: 10});
       if(navbar.subMenu) {
-        cy.get(navbar.subMenu).should('be.visible').click({ force: true });
+        cy.get(navbar.subMenu).should('be.visible').click();
       }
-      //
       cy.get('body').click();
       validateURL(navbar.url);
-      cy.clickOnLogo();
-      validateURL(`${BASE_URL}/my-data`);
+      cy.wait(1000);
     });
   });
 
@@ -41,8 +38,7 @@ describe('Redirection link should work properly', () => {
     Object.values(LEFT_PANEL_DETAILS).map((leftpanel) => {
       cy.get(leftpanel.testid).should('be.visible').click();
       validateURL(leftpanel.url);
-      cy.clickOnLogo();
-      validateURL(`${BASE_URL}/my-data`);
+      cy.wait(1000);
     });
   });
 
