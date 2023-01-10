@@ -56,7 +56,7 @@ import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
-import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -166,7 +166,7 @@ public final class TestUtils {
       SUPERSET_CONNECTION =
           new DashboardConnection()
               .withConfig(
-                  new SupersetConnection()
+                  new MetabaseConnection()
                       .withHostPort(new URI("http://localhost:8080"))
                       .withUsername("admin")
                       .withPassword("admin"));

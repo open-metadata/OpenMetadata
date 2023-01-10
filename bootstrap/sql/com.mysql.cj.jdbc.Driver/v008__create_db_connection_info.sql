@@ -50,3 +50,16 @@ SET json = JSON_INSERT(
 		REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')),':','')
     )
 WHERE JSON_EXTRACT(json, '$.serviceType') = 'Dagster';
+
+
+UPDATE dashboard_service_entity  
+SET json = JSON_INSERT(
+JSON_REMOVE(json,'$.connection.config.username','$.connection.config.password','$.connection.config.provider'),
+'$.connection.config.connection',
+JSON_OBJECT(
+	'username',JSON_EXTRACT(json,'$.connection.config.username'),
+	'password',JSON_EXTRACT(json,'$.connection.config.password'),
+	'provider',JSON_EXTRACT(json,'$.connection.config.provider')
+	)
+)
+WHERE serviceType = 'Superset';

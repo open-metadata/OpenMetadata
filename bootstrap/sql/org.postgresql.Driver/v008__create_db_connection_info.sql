@@ -48,3 +48,14 @@ SET json = jsonb_set(
         to_jsonb(replace(json ->> 'fullyQualifiedName',':',''))
     )
 WHERE json ->> 'serviceType' = 'Dagster';
+
+UPDATE dashboard_service_entity  
+SET json = JSONB_SET(json::jsonb,
+'{connection,config}',json::jsonb #>'{connection,config}' #- '{password}' #- '{username}' #- '{provider}'|| 
+jsonb_build_object('connection',jsonb_build_object(
+'username',json #>'{connection,config,username}',
+'password',json #>'{connection,config,password}',
+'provider',json #>'{connection,config,provider}'
+)), true)
+where servicetype = 'Superset';
+

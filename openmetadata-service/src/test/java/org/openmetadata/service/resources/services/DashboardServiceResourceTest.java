@@ -42,7 +42,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService.DashboardServ
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
-import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
@@ -85,8 +85,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   void post_validService_as_admin_200_ok(TestInfo test) throws IOException, URISyntaxException {
     // Create dashboard service with different optional fields
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
-    SupersetConnection supersetConnection =
-        new SupersetConnection()
+    MetabaseConnection supersetConnection =
+        new MetabaseConnection()
             .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
             .withPassword("password");
@@ -102,7 +102,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     DashboardConnection dashboardConnection =
         new DashboardConnection()
             .withConfig(
-                new SupersetConnection()
+                new MetabaseConnection()
                     .withHostPort(new URI("http://localhost:8080"))
                     .withUsername("user")
                     .withPassword(secretPassword));
@@ -114,7 +114,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     DashboardConnection dashboardConnection1 =
         new DashboardConnection()
             .withConfig(
-                new SupersetConnection()
+                new MetabaseConnection()
                     .withHostPort(new URI("http://localhost:9000"))
                     .withUsername("user1")
                     .withPassword(secretPassword));
@@ -133,13 +133,13 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     updatedService = getEntity(service.getId(), TEST_AUTH_HEADERS);
     assertNotNull(updatedService.getConnection());
     assertNotNull(
-        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), SupersetConnection.class)
+        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
             .getHostPort());
     assertNull(
-        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), SupersetConnection.class)
+        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
             .getUsername());
-    SupersetConnection supersetConnection =
-        new SupersetConnection()
+    MetabaseConnection supersetConnection =
+        new MetabaseConnection()
             .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
             .withPassword(secretPassword);
@@ -162,7 +162,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           .withConnection(
               new DashboardConnection()
                   .withConfig(
-                      new SupersetConnection()
+                      new MetabaseConnection()
                           .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
                           .withPassword("admin")));
@@ -182,7 +182,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           .withConnection(
               new DashboardConnection()
                   .withConfig(
-                      new SupersetConnection()
+                      new MetabaseConnection()
                           .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
                           .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
@@ -241,16 +241,15 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
       Map<String, String> authHeaders) {
     if (expectedDashboardConnection != null && actualDashboardConnection != null) {
       if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Superset) {
-        SupersetConnection expectedSupersetConnection = (SupersetConnection) expectedDashboardConnection.getConfig();
-        SupersetConnection actualSupersetConnection;
-        if (actualDashboardConnection.getConfig() instanceof SupersetConnection) {
-          actualSupersetConnection = (SupersetConnection) actualDashboardConnection.getConfig();
+        MetabaseConnection expectedSupersetConnection = (MetabaseConnection) expectedDashboardConnection.getConfig();
+        MetabaseConnection actualSupersetConnection;
+        if (actualDashboardConnection.getConfig() instanceof MetabaseConnection) {
+          actualSupersetConnection = (MetabaseConnection) actualDashboardConnection.getConfig();
         } else {
           actualSupersetConnection =
-              JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class);
+              JsonUtils.convertValue(actualDashboardConnection.getConfig(), MetabaseConnection.class);
         }
         assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
-        assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
         if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
           assertTrue(actualSupersetConnection.getPassword().startsWith("secret:/openmetadata/dashboard/"));
@@ -270,7 +269,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     DashboardConnection dashboardConnection =
         new DashboardConnection()
             .withConfig(
-                new SupersetConnection()
+                new MetabaseConnection()
                     .withHostPort(new URI("http://localhost:8080"))
                     .withPassword("test")
                     .withUsername("admin"));
