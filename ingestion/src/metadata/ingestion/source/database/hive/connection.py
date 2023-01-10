@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    get_connection_options_dict,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
@@ -32,11 +33,11 @@ def get_connection_url(connection: HiveConnection) -> str:
     Build the URL handling auth requirements
     """
     url = f"{connection.scheme.value}://"
+    connection_arguments = get_connection_args_common(connection)
     if (
         connection.username
-        and connection.connectionArguments
-        and hasattr(connection.connectionArguments, "auth")
-        and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
+        and connection_arguments.get("auth")
+        and connection_arguments["auth"] in ("LDAP", "CUSTOM")
     ):
         url += quote_plus(connection.username)
         if not connection.password:
@@ -53,12 +54,7 @@ def get_connection_url(connection: HiveConnection) -> str:
     url += connection.hostPort
     url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
-
+    options = get_connection_options_dict(connection)
     if options:
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value

@@ -61,8 +61,8 @@ class SampleUsageSource(UsageSource):
         self.metadata = OpenMetadata(metadata_config)
         self.analysis_date = datetime.utcnow()
 
-        sample_data_folder = getattr(
-            self.service_connection.connectionOptions, "sampleDataFolder"
+        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+            "sampleDataFolder"
         )
         if not sample_data_folder:
             raise ValueError("Cannot get sampleDataFolder from connection options")
