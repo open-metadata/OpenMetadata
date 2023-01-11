@@ -37,7 +37,7 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
-jest.mock('@rest/glossaryAPI', () => ({
+jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

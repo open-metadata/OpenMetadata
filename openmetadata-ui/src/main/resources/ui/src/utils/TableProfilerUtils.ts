@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { MetricChartType } from '@components/ProfilerDashboard/profilerDashboard.interface';
+import { MetricChartType } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { findLast, sortBy } from 'lodash';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { TableProfile } from '../generated/entity/data/table';

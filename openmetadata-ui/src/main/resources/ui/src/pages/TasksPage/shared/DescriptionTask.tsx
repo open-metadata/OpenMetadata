@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from '@components/common/rich-text-editor/RichTextEditor.interface';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment, useRef } from 'react';
 import {

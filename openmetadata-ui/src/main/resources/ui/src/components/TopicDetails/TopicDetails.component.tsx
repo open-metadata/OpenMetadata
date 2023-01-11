@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { restoreTopic } from '@rest/topicsAPI';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -24,6 +23,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreTopic } from 'rest/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';

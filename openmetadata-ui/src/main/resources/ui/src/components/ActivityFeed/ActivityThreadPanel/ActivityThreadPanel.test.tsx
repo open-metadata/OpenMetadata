@@ -33,7 +33,7 @@ const mockActivityThreadPanelProp = {
   updateThreadHandler: jest.fn(),
 };
 
-jest.mock('@rest/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getAllFeeds: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

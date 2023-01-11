@@ -20,7 +20,7 @@ import {
 } from '../../mocks/Glossary.mock';
 import AddGlossaryTerm from './AddGlossaryTerm.component';
 
-jest.mock('@rest/glossaryAPI', () => ({
+jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
