@@ -50,7 +50,7 @@
       "default": 10
     },
     "indexResolverClassName": {
-      "description": "Implementation class name of ElasticSearchIndexResolver interface",
+      "description": "Implementation class name of ElasticSearchIndexResolver interface. The default is 'org.openmetadata.service.elasticsearch.indexresolver.DefaultElasticSearchIndexResolver'. You can choose ngram analyzer by specifying 'org.openmetadata.service.elasticsearch.indexresolver.NgramElasticSearchIndexResolver' instead.",
       "type": "string",
       "default": "org.openmetadata.service.elasticsearch.indexresolver.DefaultElasticSearchIndexResolver"
     }
