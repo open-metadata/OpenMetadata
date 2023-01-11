@@ -208,11 +208,11 @@ public class ElasticSearchIndexDefinition {
       return IndexTypeInfo.of(
           IndexType.ENTITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.ENTITY_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      IndexTypeInfo.of(
+      return IndexTypeInfo.of(
           IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX,
           indexResolver.indexInfo(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      IndexTypeInfo.of(
+      return IndexTypeInfo.of(
           IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX,
           indexResolver.indexInfo(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX));
     }
