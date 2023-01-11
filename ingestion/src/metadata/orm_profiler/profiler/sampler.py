@@ -15,7 +15,6 @@ for the profiler
 from typing import Dict, Optional, Union
 
 from sqlalchemy import column, inspect, text
-from sqlalchemy import types as sqltypes
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
@@ -68,10 +67,13 @@ class Sampler:
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
+        table_query = self.session.query(self.table)
         return (
             self.session.query(
-                self.table, ModuloFn(RandomNumFn(), 100).label(RANDOM_LABEL)
+                self.table,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
             )
+            .order_by(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )
@@ -95,11 +97,9 @@ class Sampler:
         session_query = self.session.query(rnd)
 
         # Prepare sampled CTE
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            sampled = session_query.where(rnd.c.random <= self.profile_sample)
-        else:
-            sampled = session_query
-        sampled = sampled.cte(f"{self.table.__tablename__}_sample")
+        sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
+            f"{self.table.__tablename__}_sample"
+        )
         # Assign as an alias
         return aliased(self.table, sampled)
 
@@ -121,17 +121,9 @@ class Sampler:
             .limit(self.sample_limit)
             .all()
         )
-        rows = [list(row) for row in sqa_sample]
-        for col_index, col in enumerate(sqa_columns):
-            if type(col.type) in [sqltypes.LargeBinary, sqltypes.BINARY]:
-                rows = [
-                    [f"{r}" if index == col_index else r for index, r in enumerate(row)]
-                    for row in rows
-                ]
-
         return TableData(
             columns=[column.name for column in sqa_columns],
-            rows=rows,
+            rows=[list(row) for row in sqa_sample],
         )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:

@@ -15,7 +15,6 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
-import random
 import re
 from datetime import datetime, timedelta
 from functools import wraps
@@ -28,10 +27,6 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
-
-
-def random_int(min_val=0, max_val=999):
-    random.randint(min_val, max_val)
 
 
 class BackupRestoreArgs:

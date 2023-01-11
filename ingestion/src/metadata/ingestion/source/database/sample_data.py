@@ -12,6 +12,7 @@
 Sample Data source ingestion
 """
 import json
+import random
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -102,7 +103,7 @@ from metadata.parsers.schema_parsers import (
     schema_parser_config_registry,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import get_standard_chart_type, random_int
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -940,7 +941,9 @@ class SampleDataSource(
                                 timestamp=int(
                                     (
                                         datetime.now(tz=timezone.utc)
-                                        - timedelta(days=days, hours=random_int(0, 24))
+                                        - timedelta(
+                                            days=days, hours=random.randint(0, 24)
+                                        )
                                     ).timestamp()
                                     * 1000
                                 ),
