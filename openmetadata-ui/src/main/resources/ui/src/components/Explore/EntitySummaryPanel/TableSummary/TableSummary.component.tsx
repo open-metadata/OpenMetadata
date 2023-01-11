@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,8 +20,8 @@ import { useTranslation } from 'react-i18next';
 import {
   getLatestTableProfileByFqn,
   getTableQueryByTableId,
-} from '../../../../axiosAPIs/tableAPI';
-import { getListTestCase } from '../../../../axiosAPIs/testAPI';
+} from 'rest/tableAPI';
+import { getListTestCase } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -121,12 +121,16 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value:
           TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
-        title: `${t('label.table-sample')} %`,
+        title: `${t('label.table-entity-text', {
+          entityText: t('label.sample'),
+        })} %`,
         value: `${TableDetails?.profile?.profileSample ?? 100}%`,
       },
       {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 import {
-  dashboardVersionProp,
+  dashboardVersionProps,
   mockNoChartData,
   mockTagChangeVersion,
 } from './dashboardVersion.mock';
@@ -70,7 +70,7 @@ JSON.parse = jest.fn().mockReturnValue([]);
 describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
     const { container } = render(
-      <DashboardVersion {...dashboardVersionProp} />,
+      <DashboardVersion {...dashboardVersionProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -110,7 +110,7 @@ describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered, if change version is related to tags', async () => {
     const { container } = render(
       <DashboardVersion
-        {...dashboardVersionProp}
+        {...dashboardVersionProps}
         currentVersionData={
           mockTagChangeVersion as DashboardVersionProp['currentVersionData']
         }
@@ -154,7 +154,7 @@ describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered, if the dashboard deleted is undefined', async () => {
     const { container } = render(
       <DashboardVersion
-        {...dashboardVersionProp}
+        {...dashboardVersionProps}
         currentVersionData={mockNoChartData}
         deleted={undefined}
       />,
@@ -189,7 +189,7 @@ describe('Test DashboardVersion page', () => {
 
   it('If version is loading it should show loading component', async () => {
     const { container } = render(
-      <DashboardVersion {...dashboardVersionProp} isVersionLoading />,
+      <DashboardVersion {...dashboardVersionProps} isVersionLoading />,
       {
         wrapper: MemoryRouter,
       }

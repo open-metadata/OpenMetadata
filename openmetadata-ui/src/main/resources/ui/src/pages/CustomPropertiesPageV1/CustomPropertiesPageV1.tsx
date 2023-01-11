@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,23 +13,23 @@
 
 import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
+import { Button } from 'components/buttons/Button/Button';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TabsPane from 'components/common/TabsPane/TabsPane';
+import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
+import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
-import { Button } from '../../components/buttons/Button/Button';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from '../../components/header/PageHeader.component';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
 import {
   ENTITY_PATH,
   getAddCustomPropertyPath,

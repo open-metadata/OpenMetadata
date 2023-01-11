@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
@@ -27,6 +27,7 @@ import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
@@ -290,7 +291,9 @@ const AddGlossary = ({
           </div>
         </div>
         <ReviewerModal
-          header={t('label.add-reviewer')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

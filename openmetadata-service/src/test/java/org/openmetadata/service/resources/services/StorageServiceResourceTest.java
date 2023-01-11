@@ -35,7 +35,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   public StorageServiceResourceTest() {
     super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class, "services/storageServices", "owner");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupStorageServices() throws HttpResponseException {

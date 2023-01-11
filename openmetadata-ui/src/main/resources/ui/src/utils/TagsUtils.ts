@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,61 +12,118 @@
  */
 
 import { AxiosError } from 'axios';
-import { flatten, isEmpty } from 'lodash';
-import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
-import { getCategory, getTags } from '../axiosAPIs/tagAPI';
+import { isEmpty } from 'lodash';
+import { Bucket, EntityTags, TagOption } from 'Models';
+import {
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
+} from 'rest/tagAPI';
 import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
-import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
+import { Column } from '../generated/entity/data/table';
+import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
-export const getTagCategories = async (fields?: Array<string> | string) => {
+export const getClassifications = async (
+  fields?: Array<string> | string,
+  callGetClassificationByName = true
+) => {
   try {
-    const listOfCategories: Array<TagCategory> = [];
-    const categories = await getTags(fields);
-    const categoryList = categories.data.map((category: TagCategory) => {
-      return {
-        name: category.name,
-        description: category.description,
-      } as TagCategory;
-    });
-    if (categoryList.length) {
-      const promiseArr = categoryList.map((category: TagCategory) =>
-        getCategory(category.name, fields)
+    const listOfClassifications: Array<Classification> = [];
+    const classifications = await getAllClassifications(fields, 1000);
+    const classificationList = classifications.data.map(
+      (category: Classification) => {
+        return {
+          name: category.name,
+          description: category.description,
+        } as Classification;
+      }
+    );
+    if (classificationList.length && callGetClassificationByName) {
+      const promiseArr = classificationList.map((category: Classification) =>
+        getClassificationByName(category.name, fields)
       );
 
       const categories = await Promise.allSettled(promiseArr);
 
-      categories.map((category) => {
-        if (category.status === 'fulfilled') {
-          listOfCategories.push(category.value as TagCategory);
+      categories.forEach((category) => {
+        if (category.status === SettledStatus.FULFILLED) {
+          listOfClassifications.push(category.value);
         }
       });
     }
 
-    return Promise.resolve({ data: listOfCategories });
+    return Promise.resolve({ data: listOfClassifications });
   } catch (error) {
     return Promise.reject({ data: (error as AxiosError).response });
   }
 };
 
-export const getTaglist = (
-  categories: Array<TagCategory> = []
-): Array<string> => {
-  const children = categories.map((category: TagCategory) => {
-    return category.children || [];
-  });
-  const allChildren = flatten(children);
-  const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-    return tag?.fullyQualifiedName || '';
-  });
+/**
+ * This method returns all the tags present in the system
+ * @returns tags: Tag[]
+ */
+export const getAllTagsForOptions = async () => {
+  let tags: Tag[] = [];
+  try {
+    const { data } = await getTags({ limit: 1000 });
 
-  return tagList;
+    tags = data;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+  }
+
+  return tags;
+};
+
+/**
+ * Return tags based on classifications
+ * @param classifications -- Parent for tags
+ * @param paging
+ * @returns Tag[]
+ */
+export const getTaglist = async (
+  classifications: Array<Classification> = [],
+  paging?: Paging
+) => {
+  try {
+    const tags: Tag[] = [];
+
+    const tagsListPromise = classifications.map((classification) =>
+      getTags({
+        arrQueryFields: '',
+        parent: classification.name,
+        after: paging?.after,
+        before: paging?.before,
+        limit: 1000,
+      })
+    );
+
+    return await Promise.allSettled(tagsListPromise)
+      .then((tagList) => {
+        tagList.forEach((tag) => {
+          if (tag.status === SettledStatus.FULFILLED) {
+            tags.push(...tag.value.data);
+          }
+        });
+
+        return tags.map((tag) => tag.fullyQualifiedName || tag.name);
+      })
+      .catch((error) => {
+        return Promise.reject({ data: (error as AxiosError).response });
+      });
+  } catch (error) {
+    return Promise.reject({ data: (error as AxiosError).response });
+  }
 };
 
 export const getTableTags = (
-  columns: Array<Partial<TableColumn>>
+  columns: Array<Partial<Column>>
 ): Array<EntityTags> => {
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<EntityTags> = [];
@@ -123,17 +180,14 @@ export const getTagDisplay = (tag: string) => {
 
 export const fetchTagsAndGlossaryTerms = async () => {
   const responses = await Promise.allSettled([
-    getTagCategories(),
+    getAllTagsForOptions(),
     fetchGlossaryTerms(),
   ]);
 
   let tagsAndTerms: TagOption[] = [];
-  if (
-    responses[0].status === SettledStatus.FULFILLED &&
-    responses[0].value.data
-  ) {
-    tagsAndTerms = getTaglist(responses[0].value.data).map((tag) => {
-      return { fqn: tag, source: 'Tag' };
+  if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
+    tagsAndTerms = responses[0].value.map((tag) => {
+      return { fqn: tag.fullyQualifiedName ?? tag.name, source: 'Tag' };
     });
   }
   if (

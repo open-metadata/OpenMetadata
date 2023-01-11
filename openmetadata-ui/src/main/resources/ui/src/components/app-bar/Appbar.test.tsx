@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,7 +27,7 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -43,7 +43,7 @@ jest.mock('../nav-bar/NavBar', () => {
   return jest.fn().mockReturnValue(<p>NavBar</p>);
 });
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   getVersion: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {

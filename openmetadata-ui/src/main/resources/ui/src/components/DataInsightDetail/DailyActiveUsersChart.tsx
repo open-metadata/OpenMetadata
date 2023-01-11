@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
@@ -97,7 +97,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       title={
         <>
           <Typography.Title level={5}>
-            {t('label.daily-active-user')}
+            {t('label.daily-active-users-on-the-platform')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
             {t('message.active-users')}
@@ -137,7 +137,9 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             <CustomStatistic
               changeInValue={relativePercentage}
               duration={selectedDays}
-              label={t('label.total-active-user')}
+              label={t('label.total-entity', {
+                entity: t('label.active-user'),
+              })}
               value={total}
             />
           </Col>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,12 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  ExtraInfo,
-  TagOption,
-} from 'Models';
+import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
   useCallback,
@@ -31,14 +26,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { restorePipeline } from 'rest/pipelineAPI';
 import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -63,7 +54,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
   getCurrentUserId,
@@ -74,7 +65,6 @@ import {
   refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -98,7 +88,6 @@ import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
@@ -188,8 +177,6 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [selectedField, setSelectedField] = useState<string>('');
-
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
@@ -223,7 +210,9 @@ const PipelineDetails = ({
       setPipelinePermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
       );
     }
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
@@ -233,10 +222,6 @@ const PipelineDetails = ({
       fetchResourcePermission();
     }
   }, [pipelineDetails.id]);
-
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -445,14 +430,18 @@ const PipelineDetails = ({
           setEntityThreads((prevData) => [...prevData, ...data]);
         } else {
           showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.feed-lowercase'),
+            })
           );
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-lowercase'),
+          })
         );
       })
       .finally(() => setEntityThreadLoading(false));
@@ -611,7 +600,9 @@ const PipelineDetails = ({
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
                 <span className="tw-no-description">
-                  {t('label.no-description')}
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
                 </span>
               )}
             </div>
@@ -656,13 +647,15 @@ const PipelineDetails = ({
         if (res) {
           setEntityLineage(res);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-lineage-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.lineage-lowercase'),
+          })
         );
       })
       .finally(() => {
@@ -725,11 +718,14 @@ const PipelineDetails = ({
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', { entity: t('label.feed-lowercase') })
+        );
       });
   };
 
@@ -740,15 +736,15 @@ const PipelineDetails = ({
           setEntityThreads((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('label.conversation-lowercase'),
+          })
         );
       });
   };
@@ -836,7 +832,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.Tasks}
             tab={
               <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
-                {t('label.tasks')}
+                {t('label.task-plural')}
               </span>
             }>
             <Row
@@ -955,7 +951,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.Executions}
             tab={
               <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
-                {t('label.executions')}
+                {t('label.execution-plural')}
               </span>
             }>
             <ExecutionsTab pipelineFQN={pipelineFQN} tasks={tasks} />
@@ -988,7 +984,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.CustomProperties}
             tab={
               <span data-testid="Custom Properties">
-                {t('label.custom-properties')}
+                {t('label.custom-property-plural')}
               </span>
             }>
             <CustomPropertyTable
@@ -1030,19 +1026,6 @@ const PipelineDetails = ({
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
-        />
-      ) : null}
-      {selectedField ? (
-        <RequestDescriptionModal
-          createThread={createThread}
-          defaultValue={getDefaultValue(owner as EntityReference)}
-          header={t('label.request-description')}
-          threadLink={getEntityFeedLink(
-            EntityType.PIPELINE,
-            pipelineFQN,
-            selectedField
-          )}
-          onCancel={closeRequestModal}
         />
       ) : null}
     </PageContainerV1>

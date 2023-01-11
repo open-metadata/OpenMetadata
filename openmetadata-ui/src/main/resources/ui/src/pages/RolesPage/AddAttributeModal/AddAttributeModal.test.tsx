@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { POLICY_LIST_WITH_PAGING, ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import AddAttributeModal from './AddAttributeModal';
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getPolicies: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_LIST_WITH_PAGING)),
@@ -26,12 +26,11 @@ jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
     .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
 
-jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -94,7 +93,7 @@ describe('Test Add attribute modal', () => {
       fireEvent.click(sumbitButton);
     });
 
-    expect(onSave).toBeCalled();
+    expect(onSave).toHaveBeenCalled();
   });
 
   it('Cancel button should work', async () => {
@@ -108,6 +107,6 @@ describe('Test Add attribute modal', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(onCancel).toBeCalled();
+    expect(onCancel).toHaveBeenCalled();
   });
 });

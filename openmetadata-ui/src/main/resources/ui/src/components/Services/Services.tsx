@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,6 @@ import { Button as ButtonAntd, Card, Col, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   getServiceDetailsPath,
   SERVICE_VIEW_CAP,
@@ -39,6 +38,7 @@ import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -47,8 +47,8 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getTableDetails } from '../../axiosAPIs/tableAPI';
+import { searchData } from 'rest/miscAPI';
+import { getTableDetails } from 'rest/tableAPI';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -105,8 +105,10 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
+import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import AddPipeLineModal from './AddPipeLineModal';
@@ -124,13 +126,10 @@ import {
   SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
-import EntityLineageSidebar from './EntityLineageSidebar.component';
-import NodeSuggestions from './NodeSuggestions.component';
-
-import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
-import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import './entityLineage.style.less';
+import EntityLineageSidebar from './EntityLineageSidebar.component';
 import LineageNodeLabel from './LineageNodeLabel';
+import NodeSuggestions from './NodeSuggestions.component';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -537,7 +536,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     (params: Edge | Connection) => {
       const { target, source, sourceHandle, targetHandle } = params;
 
-      if (target === source) return;
+      if (target === source) {
+        return;
+      }
 
       const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
 
@@ -1396,8 +1397,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             deletionState.loading,
             deletionState.status
           )}
+          open={showDeleteModal}
           title="Remove lineage edge"
-          visible={showDeleteModal}
           onCancel={() => {
             setShowDeleteModal(false);
           }}

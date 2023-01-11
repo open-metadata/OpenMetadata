@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,7 @@
  */
 
 import { Col, InputNumber, Row, Slider } from 'antd';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 
 const SliderWithInput = ({
@@ -20,6 +20,8 @@ const SliderWithInput = ({
   onChange,
   className,
 }: SliderWithInputProps) => {
+  const formatter = useCallback((value) => `${value}%`, [value]);
+
   return (
     <Row className={className} data-testid="percentage-input" gutter={20}>
       <Col span={20}>
@@ -38,7 +40,7 @@ const SliderWithInput = ({
       <Col span={4}>
         <InputNumber
           data-testid="slider-input"
-          formatter={(value) => `${value}%`}
+          formatter={formatter}
           max={100}
           min={0}
           step={1}

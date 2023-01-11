@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
-import { getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { getFeedById } from 'rest/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { Thread } from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';

@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -250,6 +251,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     T entity = addHref(uriInfo, dao.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id));
     LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
     return Response.ok(entity.getHref()).entity(entity).build();
+  }
+
+  public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return dao.exportToCsv(name, securityContext.getUserPrincipal().getName());
+  }
+
+  protected CsvImportResult importCsvInternal(SecurityContext securityContext, String name, String csv, boolean dryRun)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return dao.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
   }
 
   public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {

@@ -16,7 +16,7 @@ from unittest.mock import patch
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.snowflake import SnowflakeSource
+from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 
 mock_snowflake_config = {
     "source": {
@@ -65,7 +65,9 @@ EXPECTED_PARTITION_COLUMNS = [
 
 
 class SnowflakeUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.common_db_source.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

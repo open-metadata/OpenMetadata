@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { t } from 'i18next';
 import React, { FC, HTMLAttributes } from 'react';
 import EditorImg from '../../../assets/img/feedEditor.png';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -29,12 +30,13 @@ const NoFeedPlaceholder: FC<NoFeedPlaceholderProp> = ({
       className={classNames('tw-mt-10 tw-text-base tw-font-medium', className)}
       data-testid="placeholder-container">
       <div className="tw-text-center">
-        <span data-testid="placeholder-message">{`There is no activity on the "${entityName}" yet. Start a conversation by clicking
-      on the `}</span>
+        <span data-testid="placeholder-message">
+          {t('message.no-entity-activity-message', { entity: entityName })}{' '}
+        </span>
         <span data-testid="placeholder-icon">
           <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
         </span>
-        <span>{` to collaborate with other users.`}</span>
+        <span> {t('message.collaborate-with-other-user')}</span>
       </div>
 
       <div data-testid="placeholder-image">

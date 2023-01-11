@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
@@ -33,6 +34,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   updateThreadHandler,
   threadType,
 }) => {
+  const { t } = useTranslation();
   const { TabPane } = Tabs;
   const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.TASKS);
 
@@ -69,7 +71,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           activeKey={activeTab}
           className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
           onChange={onTabChange}>
-          <TabPane key={PanelTab.TASKS} tab="Tasks">
+          <TabPane key={PanelTab.TASKS} tab={t('label.task-plural')}>
             <ActivityThreadPanelBody
               createThread={createThread}
               deletePostHandler={deletePostHandler}
@@ -80,7 +82,9 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               onCancel={onCancel}
             />
           </TabPane>
-          <TabPane key={PanelTab.CONVERSATIONS} tab="Conversations">
+          <TabPane
+            key={PanelTab.CONVERSATIONS}
+            tab={t('label.conversation-plural')}>
             <ActivityThreadPanelBody
               createThread={createThread}
               deletePostHandler={deletePostHandler}

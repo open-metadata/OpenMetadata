@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Button, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -65,10 +66,7 @@ const RolesDetailPageList = ({
           }
 
           return (
-            <Link
-              className="hover:tw-underline tw-cursor-pointer"
-              data-testid="entity-name"
-              to={link}>
+            <Link className="link-hover" data-testid="entity-name" to={link}>
               {getEntityName(record)}
             </Link>
           );
@@ -83,7 +81,7 @@ const RolesDetailPageList = ({
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',

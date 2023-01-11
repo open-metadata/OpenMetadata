@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -90,7 +90,7 @@ function PipelineSummary({ entityDetails }: PipelineSummaryProps) {
       <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text className="section-header">
-            {t('label.tasks')}
+            {t('label.task-plural')}
           </Typography.Text>
         </Col>
         <Col span={24}>

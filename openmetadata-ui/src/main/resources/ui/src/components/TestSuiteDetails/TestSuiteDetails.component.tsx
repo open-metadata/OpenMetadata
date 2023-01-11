@@ -1,9 +1,23 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Space, Tooltip } from 'antd';
 import React from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { useAuth } from '../../hooks/authHooks';
 import { IcDeleteColored } from '../../utils/SvgUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { Button } from '../buttons/Button/Button';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';
@@ -26,6 +40,7 @@ const TestSuiteDetails = ({
 }: TestSuiteDetailsProps) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
+  const { t } = useTranslation();
 
   const hasAccess = isAdminUser || isAuthDisabled;
 
@@ -39,7 +54,8 @@ const TestSuiteDetails = ({
           data-testid="test-suite-breadcrumb"
           titleLinks={slashedBreadCrumb}
         />
-        <Tooltip title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+        <Tooltip
+          title={hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION}>
           <Button
             data-testid="test-suite-delete"
             disabled={!hasAccess}
@@ -53,7 +69,7 @@ const TestSuiteDetails = ({
               viewBox="0 0 24 24"
               width={14}
             />
-            <span>Delete</span>
+            <span>{t('label.delete')}</span>
           </Button>
         </Tooltip>
         <DeleteWidgetModal

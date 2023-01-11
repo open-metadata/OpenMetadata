@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -393,7 +393,7 @@ describe('Test DBT GCS Config Form', () => {
       },
     });
 
-    expect(mockSecurityConfigChange).toBeCalledTimes(10);
+    expect(mockSecurityConfigChange).toHaveBeenCalledTimes(10);
   });
 
   it('prefix config should change', async () => {
@@ -413,7 +413,7 @@ describe('Test DBT GCS Config Form', () => {
       },
     });
 
-    expect(mockPrefixConfigChange).toBeCalledTimes(2);
+    expect(mockPrefixConfigChange).toHaveBeenCalledTimes(2);
   });
 
   it('should submit', async () => {
@@ -444,7 +444,7 @@ describe('Test DBT GCS Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).toBeCalled();
+    expect(mockSubmit).toHaveBeenCalled();
   });
 
   it('should cancel', async () => {
@@ -453,6 +453,6 @@ describe('Test DBT GCS Config Form', () => {
 
     fireEvent.click(backBtn);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
   });
 });

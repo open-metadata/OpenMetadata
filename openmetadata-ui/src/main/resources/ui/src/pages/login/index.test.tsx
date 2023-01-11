@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,9 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import SigninPage from './index';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;
@@ -23,12 +23,12 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
+jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
 
 jest.mock(
-  '../../components/containers/PageContainer',
+  'components/containers/PageContainer',
   () =>
     ({ children }: { children: React.ReactNode }) =>
       <div data-testid="PageContainer">{children}</div>

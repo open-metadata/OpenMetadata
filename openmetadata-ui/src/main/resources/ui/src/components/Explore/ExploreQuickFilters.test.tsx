@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getAdvancedFieldDefaultOptions } from '../../axiosAPIs/miscAPI';
+import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
@@ -67,7 +67,7 @@ jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   getAdvancedFieldDefaultOptions: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),
@@ -159,7 +159,7 @@ describe('Test ExploreQuickFilters component', () => {
 
     fireEvent.click(advanceSearchButton);
 
-    expect(onAdvanceSearch).toBeCalled();
+    expect(onAdvanceSearch).toHaveBeenCalled();
   });
 
   it('All options should be passed to SearchDropdown component for proper API response', async () => {

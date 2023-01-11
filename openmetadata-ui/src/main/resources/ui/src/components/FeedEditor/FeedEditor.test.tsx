@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -97,7 +97,7 @@ describe('Test FeedEditor Component', () => {
       shiftKey: false,
     });
 
-    expect(onSave).toBeCalled();
+    expect(onSave).toHaveBeenCalled();
   });
 
   it("Should not call onSave method on 'Enter' + 'Shift' keydown", async () => {
@@ -113,6 +113,6 @@ describe('Test FeedEditor Component', () => {
       shiftKey: true,
     });
 
-    expect(onSave).not.toBeCalled();
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

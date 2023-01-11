@@ -57,7 +57,7 @@ Ingestion container should be good to go (as shown in step 4 below).
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
    1. `python -m venv venv`
    2. `source venv/bin/activate`
-   3. `PIP_USER=false pip install openmetadata-ingestion~=0.13.1`
+   3. `PIP_USER=false pip install openmetadata-ingestion~=0.13.1.0`
 3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
     indeed at 0.13.1. Notice the `python -m metadata` vs. `metadata`. As we're inside the container, the raw metadata 
     command will use the system-wide one, which is at 0.12.3.
@@ -119,7 +119,7 @@ We will now use the backup generated in the previous step to repopulate the data
    that the instance has access to the database.
    1. `python -m venv venv`
    2. `source venv/bin/activate`
-   3. `pip install openmetadata-ingestion==0.13.1`
+   3. `pip install openmetadata-ingestion~=0.13.1.0`
 2. Validate the metadata version with `metadata --version`. it should be 0.13.1.
 3. Run the restore with your file name
     ```

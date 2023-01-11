@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.service.Entity.ALERT;
 import static org.openmetadata.service.Entity.ALERT_ACTION;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,9 +59,7 @@ public class AlertRepository extends EntityRepository<Alert> {
 
   @Override
   public Alert setFields(Alert entity, Fields fields) throws IOException {
-    entity.setAlertActions(fields.contains("alertActions") ? getAlertActions(entity) : null);
-    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
-    return entity; // No fields to set
+    return entity.withAlertActions(fields.contains("alertActions") ? getAlertActions(entity) : null);
   }
 
   @Override
@@ -166,8 +164,8 @@ public class AlertRepository extends EntityRepository<Alert> {
           original.getId(),
           Relationship.CONTAINS,
           ALERT_ACTION,
-          new ArrayList<>(original.getAlertActions()),
-          new ArrayList<>(updated.getAlertActions()),
+          listOrEmpty(original.getAlertActions()),
+          listOrEmpty(updated.getAlertActions()),
           false);
       AlertsPublisherManager.getInstance().updateAlertActionPublishers(updated);
     }

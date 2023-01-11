@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,7 +22,7 @@ describe('Test FQN', () => {
       }
       validate(actualParts, actualFQN) {
         expect(this.fqn).toStrictEqual(actualFQN);
-        expect(this.parts.length).toStrictEqual(actualParts.length);
+        expect(this.parts).toHaveLength(actualParts.length);
 
         for (let i = 0; i < this.parts.length; i++) {
           /* eslint-disable jest/no-conditional-expect */

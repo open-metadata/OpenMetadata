@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
+import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,10 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -67,11 +70,18 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following owners from the List.",
       examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyOwnerName(String... ownerNameList) {
+  public boolean matchAnyOwnerName(String... ownerNameList) throws IOException {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    EntityInterface entity = (EntityInterface) changeEvent.getEntity();
+    Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(changeEvent.getEntityType());
+    EntityInterface entity;
+    if (changeEvent.getEntity() instanceof String) {
+      entity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
+    } else {
+      entity = JsonUtils.convertValue(changeEvent.getEntity(), entityClass);
+    }
+
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
@@ -114,7 +124,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchAnyEntityId",
-      input = "List of comma separated entityName",
+      input = "List of comma separated entity Ids",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
@@ -133,7 +143,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchAnyEventType",
-      input = "List of comma separated eventType",
+      input = "List of comma separated eventTypes",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
@@ -152,7 +162,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchTestResult",
-      input = "List of comma separated eventType",
+      input = "List of comma separated eventTypes",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
@@ -180,7 +190,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchUpdatedBy",
-      input = "List of comma separated updated by users",
+      input = "List of comma separated user names that updated the entity",
       description = "Returns true if the change event entity is updated by the mentioned users",
       examples = {"matchUpdatedBy('user1', 'user2')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)

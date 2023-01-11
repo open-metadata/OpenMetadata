@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -67,12 +67,16 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   );
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [showThreadTypeList, setShowThreadTypeList] = useState<boolean>(false);
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.OWNER);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(
+    isEntityFeed ? FeedFilter.ALL : FeedFilter.OWNER
+  );
   const [threadType, setThreadType] = useState<ThreadType>();
 
   const handleDropDown = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
-      const feedType = (value as FeedFilter) || FeedFilter.OWNER;
+      const feedType =
+        (value as FeedFilter) ||
+        (isEntityFeed ? FeedFilter.ALL : FeedFilter.OWNER);
 
       setFeedFilter(feedType);
       setFieldListVisible(false);
@@ -243,8 +247,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
       {refreshFeedCount ? (
         <div className="tw-py-px tw-pt-3 tw-pb-3">
           <button className="tw-refreshButton " onClick={onRefreshFeeds}>
-            View {refreshFeedCount} new{' '}
-            {refreshFeedCount > 1 ? 'activities' : 'activity'}
+            {t('label.view-new-count', { count: refreshFeedCount })}{' '}
+            {refreshFeedCount > 1
+              ? t('label.activity-lowercase-plural')
+              : t('label.activity-lowercase')}
           </button>
         </div>
       ) : null}
@@ -289,7 +295,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </>
       ) : (
-        <>
+        <div className="h-min-50">
           {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
             <NoFeedPlaceholder entityName={entityName} />
           ) : !refreshFeedCount ? (
@@ -297,7 +303,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               {t('message.no-data-available-for-selected-filter')}
             </ErrorPlaceHolder>
           ) : null}
-        </>
+        </div>
       )}
       <DeleteConfirmationModal
         visible={confirmationState.state}

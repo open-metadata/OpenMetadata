@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { Checkbox, Col, Form, Input, Modal, Row, Select } from 'antd';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ELASTIC_SEARCH_INDEX_ENTITIES,
   ELASTIC_SEARCH_INITIAL_VALUES,
@@ -33,6 +34,7 @@ const ReIndexAllModal = ({
   onSave,
   confirmLoading,
 }: ReIndexAllModalInterface) => {
+  const { t } = useTranslation();
   const [entities, setEntities] = useState<string[]>(
     ELASTIC_SEARCH_INITIAL_VALUES.entities
   );
@@ -48,8 +50,8 @@ const ReIndexAllModal = ({
         htmlType: 'submit',
       }}
       okText="Submit"
-      title="Re-Index Elastic Search"
-      visible={visible}
+      open={visible}
+      title={t('label.re-index-elastic-search')}
       width={650}
       onCancel={onCancel}>
       <Form
@@ -58,8 +60,8 @@ const ReIndexAllModal = ({
         name="elastic-search-re-index"
         onFinish={onSave}>
         <Form.Item
-          initialValue={false}
-          label="Recreate indexes"
+          initialValue
+          label={t('label.recreate-index-plural')}
           name="recreateIndex">
           <Select
             data-testid="re-index-selector"
@@ -67,12 +69,15 @@ const ReIndexAllModal = ({
           />
         </Form.Item>
 
-        <Form.Item initialValue={entities} label="Entities" name="entities">
+        <Form.Item
+          initialValue={entities}
+          label={t('label.entity-plural')}
+          name="entities">
           <Checkbox.Group
             onChange={(values) => setEntities(values as string[])}>
             <Row gutter={[16, 16]}>
               {ELASTIC_SEARCH_INDEX_ENTITIES.map((option) => (
-                <Col key={option.value} span={6}>
+                <Col key={option.value} span={8}>
                   <Checkbox value={option.value}>{option.label}</Checkbox>
                 </Col>
               ))}
@@ -81,19 +86,26 @@ const ReIndexAllModal = ({
         </Form.Item>
         <Form.Item
           initialValue={ELASTIC_SEARCH_INITIAL_VALUES.flushIntervalInSec}
-          label="Flush Interval (secs):"
+          label={t('label.flush-interval-secs')}
           name="flushIntervalInSec">
           <Input
             data-testid="flush-interval-in-sec"
-            placeholder="Enter seconds"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.second-plural'),
+            })}
           />
         </Form.Item>
 
         <Form.Item
           initialValue={ELASTIC_SEARCH_INITIAL_VALUES.batchSize}
-          label="Batch Size:"
+          label={`${t('label.batch-size')}:`}
           name="batchSize">
-          <Input data-testid="batch-size" placeholder="Enter batch size" />
+          <Input
+            data-testid="batch-size"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.batch-size'),
+            })}
+          />
         </Form.Item>
       </Form>
     </Modal>

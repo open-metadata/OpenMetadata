@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { getSampleDataByTableId } from '../../axiosAPIs/tableAPI';
+import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table, TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';

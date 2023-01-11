@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -113,7 +113,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   )}
                   {r.startDate && (
                     <p>
-                      {t('label.start-date')}:{' '}
+                      {t('label.start-entity', { entity: t('label.date') })}:{' '}
                       {getDateTimeFromMilliSeconds(r.startDate)}
                     </p>
                   )}

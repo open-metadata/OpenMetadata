@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,7 +27,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-discover-all-assets-at-one-place"
             renderElement={<strong />}
             values={{
-              text: i18next.t('label.openmetadata'),
+              text: i18next.t('label.open-metadata'),
             }}
           />
         </p>
@@ -42,7 +42,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-activity-feed"
             renderElement={<strong />}
             values={{
-              text: i18next.t('label.activity-feeds'),
+              text: i18next.t('label.activity-feed-plural'),
             }}
           />
         </p>
@@ -204,7 +204,9 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-discover-data-assets-with-data-profile"
             renderElement={<strong />}
             values={{
-              text: i18next.t('label.data-profiler'),
+              text: i18next.t('label.data-entity', {
+                entity: i18next.t('label.profiler'),
+              }),
             }}
           />
         </p>

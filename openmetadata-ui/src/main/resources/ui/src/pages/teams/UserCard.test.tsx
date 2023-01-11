@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,7 +25,7 @@ const mockItem = {
 
 const mockRemove = jest.fn();
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       user: {
@@ -45,7 +45,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>);
@@ -131,6 +131,6 @@ describe('Test userCard component', () => {
     fireEvent.click(remove);
 
     expect(remove).toBeInTheDocument();
-    expect(mockRemove).toBeCalled();
+    expect(mockRemove).toHaveBeenCalled();
   });
 });

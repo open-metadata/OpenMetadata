@@ -12,7 +12,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.datalake import DatalakeSource
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 
 mock_datalake_config = {
     "source": {
@@ -96,7 +96,9 @@ MOCK_DATABASE = Database(
 
 
 class DatalakeUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.datalake.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

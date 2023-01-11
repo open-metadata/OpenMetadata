@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,15 +25,15 @@ import {
   getFeedCount,
   postFeedById,
   postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+} from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
-} from '../../axiosAPIs/tableAPI';
+} from 'rest/tableAPI';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import DatasetDetailsPage from './DatasetDetailsPage.component';
 import {
@@ -66,7 +66,7 @@ jest.mock('../../AppState', () => ({
   ],
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({
@@ -119,7 +119,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
+jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -236,18 +236,15 @@ jest.mock('../../components/DatasetDetails/DatasetDetails.component', () => {
     );
 });
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-  }
-);
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
+});
 
 jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('../../axiosAPIs/tableAPI', () => ({
+jest.mock('rest/tableAPI', () => ({
   addColumnTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve(updateTagRes)),
@@ -277,7 +274,7 @@ jest.mock('../../utils/FeedUtils', () => ({
     .mockImplementation(() => Promise.resolve({ id: 'test', posts: [] })),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: { data: [] } })),
@@ -302,13 +299,13 @@ jest.mock('../../axiosAPIs/feedsAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: createPostRes })),
 }));
 
-jest.mock('../../axiosAPIs/lineageAPI', () => ({
+jest.mock('rest/lineageAPI', () => ({
   getLineageByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLineageRes })),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

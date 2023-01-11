@@ -96,7 +96,7 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
-  public static final String TAG_CATEGORY = "tagCategory";
+  public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
 
@@ -163,6 +163,7 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
@@ -177,6 +178,12 @@ public final class Entity {
     return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
   }
 
+  public static EntityReference getEntityReferenceByName(EntityReference ref) {
+    return ref == null
+        ? null
+        : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), Include.NON_DELETED);
+  }
+
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
       throws IOException {
     EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
@@ -187,8 +194,10 @@ public final class Entity {
     return repository.dao.findEntityReferenceById(id, include);
   }
 
-  public static EntityReference getEntityReferenceByName(
-      @NonNull String entityType, @NonNull String fqn, Include include) {
+  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
+    if (fqn == null) {
+      return null;
+    }
     EntityDAO<?> dao = DAO_MAP.get(entityType);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
@@ -220,7 +229,7 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
-  public static <T> Fields getFields(String entityType, String fields) {
+  public static Fields getFields(String entityType, String fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(fields);
   }
@@ -276,6 +285,10 @@ public final class Entity {
 
   public static String getEntityTypeFromObject(Object object) {
     return EntityInterface.CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+  }
+
+  public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
+    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType);
   }
 
   /**

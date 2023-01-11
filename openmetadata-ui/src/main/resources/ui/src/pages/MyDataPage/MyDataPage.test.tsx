@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { findByText, queryByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
-import { fetchSandboxConfig, getAllEntityCount } from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig, getAllEntityCount } from 'rest/miscAPI';
 import MyDataPageComponent from './MyDataPage.component';
 
 const mockAuth = {
@@ -24,13 +24,24 @@ const mockErrors = {
   sandboxMode: 'SandboxModeError',
 };
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('react', () => {
+  const originalReact = jest.requireActual('react');
+
+  return {
+    ...originalReact,
+    useReducer: jest.fn((_reducer, initialState) => {
+      return [initialState, jest.fn()];
+    }),
+  };
+});
+
+jest.mock('components/MyData/MyData.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="my-data-component">Mydata component</p>);
 });
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   fetchSandboxConfig: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -54,7 +65,7 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
   ),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -82,7 +93,7 @@ jest.mock('../../utils/APIUtils', () => ({
   formatDataResponse: jest.fn(),
 }));
 
-jest.mock('../../components/containers/PageContainerV1', () => {
+jest.mock('components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -90,11 +101,11 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('components/MyData/MyData.component', () => {
   return jest.fn().mockImplementation(() => <p>MyData.component</p>);
 });
 
-jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
+jest.mock('components/GithubStarButton/GithubStarButton', () => {
   return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
 });
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getByTestId, getByText, render } from '@testing-library/react';
+import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import TagsContainer from './tags-container';
 
@@ -34,10 +34,6 @@ jest.mock('../../utils/UserDataUtils', () => {
   };
 });
 
-jest.mock('react-select/async', () => {
-  return jest.fn().mockReturnValue(<div>AsyncSelect</div>);
-});
-
 jest.mock('../tags/tags', () => {
   return jest.fn().mockReturnValue(<p>tags</p>);
 });
@@ -54,7 +50,7 @@ describe('Test TagsContainer Component', () => {
       />
     );
     const TagContainer = getByTestId(container, 'tag-container');
-    const AsyncSelect = getByText(container, 'AsyncSelect');
+    const AsyncSelect = getByTestId(container, 'tag-selector');
 
     expect(TagContainer).toBeInTheDocument();
     expect(AsyncSelect).toBeInTheDocument();

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,6 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { EditorContentRef } from 'Models';
 import React, {
   useCallback,
   useEffect,
@@ -24,10 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getTestDefinitionById,
-  updateTestCaseById,
-} from '../../axiosAPIs/testAPI';
+import { getTestDefinitionById, updateTestCaseById } from 'rest/testAPI';
 import { CSMode } from '../../enums/codemirror.enum';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
@@ -39,6 +35,7 @@ import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
@@ -80,7 +77,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             key={name}
             label={t('label.sql-query')}
             name={name}
-            tooltip={t('label.sql-query-tooltip')}>
+            tooltip={t('message.sql-query-tooltip')}>
             <SchemaEditor
               className="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
@@ -212,8 +209,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       closable={false}
       confirmLoading={isLoadingOnSave}
       okText={t('label.submit')}
+      open={visible}
       title={`${t('label.edit')} ${testCase?.name}`}
-      visible={visible}
       width={600}
       onCancel={onCancel}
       onOk={() => form.submit()}>
@@ -236,13 +233,15 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             </Form.Item>
           )}
           <Form.Item required label={`${t('label.name')}:`} name="name">
-            <Input disabled placeholder={t('label.enter-test-case-name')} />
+            <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item
             required
-            label={`${t('label.test-type')}:`}
+            label={`${t('label.test-entity', {
+              entity: t('label.type'),
+            })}:`}
             name="testDefinition">
-            <Input disabled placeholder={t('label.enter-test-case-name')} />
+            <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
 
           {GenerateParamsField()}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Edge } from 'reactflow';
 import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from '../components/EntityLineage/EntityLineage.interface';
+} from 'components/EntityLineage/EntityLineage.interface';
+import { Edge } from 'reactflow';
 import { LineageDetails } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
@@ -67,7 +67,7 @@ describe('Test EntityLineageUtils utility', () => {
     );
 
     expect(upstreamData).toStrictEqual(UP_STREAM_EDGE);
-    expect(nodata).toStrictEqual(undefined);
+    expect(nodata).toBeUndefined();
   });
 
   it('getUpStreamDownStreamColumnLineageArr function should work properly', () => {

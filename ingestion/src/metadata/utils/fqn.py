@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -35,7 +36,6 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
@@ -259,14 +259,14 @@ def _(
 def _(
     _: OpenMetadata,  # ES Index not necessary for Tag FQN building
     *,
-    tag_category_name: str,
+    classification_name: str,
     tag_name: str,
 ) -> str:
-    if not tag_category_name or not tag_name:
+    if not classification_name or not tag_name:
         raise FQNBuildingException(
-            f"Args should be informed, but got category=`{tag_category_name}`, tag=`{tag_name}``"
+            f"Args should be informed, but got category=`{classification_name}`, tag=`{tag_name}``"
         )
-    return _build(tag_category_name, tag_name)
+    return _build(classification_name, tag_name)
 
 
 @fqn_build_registry.add(DataModel)

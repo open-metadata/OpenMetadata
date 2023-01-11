@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,14 +28,12 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
+import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
 import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  createAlertAction,
-  updateAlertAction,
-} from '../../axiosAPIs/alertActionAPI';
+import { createAlertAction, updateAlertAction } from 'rest/alertActionAPI';
 import {
   createAlert,
   getAlertActionForAlerts,
@@ -43,12 +42,8 @@ import {
   getEntityFilterFunctions,
   getFilterFunctions,
   updateAlert,
-} from '../../axiosAPIs/alertsAPI';
-import {
-  getSearchedUsersAndTeams,
-  getSuggestions,
-} from '../../axiosAPIs/miscAPI';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+} from 'rest/alertsAPI';
+import { getSearchedUsersAndTeams, getSuggestions } from 'rest/miscAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -323,6 +318,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getEntityByFQN}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: t('label.fqn-uppercase'),
@@ -341,6 +337,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getUsersAndTeamsOptions}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: getFunctionDisplayName(condition),
@@ -357,6 +354,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <Select
                 showArrow
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 options={
                   func.paramAdditionalContext?.data?.map((d) => ({
@@ -486,7 +484,9 @@ const AddAlertPage = () => {
 
                 <Collapse ghost>
                   <Collapse.Panel
-                    header={`${t('label.advanced-config')}:`}
+                    header={`${t('label.advanced-entity', {
+                      entity: t('label.config'),
+                    })}:`}
                     key="1">
                     <Space>
                       <Form.Item
@@ -499,9 +499,7 @@ const AddAlertPage = () => {
                       <Form.Item
                         colon
                         initialValue={10}
-                        label={`${t(
-                          'label.connection-timeout-plural-optional'
-                        )}`}
+                        label={`${t('label.connection-timeout-plural')}`}
                         labelCol={{ span: 24 }}
                         name={[name, 'timeout']}>
                         <Input disabled={provider === ProviderType.System} />
@@ -573,6 +571,7 @@ const AddAlertPage = () => {
                           initialValue={AlertTriggerType.AllDataAssets}
                           name={['triggerConfig', 'type']}>
                           <Select
+                            data-testid="triggerConfig-type"
                             options={defaultTriggers.map((trigger) => ({
                               label: getDisplayNameForTriggerType(trigger.type),
                               value: trigger.type,
@@ -584,7 +583,7 @@ const AddAlertPage = () => {
                           <Form.Item
                             required
                             messageVariables={{
-                              fieldName: t('label.data-assets'),
+                              fieldName: t('label.data-asset-plural'),
                             }}
                             name={['triggerConfig', 'entities']}>
                             <Select
@@ -597,7 +596,9 @@ const AddAlertPage = () => {
                                   label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
-                              placeholder={t('label.select-data-assets')}
+                              placeholder={t('label.select-field', {
+                                field: t('label.data-asset-plural'),
+                              })}
                             />
                           </Form.Item>
                         )}
@@ -625,6 +626,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add-filters"
                                 icon={<PlusOutlined />}
                                 type="default"
                                 onClick={() => add({}, 0)}>
@@ -717,6 +719,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add=destination"
                                 disabled={provider === ProviderType.System}
                                 icon={<PlusOutlined />}
                                 type="default"
@@ -740,6 +743,7 @@ const AddAlertPage = () => {
                                       key={key}
                                       name={[name, 'alertActionType']}>
                                       <Select
+                                        data-testid="alert-action-type"
                                         disabled={
                                           provider === ProviderType.System
                                         }
@@ -793,7 +797,7 @@ const AddAlertPage = () => {
                     <Button onClick={() => history.goBack()}>
                       {t('label.cancel')}
                     </Button>
-                    <Button htmlType="submit" type="primary">
+                    <Button data-testid="save" htmlType="submit" type="primary">
                       {t('label.save')}
                     </Button>
                   </Col>

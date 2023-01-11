@@ -13,7 +13,7 @@ This hook allows storing the connection to
 an OpenMetadata server and use it for your
 operators.
 """
-from typing import Any
+from typing import Any, Dict
 
 from airflow.hooks.base import BaseHook
 from airflow.models import Connection
@@ -91,7 +91,7 @@ class OpenMetadataHook(BaseHook):
             return False, str(err)
 
     @staticmethod
-    def get_ui_field_behaviour() -> dict[str, Any]:
+    def get_ui_field_behaviour() -> Dict[str, Any]:
         """Returns custom field behaviour"""
         return {
             "hidden_fields": ["login"],

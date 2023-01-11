@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,8 +16,8 @@ import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { postThread } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,
@@ -103,9 +103,9 @@ const AddAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText="Submit"
-      title={t('label.make-an-announcement')}
-      visible={open}
-      width={620}
+      open={open}
+      title={t('message.make-an-announcement')}
+      width={720}
       onCancel={onCancel}>
       <Form
         data-testid="announcement-form"
@@ -170,7 +170,7 @@ const AddAnnouncementModal: FC<Props> = ({
         <Form.Item label={`${t('label.description')}:`} name="description">
           <RichTextEditor
             initialValue={description}
-            placeHolder={t('label.write-your-announcement-lowercase')}
+            placeHolder={t('message.write-your-announcement-lowercase')}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

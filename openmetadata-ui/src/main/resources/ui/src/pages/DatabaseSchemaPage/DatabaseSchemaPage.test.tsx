@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,10 +12,10 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import React from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
-import { getDatabaseSchemaDetailsByFQN } from '../../axiosAPIs/databaseAPI';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
   mockEntityPermissions,
@@ -34,11 +34,11 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
 );
 
-jest.mock('../../components/containers/PageContainerV1', () =>
+jest.mock('components/containers/PageContainerV1', () =>
   jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -46,31 +46,27 @@ jest.mock('../../components/containers/PageContainerV1', () =>
     ))
 );
 
-jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TitleBreadcrumb">titleBreadcrumb</div>
-      ))
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="TitleBreadcrumb">titleBreadcrumb</div>
+    ))
 );
 
-jest.mock('../../components/common/TabsPane/TabsPane', () =>
+jest.mock('components/common/TabsPane/TabsPane', () =>
   jest.fn().mockImplementation(() => <div data-testid="TabsPane">TabsPane</div>)
 );
 
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="RichTextEditorPreviewer">RichTextEditorPreviewer</div>
-      ))
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="RichTextEditorPreviewer">RichTextEditorPreviewer</div>
+    ))
 );
 
-jest.mock('../../components/common/next-previous/NextPrevious', () =>
+jest.mock('components/common/next-previous/NextPrevious', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -78,36 +74,30 @@ jest.mock('../../components/common/next-previous/NextPrevious', () =>
     ))
 );
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ children }) => (
-        <div data-testid="ErrorPlaceHolder">{children}</div>
-      ))
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid="ErrorPlaceHolder">{children}</div>
+    ))
 );
-jest.mock(
-  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="EntitySummaryDetails">EntitySummaryDetails</div>
-      ))
+jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="EntitySummaryDetails">EntitySummaryDetails</div>
+    ))
 );
 
-jest.mock(
-  '../../components/common/entityPageInfo/ManageButton/ManageButton',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="ManageButton">ManageButton</div>
-      ))
+jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="ManageButton">ManageButton</div>
+    ))
 );
 
-jest.mock('../../components/common/description/Description', () =>
+jest.mock('components/common/description/Description', () =>
   jest
     .fn()
     .mockImplementation(
@@ -126,7 +116,7 @@ jest.mock('../../components/common/description/Description', () =>
 );
 
 jest.mock(
-  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
   () =>
     jest
       .fn()
@@ -135,17 +125,15 @@ jest.mock(
       ))
 );
 
-jest.mock(
-  '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="ActivityFeedList">ActivityFeedList</div>
-      ))
+jest.mock('components/ActivityFeed/ActivityFeedList/ActivityFeedList', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="ActivityFeedList">ActivityFeedList</div>
+    ))
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
       .fn()
@@ -153,13 +141,13 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../axiosAPIs/searchAPI', () => ({
+jest.mock('rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSearchQueryData)),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetAllFeedsData)),
@@ -174,7 +162,7 @@ jest.mock('../../axiosAPIs/feedsAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockPostThreadData)),
 }));
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('rest/databaseAPI', () => ({
   getDatabaseSchemaDetailsByFQN: jest
     .fn()
     .mockImplementation(() =>

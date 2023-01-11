@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,6 +19,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'build');
 
@@ -65,6 +66,7 @@ module.exports = {
         test: /\.(ts|tsx)$/,
         loader: 'ts-loader',
         options: {
+          configFile: 'tsconfig.json',
           transpileOnly: true, // Speed up compilation in development mode
         },
         include: path.resolve(__dirname, 'src'), // Just the source code
@@ -89,9 +91,7 @@ module.exports = {
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/reactflow'),
-          path.resolve(__dirname, 'node_modules/react-tippy'),
           path.resolve(__dirname, 'node_modules/codemirror'),
-          path.resolve(__dirname, 'node_modules/rc-tree'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
@@ -174,6 +174,7 @@ module.exports = {
       fs: false,
       url: require.resolve('url/'),
     },
+    plugins: [new TsconfigPathsPlugin()],
   },
 
   plugins: [
@@ -184,9 +185,8 @@ module.exports = {
     // In development mode, fork TypeScript checking to run in another thread and not block main
     // transpilation
     new ForkTsCheckerWebpackPlugin({
-      eslint: {
-        files: './src/**/*.{ts,tsx,js,jsx}',
-        // required - same as command `eslint ./src/**/*.{ts,tsx,js,jsx} --ext .ts,.tsx,.js,.jsx`
+      typescript: {
+        configFile: 'tsconfig.json',
       },
     }),
     // Generate index.html from template

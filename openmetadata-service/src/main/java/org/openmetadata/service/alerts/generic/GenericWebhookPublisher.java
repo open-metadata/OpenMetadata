@@ -56,8 +56,7 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list)
-      throws EventPublisherException, IOException, InterruptedException {
+  public void sendAlert(EventResource.ChangeEventList list) throws EventPublisherException, IOException {
     long attemptTime = System.currentTimeMillis();
     try {
       String json = JsonUtils.pojoToJson(list);

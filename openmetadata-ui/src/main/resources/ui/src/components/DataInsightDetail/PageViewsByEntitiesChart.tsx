@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -121,7 +121,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       title={
         <>
           <Typography.Title level={5}>
-            {t('label.page-views-by-entities')}
+            {t('label.page-views-by-data-asset-plural')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
             {t('message.data-insight-page-views')}
@@ -181,7 +181,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                   changeInValue={relativePercentage}
                   duration={selectedDays}
                   label={t('label.total-entity', {
-                    entity: t('label.assets'),
+                    entity: t('label.asset-plural'),
                   })}
                   value={total}
                 />

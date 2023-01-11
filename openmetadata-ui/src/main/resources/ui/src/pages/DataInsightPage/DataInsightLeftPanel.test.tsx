@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -30,8 +30,8 @@ describe('Test Data insight left panel', () => {
 
     const menuContainer = await screen.findByTestId('data-insight-left-panel');
 
-    const dataAssets = await screen.findByText('label.data-assets');
-    const appAnalytics = await screen.findByText('label.app-analytics');
+    const dataAssets = await screen.findByText('label.data-asset-plural');
+    const appAnalytics = await screen.findByText('label.app-analytic-plural');
     const kpi = await screen.findByText('label.kpi-uppercases');
 
     expect(menuContainer).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe('Test Data insight left panel', () => {
   it('On clicking the menu item, route should change', async () => {
     render(<DataInsightLeftPanel />);
 
-    const appAnalytics = await screen.findByText('label.app-analytics');
+    const appAnalytics = await screen.findByText('label.app-analytic-plural');
     const kpi = await screen.findByText('label.kpi-uppercases');
 
     expect(appAnalytics).toBeInTheDocument();
@@ -53,6 +53,6 @@ describe('Test Data insight left panel', () => {
       fireEvent.click(appAnalytics);
     });
 
-    expect(mockPush).toBeCalled();
+    expect(mockPush).toHaveBeenCalled();
   });
 });

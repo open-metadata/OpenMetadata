@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,10 +14,9 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { createTestCase, createTestSuites } from '../../axiosAPIs/testAPI';
+import { createTestCase, createTestSuites } from 'rest/testAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -68,7 +67,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const [testCaseData, setTestCaseData] = useState<TestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
@@ -145,25 +143,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     );
   };
 
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            setIsAirflowRunning(true);
-            resolve();
-          } else {
-            setIsAirflowRunning(false);
-            reject();
-          }
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-          reject();
-        });
-    });
-  };
-
   const handleCancelClick = () => {
     setActiveServiceStep((pre) => pre - 1);
   };
@@ -180,7 +159,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
   const handleFormSubmit = async (data: TestCase) => {
     setTestCaseData(data);
-    if (isUndefined(selectedTestSuite)) return;
+    if (isUndefined(selectedTestSuite)) {
+      return;
+    }
     try {
       const { parameterValues, testDefinition, name, entityLink, description } =
         data;
@@ -253,13 +234,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         <SuccessScreen
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowRunning}
           name={successName}
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={handleAirflowStatusCheck}
         />
       );
     }
@@ -270,11 +249,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         onSubmit={handleSelectTestSuite}
       />
     );
-  }, [activeServiceStep, isAirflowRunning, testCaseRes]);
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
+  }, [activeServiceStep, testCaseRes]);
 
   return (
     <PageLayout

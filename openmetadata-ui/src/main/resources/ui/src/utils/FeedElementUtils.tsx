@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,11 +12,11 @@
  */
 
 import { isEmpty, isEqual, isUndefined } from 'lodash';
-import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
 import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/teams/user';
+import { EntityFieldThreads } from '../interface/feed.interface';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
 import SVGIcons, { Icons } from './SvgUtils';

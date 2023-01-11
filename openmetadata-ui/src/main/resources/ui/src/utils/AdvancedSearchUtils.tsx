@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,12 +13,12 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
+import { FormattedSuggestResponseObject } from 'components/Explore/ExploreQuickFilters.interface';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
 import { isArray, isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
-import { FormattedSuggestResponseObject } from '../components/Explore/ExploreQuickFilters.interface';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
@@ -128,7 +128,9 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   } else if (type === 'delGroup') {
     return (
       <SVGIcons
-        alt={i18next.t('label.delete-group')}
+        alt={i18next.t('label.delete-entity', {
+          entity: i18next.t('label.group'),
+        })}
         className="action action--DELETE cursor-pointer "
         height={16}
         icon={Icons.DELETE_COLORED}

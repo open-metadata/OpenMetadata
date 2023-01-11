@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,7 @@ import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { getTagSuggestions } from '../../../axiosAPIs/miscAPI';
+import { getTagSuggestions } from 'rest/miscAPI';
 import {
   LabelType,
   State,

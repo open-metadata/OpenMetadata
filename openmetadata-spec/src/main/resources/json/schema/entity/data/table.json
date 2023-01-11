@@ -31,7 +31,8 @@
         "MaterializedView",
         "Iceberg",
         "Local",
-        "Partitioned"
+        "Partitioned",
+        "Foreign"
       ],
       "javaEnums": [
         {
@@ -57,6 +58,9 @@
         },
         {
           "name": "Partitioned"
+        },
+        {
+          "name": "Foreign"
         }
       ]
     },

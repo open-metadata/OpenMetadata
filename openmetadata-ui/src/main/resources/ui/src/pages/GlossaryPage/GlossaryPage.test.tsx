@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,11 +17,10 @@ import {
   deleteGlossary,
   deleteGlossaryTerm,
   patchGlossaryTerm,
-} from '../../axiosAPIs/glossaryAPI';
+} from 'rest/glossaryAPI';
 import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPageV1 from './GlossaryPageV1.component';
 
-/* eslint-disable @typescript-eslint/camelcase */
 const mockSearchData = {
   data: {
     took: 28,
@@ -228,58 +227,13 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('fast-json-patch', () => ({
-  compare: jest.fn(),
-}));
-
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSearchData)),
 }));
 
-jest.mock('antd', () => ({
-  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Divider: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  Typography: {
-    Title: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
-    <div>
-      {children}
-      {overlay}
-    </div>
-  )),
-  Menu: jest.fn().mockImplementation(({ items }) => (
-    <div>
-      {items.map((item: { key: string; label: JSX.Element }) => {
-        <div key={item.key}>{item.label}</div>;
-      })}
-    </div>
-  )),
-}));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
-jest.mock('../../components/Glossary/GlossaryV1.component', () => {
+jest.mock('components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>
@@ -352,7 +306,7 @@ jest.mock('../../components/Glossary/GlossaryV1.component', () => {
   ));
 });
 
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   patchGlossaryTerm: jest
