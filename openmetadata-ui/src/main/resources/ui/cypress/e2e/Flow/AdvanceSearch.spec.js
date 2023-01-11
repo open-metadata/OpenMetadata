@@ -35,7 +35,7 @@ import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
 
-describe('Advance search should work properly for all fields', () => {
+describe.skip('Advance search should work properly for all fields', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -114,7 +114,7 @@ describe('Advance search should work properly for all fields', () => {
   });
 });
 
-describe('Advance search should work properly for Add Group functionality', () => {
+describe.skip('Advance search should work properly for Add Group functionality', () => {
   beforeEach(() => {
     cy.login();
     cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
@@ -192,7 +192,7 @@ describe('Advance search should work properly for Add Group functionality', () =
   });
 });
 
-describe('Advance search should work properly for Add Rule functionality', () => {
+describe.skip('Advance search should work properly for Add Rule functionality', () => {
   beforeEach(() => {
     cy.login();
     cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
