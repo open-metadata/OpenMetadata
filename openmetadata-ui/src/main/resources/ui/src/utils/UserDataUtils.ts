@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { OidcUser } from '@components/authentication/auth-provider/AuthProvider.interface';
+import { AxiosError } from 'axios';
+import { OidcUser } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { isEqual, isUndefined } from 'lodash';
+import { SearchedUsersAndTeams } from 'Models';
 import {
   getSearchedTeams,
   getSearchedUsers,
   getSuggestedTeams,
   getSuggestedUsers,
-} from '@rest/miscAPI';
-import { getUserById, getUserByName, getUsers } from '@rest/userAPI';
-import { AxiosError } from 'axios';
-import { isEqual, isUndefined } from 'lodash';
-import { SearchedUsersAndTeams } from 'Models';
+} from 'rest/miscAPI';
+import { getUserById, getUserByName, getUsers } from 'rest/userAPI';
 import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';

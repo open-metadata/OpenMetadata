@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import CheckboxUserCard from '@pages/teams/CheckboxUserCard';
-import { getSuggestedUsers, searchData } from '@rest/miscAPI';
 import { Button, Col, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { isUndefined, uniqueId } from 'lodash';
+import CheckboxUserCard from 'pages/teams/CheckboxUserCard';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getSuggestedUsers, searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';

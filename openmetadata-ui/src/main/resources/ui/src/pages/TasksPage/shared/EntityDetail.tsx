@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';

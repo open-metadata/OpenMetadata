@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getPolicies, getRoles } from '@rest/rolesAPIV1';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
+import { getPolicies, getRoles } from 'rest/rolesAPIV1';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';

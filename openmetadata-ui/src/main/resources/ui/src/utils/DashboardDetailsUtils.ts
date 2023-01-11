@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { ChartType } from '@pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import { getChartById } from '@rest/chartAPI';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { getChartById } from 'rest/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { sortTagsCaseInsensitive } from './CommonUtils';

@@ -11,36 +11,36 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import DashboardDetails from '@components/DashboardDetails/DashboardDetails.component';
+import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import DashboardDetails from 'components/DashboardDetails/DashboardDetails.component';
 import {
   Edge,
   EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from '@components/EntityLineage/EntityLineage.interface';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '@components/PermissionProvider/PermissionProvider.interface';
-import { updateChart } from '@rest/chartAPI';
-import {
-  addFollower,
-  getDashboardByFqn,
-  patchDashboardDetails,
-  removeFollower,
-} from '@rest/dashboardAPI';
-import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
-import { getLineageByFQN } from '@rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
-import { getServiceByFQN } from '@rest/serviceAPI';
-import { AxiosError } from 'axios';
+} from 'components/EntityLineage/EntityLineage.interface';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { updateChart } from 'rest/chartAPI';
+import {
+  addFollower,
+  getDashboardByFqn,
+  patchDashboardDetails,
+  removeFollower,
+} from 'rest/dashboardAPI';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import { getServiceByFQN } from 'rest/serviceAPI';
 import AppState from '../../AppState';
 import {
   getDashboardDetailsPath,
