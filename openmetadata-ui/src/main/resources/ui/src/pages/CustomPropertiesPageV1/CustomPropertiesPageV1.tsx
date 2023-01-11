@@ -28,6 +28,7 @@ import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
 import {
@@ -47,6 +48,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: string }>();
   const history = useHistory();
 
@@ -223,7 +225,7 @@ const CustomEntityDetailV1 = () => {
                       disabled={!editPermission}
                       type="primary"
                       onClick={() => handleAddProperty()}>
-                      Add Property
+                      {t('label.add-entity', { entity: t('label.property') })}
                     </ButtonAntd>
                   </Tooltip>
                 }
@@ -245,7 +247,7 @@ const CustomEntityDetailV1 = () => {
                     size="custom"
                     theme="primary"
                     onClick={() => handleAddProperty()}>
-                    Add Property
+                    {t('label.add-entity', { entity: t('label.property') })}
                   </Button>
                 </Tooltip>
               </div>

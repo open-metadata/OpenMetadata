@@ -134,7 +134,7 @@ const AddAttributeModal: FC<Props> = ({
         <span data-testid="modal-title">
           {title}{' '}
           <span className="text-grey-muted text-sm">
-            ({selectedValues.length}/{data.length} selected)
+            {`(${selectedValues.length}/${data.length} selected)`}
           </span>
         </span>
       }

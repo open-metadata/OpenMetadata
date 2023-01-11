@@ -21,6 +21,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getPolicies } from 'rest/rolesAPIV1';
 import {
@@ -38,6 +39,7 @@ import PoliciesList from './PoliciesList';
 import './PoliciesList.less';
 
 const PoliciesListPage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -96,7 +98,7 @@ const PoliciesListPage = () => {
               disabled={!addPolicyPermission}
               type="primary"
               onClick={handleAddPolicy}>
-              Add Policy
+              {t('label.add-entity', { entity: t('label.policy') })}
             </Button>
           }
           heading="Policy"
@@ -129,7 +131,7 @@ const PoliciesListPage = () => {
               disabled={!addPolicyPermission}
               type="primary"
               onClick={handleAddPolicy}>
-              Add Policy
+              {t('label.add-entity', { entity: t('label.policy') })}
             </Button>
           </Tooltip>
         </Space>

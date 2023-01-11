@@ -443,7 +443,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="description">
                                   <Col span={2}>
                                     <Typography.Text className="text-grey-muted">
-                                      {t('label.description')} :
+                                      {`${t('label.description')}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
@@ -457,7 +457,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="resources">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted m-b-0">
-                                    {t('label.resources')} :
+                                    {`${t('label.resources')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -472,7 +472,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="operations">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {t('label.operations')} :
+                                    {`${t('label.operations')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -484,7 +484,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="effect">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {t('label.effect')} :
+                                    {`${t('label.effect')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -497,7 +497,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="condition">
                                   <Col span={2}>
                                     <Typography.Text className="text-grey-muted">
-                                      {t('label.condition')} :
+                                      {`${t('label.condition')}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>

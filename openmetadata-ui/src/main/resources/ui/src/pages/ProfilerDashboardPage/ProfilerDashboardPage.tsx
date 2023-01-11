@@ -25,6 +25,7 @@ import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashb
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   getColumnProfilerList,
@@ -52,6 +53,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
+  const { t } = useTranslation();
   const { entityTypeFQN, dashboardType, tab } = useParams<{
     entityTypeFQN: string;
     dashboardType: ProfilerDashboardType;
@@ -214,7 +216,7 @@ const ProfilerDashboardPage = () => {
     return (
       <ErrorPlaceHolder>
         <p className="text-center">
-          No data found{' '}
+          {t('label.no-data-found')}
           {decodedEntityFQN
             ? `for column ${getNameFromFQN(decodedEntityFQN)}`
             : ''}

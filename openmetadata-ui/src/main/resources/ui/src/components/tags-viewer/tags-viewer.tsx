@@ -13,6 +13,7 @@
 
 import { Popover } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { sortBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
@@ -72,7 +73,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           placement="bottom"
           trigger="click">
           <span className="cursor-pointer text-xs link-text v-align-sub">
-            •••
+            {t('label.three-dots-symbol')}
           </span>
         </Popover>
       )}

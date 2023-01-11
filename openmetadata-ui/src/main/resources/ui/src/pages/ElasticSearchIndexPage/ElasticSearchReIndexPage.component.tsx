@@ -18,6 +18,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
 import { isEmpty, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getAllReIndexStatus,
   reIndexByPublisher,
@@ -41,6 +42,7 @@ import './ElasticSearchReIndex.style.less';
 import ReIndexAllModal from './ElasticSearchReIndexModal.component';
 
 const ElasticSearchIndexPage = () => {
+  const { t } = useTranslation();
   const [batchJobData, setBatchJobData] = useState<EventPublisherJob>();
   const [streamJobData, setStreamJobData] = useState<EventPublisherJob>();
 
@@ -148,7 +150,7 @@ const ElasticSearchIndexPage = () => {
                   size="small"
                   type="primary"
                   onClick={() => setModalOpen(true)}>
-                  Re Index All
+                  {t('label.re-index-all')}
                 </Button>
               </Space>
             }
@@ -159,14 +161,18 @@ const ElasticSearchIndexPage = () => {
               <Col span={24}>
                 <Space wrap direction="horizontal" size={0}>
                   <div className="flex">
-                    <span className="text-grey-muted">Mode</span> :
+                    <span className="text-grey-muted">{`${t(
+                      'label.mode'
+                    )}:`}</span>
                     <span className="m-l-xs">
                       {startCase(batchJobData?.runMode) || '--'}
                     </span>
                   </div>
                   <Divider type="vertical" />
                   <div className="flex">
-                    <span className="text-grey-muted">Status</span> :
+                    <span className="text-grey-muted">{`${t(
+                      'label.status'
+                    )}:`}</span>
                     <span className="m-l-xs">
                       <Space size={8}>
                         {batchJobData?.status && (
@@ -187,7 +193,9 @@ const ElasticSearchIndexPage = () => {
                   </div>
                   <Divider type="vertical" />
                   <div className="flex">
-                    <span className="text-grey-muted">Index stats</span> :
+                    <span className="text-grey-muted">
+                      {`${t('label.index-states')}:`}
+                    </span>
                     <span className="m-l-xs">
                       {!isEmpty(batchJobData) ? (
                         <Space size={8}>
@@ -220,7 +228,9 @@ const ElasticSearchIndexPage = () => {
                   </div>
                   <Divider type="vertical" />
                   <div className="flex">
-                    <span className="text-grey-muted">Last Updated</span> :
+                    <span className="text-grey-muted">
+                      {`${t('label.last-updated')}:`}
+                    </span>
                     <span className="m-l-xs">
                       {batchJobData?.timestamp
                         ? getDateTimeByTimeStampWithZone(
@@ -231,7 +241,9 @@ const ElasticSearchIndexPage = () => {
                   </div>
                   <Divider type="vertical" />
                   <div className="flex">
-                    <span className="text-grey-muted">Last Failed At:</span>
+                    <span className="text-grey-muted">
+                      {`${t('label.last-failed-at')}:`}
+                    </span>
                     <p className="m-l-xs">
                       {batchJobData?.failureDetails?.lastFailedAt
                         ? getDateTimeByTimeStampWithZone(
@@ -243,7 +255,9 @@ const ElasticSearchIndexPage = () => {
                 </Space>
               </Col>
               <Col span={24}>
-                <span className="text-grey-muted">Failure Context:</span>
+                <span className="text-grey-muted">{`${t(
+                  'label.failure-context'
+                )}:`}</span>
                 <span className="m-l-xs">
                   {batchJobData?.failureDetails?.context ? (
                     <RichTextEditorPreviewer
@@ -256,7 +270,9 @@ const ElasticSearchIndexPage = () => {
                 </span>
               </Col>
               <Col span={24}>
-                <span className="text-grey-muted">Last error:</span>
+                <span className="text-grey-muted">{`${t(
+                  'label.last-error'
+                )}:`}</span>
                 <span className="m-l-xs">
                   {batchJobData?.failureDetails?.lastFailedReason ? (
                     <RichTextEditorPreviewer
@@ -290,13 +306,17 @@ const ElasticSearchIndexPage = () => {
               <Col span={24}>
                 <Space direction="horizontal" size={16}>
                   <div className="flex">
-                    <span className="text-grey-muted">Mode</span> :
+                    <span className="text-grey-muted">{`${t(
+                      'label.mode'
+                    )}:`}</span>
                     <span className="m-l-xs">
                       {startCase(streamJobData?.runMode) || '--'}
                     </span>
                   </div>
                   <div className="flex">
-                    <span className="text-grey-muted">Status</span> :
+                    <span className="text-grey-muted">{`${t(
+                      'label.status'
+                    )}:`}</span>
                     <span className="m-l-xs">
                       <Space size={8}>
                         {streamJobData?.status && (
@@ -317,7 +337,9 @@ const ElasticSearchIndexPage = () => {
                   </div>
 
                   <div className="flex">
-                    <span className="text-grey-muted">Last Updated</span> :
+                    <span className="text-grey-muted">
+                      {`${t('label.last-updated')}:`}
+                    </span>
                     <span className="m-l-xs">
                       {streamJobData?.timestamp
                         ? getDateTimeByTimeStampWithZone(
@@ -327,7 +349,9 @@ const ElasticSearchIndexPage = () => {
                     </span>
                   </div>
                   <div className="flex">
-                    <span className="text-grey-muted">Last Failed At:</span>
+                    <span className="text-grey-muted">{`${t(
+                      'label.last-failed-at'
+                    )}:`}</span>
                     <p className="m-l-xs">
                       {streamJobData?.failureDetails?.lastFailedAt
                         ? getDateTimeByTimeStampWithZone(
@@ -339,7 +363,9 @@ const ElasticSearchIndexPage = () => {
                 </Space>
               </Col>
               <Col span={24}>
-                <span className="text-grey-muted">Failure Context:</span>
+                <span className="text-grey-muted">{`${t(
+                  'label.failure-context'
+                )}:`}</span>
                 <span className="m-l-xs">
                   {streamJobData?.failureDetails?.context ? (
                     <RichTextEditorPreviewer
@@ -352,7 +378,9 @@ const ElasticSearchIndexPage = () => {
                 </span>
               </Col>
               <Col span={24}>
-                <span className="text-grey-muted">Last error:</span>
+                <span className="text-grey-muted">{`${t(
+                  'label.last-error'
+                )}:`}</span>
                 <span className="m-l-xs">
                   {streamJobData?.failureDetails?.lastFailedReason ? (
                     <RichTextEditorPreviewer
