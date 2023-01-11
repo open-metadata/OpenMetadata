@@ -48,7 +48,7 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
     Retunrs:
         int
     """
-    if len(timestamp) < 13:
+    if len(timestamp) < 13:  # check for ms timestamp
         return int(timestamp)
     return float(timestamp) / 1000
 
