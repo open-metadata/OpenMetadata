@@ -191,7 +191,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    String failureReason = "[about must match \"^<#E::\\S+::[\\w'_\\- .:+]+>$\"]";
+    String failureReason = "[about must match \"^<#E::\\w+::[\\w'\\- .:+/]+>$\"]";
     assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::>"); // Invalid EntityLink - missing entityType and entityId
@@ -1282,7 +1282,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
     post.withReactions(List.of(reaction1, reaction2));
     Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, TEST_AUTH_HEADERS);
-    assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2), REACTION_COMPARATOR));
+    assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2)));
     ThreadList threads = listThreads(null, 5, AUTH_HEADERS);
     thread = threads.getData().get(0);
     assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
@@ -1573,7 +1573,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(expected.getFrom(), patched.getFrom());
     assertEquals(expected.getPostTs(), patched.getPostTs());
     assertEquals(expected.getReactions().size(), patched.getReactions().size());
-    assertTrue(containsAll(expected.getReactions(), patched.getReactions(), REACTION_COMPARATOR));
+    assertTrue(containsAll(expected.getReactions(), patched.getReactions()));
   }
 
   private static <T> BiPredicate<T, T> match(Comparator<T> f) {
@@ -1584,9 +1584,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return u -> f.test(t, u);
   }
 
-  private static <T> boolean containsAll(List<T> list, List<T> items, Comparator<? super T> comparator) {
+  private static <T> boolean containsAll(List<T> list, List<T> items) {
     for (T item : items) {
-      if (list.stream().noneMatch(bind(match(comparator), item))) {
+      if (list.stream().noneMatch(bind(match((Comparator<? super T>) FeedResourceTest.REACTION_COMPARATOR), item))) {
         return false;
       }
     }

@@ -503,7 +503,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_columnUpdateWithDescriptionPersists_200(TestInfo test) throws IOException {
     List<Column> columns = new ArrayList<>();
-    columns.add(getColumn("c1", VARCHAR, null).withDescription("c1VarcharDescription").withDataLength(255));
+    columns.add(getColumn(C1, VARCHAR, null).withDescription("c1VarcharDescription").withDataLength(255));
     CreateTable request = createRequest(test).withColumns(columns);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 

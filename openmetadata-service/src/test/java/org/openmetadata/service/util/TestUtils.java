@@ -269,9 +269,12 @@ public final class TestUtils {
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    expectedReason = expectedReason.replace("[", "").replace("]", "");
-    String actualReason = exception.getReasonPhrase().replace("[", "").replace("]", "");
-    assertTrue(actualReason.contains(expectedReason), expectedReason + " not in actual " + exception.getReasonPhrase());
+
+    // Strip "[" at the beginning and "]" at the end as actual reason may contain more than one error messages
+    expectedReason =
+        expectedReason.startsWith("[") ? expectedReason.substring(1, expectedReason.length() - 1) : expectedReason;
+    String actualReason = exception.getReasonPhrase();
+    assertTrue(actualReason.contains(expectedReason), expectedReason + " not in actual " + actualReason);
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {

@@ -88,6 +88,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -280,9 +281,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static KpiTarget KPI_TARGET;
 
-  public static String C1 = "c'_ 1";
-  public static String C2 = "c2";
-  public static String C3 = "\"c.3\"";
+  public static final String C1 = "c'_+ 1";
+  public static final String C2 = "c2";
+  public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -374,13 +375,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public final K createRequest(TestInfo test) {
     return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
-  }
-
-  public final K createRequest() {
-    return createRequest(String.format("test%s", UUID.randomUUID()))
-        .withDescription("")
-        .withDisplayName(null)
-        .withOwner(null);
   }
 
   public final K createPutRequest(TestInfo test) {
@@ -782,7 +776,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
-    assertResponse(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+    assertResponseContains(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
@@ -1668,6 +1662,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
+  @SneakyThrows
   public final T createEntity(CreateEntity createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
