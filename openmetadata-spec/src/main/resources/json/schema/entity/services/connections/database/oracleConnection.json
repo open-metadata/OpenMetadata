@@ -76,10 +76,10 @@
       "description": "Connect with oracle by either passing service name or database schema name.",
       "oneOf": [
         {
-          "$ref": "#/definitions/OracleServiceName"
+          "$ref": "#/definitions/OracleDatabaseSchema"
         },
         {
-          "$ref": "#/definitions/OracleDatabaseSchema"
+          "$ref": "#/definitions/OracleServiceName"
         }
       ]
     },
