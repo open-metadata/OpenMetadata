@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { createUser } from '@rest/userAPI';
 import { act, fireEvent, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
+import { createUser } from 'rest/userAPI';
 import Signup from '.';
 import AppState from '../../AppState';
 import { getImages } from '../../utils/CommonUtils';
@@ -29,17 +29,17 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('@components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
   })),
 }));
 
-jest.mock('@components/TeamsSelectable/TeamsSelectable', () => {
+jest.mock('components/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockImplementation(() => <div>TeamSelectable</div>);
 });
 
-jest.mock('@components/buttons/Button/Button', () => ({
+jest.mock('components/buttons/Button/Button', () => ({
   Button: jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -47,7 +47,7 @@ jest.mock('@components/buttons/Button/Button', () => ({
     )),
 }));
 
-jest.mock('@components/containers/PageContainer', () => {
+jest.mock('components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -55,7 +55,7 @@ jest.mock('@components/containers/PageContainer', () => {
     ));
 });
 
-jest.mock('@rest/userAPI', () => ({
+jest.mock('rest/userAPI', () => ({
   createUser: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCreateUser)),

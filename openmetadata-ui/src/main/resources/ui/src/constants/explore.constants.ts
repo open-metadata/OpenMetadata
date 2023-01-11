@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '@components/Explore/explore.interface';
-import { SortingField } from '@components/Explore/SortingDropDown';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { SortingField } from 'components/Explore/SortingDropDown';
 import { t } from 'i18next';
 import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';

@@ -16,6 +16,7 @@ import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
 import {
   REACTION_LIST,
@@ -39,6 +40,7 @@ interface ReactionsProps {
 }
 
 const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   const hide = () => {
@@ -121,8 +123,9 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
             <SVGIcons
               alt="add-reaction"
               icon={Icons.ADD_REACTION}
-              // style={{ verticalAlign: 'text-bottom' }}
-              title="Add reactions"
+              title={t('label.add-entity', {
+                entity: t('label.reaction-lowercase-plural'),
+              })}
               width="18px"
             />
           </Button>

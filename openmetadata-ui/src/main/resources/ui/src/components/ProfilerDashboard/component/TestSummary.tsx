@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getListTestCaseResults } from '@rest/testAPI';
 import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -27,6 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { getListTestCaseResults } from 'rest/testAPI';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,

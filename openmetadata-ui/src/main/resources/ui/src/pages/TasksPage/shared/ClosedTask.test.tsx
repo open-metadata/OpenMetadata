@@ -45,7 +45,7 @@ const mockTask = {
   newValue: '**Column for storing product data.**',
 } as Thread['task'];
 
-jest.mock('@components/common/PopOverCard/UserPopOverCard', () =>
+jest.mock('components/common/PopOverCard/UserPopOverCard', () =>
   jest.fn().mockImplementation(({ children }) => {
     return <div data-testid="userPopOverCard">{children}</div>;
   })

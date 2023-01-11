@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { getFeedById } from '@rest/feedsAPI';
 import { AxiosError } from 'axios';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFeedById } from 'rest/feedsAPI';
 import {
   Post,
   Thread,

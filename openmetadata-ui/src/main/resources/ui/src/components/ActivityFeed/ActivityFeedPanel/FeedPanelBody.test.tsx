@@ -90,7 +90,7 @@ describe('Test FeedPanelBody Component', () => {
 
     expect(repliesContainer).toBeInTheDocument();
     expect(replies).toHaveLength(2);
-    expect(repliesCount).toHaveTextContent('2 replies');
+    expect(repliesCount).toHaveTextContent('2 label.reply-lowercase-plural');
   });
 
   it('Check if FeedPanelBody has isLoading as true', async () => {

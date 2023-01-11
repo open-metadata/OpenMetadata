@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { getTags } from '@rest/tagAPI';
 import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { LoadingState, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';

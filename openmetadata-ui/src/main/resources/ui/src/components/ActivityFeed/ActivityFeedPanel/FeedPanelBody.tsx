@@ -12,6 +12,7 @@
  */
 
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { getReplyText } from '../../../utils/FeedUtils';
 import Loader from '../../Loader/Loader';
@@ -25,6 +26,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   onConfirmation,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,
@@ -59,7 +61,11 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
             <div data-testid="replies">
               <div className="tw-mb-3 tw-flex">
                 <span data-testid="replies-count">
-                  {getReplyText(repliesLength, 'reply', 'replies')}
+                  {getReplyText(
+                    repliesLength,
+                    t('label.reply-lowercase'),
+                    t('label.reply-lowercase-plural')
+                  )}
                 </span>
                 <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                   <hr />

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ModifiedGlossaryData } from '@pages/GlossaryPage/GlossaryPageV1.component';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../generated/entity/data/glossary';

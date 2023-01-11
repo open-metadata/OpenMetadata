@@ -230,13 +230,13 @@ const currentUserMockData = {
   href: 'http://localhost:8585/api/v1/tables/7b26a534-25e8-4112-ae08-ee059f8918c4',
 } as EntityReference;
 
-jest.mock('@rest/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
-jest.mock('@components/searched-data/SearchedData', () => {
+jest.mock('components/searched-data/SearchedData', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (

@@ -15,7 +15,7 @@ import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from '@components/EntityLineage/EntityLineage.interface';
+} from 'components/EntityLineage/EntityLineage.interface';
 import { Edge } from 'reactflow';
 import { LineageDetails } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';

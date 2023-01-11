@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
-import { EditorContentRef } from '@components/common/rich-text-editor/RichTextEditor.interface';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import { postThread } from '@rest/feedsAPI';
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, {
@@ -28,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { postThread } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
