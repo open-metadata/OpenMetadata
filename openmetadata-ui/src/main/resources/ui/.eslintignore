@@ -37,3 +37,7 @@ src/generated/antlr/
 # cypress
 **/*.spec.js
 cypress/
+
+# connection schemas
+
+src/jsons/connectionSchemas/
