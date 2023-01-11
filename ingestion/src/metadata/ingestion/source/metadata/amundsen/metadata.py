@@ -339,11 +339,11 @@ class AmundsenSource(Source[Entity]):
                 col = Column(**parsed_string)
                 columns.append(col)
             amundsen_table_tag = OMetaTagAndClassification(
-                category_name=CreateClassificationRequest(
+                classification_request=CreateClassificationRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
                 ),
-                category_details=CreateTagRequest(
+                tag_request=CreateTagRequest(
                     classification=AMUNDSEN_TAG_CATEGORY,
                     name=AMUNDSEN_TABLE_TAG,
                     description="Amundsen Table Tag",
@@ -351,11 +351,11 @@ class AmundsenSource(Source[Entity]):
             )
             yield amundsen_table_tag
             amundsen_cluster_tag = OMetaTagAndClassification(
-                category_name=CreateClassificationRequest(
+                classification_request=CreateClassificationRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
                 ),
-                category_details=CreateTagRequest(
+                tag_request=CreateTagRequest(
                     classification=AMUNDSEN_TAG_CATEGORY,
                     name=table["cluster"],
                     description="Amundsen Cluster Tag",
