@@ -39,6 +39,9 @@ jest.mock('components/PipelineVersion/PipelineVersion.component', () => {
 jest.mock('components/TopicVersion/TopicVersion.component', () => {
   return jest.fn().mockReturnValue(<div>TopicVersion component</div>);
 });
+jest.mock('components/MlModelVersion/MlModelVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>MlModelVersion component</div>);
+});
 
 jest.mock('rest/dashboardAPI', () => ({
   getDashboardByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -59,6 +62,12 @@ jest.mock('rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
   getTopicVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getTopicVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('rest/mlModelAPI', () => ({
+  getMlModelByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
+  getMlModelVersion: jest.fn().mockImplementation(() => Promise.resolve()),
+  getMlModelVersions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 describe('Test EntityVersionPage component', () => {
