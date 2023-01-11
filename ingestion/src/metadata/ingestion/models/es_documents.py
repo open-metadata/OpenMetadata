@@ -28,9 +28,7 @@ from metadata.generated.schema.type.entityReference import (
     EntityReferenceList,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.generated.schema.type.usageDetails import (
-    TypeUsedToReturnUsageDetailsOfAnEntity,
-)
+from metadata.generated.schema.type.usageDetails import UsageDetails
 
 
 class ESEntityReference(BaseModel):
@@ -68,7 +66,7 @@ class TableESDocument(BaseModel):
     service: EntityReference
     owner: EntityReference = None
     location: Optional[EntityReference] = None
-    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity = None
+    usageSummary: UsageDetails = None
     deleted: bool
     serviceType: str
     tags: List[TagLabel]
@@ -132,7 +130,7 @@ class DashboardESDocument(BaseModel):
     followers: List[str]
     service: EntityReference
     serviceType: str
-    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity = None
+    usageSummary: UsageDetails = None
     deleted: bool
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
@@ -189,7 +187,7 @@ class MlModelESDocument(BaseModel):
     dashboard: Optional[EntityReference] = None
     mlStore: Optional[MlStore] = None
     server: Optional[str] = None
-    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity = None
+    usageSummary: UsageDetails = None
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
     owner: ESEntityReference = None

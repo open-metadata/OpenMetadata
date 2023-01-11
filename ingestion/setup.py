@@ -205,18 +205,11 @@ dev = {
 }
 
 test = {
-    VERSIONS["airflow"],
     "coverage",
-    VERSIONS["google-cloud-storage"],
-    VERSIONS["great-expectations"],
     "moto==4.0.8",
-    VERSIONS["neo4j"],
-    VERSIONS["pandas"],
-    VERSIONS["pydomo"],
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    VERSIONS["scikit-learn"],
 }
 
 build_options = {"includes": ["_cffi_backend"]}

@@ -103,7 +103,9 @@ class LookerSource(DashboardServiceSource):
         self._owners_ref = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
+    ) -> "LookerSource":
         config = WorkflowSource.parse_obj(config_dict)
         connection: LookerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, LookerConnection):
