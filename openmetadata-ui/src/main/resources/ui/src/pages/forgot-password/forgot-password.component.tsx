@@ -14,12 +14,14 @@
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
   const history = useHistory();
 
@@ -46,7 +48,7 @@ const ForgotPassword = () => {
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
             <Typography.Text className="text-xl font-medium text-grey-muted">
-              Enter your registered email to receive password reset link
+              {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
 
@@ -70,7 +72,7 @@ const ForgotPassword = () => {
             </Col>
             <Col className="m-t-md" span={24}>
               <Button className="w-full" htmlType="submit" type="primary">
-                Submit
+                {t('label.submit')}
               </Button>
             </Col>
           </Form>
@@ -90,7 +92,7 @@ const ForgotPassword = () => {
                     />
                   </div>
                   <p data-testid="success-line">
-                    <span>Reset link has been sent to your email</span>
+                    <span>{t('message.reset-link-has-been-sent')}</span>
                   </p>
                 </div>
               </div>
@@ -98,7 +100,7 @@ const ForgotPassword = () => {
           )}
           <Divider className="w-min-0 mt-8 mb-12 justify-center align-start p-x-xs">
             <Typography.Text className="text-sm" type="secondary">
-              or
+              {t('label.or-lowercase')}
             </Typography.Text>
           </Divider>
           <Col span={24}>
@@ -107,7 +109,7 @@ const ForgotPassword = () => {
               className="w-full"
               type="primary"
               onClick={() => history.push(ROUTES.SIGNIN)}>
-              Go back to Login page
+              {t('message.go-back-to-login-page')}
             </Button>
           </Col>
         </Row>

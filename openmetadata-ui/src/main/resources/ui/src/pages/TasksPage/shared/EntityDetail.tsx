@@ -14,6 +14,7 @@
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -24,6 +25,7 @@ interface EntityDetailProps {
 }
 
 const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
+  const { t } = useTranslation();
   const entityTier = useMemo(() => {
     const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
 
@@ -39,7 +41,7 @@ const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
   return (
     <div data-testid="entityDetail">
       <div className="tw-flex tw-ml-6">
-        <span className="tw-text-grey-muted">Owner:</span>{' '}
+        <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
         <span>
           {entityData.owner ? (
             <span className="tw-flex tw-ml-1">
@@ -52,7 +54,9 @@ const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
               <span className="tw-ml-1">{getEntityName(entityData.owner)}</span>
             </span>
           ) : (
-            <span className="tw-text-grey-muted tw-ml-1">No Owner</span>
+            <span className="tw-text-grey-muted tw-ml-1">
+              {t('label.no-entity', { entity: t('label.owner') })}
+            </span>
           )}
         </span>
         <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
@@ -60,7 +64,9 @@ const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
           {entityTier ? (
             entityTier
           ) : (
-            <span className="tw-text-grey-muted">No Tier</span>
+            <span className="tw-text-grey-muted">
+              {t('label.no-entity', { entity: t('label.tier') })}
+            </span>
           )}
         </p>
       </div>

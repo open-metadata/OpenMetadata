@@ -20,6 +20,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayout from 'components/containers/PageLayout';
 import Loader from 'components/Loader/Loader';
+import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -112,7 +113,7 @@ const TestSuiteIngestionPage = () => {
   if (isUndefined(testSuite)) {
     return (
       <ErrorPlaceHolder>
-        <p>No Data found</p>
+        <p>{t('label.no-data-found')}</p>
       </ErrorPlaceHolder>
     );
   }

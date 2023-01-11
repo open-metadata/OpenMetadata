@@ -20,6 +20,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { errorMsg } from '../../utils/CommonUtils';
 
@@ -38,6 +39,7 @@ type EditorContentRef = {
 };
 const Form: React.FC<FormProp> = forwardRef(
   ({ saveData, initialData, errorData }: FormProp, ref): JSX.Element => {
+    const { t } = useTranslation();
     const [data, setData] = useState<CustomClassification>({
       name: initialData.name,
       description: initialData.description,
@@ -82,7 +84,9 @@ const Form: React.FC<FormProp> = forwardRef(
         <div className="tw-flex tw-w-full">
           <div className="tw-w-full">
             <div className="tw-mb-4">
-              <label className="tw-form-label required-field">Name</label>
+              <label className="tw-form-label required-field">
+                {t('label.name')}
+              </label>
               <input
                 autoComplete="off"
                 className="tw-text-sm tw-appearance-none tw-border tw-border-main
@@ -98,7 +102,7 @@ const Form: React.FC<FormProp> = forwardRef(
               {errorData?.name && errorMsg(errorData.name)}
             </div>
             <div>
-              <label className="tw-form-label">Description</label>
+              <label className="tw-form-label">{t('label.description')}</label>
               <RichTextEditor
                 initialValue={data.description}
                 ref={markdownRef}

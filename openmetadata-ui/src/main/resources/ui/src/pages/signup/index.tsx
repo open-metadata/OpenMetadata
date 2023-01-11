@@ -19,6 +19,7 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
 import appState from '../../AppState';
@@ -34,6 +35,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const cookieStorage = new CookieStorage();
 
 const Signup = () => {
+  const { t } = useTranslation();
   const { setIsSigningIn, jwtPrincipalClaims = [] } = useAuthContext();
 
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
@@ -112,7 +114,10 @@ const Signup = () => {
               </div>
               <div className="tw-mb-7">
                 <h4 className="tw-font-semibold" data-testid="om-heading">
-                  Join <span className="tw-text-primary">OpenMetadata</span>
+                  {t('label.join')}
+                  <span className="tw-text-primary">
+                    {t('label.open-metadata')}
+                  </span>
                 </h4>
               </div>
               <div className="tw-px-8 tw-w-full">
@@ -126,7 +131,7 @@ const Signup = () => {
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       data-testid="full-name-label"
                       htmlFor="displayName">
-                      Full name
+                      {t('label.full-name')}
                     </label>
                     <input
                       required
@@ -148,7 +153,7 @@ const Signup = () => {
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       data-testid="username-label"
                       htmlFor="name">
-                      Username
+                      {t('label.username')}
                     </label>
                     <input
                       readOnly
@@ -170,7 +175,7 @@ const Signup = () => {
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       data-testid="email-label"
                       htmlFor="email">
-                      Email
+                      {t('label.email')}
                     </label>
                     <input
                       readOnly
@@ -191,7 +196,7 @@ const Signup = () => {
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
                       data-testid="select-team-label">
-                      Select teams
+                      {t('label.select-teams')}
                     </label>
                     <TeamsSelectable
                       filterJoinable
@@ -208,7 +213,7 @@ const Signup = () => {
                       theme="primary"
                       type="submit"
                       variant="contained">
-                      Create
+                      {t('label.create')}
                     </Button>
                   </div>
                 </form>
@@ -221,7 +226,7 @@ const Signup = () => {
         <p
           className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center"
           data-testid="loading-content">
-          Creating Account ....
+          {t('label.creating-account')}
         </p>
       )}
     </>

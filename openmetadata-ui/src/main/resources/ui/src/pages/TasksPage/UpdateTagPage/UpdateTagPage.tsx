@@ -20,6 +20,7 @@ import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
@@ -54,6 +55,7 @@ import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -106,9 +108,9 @@ const UpdateTag = () => {
     if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       return (
         <div data-testid="column-details">
-          <p className="tw-font-semibold">Column Details</p>
+          <p className="tw-font-semibold">{t('label.column-details')}</p>
           <p>
-            <span className="tw-text-grey-muted">Type:</span>{' '}
+            <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
           <p>
@@ -249,13 +251,13 @@ const UpdateTag = () => {
                 data-testid="cta-buttons"
                 size={16}>
                 <Button type="link" onClick={back}>
-                  Back
+                  {t('label.back')}
                 </Button>
                 <Button
                   data-testid="submit-test"
                   htmlType="submit"
                   type="primary">
-                  Submit
+                  {t('label.submit')}
                 </Button>
               </Space>
             </Form.Item>
@@ -263,9 +265,11 @@ const UpdateTag = () => {
         </Card>
 
         <div className="tw-pl-2" data-testid="entity-details">
-          <h6 className="tw-text-base">{capitalize(entityType)} Details</h6>
+          <h6 className="tw-text-base">
+            {capitalize(entityType)} {t('label.detail-plural')}
+          </h6>
           <div className="tw-flex tw-mb-4">
-            <span className="tw-text-grey-muted">Owner:</span>{' '}
+            <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
             <span>
               {entityData.owner ? (
                 <span className="tw-flex tw-ml-1">
@@ -280,7 +284,9 @@ const UpdateTag = () => {
                   </span>
                 </span>
               ) : (
-                <span className="tw-text-grey-muted tw-ml-1">No Owner</span>
+                <span className="tw-text-grey-muted tw-ml-1">
+                  {t('label.no-entity', { entity: t('label.owner') })}
+                </span>
               )}
             </span>
           </div>
@@ -289,7 +295,9 @@ const UpdateTag = () => {
             {entityTier ? (
               entityTier
             ) : (
-              <span className="tw-text-grey-muted">No Tier</span>
+              <span className="tw-text-grey-muted">
+                {t('label.no-entity', { entity: t('label.tier') })}
+              </span>
             )}
           </p>
 
