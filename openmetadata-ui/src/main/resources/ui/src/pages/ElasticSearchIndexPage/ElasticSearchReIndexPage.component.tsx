@@ -12,16 +12,16 @@
  */
 
 import { ReloadOutlined } from '@ant-design/icons';
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
-import { useWebSocketConnector } from '@components/web-scoket/web-scoket.provider';
+import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
+import { AxiosError } from 'axios';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
+import { isEmpty, startCase } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import {
   getAllReIndexStatus,
   reIndexByPublisher,
-} from '@rest/elasticSearchReIndexAPI';
-import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
-import { AxiosError } from 'axios';
-import { isEmpty, startCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
+} from 'rest/elasticSearchReIndexAPI';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
 import {

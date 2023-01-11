@@ -21,7 +21,7 @@ import {
 import {
   JWT_PRINCIPAL_CLAIMS,
   UserProfile,
-} from '@components/authentication/auth-provider/AuthProvider.interface';
+} from 'components/authentication/auth-provider/AuthProvider.interface';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';

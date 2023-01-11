@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-import { getAllFeeds, postFeedById, postThread } from '@rest/feedsAPI';
-import { getLineageByFQN } from '@rest/lineageAPI';
-import { restorePipeline } from '@rest/pipelineAPI';
 import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -29,6 +26,9 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { restorePipeline } from 'rest/pipelineAPI';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
@@ -832,7 +832,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.Tasks}
             tab={
               <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
-                {t('label.tasks')}
+                {t('label.task-plural')}
               </span>
             }>
             <Row

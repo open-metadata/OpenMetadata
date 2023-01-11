@@ -11,52 +11,51 @@
  *  limitations under the License.
  */
 
-import { Button as LegacyButton } from '@components/buttons/Button/Button';
-import DeleteWidgetModal from '@components/common/DeleteWidget/DeleteWidgetModal';
-import Description from '@components/common/description/Description';
-import EntitySummaryDetails from '@components/common/EntitySummaryDetails/EntitySummaryDetails';
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from '@components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import NextPrevious from '@components/common/next-previous/NextPrevious';
-import ProfilePicture from '@components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '@components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import Ingestion from '@components/Ingestion/Ingestion.component';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '@components/PermissionProvider/PermissionProvider.interface';
-import ServiceConnectionDetails from '@components/ServiceConnectionDetails/ServiceConnectionDetails.component';
-import TagsViewer from '@components/tags-viewer/tags-viewer';
-import { getDashboards } from '@rest/dashboardAPI';
-import { getDatabases } from '@rest/databaseAPI';
-import {
-  checkAirflowStatus,
-  deleteIngestionPipelineById,
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  getIngestionPipelines,
-  triggerIngestionPipelineById,
-} from '@rest/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '@rest/miscAPI';
-import { getMlmodels } from '@rest/mlModelAPI';
-import { getPipelines } from '@rest/pipelineAPI';
-import {
-  getServiceByFQN,
-  TestConnection,
-  updateService,
-} from '@rest/serviceAPI';
-import { getTopics } from '@rest/topicsAPI';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { Button as LegacyButton } from 'components/buttons/Button/Button';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import Description from 'components/common/description/Description';
+import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from 'components/common/TabsPane/TabsPane';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Ingestion from 'components/Ingestion/Ingestion.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
+import TagsViewer from 'components/tags-viewer/tags-viewer';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
+import { getDashboards } from 'rest/dashboardAPI';
+import { getDatabases } from 'rest/databaseAPI';
+import {
+  deleteIngestionPipelineById,
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+} from 'rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from 'rest/miscAPI';
+import { getMlmodels } from 'rest/mlModelAPI';
+import { getPipelines } from 'rest/pipelineAPI';
+import {
+  getServiceByFQN,
+  TestConnection,
+  updateService,
+} from 'rest/serviceAPI';
+import { getTopics } from 'rest/topicsAPI';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
@@ -84,6 +83,7 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
@@ -111,6 +111,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
 
 const ServicePage: FunctionComponent = () => {
+  const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -139,7 +140,6 @@ const ServicePage: FunctionComponent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
   const [schemaCount, setSchemaCount] = useState<number>(0);
@@ -460,20 +460,6 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const getAirflowStatus = () => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
-  };
-
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -691,15 +677,6 @@ const ServicePage: FunctionComponent = () => {
       if (tabs[currentTabIndex]?.isProtected) {
         activeTabHandler(1);
       }
-
-      getAirflowStatus()
-        .then(() => {
-          setIsAirflowRunning(true);
-          getAllIngestionWorkflows();
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        });
     }
   }, [servicePermission]);
 
@@ -829,7 +806,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getIngestionTab = () => {
-    if (!isAirflowRunning) {
+    if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
     } else if (isUndefined(airflowEndpoint)) {
       return <Loader />;
@@ -969,6 +946,12 @@ const ServicePage: FunctionComponent = () => {
       },
     ];
   }, []);
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      getAllIngestionWorkflows();
+    }
+  }, [isAirflowAvailable]);
 
   return (
     <PageContainerV1>
@@ -1153,7 +1136,7 @@ const ServicePage: FunctionComponent = () => {
                             })}
                           </Button>
                         </Tooltip>
-                        {allowTestConn && isAirflowRunning && (
+                        {allowTestConn && isAirflowAvailable && (
                           <Tooltip
                             title={
                               servicePermission.EditAll

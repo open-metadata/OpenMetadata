@@ -18,17 +18,20 @@ import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import MyAssetStats from './MyAssetStats.component';
 
 const mockProp = {
-  entityCounts: {
-    tableCount: 40,
-    topicCount: 13,
-    dashboardCount: 10,
-    pipelineCount: 3,
-    mlmodelCount: 2,
-    servicesCount: 193,
-    userCount: 100,
-    teamCount: 7,
-    testSuiteCount: 1,
-  } as EntitiesCount,
+  entityState: {
+    entityCounts: {
+      tableCount: 40,
+      topicCount: 13,
+      dashboardCount: 10,
+      pipelineCount: 3,
+      mlmodelCount: 2,
+      servicesCount: 193,
+      userCount: 100,
+      teamCount: 7,
+      testSuiteCount: 1,
+    } as EntitiesCount,
+    entityCountLoading: false,
+  },
 };
 
 describe('Test MyDataHeader Component', () => {

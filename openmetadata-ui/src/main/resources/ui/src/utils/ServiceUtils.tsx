@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import {
   OperationPermission,
   ResourceEntity,
-} from '@components/PermissionProvider/PermissionProvider.interface';
-import { getEntityCount } from '@rest/miscAPI';
-import { AxiosError } from 'axios';
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import {
@@ -26,6 +25,7 @@ import {
   ServiceTypes,
 } from 'Models';
 import React from 'react';
+import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addDBTIngestionGuide,

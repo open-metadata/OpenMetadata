@@ -28,7 +28,7 @@ const mockActivityThreadProp = {
   updateThreadHandler: jest.fn(),
 };
 
-jest.mock('@rest/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -72,7 +72,7 @@ describe('Test ActivityFeedThread Component', () => {
     expect(repliesContainer).toBeInTheDocument();
     expect(replies).toHaveLength(mockThreadData[1].posts.length);
     expect(repliesCount).toHaveTextContent(
-      `${mockThreadData[1].posts.length} replies`
+      `${mockThreadData[1].posts.length} label.reply-lowercase-plural`
     );
   });
 });

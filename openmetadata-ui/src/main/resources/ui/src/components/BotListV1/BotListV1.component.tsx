@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getBots } from '@rest/botsAPI';
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -19,6 +18,7 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getBots } from 'rest/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,

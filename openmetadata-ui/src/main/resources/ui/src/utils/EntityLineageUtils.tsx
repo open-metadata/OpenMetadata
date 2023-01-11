@@ -12,6 +12,11 @@
  */
 
 import {
+  faChevronLeft,
+  faChevronRight,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
@@ -23,14 +28,9 @@ import {
   ModifiedColumn,
   SelectedEdge,
   SelectedNode,
-} from '@components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from '@components/EntityLineage/LineageNodeLabel';
-import Loader from '@components/Loader/Loader';
-import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+} from 'components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
+import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined } from 'lodash';
