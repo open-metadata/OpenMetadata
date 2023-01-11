@@ -3,12 +3,6 @@
     "analysis": {
       "tokenizer": {
         "2gram": {
-          "token_chars" : [
-            "letter",
-            "digit",
-            "punctuation",
-            "symbol"
-          ],
           "type": "ngram",
           "min_gram": 1,
           "max_gram": 2
