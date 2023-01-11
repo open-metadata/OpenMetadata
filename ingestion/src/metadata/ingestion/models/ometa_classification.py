@@ -12,14 +12,18 @@
 Custom wrapper for Tag and Classification
 """
 
+from typing import Optional
+
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 
 class OMetaTagAndClassification(BaseModel):
+    fqn: Optional[FullyQualifiedEntityName]
     classification_request: CreateClassificationRequest
     tag_request: CreateTagRequest
