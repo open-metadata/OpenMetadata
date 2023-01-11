@@ -199,12 +199,17 @@ class PostgresSource(CommonDbSourceService):
             return "GEOGRAPHY"
         return sa_type
 
-    def yield_tag(self, _: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
         Fetch Tags
         """
         try:
-            result = self.engine.execute(POSTGRES_GET_ALL_TABLE_PG_POLICY).all()
+            result = self.engine.execute(
+                POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                )
+            ).all()
 
             for res in result:
                 row = list(res)
