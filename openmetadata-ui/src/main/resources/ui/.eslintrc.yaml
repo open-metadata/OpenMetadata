@@ -220,6 +220,14 @@ overrides:
       jest/expect-expect:
         - off
 
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
+        - off
+
 settings:
   import/resolver:
     babel-module:
