@@ -403,6 +403,17 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   return path;
 };
 
+export const getMlModelDetailsPath = (mlModelFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.MLMODEL_DETAILS_WITH_TAB : ROUTES.MLMODEL_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
 export const getTeamAndUserDetailsPath = (name?: string) => {
   let path = getSettingPath(
     GlobalSettingsMenuCategory.MEMBERS,

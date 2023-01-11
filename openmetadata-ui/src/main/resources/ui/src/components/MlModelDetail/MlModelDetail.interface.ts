@@ -34,6 +34,7 @@ import {
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
   activeTab: number;
+  version?: string;
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
   paging: Paging;
@@ -45,6 +46,7 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
+  versionHandler: () => void;
   lineageTabData: {
     loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
     addLineageHandler: (edge: Edge) => Promise<void>;
