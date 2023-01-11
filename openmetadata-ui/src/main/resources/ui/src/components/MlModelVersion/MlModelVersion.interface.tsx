@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { VersionData } from '@pages/EntityVersionPage/EntityVersionPage.component';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';

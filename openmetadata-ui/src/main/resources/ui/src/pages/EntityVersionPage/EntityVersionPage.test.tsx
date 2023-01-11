@@ -39,7 +39,7 @@ jest.mock('components/PipelineVersion/PipelineVersion.component', () => {
 jest.mock('components/TopicVersion/TopicVersion.component', () => {
   return jest.fn().mockReturnValue(<div>TopicVersion component</div>);
 });
-jest.mock('@components/MlModelVersion/MlModelVersion.component', () => {
+jest.mock('components/MlModelVersion/MlModelVersion.component', () => {
   return jest.fn().mockReturnValue(<div>MlModelVersion component</div>);
 });
 
@@ -64,7 +64,7 @@ jest.mock('rest/topicsAPI', () => ({
   getTopicVersions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('@rest/mlModelAPI', () => ({
+jest.mock('rest/mlModelAPI', () => ({
   getMlModelByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
   getMlModelVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getMlModelVersions: jest.fn().mockImplementation(() => Promise.resolve()),
