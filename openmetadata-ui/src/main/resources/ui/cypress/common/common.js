@@ -905,6 +905,8 @@ export const updateDescriptionForIngestedTables = (
     type,
     entity
 ) => {
+    interceptURL('GET', '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*', 'pipelineStatuses')
+
     //Navigate to ingested table
 
     visitEntityDetailsPage(tableName, serviceName, entity);
@@ -938,7 +940,7 @@ export const updateDescriptionForIngestedTables = (
         .click();
 
     verifyResponseStatusCode('@getSelectedService', 200);
-
+    verifyResponseStatusCode('@pipelineStatuses', 200)
     cy.get('[data-testid="Ingestions"]').should('be.visible').click();
     interceptURL(
         'POST',
