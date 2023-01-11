@@ -352,14 +352,16 @@ const AddKPIPage = () => {
             <Row gutter={[8, 8]}>
               <Col span={12}>
                 <Form.Item
-                  label={t('label.start-date')}
+                  label={t('label.start-entity', { entity: t('label.date') })}
                   messageVariables={{ fieldName: 'startDate' }}
                   name="startDate"
                   rules={[
                     {
                       required: true,
                       message: t('label.field-required', {
-                        field: t('label.start-date'),
+                        field: t('label.start-entity', {
+                          entity: t('label.date'),
+                        }),
                       }),
                     },
                   ]}>

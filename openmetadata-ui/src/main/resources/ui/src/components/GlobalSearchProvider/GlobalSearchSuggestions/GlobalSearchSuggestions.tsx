@@ -15,6 +15,7 @@ import { Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -50,6 +51,7 @@ const GlobalSearchSuggestions = ({
   onSearch,
   selectRef,
 }: GlobalSearchSuggestionsProp) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [options, setOptions] = useState<Option[]>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
@@ -99,28 +101,28 @@ const GlobalSearchSuggestions = ({
     let icon = '';
     switch (index) {
       case SearchIndex.TOPIC:
-        label = 'Topics';
+        label = t('label.topics');
         icon = Icons.TOPIC_GREY;
 
         break;
       case SearchIndex.DASHBOARD:
-        label = 'Dashboards';
+        label = t('label.dashboard-plural');
         icon = Icons.DASHBOARD_GREY;
 
         break;
       case SearchIndex.PIPELINE:
-        label = 'Pipelines';
+        label = t('label.pipeline-plural');
         icon = Icons.PIPELINE_GREY;
 
         break;
       case SearchIndex.MLMODEL:
-        label = 'ML Models';
+        label = t('label.ml-model-plural');
         icon = Icons.MLMODAL;
 
         break;
       case SearchIndex.TABLE:
       default:
-        label = 'Tables';
+        label = t('label.tables');
         icon = Icons.TABLE_GREY;
 
         break;
@@ -323,14 +325,14 @@ const GlobalSearchSuggestions = ({
             ) : (
               <ErrorPlaceHolder classes="tw-mt-0 opacity-60">
                 <Typography.Text className="tw-text-sm tw-grey-body ">
-                  No Data Available
+                  {t('message.no-data-available')}
                 </Typography.Text>
               </ErrorPlaceHolder>
             )}
           </div>
         }
         open={!isEmpty(value)}
-        placeholder="Search"
+        placeholder={t('label.search')}
         placement="bottomRight"
         ref={selectRef}
         size="large"

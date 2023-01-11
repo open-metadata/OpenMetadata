@@ -93,7 +93,7 @@ const KPIList = () => {
           ),
       },
       {
-        title: t('label.start-date'),
+        title: t('label.start-entity', { entity: t('label.date') }),
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
