@@ -23,9 +23,7 @@ import {
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { fetchGlossaryTerms } from '../../../utils/GlossaryUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
 
@@ -118,78 +116,15 @@ const mockEntityInfoProp = {
   onThreadLinkSelect,
 };
 
-const mockTagList = [
-  {
-    id: 'tagCatId1',
-    name: 'TagCat1',
-    description: '',
-    children: [
-      {
-        id: 'tagId1',
-        name: 'Tag1',
-        fullyQualifiedName: 'TagCat1.Tag1',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-  {
-    id: 'tagCatId2',
-    name: 'TagCat2',
-    description: '',
-    children: [
-      {
-        id: 'tagId2',
-        name: 'Tag2',
-        fullyQualifiedName: 'TagCat2.Tag2',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-];
-
-const mockGlossaryList = [
-  {
-    name: 'Tag1',
-    displayName: 'Tag1',
-    fullyQualifiedName: 'Glossary.Tag1',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId1',
-  },
-  {
-    name: 'Tag2',
-    displayName: 'Tag2',
-    fullyQualifiedName: 'Glossary.Tag2',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId2',
-  },
-];
-
-jest.mock('../../../utils/CommonUtils', () => ({
-  getHtmlForNonAdminAction: jest.fn(),
-}));
-
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
-  getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
-  }),
-}));
-
-jest.mock('../../../utils/TableUtils', () => ({
-  getFollowerDetail: jest.fn(),
-}));
-
 jest.mock('../../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  fetchTagsAndGlossaryTerms: jest.fn().mockResolvedValue(mockTagList),
+  fetchTagsAndGlossaryTerms: jest.fn().mockResolvedValue([
+    { fqn: 'PersonalData.Personal', source: 'Tag' },
+    { fqn: 'Glossary.Tag1', source: 'Glossary' },
+  ]),
 }));
 
 jest.mock('../../tags-container/tags-container', () => {
@@ -519,15 +454,14 @@ describe('Test EntityPageInfo component', () => {
       String(mockEntityFieldThreads[0].count)
     );
 
-    fireEvent.click(
-      tagThreadButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(tagThreadButton);
+    });
 
     expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
-  it.skip('Check if tags and glossary-terms are present', async () => {
+  it('Check if tags and glossary-terms are present', async () => {
     const { getByTestId, findByText } = render(
       <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
       {
@@ -536,63 +470,14 @@ describe('Test EntityPageInfo component', () => {
     );
 
     const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(tagWrapper);
+    });
 
-    const tag1 = await findByText('TagCat1.Tag1');
+    const tag1 = await findByText('PersonalData.Personal');
     const glossaryTerm1 = await findByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
-    expect(glossaryTerm1).toBeInTheDocument();
-  });
-
-  it.skip('Check if only tags are present', async () => {
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, findByText, queryByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = await findByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryByText('Glossary.Tag1');
-
-    expect(tag1).toBeInTheDocument();
-    expect(glossaryTerm1).not.toBeInTheDocument();
-  });
-
-  it.skip('Check if only glossary terms are present', async () => {
-    (fetchTagsAndGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, findByText, queryByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findByText('Glossary.Tag1');
-
-    expect(tag1).not.toBeInTheDocument();
     expect(glossaryTerm1).toBeInTheDocument();
   });
 
@@ -601,21 +486,17 @@ describe('Test EntityPageInfo component', () => {
       (fetchTagsAndGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
         Promise.reject()
       );
-      (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
 
       render(<EntityPageInfo {...mockEntityInfoProp} isTagEditable />, {
         wrapper: MemoryRouter,
       });
       const tagWrapper = screen.getByTestId('tags-wrapper');
 
-      fireEvent.click(
-        tagWrapper,
-        new MouseEvent('click', { bubbles: true, cancelable: true })
-      );
+      await act(async () => {
+        fireEvent.click(tagWrapper);
+      });
 
-      const tag1 = screen.queryByText('TagCat1.Tag1');
+      const tag1 = screen.queryByText('PersonalData.Personal');
       const glossaryTerm1 = screen.queryByText('Glossary.Tag1');
 
       expect(tag1).not.toBeInTheDocument();

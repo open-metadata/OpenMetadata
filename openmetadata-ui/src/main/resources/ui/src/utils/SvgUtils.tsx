@@ -403,6 +403,11 @@ export const Icons = {
   DRAG: 'drag',
 };
 
+/**
+ * @deprecated SVGIcons is deprecated, Please use SVG image as ReactComponent wherever it is required
+ * e.g import { ReactComponent as Icon } from '<PATH_NAME>';
+ */
+
 const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
   let IconComponent;
   switch (icon) {
