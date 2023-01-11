@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import PageLayoutV1 from '@components/containers/PageLayoutV1';
-import EntityLineageComponent from '@components/EntityLineage/EntityLineage.component';
+import { Card } from 'antd';
+import { AxiosError } from 'axios';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import {
   Edge,
   EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from '@components/EntityLineage/EntityLineage.interface';
-import { getDashboardByFqn } from '@rest/dashboardAPI';
-import { getLineageByFQN } from '@rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
-import { getMlModelByFQN } from '@rest/mlModelAPI';
-import { getPipelineByFqn } from '@rest/pipelineAPI';
-import { getTableDetailsByFQN } from '@rest/tableAPI';
-import { getTopicByFqn } from '@rest/topicsAPI';
-import { Card } from 'antd';
-import { AxiosError } from 'axios';
+} from 'components/EntityLineage/EntityLineage.interface';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import { getMlModelByFQN } from 'rest/mlModelAPI';
+import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
+import { getTopicByFqn } from 'rest/topicsAPI';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,

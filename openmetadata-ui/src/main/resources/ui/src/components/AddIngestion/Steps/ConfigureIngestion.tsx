@@ -350,7 +350,7 @@ const ConfigureIngestion = ({
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
               {t('message.include-assets-message', {
-                entity: t('label.view-plural'),
+                assets: t('label.view-plural'),
               })}
             </p>
             {getSeparator('')}
@@ -368,7 +368,7 @@ const ConfigureIngestion = ({
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
               {t('message.include-assets-message', {
-                entity: t('label.tag-plural'),
+                assets: t('label.tag-plural'),
               })}
             </p>
             {getSeparator('')}

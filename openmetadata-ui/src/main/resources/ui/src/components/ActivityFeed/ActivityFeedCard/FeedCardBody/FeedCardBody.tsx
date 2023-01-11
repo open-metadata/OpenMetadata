@@ -15,6 +15,7 @@ import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -35,6 +36,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   onPostUpdate,
   onCancelPostUpdate,
 }) => {
+  const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
   const handleMessageUpdate = (updatedMessage: string) => {
@@ -64,7 +66,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             data-testid="cancel-button"
             size="small"
             onClick={handleCancel}>
-            Cancel
+            {t('label.cancel')}
           </Button>
           <Button
             className="tw-rounded"
@@ -76,7 +78,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
               e.stopPropagation();
               handleSave();
             }}>
-            Save
+            {t('label.save')}
           </Button>
         </div>
       }
@@ -101,8 +103,9 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
             <Typography.Text className="tw-text-xs tw-text-grey-muted">
-              Schedule{' '}
-              {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)} to{' '}
+              {t('label.schedule')}{' '}
+              {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)}{' '}
+              {t('label.to-lowercase')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
             <Typography.Text className="tw-font-semibold">

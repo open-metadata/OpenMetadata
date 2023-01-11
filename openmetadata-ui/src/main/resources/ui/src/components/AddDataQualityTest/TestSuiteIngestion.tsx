@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import {
-  addIngestionPipeline,
-  deployIngestionPipelineById,
-  updateIngestionPipeline as putIngestionPipeline,
-} from '@rest/ingestionPipelineAPI';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { camelCase, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+  updateIngestionPipeline as putIngestionPipeline,
+} from 'rest/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,

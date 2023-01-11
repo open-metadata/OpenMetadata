@@ -29,7 +29,7 @@ const mockTableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('@rest/tableAPI', () => ({
+jest.mock('rest/tableAPI', () => ({
   getTableQueryByTableId: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),

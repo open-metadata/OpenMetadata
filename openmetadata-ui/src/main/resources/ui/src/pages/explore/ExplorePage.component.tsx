@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import Explore from '@components/Explore/Explore.component';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Explore from 'components/Explore/Explore.component';
 import {
   ExploreProps,
   ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
-} from '@components/Explore/explore.interface';
-import { searchQuery } from '@rest/searchAPI';
+} from 'components/Explore/explore.interface';
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import AppState from '../../AppState';
 import { PAGE_SIZE } from '../../constants/constants';

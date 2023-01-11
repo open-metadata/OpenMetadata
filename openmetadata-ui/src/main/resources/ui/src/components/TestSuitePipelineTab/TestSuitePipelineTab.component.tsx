@@ -12,14 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  deleteIngestionPipelineById,
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  getIngestionPipelines,
-  triggerIngestionPipelineById,
-} from '@rest/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '@rest/miscAPI';
 import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -27,6 +19,14 @@ import cronstrue from 'cronstrue';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import {
+  deleteIngestionPipelineById,
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+} from 'rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from 'rest/miscAPI';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';

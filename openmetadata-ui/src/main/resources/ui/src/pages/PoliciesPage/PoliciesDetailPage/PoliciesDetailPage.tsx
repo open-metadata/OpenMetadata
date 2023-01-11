@@ -11,24 +11,7 @@
  *  limitations under the License.
  */
 
-import Description from '@components/common/description/Description';
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '@components/PermissionProvider/PermissionProvider.interface';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  getPolicyByName,
-  getRoleByName,
-  patchPolicy,
-  patchRole,
-} from '@rest/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from '@rest/teamsAPI';
 import {
   Button,
   Card,
@@ -43,11 +26,28 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import Description from 'components/common/description/Description';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import {
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
+} from 'rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

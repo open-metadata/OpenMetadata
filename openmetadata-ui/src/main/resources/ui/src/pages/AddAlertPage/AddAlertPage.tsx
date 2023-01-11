@@ -12,18 +12,6 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { AsyncSelect } from '@components/AsyncSelect/AsyncSelect';
-import { createAlertAction, updateAlertAction } from '@rest/alertActionAPI';
-import {
-  createAlert,
-  getAlertActionForAlerts,
-  getAlertsFromId,
-  getDefaultTriggerConfigs,
-  getEntityFilterFunctions,
-  getFilterFunctions,
-  updateAlert,
-} from '@rest/alertsAPI';
-import { getSearchedUsersAndTeams, getSuggestions } from '@rest/miscAPI';
 import {
   Button,
   Card,
@@ -40,10 +28,22 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
+import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
 import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { createAlertAction, updateAlertAction } from 'rest/alertActionAPI';
+import {
+  createAlert,
+  getAlertActionForAlerts,
+  getAlertsFromId,
+  getDefaultTriggerConfigs,
+  getEntityFilterFunctions,
+  getFilterFunctions,
+  updateAlert,
+} from 'rest/alertsAPI';
+import { getSearchedUsersAndTeams, getSuggestions } from 'rest/miscAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

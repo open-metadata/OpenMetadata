@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { getGroupTypeTeams } from '@rest/userAPI';
 import { AxiosError } from 'axios';
 import { debounce, isEqual, lowerCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getGroupTypeTeams } from 'rest/userAPI';
 import { default as AppState, default as appState } from '../../../AppState';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';

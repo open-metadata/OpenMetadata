@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import RichTextEditorPreviewer from '@components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Button, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

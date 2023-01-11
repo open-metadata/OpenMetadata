@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { searchData } from '@rest/miscAPI';
-import { getTableDetails } from '@rest/tableAPI';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import {
@@ -49,6 +47,8 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { searchData } from 'rest/miscAPI';
+import { getTableDetails } from 'rest/tableAPI';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,

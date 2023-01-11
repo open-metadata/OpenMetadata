@@ -12,8 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import AddAttributeModal from '@pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import { restoreTeam } from '@rest/teamsAPI';
 import {
   Button as ButtonAntd,
   Col,
@@ -33,9 +31,11 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
+import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
