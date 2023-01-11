@@ -59,6 +59,7 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     return f"SUM({proc})"
 
+
 @compiles(SumFn, Dialects.Oracle)
 def _(element, compiler, **kw):
     """Oracle casting"""
