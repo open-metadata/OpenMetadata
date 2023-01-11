@@ -101,7 +101,6 @@ plugins: Dict[str, Set[str]] = {
     "airflow": {
         "apache-airflow==2.3.3"
     },  # Same as ingestion container. For development.
-    "airflow-container-1.10.15": {"markupsafe==2.0.1 ", "requests==2.23.0"},
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"PyAthena[SQLAlchemy]"},
     "atlas": {},
