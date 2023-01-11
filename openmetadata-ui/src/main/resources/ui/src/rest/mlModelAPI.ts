@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
@@ -21,6 +22,22 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+
+export const getMlModelVersions = async (id: string) => {
+  const url = `/mlmodels/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getMlModelVersion = async (id: string, version: string) => {
+  const url = `/mlmodels/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Mlmodel>(url);
+
+  return response.data;
+};
 
 export const getMlModelByFQN = async (
   fqn: string,
