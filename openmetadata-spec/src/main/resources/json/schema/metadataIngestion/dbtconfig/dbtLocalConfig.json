@@ -20,13 +20,8 @@
       "title": "DBT Run Results File Path",
       "description": "DBT run results file path to extract the test results information.",
       "type": "string"
-    },
-    "dbtUpdateDescriptions": {
-      "description": "Optional configuration to update the description from DBT or not",
-      "type": "boolean",
-      "default": false
     }
   },
   "additionalProperties": false,
-  "required": ["dbtCatalogFilePath", "dbtManifestFilePath"]
+  "required": ["dbtManifestFilePath"]
 }

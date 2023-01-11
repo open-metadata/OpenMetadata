@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -35,7 +36,6 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
@@ -132,6 +132,7 @@ def _(
     schema_name: Optional[str],
     table_name: str,
     fetch_multiple_entities: bool = False,
+    skip_es_search: bool = False,
 ) -> Union[Optional[str], Optional[List[str]]]:
     """
     Building logic for tables
@@ -142,19 +143,19 @@ def _(
     :param table_name: Table name
     :return:
     """
-    if not service_name or not table_name:
-        raise FQNBuildingException(
-            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+    fqn_search_string = build_es_fqn_search_string(
+        database_name, schema_name, service_name, table_name
+    )
+
+    es_result = (
+        metadata.es_search_from_fqn(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
         )
-
-    fqn_search_string = _build(
-        service_name, database_name or "*", schema_name or "*", table_name
+        if not skip_es_search
+        else None
     )
 
-    es_result = metadata.es_search_from_fqn(
-        entity_type=Table,
-        fqn_search_string=fqn_search_string,
-    )
     entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
@@ -258,14 +259,14 @@ def _(
 def _(
     _: OpenMetadata,  # ES Index not necessary for Tag FQN building
     *,
-    tag_category_name: str,
+    classification_name: str,
     tag_name: str,
 ) -> str:
-    if not tag_category_name or not tag_name:
+    if not classification_name or not tag_name:
         raise FQNBuildingException(
-            f"Args should be informed, but got category=`{tag_category_name}`, tag=`{tag_name}``"
+            f"Args should be informed, but got category=`{classification_name}`, tag=`{tag_name}``"
         )
-    return _build(tag_category_name, tag_name)
+    return _build(classification_name, tag_name)
 
 
 @fqn_build_registry.add(DataModel)
@@ -450,3 +451,28 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     ) = details
 
     return SplitTestCaseFqn(service, database, schema, table, column, test_case)
+
+
+def build_es_fqn_search_string(
+    database_name: str, schema_name, service_name, table_name
+) -> str:
+    """
+    Builds FQN search string for ElasticSearch
+
+    Args:
+        service_name: service name to filter
+        database_name: DB name or None
+        schema_name: schema name or None
+        table_name: table name
+
+    Returns:
+        FQN search string
+    """
+    if not service_name or not table_name:
+        raise FQNBuildingException(
+            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+        )
+    fqn_search_string = _build(
+        service_name, database_name or "*", schema_name or "*", table_name
+    )
+    return fqn_search_string

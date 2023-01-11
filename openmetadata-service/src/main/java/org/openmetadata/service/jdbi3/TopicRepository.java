@@ -13,17 +13,27 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -31,6 +41,7 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.topics.TopicResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -42,6 +53,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getName(), topic.getName()));
+    if (topic.getMessageSchema() != null) {
+      setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
+    }
   }
 
   public TopicRepository(CollectionDAO dao) {
@@ -60,6 +74,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
+    // Validate field tags
+    if (topic.getMessageSchema() != null) {
+      addDerivedFieldTags(topic.getMessageSchema().getSchemaFields());
+      topic.getMessageSchema().getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
+    }
   }
 
   @Override
@@ -72,9 +91,20 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
+    // Don't store feild tags as JSON but build it on the fly based on relationships
+    List<Field> fieldsWithTags = null;
+    if (topic.getMessageSchema() != null) {
+      fieldsWithTags = topic.getMessageSchema().getSchemaFields();
+      topic.getMessageSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
+      topic.getMessageSchema().getSchemaFields().forEach(field -> field.setTags(null));
+    }
+
     store(topic, update);
 
     // Restore the relationships
+    if (fieldsWithTags != null) {
+      topic.getMessageSchema().withSchemaFields(fieldsWithTags);
+    }
     topic.withOwner(owner).withService(service).withTags(tags);
   }
 
@@ -90,6 +120,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(getContainer(topic.getId()));
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
+    if (topic.getMessageSchema() != null) {
+      getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());
+    }
     return topic;
   }
 
@@ -123,6 +156,76 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic.withSampleData(sampleData);
   }
 
+  private void setFieldFQN(String parentFQN, List<Field> fields) {
+    fields.forEach(
+        c -> {
+          String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
+          c.setFullyQualifiedName(fieldFqn);
+          if (c.getChildren() != null) {
+            setFieldFQN(fieldFqn, c.getChildren());
+          }
+        });
+  }
+
+  private void getFieldTags(boolean setTags, List<Field> fields) {
+    for (Field f : listOrEmpty(fields)) {
+      f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
+      getFieldTags(setTags, f.getChildren());
+    }
+  }
+
+  private void addDerivedFieldTags(List<Field> fields) {
+    if (nullOrEmpty(fields)) {
+      return;
+    }
+
+    for (Field field : fields) {
+      field.setTags(addDerivedTags(field.getTags()));
+      if (field.getChildren() != null) {
+        addDerivedFieldTags(field.getChildren());
+      }
+    }
+  }
+
+  List<Field> cloneWithoutTags(List<Field> fields) {
+    if (nullOrEmpty(fields)) {
+      return fields;
+    }
+    List<Field> copy = new ArrayList<>();
+    fields.forEach(f -> copy.add(cloneWithoutTags(f)));
+    return copy;
+  }
+
+  private Field cloneWithoutTags(Field field) {
+    List<Field> children = cloneWithoutTags(field.getChildren());
+    return new Field()
+        .withDescription(field.getDescription())
+        .withName(field.getName())
+        .withDisplayName(field.getDisplayName())
+        .withFullyQualifiedName(field.getFullyQualifiedName())
+        .withDataType(field.getDataType())
+        .withChildren(children);
+  }
+
+  private void applyTags(List<Field> fields) {
+    // Add field level tags by adding tag to field relationship
+    for (Field field : fields) {
+      applyTags(field.getTags(), field.getFullyQualifiedName());
+      if (field.getChildren() != null) {
+        applyTags(field.getChildren());
+      }
+    }
+  }
+
+  @Override
+  public void applyTags(Topic topic) {
+    // Add table level tags by adding tag to table relationship
+    super.applyTags(topic);
+    if (topic.getMessageSchema() != null) {
+      applyTags(topic.getMessageSchema().getSchemaFields());
+    }
+  }
+
   public class TopicUpdater extends EntityUpdater {
     public TopicUpdater(Topic original, Topic updated, Operation operation) {
       super(original, updated, operation);
@@ -136,8 +239,21 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
       recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
-      recordChange("schemaText", original.getSchemaText(), updated.getSchemaText());
-      recordChange("schemaType", original.getSchemaType(), updated.getSchemaType());
+      if (updated.getMessageSchema() != null) {
+        recordChange(
+            "messageSchema.schemaText",
+            original.getMessageSchema().getSchemaText(),
+            updated.getMessageSchema().getSchemaText());
+        recordChange(
+            "messageSchema.schemaType",
+            original.getMessageSchema().getSchemaType(),
+            updated.getMessageSchema().getSchemaType());
+        updateSchemaFields(
+            "messageSchema.schemaFields",
+            original.getMessageSchema().getSchemaFields(),
+            updated.getMessageSchema().getSchemaFields(),
+            EntityUtil.schemaFieldMatch);
+      }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
     }
@@ -152,6 +268,81 @@ public class TopicRepository extends EntityRepository<Topic> {
           added,
           deleted,
           CleanupPolicy::equals);
+    }
+
+    private void updateSchemaFields(
+        String fieldName, List<Field> origFields, List<Field> updatedFields, BiPredicate<Field, Field> fieldMatch)
+        throws IOException {
+      List<Field> deletedFields = new ArrayList<>();
+      List<Field> addedFields = new ArrayList<>();
+      recordListChange(fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
+      // carry forward tags and description if deletedFields matches added field
+      Map<String, Field> addedFieldMap =
+          addedFields.stream().collect(Collectors.toMap(Field::getName, Function.identity()));
+
+      for (Field deleted : deletedFields) {
+        if (addedFieldMap.containsKey(deleted.getName())) {
+          Field addedField = addedFieldMap.get(deleted.getName());
+          if (nullOrEmpty(addedField.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+            addedField.setDescription(deleted.getDescription());
+          }
+          if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {
+            addedField.setTags(deleted.getTags());
+          }
+        }
+      }
+
+      // Delete tags related to deleted fields
+      deletedFields.forEach(deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+
+      // Add tags related to newly added fields
+      for (Field added : addedFields) {
+        applyTags(added.getTags(), added.getFullyQualifiedName());
+      }
+
+      // Carry forward the user generated metadata from existing fields to new fields
+      for (Field updated : updatedFields) {
+        // Find stored field matching name, data type and ordinal position
+        Field stored = origFields.stream().filter(c -> fieldMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New field added
+          continue;
+        }
+
+        updateFieldDescription(stored, updated);
+        updateFieldDisplayName(stored, updated);
+        updateTags(
+            stored.getFullyQualifiedName(),
+            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+            stored.getTags(),
+            updated.getTags());
+
+        if (updated.getChildren() != null && stored.getChildren() != null) {
+          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
+          updateSchemaFields(childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
+        }
+      }
+
+      majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
+    }
+
+    private void updateFieldDescription(Field origField, Field updatedField) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+        // Revert the non-empty field description if being updated by a bot
+        updatedField.setDescription(origField.getDescription());
+        return;
+      }
+      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      recordChange(field, origField.getDescription(), updatedField.getDescription());
+    }
+
+    private void updateFieldDisplayName(Field origField, Field updatedField) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+        // Revert the non-empty field description if being updated by a bot
+        updatedField.setDisplayName(origField.getDisplayName());
+        return;
+      }
+      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
     }
   }
 }

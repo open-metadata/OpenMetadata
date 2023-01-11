@@ -46,6 +46,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
           "profiler_task",
           PipelineType.LINEAGE.toString(),
           "lineage_task",
+          PipelineType.DBT.toString(),
+          "dbt_task",
           PipelineType.USAGE.toString(),
           "usage_task",
           PipelineType.TEST_SUITE.toString(),
@@ -169,8 +171,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response =
           getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
-        List<PipelineStatus> pipelineStatusList = JsonUtils.readObjects(response.body(), PipelineStatus.class);
-        return pipelineStatusList;
+        return JsonUtils.readObjects(response.body(), PipelineStatus.class);
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());

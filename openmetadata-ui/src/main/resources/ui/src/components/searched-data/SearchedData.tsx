@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -43,7 +44,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   showOnlyChildren = false,
   totalValue,
   isFilterSelected,
+  isSummaryPanelVisible,
   searchText,
+  selectedEntityName,
   handleSummaryPanelDisplay,
 }) => {
   const highlightSearchResult = () => {
@@ -90,6 +93,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCardV2
+            className={classNames(
+              name === selectedEntityName && isSummaryPanelVisible
+                ? 'highlight-card'
+                : ''
+            )}
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}

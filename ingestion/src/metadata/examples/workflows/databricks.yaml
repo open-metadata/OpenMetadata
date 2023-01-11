@@ -4,6 +4,7 @@ source:
   serviceConnection:
     config:
       catalog: hive_metastore
+      databaseSchema: default
       token: <databricks token>
       hostPort: localhost:443
       connectionArguments:

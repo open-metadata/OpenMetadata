@@ -61,6 +61,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
+	rm -rf ingestion/src/metadata/generated
 	mkdir -p ingestion/src/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
@@ -69,7 +70,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight ingestion/tests/integration/lineage
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests

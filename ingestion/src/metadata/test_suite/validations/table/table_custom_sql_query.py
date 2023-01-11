@@ -16,6 +16,7 @@ TableColumnCountToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from typing import Union
 
 from sqlalchemy import text
 
@@ -32,9 +33,9 @@ logger = test_suite_logger()
 
 
 def table_custom_sql_query(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate custom SQL tests. Tests will fail if number of rows

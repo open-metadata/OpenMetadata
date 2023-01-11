@@ -46,7 +46,6 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupMlModelServices(TestInfo test) throws HttpResponseException {
@@ -156,7 +155,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner";
+    fields = "owner,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

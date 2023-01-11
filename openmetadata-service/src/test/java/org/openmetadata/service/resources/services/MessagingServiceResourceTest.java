@@ -67,7 +67,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         "services/messagingServices",
         MessagingServiceResource.FIELDS);
     supportsPatch = false;
-    supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupMessagingServices() throws HttpResponseException {
@@ -208,7 +207,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner";
+    fields = "owner,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)

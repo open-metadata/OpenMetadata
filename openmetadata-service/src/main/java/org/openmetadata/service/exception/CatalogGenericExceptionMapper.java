@@ -41,7 +41,9 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
-    if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
+    if (ex instanceof ProcessingException
+        || ex instanceof IllegalArgumentException
+        || ex instanceof javax.ws.rs.BadRequestException) {
       final Response response = BadRequestException.of().getResponse();
       return Response.fromResponse(response)
           .type(MediaType.APPLICATION_JSON_TYPE)

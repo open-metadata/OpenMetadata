@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -118,8 +118,8 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
         }}
         closeIcon={<></>}
         footer={null}
+        open={visible}
         transitionName=""
-        visible={visible}
         width={650}
         onCancel={handleCancel}>
         <GlobalSearchSuggestions

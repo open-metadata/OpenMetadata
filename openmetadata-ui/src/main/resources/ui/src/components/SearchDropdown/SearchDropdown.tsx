@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,10 +21,12 @@ import {
   MenuProps,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import React, { ChangeEvent, FC, useMemo, useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
@@ -32,7 +34,10 @@ import {
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import Loader from '../Loader/Loader';
-import { SearchDropdownProps } from './SearchDropdown.interface';
+import {
+  SearchDropdownOption,
+  SearchDropdownProps,
+} from './SearchDropdown.interface';
 import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
@@ -41,29 +46,41 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   options,
   searchKey,
   selectedKeys,
+  highlight = false,
   onChange,
+  onGetInitialOptions,
   onSearch,
 }) => {
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState('');
   const [selectedOptions, setSelectedOptions] =
-    useState<string[]>(selectedKeys);
+    useState<SearchDropdownOption[]>(selectedKeys);
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Separating selected options to show on top
     const selectedOptionKeys =
-      getSearchDropdownLabels(selectedOptions, true) || [];
+      getSearchDropdownLabels(
+        selectedOptions,
+        true,
+        highlight ? searchText : ''
+      ) || [];
 
     // Filtering out unselected options
     const unselectedOptions = options.filter(
-      (option) => !selectedOptions.includes(option)
+      (option) =>
+        !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
     );
 
     // Labels for unselected options
     const otherOptions =
-      getSearchDropdownLabels(unselectedOptions, false) || [];
+      getSearchDropdownLabels(
+        unselectedOptions,
+        false,
+        highlight ? searchText : ''
+      ) || [];
 
     return [...selectedOptionKeys, ...otherOptions];
   }, [options, selectedOptions]);
@@ -71,11 +88,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
-    const isSelected = selectedOptions.includes(currentKey);
+    // Find out if clicked option is present in selected key
+    const selectedKey = selectedOptions.find(
+      (option) => option.key === currentKey
+    );
 
-    const updatedValues = isSelected
-      ? selectedOptions.filter((v) => v !== currentKey)
-      : [...selectedOptions, currentKey];
+    // Get the option object for clicked option
+    const option = options.find((op) => op.key === currentKey);
+
+    // Get updated options
+    const updatedValues = isUndefined(selectedKey)
+      ? [...selectedOptions, ...(option ? [option] : [])]
+      : selectedOptions.filter((option) => option.key !== currentKey);
 
     setSelectedOptions(updatedValues);
   };
@@ -88,7 +112,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // handle search
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-
+    setSearchText(value);
     onSearch(value, searchKey);
   };
 
@@ -108,6 +132,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     () => selectedOptions.length > 1,
     [selectedOptions]
   );
+
+  useEffect(() => {
+    setSelectedOptions(selectedKeys);
+  }, [isDropDownOpen, selectedKeys]);
 
   return (
     <Dropdown
@@ -152,7 +180,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             ) : (
               <Row className="m-y-sm" justify="center">
                 <Typography.Text>
-                  {t('label.no-data-available')}
+                  {t('message.no-data-available')}
                 </Typography.Text>
               </Row>
             )}
@@ -178,27 +206,38 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
+      transitionName=""
       trigger={['click']}
       onOpenChange={(visible) => {
-        visible && onSearch('', searchKey);
+        visible &&
+          !isUndefined(onGetInitialOptions) &&
+          onGetInitialOptions(searchKey);
         setIsDropDownOpen(visible);
+        setSearchText('');
       }}>
-      <Button className="quick-filter-dropdown-trigger-btn">
-        <Space data-testid="search-dropdown" size={4}>
-          <Space size={0}>
-            <Typography.Text>{label}</Typography.Text>
-            {selectedKeys.length > 0 && (
-              <span>
-                {': '}
-                <Typography.Text className="text-primary font-medium">
-                  {getSelectedOptionLabelString(selectedKeys)}
-                </Typography.Text>
-              </span>
-            )}
+      <Tooltip
+        mouseLeaveDelay={0}
+        overlayClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
+        placement="bottom"
+        title={getSelectedOptionLabelString(selectedKeys, true)}
+        trigger="hover">
+        <Button className="quick-filter-dropdown-trigger-btn">
+          <Space data-testid="search-dropdown" size={4}>
+            <Space size={0}>
+              <Typography.Text>{label}</Typography.Text>
+              {selectedKeys.length > 0 && (
+                <span>
+                  {': '}
+                  <Typography.Text className="text-primary font-medium">
+                    {getSelectedOptionLabelString(selectedKeys)}
+                  </Typography.Text>
+                </span>
+              )}
+            </Space>
+            <DropDown className="flex self-center" height={12} width={12} />
           </Space>
-          <DropDown className="flex self-center" />
-        </Space>
-      </Button>
+        </Button>
+      </Tooltip>
     </Dropdown>
   );
 };

@@ -66,9 +66,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         DatabaseService.class,
         DatabaseServiceList.class,
         "services/databaseServices",
-        "owner");
+        "owner,tags");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupDatabaseServices(TestInfo test) throws HttpResponseException {
@@ -288,7 +287,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner";
+    fields = "owner,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

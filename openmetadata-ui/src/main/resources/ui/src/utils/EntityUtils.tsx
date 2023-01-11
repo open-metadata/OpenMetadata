@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
+import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
+import {
+  LeafNodes,
+  LineagePos,
+} from 'components/EntityLineage/EntityLineage.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
-import { Bucket, LeafNodes, LineagePos } from 'Models';
+import { Bucket } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import PopOver from '../components/common/popover/PopOver';
-import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
-import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -113,7 +118,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service,
           url: getServiceDetailsPath(
             service,
@@ -122,7 +127,7 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Database',
+          name: i18next.t('label.database'),
           value: database,
           url: getDatabaseDetailsPath(
             getPartialNameFromTableFQN(
@@ -134,7 +139,7 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Schema',
+          name: i18next.t('label.schema'),
           value: schema,
           url: getDatabaseSchemaDetailsPath(
             getPartialNameFromTableFQN(
@@ -146,33 +151,33 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: 'Usage',
+          name: i18next.t('label.usage'),
           value: usage,
           isLink: false,
         },
         {
-          name: 'Queries',
+          name: i18next.t('label.query-plural'),
           value: `${queries} past week`,
           isLink: false,
         },
         {
-          name: 'Columns',
+          name: i18next.t('label.columns-plural'),
           value: columns ? columns.length : '--',
           isLink: false,
         },
         {
-          name: 'Rows',
+          name: i18next.t('label.row-plural'),
           value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
         },
@@ -188,7 +193,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
@@ -197,18 +202,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: `${serviceType} url`,
+          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
           value: fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string,
           url: pipelineUrl as string,
           isLink: true,
@@ -231,7 +236,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
@@ -240,18 +245,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: `${serviceType} url`,
+          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
           value:
             displayName ||
             (fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string),
@@ -370,12 +375,14 @@ export const isLeafNode = (
 
 export const ENTITY_LINK_SEPARATOR = '::';
 
-export const getEntityFeedLink: Function = (
-  type: string,
-  fqn: string,
+export const getEntityFeedLink = (
+  type?: string,
+  fqn?: string,
   field?: string
-): string | undefined => {
-  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+): string => {
+  if (isUndefined(type) || isUndefined(fqn)) {
+    return '';
+  }
   // url decode the fqn
   fqn = decodeURIComponent(fqn);
 
@@ -539,8 +546,8 @@ export const getFrequentlyJoinedColumns = (
         ))}
 
         {frequentlyJoinedWithColumns.length > 3 && (
-          <PopOver
-            html={
+          <Popover
+            content={
               <div className="text-left">
                 {frequentlyJoinedWithColumns
                   ?.slice(3)
@@ -566,11 +573,10 @@ export const getFrequentlyJoinedColumns = (
                   ))}
               </div>
             }
-            position="bottom"
-            theme="light"
+            placement="bottom"
             trigger="click">
             <span className="show-more m-l-xss text-underline">...</span>
-          </PopOver>
+          </Popover>
         )}
       </span>
     </div>

@@ -12,7 +12,7 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -54,6 +54,8 @@ source:
   serviceName: local_databricks
   serviceConnection:
     config:
+      catalog: hive_metastore
+      databaseSchema: default
       type: Databricks
       token: <databricks token>
       hostPort: <databricks connection host & port>
@@ -85,7 +87,7 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
+      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
       # dbtConfigSource:
       # # For cloud
       #   dbtCloudAuthToken: token
@@ -138,6 +140,8 @@ workflowConfig:
 - **hostPort**: Enter the fully qualified hostname and port number for your Databricks deployment in the Host and Port field.
 - **token**: Generated Token to connect to Databricks.
 - **httpPath**: Databricks compute resources URL.
+- **catalog**: Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.
+- **databaseSchema**: DatabaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
@@ -337,6 +341,8 @@ source:
   serviceName: local_databricks
   serviceConnection:
     config:
+      catalog: hive_metastore
+      databaseSchema: default
       token: <databricks token>
       hostPort: localhost:443
       connectionArguments:
@@ -421,6 +427,8 @@ source:
   serviceName: local_databricks
   serviceConnection:
     config:
+      catalog: hive_metastore
+      databaseSchema: default
       type: Databricks
       token: <databricks token>
       hostPort: <databricks connection host & port>
@@ -540,6 +548,6 @@ metadata profile -c <path-to-yaml>
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
 
-## DBT Integration
+## dbt Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

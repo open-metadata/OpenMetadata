@@ -25,6 +25,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -64,20 +65,33 @@ def search_table_entities(
     if search_tuple in search_cache:
         return search_cache.get(search_tuple)
     try:
-        table_fqns = fqn.build(
-            metadata,
-            entity_type=Table,
-            service_name=service_name,
-            database_name=database,
-            schema_name=database_schema,
-            table_name=table,
-            fetch_multiple_entities=True,
-        )
         table_entities: Optional[List[Table]] = []
-        for table_fqn in table_fqns or []:
-            table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-            if table_entity:
-                table_entities.append(table_entity)
+        # search on ES first
+        fqn_search_string = build_es_fqn_search_string(
+            database, database_schema, service_name, table
+        )
+        es_result_entities = metadata.es_search_from_fqn(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
+        )
+        if es_result_entities:
+            table_entities = es_result_entities
+        else:
+            # build fqns without searching on ES
+            table_fqns = fqn.build(
+                metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=database,
+                schema_name=database_schema,
+                table_name=table,
+                fetch_multiple_entities=True,
+                skip_es_search=True,
+            )
+            for table_fqn in table_fqns or []:
+                table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
+                if table_entity:
+                    table_entities.append(table_entity)
         search_cache.put(search_tuple, table_entities)
         return table_entities
     except Exception as exc:
@@ -124,15 +138,6 @@ def get_table_entities_from_query(
         database=database_name,
         database_schema=database_schema,
         table=table,
-    ) or (
-        table
-        and search_table_entities(
-            metadata=metadata,
-            service_name=service_name,
-            database=database_name,
-            database_schema=database_schema,
-            table=table.upper(),
-        )
     )
 
     if table_entities:
@@ -144,15 +149,6 @@ def get_table_entities_from_query(
         database=database_query,
         database_schema=schema_query,
         table=table,
-    ) or (
-        table
-        and search_table_entities(
-            metadata=metadata,
-            service_name=service_name,
-            database=database_query,
-            database_schema=schema_query,
-            table=table.upper(),
-        )
     )
 
     if table_entities:
@@ -184,6 +180,13 @@ def get_column_lineage(
     if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(
         to_table_raw_name
     ).get(from_table_raw_name):
+        # Select all
+        if "*" in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name)[0]:
+            column_lineage_map[to_table_raw_name][from_table_raw_name] = [
+                (c.name.__root__, c.name.__root__) for c in from_entity.columns
+            ]
+
+        # Other cases
         for to_col, from_col in column_lineage_map.get(to_table_raw_name).get(
             from_table_raw_name
         ):
@@ -292,9 +295,11 @@ def populate_column_lineage_map(raw_column_lineage):
         raw_column_lineage (_type_): raw column lineage
     """
     lineage_map = {}
-    if not raw_column_lineage or len(raw_column_lineage[0]) != 2:
+    if not raw_column_lineage:
         return lineage_map
-    for source, target in raw_column_lineage:
+    for column_lineage in raw_column_lineage:
+        source = column_lineage[0]
+        target = column_lineage[-1]
         for parent in source._parent:  # pylint: disable=protected-access
             if lineage_map.get(str(target.parent)):
                 ele = lineage_map.get(str(target.parent))

@@ -21,8 +21,8 @@
     "effect" : {
       "type" : "string",
       "enum" : [
-        "allow",
-        "deny"
+        "include",
+        "exclude"
       ]
     },
     "condition" : {
@@ -30,6 +30,6 @@
       "$ref" : "../type/basic.json#/definitions/expression"
     }
   },
-  "required": ["name", "effect"],
+  "required": ["effect", "condition"],
   "additionalProperties": false
 }

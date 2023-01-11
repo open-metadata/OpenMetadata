@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,8 +16,9 @@ import { Space } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import {
@@ -25,16 +26,12 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/type/entityReference';
-import {
-  errorMsg,
-  isUrlFriendlyName,
-  isValidUrl,
-  requiredField,
-} from '../../utils/CommonUtils';
+import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
@@ -194,7 +191,7 @@ const AddGlossaryTerm = ({
   const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: !isUrlFriendlyName(name.trim()),
+      invalidName: allowedNameRegEx.test(name),
       invalidReferences: !isValidReferences(refs),
       description: !getDescription()?.trim(),
     };
@@ -515,7 +512,9 @@ const AddGlossaryTerm = ({
         </div>
 
         <RelatedTermsModal
-          header={t('label.add-related-terms')}
+          header={t('label.add-entity', {
+            entity: t('label.related-term-plural'),
+          })}
           relatedTerms={relatedTerms}
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
@@ -523,7 +522,9 @@ const AddGlossaryTerm = ({
         />
 
         <ReviewerModal
-          header={t('label.add-reviewers')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

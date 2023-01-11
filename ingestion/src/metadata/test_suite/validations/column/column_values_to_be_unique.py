@@ -12,11 +12,13 @@
 """
 ColumnValuesToBeUnique validation implementation
 """
-# pylint: disable=duplicate-code,protected-access
-
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
 
+# pylint: disable=duplicate-code,protected-access
+from pandas import DataFrame
 from sqlalchemy import inspect
 from sqlalchemy.orm.util import AliasedClass
 
@@ -28,16 +30,37 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
+def test_case_status_result(value_count_value_res, unique_count_value_res):
+    return (
+        TestCaseStatus.Success
+        if value_count_value_res == unique_count_value_res
+        else TestCaseStatus.Failed,
+        f"Found valuesCount={value_count_value_res} vs. uniqueCount={unique_count_value_res}."
+        + " Both counts should be equal for column values to be unique.",
+    )
+
+
+@singledispatch
 def column_values_to_be_unique(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_to_be_unique.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -88,16 +111,34 @@ def column_values_to_be_unique(
             ],
         )
 
-    status = (
-        TestCaseStatus.Success
-        if value_count_value_res == unique_count_value_res
-        else TestCaseStatus.Failed
+    status, result = test_case_status_result(
+        value_count_value_res, unique_count_value_res
     )
-    result = (
-        f"Found valuesCount={value_count_value_res} vs. uniqueCount={unique_count_value_res}."
-        + " Both counts should be equal for column values to be unique."
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="valueCount", value=str(value_count_value_res)),
+            TestResultValue(name="uniqueCount", value=str(unique_count_value_res)),
+        ],
     )
 
+
+@column_values_to_be_unique.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
+
+    value_count_value_res = Metrics.COUNT.value(column_obj).dl_fn(runner)
+    unique_count_value_res = Metrics.UNIQUE_COUNT.value(column_obj).dl_query(runner)
+
+    status, result = test_case_status_result(
+        value_count_value_res, unique_count_value_res
+    )
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,

@@ -17,18 +17,14 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List, Union
+from typing import Dict, List
 
-from pydantic import BaseModel
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import DataType, TableData
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    GCSConfig,
-    S3Config,
-)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.source.database.datalake import DatalakeSource
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -36,7 +32,7 @@ from metadata.interfaces.profiler_protocol import (
 from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
-from metadata.utils.connections import get_connection
+from metadata.utils.column_base_model import ColumnBaseModel
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -65,12 +61,14 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             else None
         )
 
-        self.profile_sample = profiler_interface_args.table_sample_precentage
+        self.profile_sample_config = profiler_interface_args.profile_sample_config
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None
         self._table = profiler_interface_args.table_entity
-        self.data_frame_list = self.ometa_to_dataframe(
-            self.service_connection_config.configSource
+        self.data_frame_list = ometa_to_dataframe(
+            config_source=self.service_connection_config.configSource,
+            client=self.client,
+            table=self.table,
         )
 
     @valuedispatch
@@ -220,21 +218,6 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         """
         return None  # to be implemented
 
-    def ometa_to_dataframe(self, config_source):
-        if isinstance(config_source, GCSConfig):
-            return DatalakeSource.get_gcs_files(
-                client=self.client,
-                key=self.table.name.__root__,
-                bucket_name=self.table.databaseSchema.name,
-            )
-        if isinstance(config_source, S3Config):
-            return DatalakeSource.get_s3_files(
-                client=self.client,
-                key=self.table.name.__root__,
-                bucket_name=self.table.databaseSchema.name,
-            )
-        return None
-
     def compute_metrics(
         self,
         metrics,
@@ -276,7 +259,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         sampler = DatalakeSampler(
             session=self.client,
             table=self.data_frame_list,
-            profile_sample=self.profile_sample,
+            profile_sample=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
@@ -336,17 +319,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         return self._table
 
     def get_columns(self):
-        return [
-            ColumnBaseModel(
-                name=column, datatype=self.data_frame_list[0][column].dtype.name
-            )
-            for column in self.data_frame_list[0].columns
-        ]
+        return ColumnBaseModel.col_base_model_list(self.data_frame_list)
 
     def close(self):
         pass
-
-
-class ColumnBaseModel(BaseModel):
-    name: str
-    datatype: Union[DataType, str]

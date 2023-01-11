@@ -24,7 +24,6 @@ from pydantic import ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
@@ -57,6 +56,7 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.interfaces.datalake.datalake_profiler_interface import (
     DataLakeProfilerInterface,
@@ -69,6 +69,7 @@ from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInte
 from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
     ProfilerResponse,
+    ProfileSampleConfig,
     TableConfig,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -79,8 +80,8 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_profiler_status
@@ -127,7 +128,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 sink_type=self.config.sink.type,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
-                _from="orm_profiler",
+                from_="orm_profiler",
             )
 
         if not self._validate_service_name():
@@ -195,7 +196,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         return None
 
-    def get_profile_sample(self, entity: Table) -> Optional[float]:
+    def get_profile_sample(self, entity: Table) -> Optional[dict]:
         """Get profile sample
 
         Args:
@@ -203,14 +204,27 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
         if entity_config:
-            return entity_config.profileSample
+            return ProfileSampleConfig(
+                profile_sample=entity_config.profileSample,
+                profile_sample_type=entity_config.profileSampleType,
+            )
 
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileSample
+        if (
+            hasattr(entity, "tableProfilerConfig")
+            and hasattr(entity.tableProfilerConfig, "profileSample")
+            and entity.tableProfilerConfig.profileSample
+        ):
+
+            return ProfileSampleConfig(
+                profile_sample=entity.tableProfilerConfig.profileSample,
+                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+            )
 
         if self.source_config.profileSample:
-            return self.source_config.profileSample
-
+            return ProfileSampleConfig(
+                profile_sample=self.source_config.profileSample,
+                profile_sample_type=self.source_config.profileSampleType,
+            )
         return None
 
     def get_profile_query(self, entity: Table) -> Optional[str]:
@@ -257,7 +271,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
                 table_entity=self._table_entity,
-                table_sample_precentage=self.get_profile_sample(self._table_entity)
+                profile_sample_config=self.get_profile_sample(self._table_entity)
                 if not self.get_profile_query(self._table_entity)
                 else None,
                 table_sample_query=self.get_profile_query(self._table_entity)
@@ -266,6 +280,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 table_partition_config=self.get_partition_details(self._table_entity)
                 if not self.get_profile_query(self._table_entity)
                 else None,
+                timeout_seconds=self.source_config.timeoutSeconds,
             )
             if isinstance(service_connection_config, DatalakeConnection):
                 return DataLakeProfilerInterface(self._profiler_interface_args)
@@ -450,6 +465,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                         self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
                         self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
                     except Exception as exc:  # pylint: disable=broad-except
+
                         logger.debug(traceback.format_exc())
                         logger.warning(
                             "Unexpected exception processing entity "
@@ -572,4 +588,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
     def test_connection(self):
         service_config = self.config.source.serviceConnection.__root__.config
         self.engine = get_connection(service_config)
-        test_connection(self.engine)
+
+        test_connection_fn = get_test_connection_fn(service_config)
+        test_connection_fn(self.engine)

@@ -16,7 +16,10 @@ ColumnValuesToBeNotNull validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -27,16 +30,27 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
+@singledispatch
 def column_values_to_be_not_null(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_to_be_not_null.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -75,11 +89,34 @@ def column_values_to_be_not_null(
             testResultValue=[TestResultValue(name="nullCount", value=None)],
         )
 
-    status = (
-        TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed
+    status, result = (
+        TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed,
+        f"Found nullCount={null_count_value_res}. It should be 0.",
     )
-    result = f"Found nullCount={null_count_value_res}. It should be 0."
 
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="nullCount", value=str(null_count_value_res))
+        ],
+    )
+
+
+@column_values_to_be_not_null.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
+
+    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(runner)
+    status, result = (
+        TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed,
+        f"Found nullCount={null_count_value_res}. It should be 0.",
+    )
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,

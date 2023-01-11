@@ -39,12 +39,12 @@
         "SQLite",
         "DeltaLake",
         "Salesforce",
-        "SampleData",
         "PinotDB",
         "Datalake",
         "DomoDatabase",
         "QueryLog",
-        "CustomDatabase"
+        "CustomDatabase",
+        "Dbt"
       ],
       "javaEnums": [
         {
@@ -120,9 +120,6 @@
           "name": "Salesforce"
         },
         {
-          "name": "SampleData"
-        },
-        {
           "name": "PinotDB"
         },
         {
@@ -136,6 +133,9 @@
         },
         {
           "name": "CustomDatabase"
+        },
+        {
+          "name": "Dbt"
         }
       ]
     },
@@ -222,9 +222,6 @@
               "$ref": "./connections/database/verticaConnection.json"
             },
             {
-              "$ref": "./connections/database/sampleDataConnection.json"
-            },
-            {
               "$ref": "./connections/database/pinotDBConnection.json"
             },
             {
@@ -273,6 +270,14 @@
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this Database Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     },
     "version": {
       "description": "Metadata version of the entity.",

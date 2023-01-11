@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 
 import java.io.IOException;
@@ -24,6 +23,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -33,7 +33,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final String DATABASE_UPDATE_FIELDS = "owner";
+  private static final String DATABASE_UPDATE_FIELDS = "owner,tags";
   private static final String DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
   public DatabaseRepository(CollectionDAO dao) {
@@ -67,14 +67,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = database.getOwner();
     EntityReference service = database.getService();
-
+    List<TagLabel> tags = database.getTags();
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    database.withOwner(null).withService(null).withHref(null);
+    database.withOwner(null).withService(null).withHref(null).withTags(null);
 
     store(database, update);
 
     // Restore the relationships
-    database.withOwner(owner).withService(service);
+    database.withOwner(owner).withService(service).withTags(tags);
   }
 
   @Override
@@ -82,6 +82,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     EntityReference service = database.getService();
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
     storeOwner(database, database.getOwner());
+    // Add tag to database relationship
+    applyTags(database);
   }
 
   private List<EntityReference> getSchemas(Database database) throws IOException {
@@ -95,12 +97,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getContainer(database.getId()));
-    database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    database.setLocation(fields.contains("location") ? getLocation(database) : null);
-    return database;
+    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
   }
 
   @Override

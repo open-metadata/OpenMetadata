@@ -3,11 +3,14 @@ package org.openmetadata.service.resources.dqtests;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
@@ -26,22 +29,16 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
         "testDefinition",
         TestDefinitionResource.FIELDS);
     supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
   }
 
-  public void setupTestDefinitions(TestInfo test) throws IOException {
+  public void setupTestDefinitions() throws IOException {
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
     TEST_DEFINITION1 =
         testDefinitionResourceTest.getEntityByName("columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
-    TEST_DEFINITION1_REFERENCE = TEST_DEFINITION1.getEntityReference();
     TEST_DEFINITION2 =
         testDefinitionResourceTest.getEntityByName("columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
-    TEST_DEFINITION2_REFERENCE = TEST_DEFINITION2.getEntityReference();
     TEST_DEFINITION3 =
         testDefinitionResourceTest.getEntityByName("columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
-    TEST_DEFINITION3_REFERENCE = TEST_DEFINITION3.getEntityReference();
   }
 
   @Test
@@ -84,8 +81,21 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
   }
 
   @Override
-  public TestDefinition validateGetWithDifferentFields(TestDefinition entity, boolean byName) {
-    return null;
+  public TestDefinition validateGetWithDifferentFields(TestDefinition entity, boolean byName)
+      throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner());
+    fields = "owner";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner());
+    return entity;
   }
 
   @Override

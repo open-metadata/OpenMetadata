@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -72,11 +73,12 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
   cy.get('.ant-select-tree-checkbox-inner').eq(1).should('be.visible').click();
   //Click on condition combobox
 
-  cy.get('[id*=rc_select]').scrollIntoView().should('be.visible').click();
+  cy.get('[data-testid="condition"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
   cy.get(`[title="${ruleDetails.condition}"]`).should('be.visible').click();
-
-  cy.get('.ant-card-body').should('be.visible').click();
 
   cy.get('[data-testid="condition-success"]').contains('✅ Valid condition');
 
@@ -101,7 +103,7 @@ describe('Policy page should work properly', () => {
       .its('response.statusCode')
       .should('equal', 200);
 
-    cy.url().should('eq', 'http://localhost:8585/settings/access/policies');
+    cy.url().should('eq', `${BASE_URL}/settings/access/policies`);
   });
 
   it('Default Policies and Roles should be displayed', () => {

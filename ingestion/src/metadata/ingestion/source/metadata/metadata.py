@@ -12,6 +12,9 @@
 import traceback
 from typing import Iterable, List
 
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
@@ -26,7 +29,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -157,7 +159,7 @@ class MetadataSource(Source[Entity]):
             )
         if self.service_connection.includeTags:
             yield from self.fetch_entities(
-                entity_class=TagCategory,
+                entity_class=Classification,
                 fields=[],
             )
 

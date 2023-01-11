@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
@@ -85,6 +86,14 @@ class FullyQualifiedNameTest {
     assertEquals("a.b.c", FullyQualifiedName.getParent("a.b.c.d"));
     assertEquals("a.b", FullyQualifiedName.getParent("a.b.c"));
     assertEquals("a", FullyQualifiedName.getParent("a.b"));
-    assertEquals(null, FullyQualifiedName.getParent("a"));
+    assertNull(FullyQualifiedName.getParent("a"));
+  }
+
+  @Test
+  void test_getRoot() {
+    assertEquals("a", FullyQualifiedName.getRoot("a.b.c.d"));
+    assertEquals("a", FullyQualifiedName.getRoot("a.b.c"));
+    assertEquals("a", FullyQualifiedName.getRoot("a.b"));
+    assertNull(FullyQualifiedName.getRoot("a"));
   }
 }

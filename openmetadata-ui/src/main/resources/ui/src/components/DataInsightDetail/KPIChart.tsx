@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,6 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   CartesianGrid,
+  Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -34,17 +36,18 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
 import {
-  getLatestKpiResult,
-  getListKpiResult,
-  getListKPIs,
-} from '../../axiosAPIs/KpiAPI';
-import { ROUTES } from '../../constants/constants';
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+  ROUTES,
+} from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
+  DI_STRUCTURE,
 } from '../../constants/DataInsight.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   Kpi,
   KpiResult,
@@ -55,7 +58,12 @@ import {
   ChartFilter,
   UIKpiResult,
 } from '../../interface/data-insight.interface';
-import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import {
+  CustomTooltip,
+  getKpiGraphData,
+  renderLegend,
+} from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
@@ -63,31 +71,22 @@ import KPILatestResults from './KPILatestResults';
 
 interface Props {
   chartFilter: ChartFilter;
+  kpiList: Array<Kpi>;
 }
 
-const KPIChart: FC<Props> = ({ chartFilter }) => {
+const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const history = useHistory();
-  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
-
-  const fetchKpiList = async () => {
-    try {
-      setIsLoading(true);
-      const response = await getListKPIs();
-      setKpiList(response.data);
-    } catch (_err) {
-      setKpiList([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchKpiResults = async () => {
     setIsLoading(true);
@@ -167,9 +166,17 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
     return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
   }, [kpiResults, kpiList]);
 
-  useEffect(() => {
-    fetchKpiList();
-  }, []);
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
+  };
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+    setActiveMouseHoverKey('');
+  };
 
   useEffect(() => {
     setKpiResults([]);
@@ -196,27 +203,36 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
               {t('label.kpi-title')}
             </Typography.Title>
             <Typography.Text className="data-insight-label-text">
-              {t('label.kpi-subtitle')}
+              {t('message.kpi-subtitle')}
             </Typography.Text>
           </div>
         </Space>
       }>
       {kpiList.length ? (
-        <Row>
+        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           {graphData.length ? (
             <>
-              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={5}>
-                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
-                </Col>
-              )}
-
-              <Col span={19}>
+              <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer debounce={1} minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid
+                      stroke={GRAPH_BACKGROUND_COLOR}
+                      vertical={false}
+                    />
                     <XAxis dataKey="timestamp" />
                     <YAxis />
+                    <Legend
+                      align="left"
+                      content={(props) =>
+                        renderLegend(props as LegendProps, activeKeys)
+                      }
+                      layout="horizontal"
+                      verticalAlign="top"
+                      wrapperStyle={{ left: '0px', top: '0px' }}
+                      onClick={handleLegendClick}
+                      onMouseEnter={handleLegendMouseEnter}
+                      onMouseLeave={handleLegendMouseLeave}
+                    />
                     <Tooltip
                       content={
                         <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
@@ -225,14 +241,30 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
                     {kpis.map((kpi, i) => (
                       <Line
                         dataKey={kpi}
+                        hide={
+                          activeKeys.length && kpi !== activeMouseHoverKey
+                            ? !activeKeys.includes(kpi)
+                            : false
+                        }
                         key={i}
                         stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
+                        strokeOpacity={
+                          isEmpty(activeMouseHoverKey) ||
+                          kpi === activeMouseHoverKey
+                            ? DEFAULT_CHART_OPACITY
+                            : HOVER_CHART_OPACITY
+                        }
                         type="monotone"
                       />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
               </Col>
+              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
+                <Col span={DI_STRUCTURE.rightContainerSpan}>
+                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+                </Col>
+              )}
             </>
           ) : (
             <EmptyGraphPlaceholder />
@@ -246,13 +278,21 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
             {t('message.no-kpi-available-add-new-one')}
           </Typography.Text>
           <AntdTooltip
-            title={isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION}>
+            title={
+              isAdminUser
+                ? t('label.add-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })
+                : t('message.no-permission-for-action')
+            }>
             <Button
               className="tw-border-primary tw-text-primary"
               disabled={!isAdminUser}
               type="default"
               onClick={handleAddKpi}>
-              {t('label.add-kpi')}
+              {t('label.add-entity', {
+                entity: t('label.kpi-uppercase'),
+              })}
             </Button>
           </AntdTooltip>
         </Space>

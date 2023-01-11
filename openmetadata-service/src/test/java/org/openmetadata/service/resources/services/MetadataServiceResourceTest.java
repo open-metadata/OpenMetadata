@@ -40,7 +40,6 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         "services/metadataServices",
         MetadataServiceResource.FIELDS);
     supportsPatch = false;
-    supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupMetadataServices() throws HttpResponseException {
@@ -197,7 +196,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner";
+    fields = "owner,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)

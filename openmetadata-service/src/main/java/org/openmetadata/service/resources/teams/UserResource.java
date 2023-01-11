@@ -38,6 +38,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -119,6 +121,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -975,6 +978,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException, TemplateException {
+    byte[] decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+    loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
   }
 
@@ -1039,6 +1044,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
               .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
+    }
+    // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
+    if (original != null) {
+      user.setRoles(original.getRoles());
+    } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
+      user.setRoles(UserUtil.getRoleForBot(botName));
     }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
@@ -1116,7 +1127,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private User retrieveBotUser(User user, UriInfo uriInfo) {
     User original;
     try {
-      original = dao.getByName(uriInfo, user.getFullyQualifiedName(), new Fields(List.of("authenticationMechanism")));
+      original = dao.getByName(uriInfo, user.getFullyQualifiedName(), dao.getFieldsWithUserAuth("*"));
     } catch (EntityNotFoundException | IOException exc) {
       LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
       original = null;

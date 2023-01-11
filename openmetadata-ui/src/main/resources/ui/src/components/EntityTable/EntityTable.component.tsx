@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
-import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -34,6 +32,7 @@ import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { EntityFieldThreads } from '../../interface/feed.interface';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -46,11 +45,12 @@ import {
 } from '../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
-  getConstraintIcon,
   getDataTypeString,
+  getTableExpandableConfig,
   makeData,
+  prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import {
   getRequestDescriptionPath,
   getRequestTagsPath,
@@ -104,16 +104,24 @@ const EntityTable = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
+          const tagList = await getTaglist(values[0].value.data);
+
+          tagsAndTerms =
+            tagList.length !== 0
+              ? tagList.map((tag) => {
+                  return {
+                    fqn: tag,
+                    source: 'Tag',
+                  };
+                })
+              : [];
         }
         if (
           values[1].status === SettledStatus.FULFILLED &&
@@ -330,32 +338,6 @@ const EntityTable = ({
     );
   };
 
-  const prepareConstraintIcon = (
-    columnName: string,
-    columnConstraint?: string
-  ) => {
-    // get the table constraint for column
-    const tableConstraint = tableConstraints?.find((constraint) =>
-      constraint.columns?.includes(columnName)
-    );
-
-    // prepare column constraint element
-    const columnConstraintEl = columnConstraint
-      ? getConstraintIcon(columnConstraint, 'tw-mr-2')
-      : null;
-
-    // prepare table constraint element
-    const tableConstraintEl = tableConstraint
-      ? getConstraintIcon(tableConstraint.constraintType, 'tw-mr-2')
-      : null;
-
-    return (
-      <span data-testid="constraints">
-        {columnConstraintEl} {tableConstraintEl}
-      </span>
-    );
-  };
-
   const handleUpdate = (column: Column, index: number) => {
     handleEditColumn(column, index);
   };
@@ -376,14 +358,14 @@ const EntityTable = ({
           destroyTooltipOnHide
           content={
             hasDescription
-              ? t('label.request-update-description')
-              : t('label.request-description')
+              ? t('message.request-update-description')
+              : t('message.request-description')
           }
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
           <SVGIcons
-            alt={t('label.request-description')}
+            alt={t('message.request-description')}
             icon={Icons.REQUEST}
             width="16px"
           />
@@ -395,8 +377,8 @@ const EntityTable = ({
   const getRequestTagsElement = (cell: Column) => {
     const hasTags = !isEmpty(cell?.tags || []);
     const text = hasTags
-      ? t('label.update-request-tags')
-      : t('label.request-tags');
+      ? t('label.update-request-tag-plural')
+      : t('label.request-tag-plural');
 
     return (
       <button
@@ -412,7 +394,7 @@ const EntityTable = ({
           trigger="hover"
           zIndex={9999}>
           <SVGIcons
-            alt={t('label.request-tags')}
+            alt={t('label.request-tag-plural')}
             icon={Icons.REQUEST}
             width="16px"
           />
@@ -468,7 +450,9 @@ const EntityTable = ({
                 <RichTextEditorPreviewer markdown={description} />
               ) : (
                 <span className="tw-no-description">
-                  {t('label.no-description')}
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
                 </span>
               )}
             </div>
@@ -523,7 +507,7 @@ const EntityTable = ({
         {getFrequentlyJoinedColumns(
           record?.name,
           joins,
-          t('label.frequently-joined-columns')
+          t('label.frequently-joined-column-plural')
         )}
       </div>
     );
@@ -556,7 +540,6 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
-                className="w-max-256"
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}
@@ -630,7 +613,7 @@ const EntityTable = ({
         width: 220,
         render: (name: Column['name'], record: Column) => (
           <Popover destroyTooltipOnHide content={name} trigger="hover">
-            {prepareConstraintIcon(name, record.constraint)}
+            {prepareConstraintIcon(name, record.constraint, tableConstraints)}
             <span>{name}</span>
           </Popover>
         ),
@@ -656,7 +639,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 272,
+        width: 350,
         render: renderTags,
       },
     ],
@@ -680,33 +663,20 @@ const EntityTable = ({
         data-testid="entity-table"
         dataSource={data}
         expandable={{
-          rowExpandable: (record) => {
-            return (record.children && record.children.length > 0) || false;
-          },
-          expandIcon: ({ expanded, onExpand, expandable, record }) =>
-            expandable && (
-              <span
-                className="m-r-xs cursor-pointer"
-                onClick={(e) =>
-                  onExpand(
-                    record,
-                    e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-                  )
-                }>
-                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
-              </span>
-            ),
+          ...getTableExpandableConfig<Column>(),
+          rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
         size="small"
       />
       {editColumn && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', { entity: t('label.column') })}: "${
-            editColumn.column.name
-          }"`}
-          placeholder={t('label.enter-column-description')}
+          header={`${t('label.edit-entity', {
+            entity: t('label.column'),
+          })}: "${editColumn.column.name}"`}
+          placeholder={t('message.enter-column-description')}
           value={editColumn.column.description as string}
+          visible={Boolean(editColumn)}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
         />

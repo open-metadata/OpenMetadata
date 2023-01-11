@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,6 @@
  */
 
 import { ReactNode } from 'react';
-import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -22,7 +21,10 @@ import {
   SearchHitBody,
   TableSearchSource,
 } from '../../interface/search.interface';
-import { ExploreSearchIndex } from '../Explore/explore.interface';
+import {
+  EntityDetailsType,
+  ExploreSearchIndex,
+} from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -57,16 +59,21 @@ export type SourceType = (
 
 export interface SearchedDataProps {
   children?: ReactNode;
+  selectedEntityName: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
   currentPage: number;
   isLoading?: boolean;
   paginate: (value: string | number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
+  isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
-  handleSummaryPanelDisplay?: (source: Table) => void;
+  handleSummaryPanelDisplay?: (
+    details: EntityDetailsType,
+    entityType: string
+  ) => void;
 }

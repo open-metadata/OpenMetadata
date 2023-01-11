@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { deleteEntity } from '../../../axiosAPIs/miscAPI';
+import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import jsonData from '../../../jsons/en';
@@ -230,8 +230,8 @@ const DeleteWidgetModal = ({
       data-testid="delete-modal"
       footer={Footer()}
       okText="Delete"
+      open={visible}
       title={`Delete ${entityName}`}
-      visible={visible}
       onCancel={handleOnEntityDeleteCancel}>
       <Radio.Group value={value} onChange={onChange}>
         {DELETE_OPTION.map(

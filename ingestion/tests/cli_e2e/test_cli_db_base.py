@@ -32,11 +32,16 @@ from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import UTF_8
 
 PATH_TO_RESOURCES = os.path.dirname(os.path.realpath(__file__))
 
 
 class E2EType(Enum):
+    """
+    E2E Type Enum Class
+    """
+
     INGEST = "ingest"
     PROFILER = "profiler"
     INGEST_FILTER_SCHEMA = "ingest-filter-schema"
@@ -45,7 +50,15 @@ class E2EType(Enum):
 
 
 class CliDBBase(TestCase):
-    class TestSuite(TestCase):
+    """
+    CLI DB Base class
+    """
+
+    class TestSuite(TestCase):  # pylint: disable=too-many-public-methods
+        """
+        TestSuite class to define test structure
+        """
+
         catcher = StringIO()
         openmetadata: OpenMetadata
         test_file_path: str
@@ -206,11 +219,11 @@ class CliDBBase(TestCase):
         def build_config_file(
             self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
         ) -> None:
-            with open(self.config_file_path) as f:
-                config_yaml = yaml.safe_load(f)
+            with open(self.config_file_path, encoding=UTF_8) as config_file:
+                config_yaml = yaml.safe_load(config_file)
                 config_yaml = self.build_yaml(config_yaml, test_type, extra_args)
-                with open(self.test_file_path, "w") as w:
-                    yaml.dump(config_yaml, w)
+                with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
+                    yaml.dump(config_yaml, test_file)
 
         def retrieve_statuses(self, result):
             source_status: SourceStatus = self.extract_source_status(result)
@@ -253,7 +266,9 @@ class CliDBBase(TestCase):
                 output_clean = re.findall(
                     "Source Status: (.*?) Sink Status: .*", output_clean.strip()
                 )
-            return SourceStatus.parse_obj(eval(output_clean[0].strip()))
+            return SourceStatus.parse_obj(
+                eval(output_clean[0].strip())  # pylint: disable=eval-used
+            )
 
         @staticmethod
         def extract_sink_status(output) -> SinkStatus:
@@ -264,7 +279,7 @@ class CliDBBase(TestCase):
             output_clean = re.findall(
                 ".* Sink Status: (.*?) Workflow finished.*", output_clean.strip()
             )[0].strip()
-            return SinkStatus.parse_obj(eval(output_clean))
+            return SinkStatus.parse_obj(eval(output_clean))  # pylint: disable=eval-used
 
         @staticmethod
         @abstractmethod
@@ -344,10 +359,17 @@ class CliDBBase(TestCase):
 
         @staticmethod
         def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):
+            """
+            Build yaml as per E2EType
+            """
             if test_type == E2EType.PROFILER:
                 del config_yaml["source"]["sourceConfig"]["config"]
                 config_yaml["source"]["sourceConfig"] = {
-                    "config": {"type": "Profiler", "generateSampleData": True}
+                    "config": {
+                        "type": "Profiler",
+                        "generateSampleData": True,
+                        "profileSample": 1,
+                    }
                 }
                 config_yaml["processor"] = {"type": "orm-profiler", "config": {}}
             if test_type == E2EType.INGEST_FILTER_SCHEMA:

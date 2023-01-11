@@ -33,8 +33,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+  public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
     return entity;
   }
 
@@ -73,7 +72,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Transaction
-  public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) throws IOException {
+  public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .deleteBeforeExclusive(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);

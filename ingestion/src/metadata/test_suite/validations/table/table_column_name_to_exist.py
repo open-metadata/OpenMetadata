@@ -17,8 +17,10 @@ TableColumnCountToBeBetween validation implementation
 import reprlib
 import traceback
 from datetime import datetime
-from typing import List
+from functools import singledispatch
+from typing import List, Union
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -45,10 +47,20 @@ def format_column_list(status: TestCaseStatus, cols: List):
     return cols
 
 
+@singledispatch
 def table_column_name_to_exist(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_name_to_exist.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -100,6 +112,45 @@ def table_column_name_to_exist(
     )
 
     result = f"{column_name} column expected vs {format_column_list(status, [col.name for col in column_names])}"
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnNameExits", value=str(True))],
+    )
+
+
+@table_column_name_to_exist.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    """
+    Validate row count metric
+
+    Args:
+        test_case: test case type to be ran. Used to dispatch
+        table_profile: table profile results
+        execution_date: datetime of the test execution
+    Returns:
+        TestCaseResult with status and results
+    """
+    column_names = list(runner.columns)
+    column_name = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnName"
+    )
+
+    status = (
+        TestCaseStatus.Success if column_name in column_names else TestCaseStatus.Failed
+    )
+
+    result = (
+        f"{column_name} column expected vs {format_column_list(status, column_names)}"
+    )
 
     return TestCaseResult(
         timestamp=execution_date,

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,19 +20,7 @@ import {
 } from '../../mocks/Glossary.mock';
 import AddGlossaryTerm from './AddGlossaryTerm.component';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
-jest.mock('../../axiosAPIs/glossaryAPI', () => ({
+jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -102,7 +90,7 @@ describe('Test AddGlossaryTerm component', () => {
       })
     );
 
-    expect(mockOnCancel).toBeCalled();
+    expect(mockOnCancel).toHaveBeenCalled();
   });
 
   it('should be able to save', () => {
@@ -127,7 +115,7 @@ describe('Test AddGlossaryTerm component', () => {
       })
     );
 
-    expect(mockOnSave).toBeCalled();
+    expect(mockOnSave).toHaveBeenCalled();
   });
 
   it('should not be able to save', () => {
@@ -152,6 +140,6 @@ describe('Test AddGlossaryTerm component', () => {
       })
     );
 
-    expect(mockOnSave).not.toBeCalled();
+    expect(mockOnSave).not.toHaveBeenCalled();
   });
 });

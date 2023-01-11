@@ -18,16 +18,19 @@ import java.util.concurrent.ForkJoinPool;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
 @Slf4j
 @Provider
 public class EventFilter implements ContainerResponseFilter {
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
+
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
@@ -65,7 +68,11 @@ public class EventFilter implements ContainerResponseFilter {
     eventHandlers
         .parallelStream()
         .forEach(
-            eventHandler ->
-                ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool));
+            (eventHandler) -> {
+              UriInfo uriInfo = requestContext.getUriInfo();
+              if (JwtFilter.EXCLUDED_ENDPOINTS.stream().noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
+                ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool);
+              }
+            });
   }
 }

@@ -331,7 +331,7 @@
     ]
   },
   {
-    "name" : "tagCategory",
+    "name" : "classification",
     "operations" : [
       "Create",
       "Delete",
@@ -479,6 +479,24 @@
       "EditDescription",
       "EditDisplayName",
       "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "alert",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
+  },
+  {
+    "name" : "alertAction",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
     ]
   }
 ]

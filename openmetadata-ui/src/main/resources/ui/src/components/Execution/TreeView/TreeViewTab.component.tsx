@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Card, Col, Empty, Row, Typography } from 'antd';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
@@ -59,42 +60,43 @@ const TreeViewTab = ({
           <ArrowSvg className="cursor-pointer" />
         </Col>
         <Col>
-          <Typography.Title className="p-b-0 m-b-0" level={5}>
+          <Typography.Text className="p-b-0 m-b-0 font-medium">
             {formatDateTimeFromSeconds(startTime)} to{' '}
             {formatDateTimeFromSeconds(endTime)}
-          </Typography.Title>
+          </Typography.Text>
         </Col>
         <Col>
           <ArrowSvg className=" cursor-pointer transform-180" />
         </Col>
       </Row>
 
-      {isEmpty(viewData) && (
+      {isEmpty(viewData) ? (
         <Empty
           className="my-4"
           description={t('label.no-execution-runs-found')}
         />
+      ) : (
+        <Row className="w-full">
+          <Col span={6}>
+            <Tree
+              defaultExpandAll
+              showIcon
+              showLine={{ showLeafIcon: false }}
+              switcherIcon={<></>}
+              treeData={treeLabelList}
+            />
+          </Col>
+          <Col span={18}>
+            <Tree
+              defaultExpandAll
+              showIcon
+              className="tree-without-indent"
+              switcherIcon={<></>}
+              treeData={treeDataList}
+            />
+          </Col>
+        </Row>
       )}
-      <Row className="w-full">
-        <Col span={6}>
-          <Tree
-            defaultExpandAll
-            showIcon
-            showLine={{ showLeafIcon: false }}
-            switcherIcon={<></>}
-            treeData={treeLabelList}
-          />
-        </Col>
-        <Col span={18}>
-          <Tree
-            defaultExpandAll
-            showIcon
-            className="tree-without-indent"
-            switcherIcon={<></>}
-            treeData={treeDataList}
-          />
-        </Col>
-      </Row>
     </Card>
   );
 };

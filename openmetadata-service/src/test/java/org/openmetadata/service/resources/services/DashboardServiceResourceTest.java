@@ -64,7 +64,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         "services/dashboardServices",
         "owner");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   @Test
@@ -217,7 +216,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner";
+    fields = "owner,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

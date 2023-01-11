@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,15 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
-import { FormattedGlossarySuggestion } from 'Models';
+import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
 import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,
   getGlossaryTermByFQN,
   getGlossaryTerms,
-} from '../axiosAPIs/glossaryAPI';
-import { searchData } from '../axiosAPIs/miscAPI';
+} from 'rest/glossaryAPI';
+import { searchData } from 'rest/miscAPI';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
@@ -31,7 +32,6 @@ import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
-import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getEntityName } from './CommonUtils';
@@ -184,7 +184,7 @@ const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
  * @returns list of glossary tree
  */
 export const getSearchedGlossaryTermTree = (
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: GlossaryTerm[]
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
@@ -207,7 +207,7 @@ export const getSearchedGlossaryTermTree = (
  */
 export const updateGlossaryListBySearchedTerms = (
   glossaries: ModifiedGlossaryData[],
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: GlossaryTerm[]
 ) => {
   const searchedTermTree = getSearchedGlossaryTermTree(searchedTerms);
 
@@ -230,7 +230,7 @@ export const updateGlossaryListBySearchedTerms = (
 export const getActionsList = () => {
   return [
     {
-      name: 'Add Term',
+      name: t('label.add-entity', { entity: t('label.term') }),
       value: 'add_term',
     },
   ];
@@ -242,7 +242,7 @@ export const getActionsList = () => {
  * @param fqn fqn of glossary or glossary term
  * @returns list of fqns
  */
-export const getHierarchicalKeysByFQN = (fqn: string) => {
+export const getHierarchicalKeysByFQN = (fqn?: string) => {
   if (fqn) {
     const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
       const currFqn = prev.length
@@ -396,7 +396,7 @@ export const getEntityReferenceFromGlossary = (
     href: glossary.href,
     fullyQualifiedName: glossary.fullyQualifiedName ?? '',
     id: glossary.id,
-    type: 'glossary',
+    type: 'glossaryTerm',
     description: glossary.description,
     displayName: glossary.displayName,
     name: glossary.name,

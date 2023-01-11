@@ -10,7 +10,7 @@ In this section, we provide guides and references to use the Datalake connector.
 Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -66,6 +66,12 @@ pip3 install "openmetadata-ingestion[datalake-s3]"
 pip3 install "openmetadata-ingestion[datalake-gcs]"
 ```
 
+#### Azure installation
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-azure]"
+```
+
 #### If version <0.13
 
 You will be installing the requirements together for S3 and GCS
@@ -82,6 +88,9 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 The workflow is modeled around the following JSON Schema.
 
 ## 1. Define the YAML Config
+
+#### Source Configuration - Source Config using AWS S3
+
 This is a sample config for Datalake using AWS S3:
 
 ```yaml
@@ -115,14 +124,15 @@ workflowConfig:
 
 ```
 
-#### Source Configuration - Source Config using AWS S3
-
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
 * **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+
+
+#### Source Configuration - Service Connection using GCS
 
 This is a sample config for Datalake using GCS:
 
@@ -163,9 +173,6 @@ workflowConfig:
     authProvider: <OpenMetadata auth provider>
 ```
 
-
-#### Source Configuration - Service Connection using GCS
-
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **type**: Credentials type, e.g. `service_account`.
@@ -180,7 +187,50 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **clientX509CertUrl**
 * **bucketName**: name of the bucket in GCS
 * **Prefix**: prefix in gcs bucket
-* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+
+
+#### Source Configuration - Service Connection using Azure
+
+This is a sample config for Datalake using Azure:
+
+```yaml
+# Datalake with Azure 
+
+source:
+  type: datalake
+  serviceName: local_datalake
+  serviceConnection:
+    config:
+      type: Datalake
+      configSource:      
+        securityConfig: 
+          clientId: client-id
+          clientSecret: client-secret
+          tenantId: tenant-id
+          accountName: account-name
+      prefix: prefix
+  sourceConfig:
+    config:
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/azureCredentials.json).
+
+- **Client ID** : Client ID of the data storage account
+- **Client Secret** : Client Secret of the account
+- **Tenant ID** : Tenant ID under which the data storage account falls
+- **Account Name** : Account Name of the data Storage
+
+**schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 #### Source Configuration - Source Config
 
@@ -359,6 +409,6 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-## DBT Integration
+## dbt Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

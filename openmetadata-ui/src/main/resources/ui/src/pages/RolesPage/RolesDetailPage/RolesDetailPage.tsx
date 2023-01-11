@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,50 +11,39 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Space, Table, Tabs, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Button, Modal, Space, Tabs, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import Description from 'components/common/description/Description';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
-import { getUserByName, updateUserDetail } from '../../../axiosAPIs/userAPI';
-import Description from '../../../components/common/description/Description';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { getUserPath } from '../../../constants/constants';
+import { useHistory, useParams } from 'react-router-dom';
+import { getRoleByName, patchRole } from 'rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
+import { getUserByName, updateUserDetail } from 'rest/userAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
-} from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import {
-  getPolicyWithFqnPath,
-  getSettingPath,
-  getTeamsWithFqnPath,
-} from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
 import './RolesDetail.less';
+import RolesDetailPageList from './RolesDetailPageList.component';
 
 const { TabPane } = Tabs;
 
@@ -64,101 +53,6 @@ interface AddAttribute {
   type: EntityType;
   selectedData: EntityReference[];
 }
-
-const List = ({
-  list,
-  type,
-  onDelete,
-  hasAccess,
-}: {
-  list: EntityReference[];
-  type: 'policy' | 'team' | 'user';
-  onDelete: (record: EntityReference) => void;
-  hasAccess: boolean;
-}) => {
-  const columns: ColumnsType<EntityReference> = useMemo(() => {
-    return [
-      {
-        title: 'Name',
-        dataIndex: 'name',
-        width: '200px',
-        key: 'name',
-        render: (_, record) => {
-          let link = '';
-          switch (type) {
-            case 'policy':
-              link = getPolicyWithFqnPath(record.fullyQualifiedName || '');
-
-              break;
-            case 'team':
-              link = getTeamsWithFqnPath(record.fullyQualifiedName || '');
-
-              break;
-            case 'user':
-              link = getUserPath(record.fullyQualifiedName || '');
-
-              break;
-
-            default:
-              break;
-          }
-
-          return (
-            <Link
-              className="hover:tw-underline tw-cursor-pointer"
-              data-testid="entity-name"
-              to={link}>
-              {getEntityName(record)}
-            </Link>
-          );
-        },
-      },
-      {
-        title: 'Description',
-        dataIndex: 'description',
-        key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
-        ),
-      },
-      {
-        title: 'Actions',
-        dataIndex: 'actions',
-        width: '80px',
-        key: 'actions',
-        render: (_, record) => {
-          return (
-            <Tooltip title={hasAccess ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
-              <Button
-                data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
-                <SVGIcons
-                  alt="remove"
-                  icon={Icons.ICON_REMOVE}
-                  title="Remove"
-                />
-              </Button>
-            </Tooltip>
-          );
-        },
-      },
-    ];
-  }, []);
-
-  return (
-    <Table
-      bordered
-      className="list-table"
-      columns={columns}
-      dataSource={list}
-      pagination={false}
-      rowKey="id"
-      size="small"
-    />
-  );
-};
 
 const RolesDetailPage = () => {
   const history = useHistory();
@@ -187,7 +81,7 @@ const RolesDetailPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: 'Roles',
+        name: t('label.role-plural'),
         url: rolesPath,
       },
       {
@@ -365,7 +259,10 @@ const RolesDetailPage = () => {
             <ErrorPlaceHolder dataTestId="no-data">
               <div className="text-center">
                 <p>
-                  {t('label.no-roles-found')} {t('label.go-back')} {fqn}
+                  {t('message.no-entity-found-for-name', {
+                    entity: t('label.role-lowercase'),
+                    name: fqn,
+                  })}
                 </p>
                 <Button
                   className="m-t-sm"
@@ -393,13 +290,15 @@ const RolesDetailPage = () => {
               />
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
-                <TabPane key="policies" tab="Policies">
-                  <Space className="tw-w-full" direction="vertical">
+                <TabPane key="policies" tab={t('label.policy-plural')}>
+                  <Space className="w-full" direction="vertical">
                     <Tooltip
                       title={
                         rolePermission.EditAll
-                          ? t('label.add-policy')
-                          : NO_PERMISSION_FOR_ACTION
+                          ? t('label.add-entity', {
+                              entity: t('label.policy'),
+                            })
+                          : t('message.no-permission-for-action')
                       }>
                       <Button
                         data-testid="add-policy"
@@ -411,10 +310,12 @@ const RolesDetailPage = () => {
                             selectedData: role.policies || [],
                           })
                         }>
-                        {t('label.add-policy')}
+                        {t('label.add-entity', {
+                          entity: t('label.policy'),
+                        })}
                       </Button>
                     </Tooltip>
-                    <List
+                    <RolesDetailPageList
                       hasAccess={rolePermission.EditAll}
                       list={role.policies ?? []}
                       type="policy"
@@ -424,8 +325,8 @@ const RolesDetailPage = () => {
                     />
                   </Space>
                 </TabPane>
-                <TabPane key="teams" tab="Teams">
-                  <List
+                <TabPane key="teams" tab={t('label.team-plural')}>
+                  <RolesDetailPageList
                     hasAccess={rolePermission.EditAll}
                     list={role.teams ?? []}
                     type="team"
@@ -434,8 +335,8 @@ const RolesDetailPage = () => {
                     }
                   />
                 </TabPane>
-                <TabPane key="users" tab="Users">
-                  <List
+                <TabPane key="users" tab={t('label.users')}>
+                  <RolesDetailPageList
                     hasAccess={rolePermission.EditAll}
                     list={role.users ?? []}
                     type="user"
@@ -449,7 +350,9 @@ const RolesDetailPage = () => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <ErrorPlaceHolder>
+          {t('message.no-permission-to-view')}
+        </ErrorPlaceHolder>
       )}
       {selectedEntity && (
         <Modal
@@ -457,20 +360,20 @@ const RolesDetailPage = () => {
           closable={false}
           confirmLoading={isLoadingOnSave}
           okText={t('label.confirm')}
+          open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from')} ${getEntityName(role)}`}
-          visible={!isUndefined(selectedEntity.record)}
+          })} ${t('label.from-lowercase')} ${getEntityName(role)}`}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {t('label.sure-to-remove')}{' '}
-            {`${getEntityName(selectedEntity.record)} ${t(
-              'label.from'
-            )} ${getEntityName(role)}?`}
+            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+              child: getEntityName(selectedEntity.record),
+              parent: getEntityName(role),
+            })}
           </Typography.Text>
         </Modal>
       )}

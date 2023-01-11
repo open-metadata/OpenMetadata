@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,9 +16,25 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  ModifiedColumn,
+  SelectedEdge,
+  SelectedNode,
+} from 'components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
+import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
+import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -30,25 +46,13 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  EdgeData,
-  EdgeTypeEnum,
-  ModifiedColumn,
-  SelectedEdge,
-  SelectedNode,
-} from '../components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
+  MIN_ZOOM_VALUE,
   NODE_HEIGHT,
   NODE_WIDTH,
-  ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
@@ -105,7 +109,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(ZOOM_VALUE);
+  reactFlowInstance.zoomTo(MIN_ZOOM_VALUE);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -143,10 +147,12 @@ const getNodeType = (entityLineage: EntityLineage, id: string) => {
   );
   const hasUpstreamToEntity = upStreamEdges.find((up) => up.toEntity === id);
 
-  if (hasDownStreamToEntity && !hasDownStreamFromEntity)
+  if (hasDownStreamToEntity && !hasDownStreamFromEntity) {
     return EntityLineageNodeType.OUTPUT;
-  if (hasUpstreamFromEntity && !hasUpstreamToEntity)
+  }
+  if (hasUpstreamFromEntity && !hasUpstreamToEntity) {
     return EntityLineageNodeType.INPUT;
+  }
 
   return EntityLineageNodeType.DEFAULT;
 };
@@ -155,10 +161,15 @@ export const getColumnType = (edges: Edge[], id: string) => {
   const sourceEdge = edges.find((edge) => edge.sourceHandle === id);
   const targetEdge = edges.find((edge) => edge.targetHandle === id);
 
-  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id)
+  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id) {
     return EntityLineageNodeType.DEFAULT;
-  if (sourceEdge?.sourceHandle === id) return EntityLineageNodeType.INPUT;
-  if (targetEdge?.targetHandle === id) return EntityLineageNodeType.OUTPUT;
+  }
+  if (sourceEdge?.sourceHandle === id) {
+    return EntityLineageNodeType.INPUT;
+  }
+  if (targetEdge?.targetHandle === id) {
+    return EntityLineageNodeType.OUTPUT;
+  }
 
   return EntityLineageNodeType.NOT_CONNECTED;
 };
@@ -431,29 +442,12 @@ export const getDataLabel = (
   }
 };
 
-export const getNoLineageDataPlaceholder = () => {
-  return (
-    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-      <span>
-        Lineage is currently supported for Airflow. To enable lineage collection
-        from Airflow, please follow the documentation
-      </span>
-      <Link
-        className="tw-ml-1"
-        target="_blank"
-        to={{
-          pathname:
-            'https://docs.open-metadata.org/openmetadata/connectors/pipeline/airflow/lineage-backend',
-        }}>
-        here.
-      </Link>
-    </div>
-  );
-};
 export const getDeletedLineagePlaceholder = () => {
   return (
     <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-      <span>Lineage data is not available for deleted entities.</span>
+      <span>
+        {t('message.lineage-data-is-not-available-for-deleted-entities')}
+      </span>
     </div>
   );
 };
@@ -527,9 +521,10 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
     targetEntity = getPartialNameFromFQN(targetFQN || '', ['database']);
   }
 
-  return `Are you sure you want to remove the edge between "${
-    source.displayName ? source.displayName : sourceEntity
-  } and ${target.displayName ? target.displayName : targetEntity}"?`;
+  return t('message.remove-edge-between-source-and-target', {
+    sourceDisplayName: source.displayName ? source.displayName : sourceEntity,
+    targetDisplayName: target.displayName ? target.displayName : targetEntity,
+  });
 };
 
 export const getUniqueFlowElements = (elements: CustomFlow[]) => {
@@ -972,7 +967,7 @@ export const getAllTracedNodes = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n.id == tracedNode.id) === -1) {
+    if (prevTraced.findIndex((n) => n.id === tracedNode.id) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedNodes(
@@ -984,7 +979,7 @@ export const getAllTracedNodes = (
       ).forEach((foundNode) => {
         memo.push(foundNode);
 
-        if (prevTraced.findIndex((n) => n.id == foundNode.id) === -1) {
+        if (prevTraced.findIndex((n) => n.id === foundNode.id) === -1) {
           prevTraced.push(foundNode);
         }
       });
@@ -1063,14 +1058,14 @@ export const getAllTracedEdges = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n == tracedNode) === -1) {
+    if (prevTraced.findIndex((n) => n === tracedNode) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
         (foundNode) => {
           memo.push(foundNode);
 
-          if (prevTraced.findIndex((n) => n == foundNode) === -1) {
+          if (prevTraced.findIndex((n) => n === foundNode) === -1) {
             prevTraced.push(foundNode);
           }
         }

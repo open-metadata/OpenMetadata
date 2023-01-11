@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -157,13 +157,13 @@ const EntitySummaryDetails = ({
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
               <Dropdown
-                overlay={
+                dropdownRender={() => (
                   <TierCard
                     currentTier={tier?.tagFQN}
                     removeTier={removeTier}
                     updateTier={updateTier}
                   />
-                }
+                )}
                 trigger={['click']}>
                 <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier && !deleted ? <EditIcon /> : null}
@@ -198,7 +198,7 @@ const EntitySummaryDetails = ({
             {data.key
               ? displayVal
                 ? data.showLabel
-                  ? `${t(`label.${toLower(data.key)}`)} : `
+                  ? `${t(`label.${toLower(data.key)}`)} - `
                   : null
                 : `${t('label.no-entity', {
                     entity: t(`label.${toLower(data.key)}`),

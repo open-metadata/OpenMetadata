@@ -62,14 +62,14 @@ class AirflowRESTClientIntegrationTest {
   void testLastIngestionLogsAreRetrievedWhenStatusCodesAre200() {
     Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
 
-    registerMockedEndpoints(200, 200);
+    registerMockedEndpoints(200);
 
     assertEquals(expectedMap, airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
   }
 
   @Test
   void testLastIngestionLogsExceptionWhenLoginFails() {
-    registerMockedEndpoints(404, 200);
+    registerMockedEndpoints(200);
 
     Exception exception =
         assertThrows(
@@ -84,7 +84,7 @@ class AirflowRESTClientIntegrationTest {
 
   @Test
   void testLastIngestionLogsExceptionWhenStatusCode404() {
-    registerMockedEndpoints(200, 404);
+    registerMockedEndpoints(404);
 
     Exception exception =
         assertThrows(
@@ -107,7 +107,7 @@ class AirflowRESTClientIntegrationTest {
     return airflowConfiguration;
   }
 
-  private void registerMockedEndpoints(int loginStatusCode, int lastDagLogStatusCode) {
+  private void registerMockedEndpoints(int lastDagLogStatusCode) {
     String jsonResponse = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
 
     Map<String, MockResponse> pathResponses = new HashMap<>();

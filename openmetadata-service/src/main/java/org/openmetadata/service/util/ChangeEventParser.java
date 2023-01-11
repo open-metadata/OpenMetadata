@@ -24,6 +24,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -51,10 +52,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerts.emailAlert.EmailMessage;
+import org.openmetadata.service.alerts.msteams.TeamsMessage;
+import org.openmetadata.service.alerts.slack.SlackAttachment;
+import org.openmetadata.service.alerts.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.slack.SlackAttachment;
-import org.openmetadata.service.slack.SlackMessage;
-import org.openmetadata.service.slack.TeamsMessage;
 
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
@@ -78,7 +80,8 @@ public final class ChangeEventParser {
   public enum PUBLISH_TO {
     FEED,
     SLACK,
-    TEAMS
+    TEAMS,
+    EMAIL
   }
 
   public static String getBold(PUBLISH_TO publishTo) {
@@ -174,6 +177,8 @@ public final class ChangeEventParser {
         return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
       } else if (publishTo == PUBLISH_TO.TEAMS) {
         return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
+      } else if (publishTo == PUBLISH_TO.EMAIL) {
+        return String.format("%s://%s/%s/%s", scheme, host, event.getEntityType(), fqn);
       }
     }
     return "";
@@ -200,6 +205,23 @@ public final class ChangeEventParser {
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
+  }
+
+  public static EmailMessage buildEmailMessage(ChangeEvent event) {
+    EmailMessage emailMessage = new EmailMessage();
+    emailMessage.setUserName(event.getUserName());
+    if (event.getEntity() != null) {
+      emailMessage.setUpdatedBy(event.getUserName());
+      emailMessage.setEntityUrl(getEntityUrl(PUBLISH_TO.EMAIL, event));
+    }
+    Map<EntityLink, String> messages =
+        getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
+    List<String> changeMessage = new ArrayList<>();
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
+      changeMessage.add(entry.getValue());
+    }
+    emailMessage.setChangeMessage(changeMessage);
+    return emailMessage;
   }
 
   public static TeamsMessage buildTeamsMessage(ChangeEvent event) {
@@ -565,10 +587,10 @@ public final class ChangeEventParser {
     StringBuilder outputStr = new StringBuilder();
     for (DiffMatchPatch.Diff d : diffs) {
       if (DiffMatchPatch.Operation.EQUAL.equals(d.operation)) {
-        // merging equal values of both string ..
+        // merging equal values of both string
         outputStr.append(d.text.trim());
       } else if (DiffMatchPatch.Operation.INSERT.equals(d.operation)) {
-        // merging added values with addMarker before and after of new values added..
+        // merging added values with addMarker before and after of new values added
         outputStr.append(addMarker).append(d.text.trim()).append(addMarker).append(" ");
       } else {
         // merging deleted values with removeMarker before and after of old value removed ..
@@ -584,10 +606,8 @@ public final class ChangeEventParser {
     String spanAddClose = getAddMarkerClose(publishTo);
     String spanRemove = getRemoveMarker(publishTo);
     String spanRemoveClose = getRemoveMarkerClose(publishTo);
-    if (diff != null) {
-      diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
-      diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);
-    }
+    diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
+    diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);
     return diff;
   }
 
@@ -599,5 +619,27 @@ public final class ChangeEventParser {
       index++;
     }
     return diff;
+  }
+
+  public static Set<String> getUpdatedField(ChangeEvent event) {
+    Set<String> fields = new HashSet<>();
+    ChangeDescription description = event.getChangeDescription();
+    if (description != null) {
+      List<FieldChange> fieldChanges = new ArrayList<>();
+      fieldChanges.addAll(description.getFieldsAdded());
+      fieldChanges.addAll(description.getFieldsUpdated());
+      fieldChanges.addAll(description.getFieldsDeleted());
+      fieldChanges.forEach(
+          (field) -> {
+            String fieldName = field.getName();
+            if (fieldName.contains(".")) {
+              String[] tokens = fieldName.split("\\.");
+              fields.add(tokens[tokens.length - 1]);
+            } else {
+              fields.add(fieldName);
+            }
+          });
+    }
+    return fields;
   }
 }

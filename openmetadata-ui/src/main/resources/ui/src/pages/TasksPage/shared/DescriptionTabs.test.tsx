@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,7 +19,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getDescriptionDiff: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }) => {
       return (
@@ -35,14 +35,12 @@ jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
-jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () =>
-    jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="richTextEditorPreviewer">RichTextEditorPreviewer</div>
-      )
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="richTextEditorPreviewer">RichTextEditorPreviewer</div>
+    )
 );
 
 jest.mock('./DiffView', () => ({

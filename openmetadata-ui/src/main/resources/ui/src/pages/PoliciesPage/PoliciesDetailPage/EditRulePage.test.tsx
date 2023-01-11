@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,20 +23,18 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getPolicyByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_DATA)),
   patchPolicy: jest.fn().mockImplementation(() => Promise.resolve(POLICY_DATA)),
 }));
 
-jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 

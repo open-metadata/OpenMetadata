@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,37 +15,24 @@ import { findByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import TierCard from './TierCard';
 
-const mockTierData = {
-  id: 'e9a6b868-ab16-44e9-a145-ef835686afe7',
-  name: 'Tier',
-  description:
-    'Tags related to tiering of the data. Tiers capture the business importance of data.',
-  version: 0.1,
-  updatedAt: 1665646906357,
-  updatedBy: 'admin',
-  href: 'http://localhost:8585/api/v1/tags/Tier',
-  children: [
-    {
-      id: 'e4ec1760-79c0-4afc-a0eb-c3da339aa750',
-      name: 'Tier1',
-      fullyQualifiedName: 'Tier.Tier1',
-      description:
-        '**Critical Source of Truth business data assets of an organization**',
-      version: 0.1,
-      updatedAt: 1665646906357,
-      updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/tags/Tier/Tier1',
-      deprecated: false,
-      deleted: false,
-    },
-  ],
-  deleted: false,
-};
+const mockTierData = [
+  {
+    id: 'e4ec1760-79c0-4afc-a0eb-c3da339aa750',
+    name: 'Tier1',
+    fullyQualifiedName: 'Tier.Tier1',
+    description:
+      '**Critical Source of Truth business data assets of an organization**',
+    version: 0.1,
+    updatedAt: 1665646906357,
+    updatedBy: 'admin',
+    href: 'http://localhost:8585/api/v1/tags/Tier/Tier1',
+    deprecated: false,
+    deleted: false,
+  },
+];
 
-jest.mock('../../../axiosAPIs/tagAPI', () => ({
-  getCategory: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockTierData })),
+jest.mock('rest/tagAPI', () => ({
+  getTags: jest.fn().mockResolvedValue({ data: mockTierData }),
 }));
 
 jest.mock('../../cardlist/CardListItem/CardWithListItem', () => ({

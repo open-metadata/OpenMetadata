@@ -16,6 +16,10 @@ TableRowCountToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
+
+from pandas import DataFrame
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -30,10 +34,50 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+def _return_test_case(
+    row_count_value,
+    execution_date,
+    test_case,
+):
+    min_ = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "minValue"
+    )
+    max_ = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "maxValue"
+    )
+
+    status = (
+        TestCaseStatus.Success
+        if min_ <= row_count_value <= max_
+        else TestCaseStatus.Failed
+    )
+    result = f"Found {row_count_value} rows vs. the expected range [{min_}, {max_}]."
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
+    )
+
+
+@singledispatch
 def table_row_count_to_be_between(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_row_count_to_be_between.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -62,26 +106,21 @@ def table_row_count_to_be_between(
             testResultValue=[TestResultValue(name="rowCount", value=None)],
         )
 
-    min_ = next(
-        int(param_value.value)
-        for param_value in test_case.parameterValues
-        if param_value.name == "minValue"
-    )
-    max_ = next(
-        int(param_value.value)
-        for param_value in test_case.parameterValues
-        if param_value.name == "maxValue"
-    )
+    return _return_test_case(row_count_value, execution_date, test_case)
 
-    status = (
-        TestCaseStatus.Success
-        if min_ <= row_count_value <= max_
-        else TestCaseStatus.Failed
-    )
-    result = f"Found {row_count_value} rows vs. the expected range [{min_}, {max_}]."
-    return TestCaseResult(
-        timestamp=execution_date,
-        testCaseStatus=status,
-        result=result,
-        testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
-    )
+
+@table_row_count_to_be_between.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    """
+    Validate row count metric
+    :param test_case: TableRowCountToBeBetween
+    :param table_profile: should contain row count metric
+    :param execution_date: Datetime when the tests ran
+    :return: TestCaseResult with status and results
+    """
+    row_count_value = Metrics.ROW_COUNT.value().dl_fn(runner)
+    return _return_test_case(row_count_value, execution_date, test_case)

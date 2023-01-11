@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -97,7 +97,9 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         ),
       },
       {
-        title: t('label.total-session'),
+        title: t('label.total-entity', {
+          entity: t('label.session-plural'),
+        }),
         dataIndex: 'sessions',
         key: 'sessions',
         render: (sessions: number) => (

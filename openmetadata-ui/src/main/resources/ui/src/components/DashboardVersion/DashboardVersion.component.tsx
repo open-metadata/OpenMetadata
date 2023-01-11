@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,9 +14,11 @@
 import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -39,7 +41,6 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DashboardVersionProp } from './DashboardVersion.interface';
@@ -56,18 +57,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   backHandler,
   versionHandler,
 }: DashboardVersionProp) => {
+  const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
   const tabs = [
     {
-      name: 'Details',
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Details',
-        selectedName: 'icon-schemacolor',
-      },
+      name: t('label.detail-plural'),
       isProtected: false,
       position: 1,
     },
@@ -217,7 +213,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const tableColumn: ColumnsType<EntityReference> = useMemo(
     () => [
       {
-        title: 'Chart Name',
+        title: t('label.chart-name'),
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
@@ -235,23 +231,25 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
       },
       {
-        title: 'Chart Type',
+        title: t('label.chart-type'),
         dataIndex: 'type',
         key: 'type',
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
           ),
       },
       {
-        title: 'Tags',
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
       },

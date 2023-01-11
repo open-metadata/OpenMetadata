@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,23 +20,14 @@ const mockProps = {
   copyText: 'mock-copy',
 };
 
-jest.mock('../../common/popover/PopOver', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <p data-testid="popover">{children}</p>
-    ));
-});
-
 describe('Test CopyToClipboardButton Component', () => {
   it('Should render all child elements', () => {
     const { container } = render(<CopyToClipboardButton {...mockProps} />, {
       wrapper: MemoryRouter,
     });
-    const popover = getByTestId(container, 'popover');
+
     const copyIcon = getByTestId(container, 'copy-icon');
 
-    expect(popover).toBeInTheDocument();
     expect(copyIcon).toBeInTheDocument();
   });
 });

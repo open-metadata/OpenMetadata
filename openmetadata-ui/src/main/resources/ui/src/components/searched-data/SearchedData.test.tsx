@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -89,10 +89,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}
       />,
       {
@@ -109,10 +111,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}
       />,
       {
@@ -122,17 +126,19 @@ describe('Test SearchedData Component', () => {
 
     const searchedDataContainer = getAllByTestId(container, 'table-data-card');
 
-    expect(searchedDataContainer.length).toBe(3);
+    expect(searchedDataContainer).toHaveLength(3);
   });
 
   it('If children is provided it should display', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}>
         <p>hello world</p>
       </SearchedData>,
@@ -148,10 +154,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={11}>
         <p>hello world</p>
       </SearchedData>,
@@ -167,11 +175,13 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         showOnboardingTemplate
         currentPage={0}
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={0}
       />,
       {
@@ -186,10 +196,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={0}
       />,
       {

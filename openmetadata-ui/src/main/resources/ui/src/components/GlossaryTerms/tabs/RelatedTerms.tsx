@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import { Select, Spin, Typography } from 'antd';
 import { cloneDeep, debounce, includes } from 'lodash';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
+import { searchData } from 'rest/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';

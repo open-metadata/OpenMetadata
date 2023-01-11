@@ -313,15 +313,15 @@ class LineageParser:
             replace_by=" ",  # remove it as it does not add any value to lineage
         )
 
-        clean_query = insensitive_replace(
+        query_no_linebreaks = insensitive_replace(
             raw_str=clean_query.strip(),
             to_replace="\n",  # remove line breaks
             replace_by=" ",
         )
 
-        if insensitive_match(clean_query, ".*merge into .*when matched.*"):
+        if insensitive_match(query_no_linebreaks, ".*merge into .*when matched.*"):
             clean_query = insensitive_replace(
-                raw_str=clean_query,
+                raw_str=query_no_linebreaks,
                 to_replace="when matched.*",  # merge into queries specific
                 replace_by="",  # remove it as LineageRunner is not able to perform the lineage
             )

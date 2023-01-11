@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
+import AddGlossaryTerm from 'components/AddGlossaryTerm/AddGlossaryTerm.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -20,13 +26,7 @@ import {
   addGlossaryTerm,
   getGlossariesByName,
   getGlossaryTermByFQN,
-} from '../../axiosAPIs/glossaryAPI';
-import AddGlossaryTerm from '../../components/AddGlossaryTerm/AddGlossaryTerm.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+} from 'rest/glossaryAPI';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';

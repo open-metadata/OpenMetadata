@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -83,7 +83,7 @@ jest.mock('./component/DataQualityTab', () => {
     .mockImplementation(() => <div>DataQualityTab component</div>);
 });
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => {
+jest.mock('components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn().mockImplementation(() => ({
       getEntityPermission: jest.fn().mockImplementation(() => ({
@@ -199,7 +199,7 @@ describe('Test ProfilerDashboardPage component', () => {
     const DQTab = await screen.findByText('DataQualityTab component');
 
     expect(DQTab).toBeInTheDocument();
-    expect(profilerDashboardProps.fetchTestCases).toBeCalled();
+    expect(profilerDashboardProps.fetchTestCases).toHaveBeenCalled();
     expect(ProfilerTab).not.toBeInTheDocument();
 
     await act(async () => {
@@ -208,14 +208,14 @@ describe('Test ProfilerDashboardPage component', () => {
     const profilerContainer = await screen.findByText('ProfilerTab component');
 
     expect(profilerContainer).toBeInTheDocument();
-    expect(profilerDashboardProps.fetchProfilerData).toBeCalled();
+    expect(profilerDashboardProps.fetchProfilerData).toHaveBeenCalled();
     expect(DQTab).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(summaryTabBtn);
     });
 
-    expect(mockHistory.push).toBeCalled();
+    expect(mockHistory.push).toHaveBeenCalled();
   });
 
   it('Add test button should work properly', async () => {
@@ -234,7 +234,7 @@ describe('Test ProfilerDashboardPage component', () => {
     await act(async () => {
       fireEvent.click(addTest);
 
-      expect(mockHistory.push).toBeCalled();
+      expect(mockHistory.push).toHaveBeenCalled();
     });
   });
 });

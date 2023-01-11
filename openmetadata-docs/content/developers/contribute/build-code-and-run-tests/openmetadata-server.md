@@ -103,7 +103,11 @@ In that list look for "jersey-client:2.25.1"
 
 <Image src="/images/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" "/>
 
-Select it and click "OK". Now run/debug the application.
+Select it and click "OK". 
+
+We also need to set the folder ‘generated-resources’ in some module’s target folder as “source” folder. IntelliJ IDEA mark target folder as "excluded" by default, we could change it in the module setting. The openmetadata-spec and openmetadata-java-client modules have generated code, need to be changed.
+
+Now run/debug the application.
 
 ## Troubleshooting
 - If you see blank page at [http://localhost:8585](http://localhost:8585), please check the logs at logs/openmetadata.log. You might be encountering one of the following errors:

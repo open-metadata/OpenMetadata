@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,14 +20,20 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
 
-const searchOptions = ['User 1', 'User 2', 'User 3', 'User 4', 'User 5'];
+const searchOptions = [
+  { key: 'User 1', label: 'User 1' },
+  { key: 'User 2', label: 'User 2' },
+  { key: 'User 3', label: 'User 3' },
+  { key: 'User 4', label: 'User 4' },
+  { key: 'User 5', label: 'User 5' },
+];
 
 const mockProps: SearchDropdownProps = {
   label: 'Owner',
   isSuggestionsLoading: false,
   options: searchOptions,
   searchKey: 'owner.name',
-  selectedKeys: ['User 1'],
+  selectedKeys: [{ key: 'User 1', label: 'User 1' }],
   onChange: mockOnChange,
   onSearch: mockOnSearch,
 };
@@ -204,7 +210,10 @@ describe('Search DropDown Component', () => {
 
     // onChange should be called with previous selected keys and current selected keys
     expect(mockOnChange).toHaveBeenCalledWith(
-      ['User 1', 'User 2'],
+      [
+        { key: 'User 1', label: 'User 1' },
+        { key: 'User 2', label: 'User 2' },
+      ],
       'owner.name'
     );
   });
@@ -267,5 +276,75 @@ describe('Search DropDown Component', () => {
     dropdownMenu = screen.queryByTestId('drop-down-menu');
 
     expect(dropdownMenu).toBeNull();
+  });
+
+  it('The selected options should be checked correctly each time popover renders', async () => {
+    render(<SearchDropdown {...mockProps} />);
+
+    const dropdownButton = await screen.findByTestId('search-dropdown');
+
+    // Dropdown menu should not be present
+
+    let dropdownMenu = screen.queryByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeNull();
+
+    // Click on dropdown button
+
+    await act(async () => {
+      userEvent.click(dropdownButton);
+    });
+
+    // Dropdown menu should render and checkbox for user1 should be checked as it is passed in 'selectedKeys'
+
+    dropdownMenu = await screen.findByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    let option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).toBeChecked();
+
+    // Uncheck the 'user1' checkbox
+
+    await act(async () => {
+      userEvent.click(option1Checkbox);
+    });
+
+    // Check if 'user1' options is unselected
+
+    option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).not.toBeChecked();
+
+    // Close the dropdown without updating the changes and check if dropdown is closed.
+
+    const closeButton = await screen.findByTestId('update-btn');
+
+    expect(closeButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(closeButton);
+    });
+
+    dropdownMenu = screen.queryByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeNull();
+
+    // Open the dropdown again.
+
+    await act(async () => {
+      userEvent.click(dropdownButton);
+    });
+
+    dropdownMenu = await screen.findByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    // Checkbox for 'user1' option should already be checked.
+
+    option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).toBeChecked();
   });
 });

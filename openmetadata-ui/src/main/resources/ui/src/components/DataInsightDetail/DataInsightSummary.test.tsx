@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,12 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { DataInsightTabs } from '../../interface/data-insight.interface';
 import DataInsightSummary from './DataInsightSummary';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (label: string) => label,
-  }),
-}));
+let activeTab = DataInsightTabs.DATA_ASSETS;
 
 const mockFilter = {
   startTs: 1667952000000,
@@ -30,7 +27,16 @@ const mockFilter = {
 
 const mockScrollFunction = jest.fn();
 
-jest.mock('../../axiosAPIs/DataInsightAPI', () => ({
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
+  useParams: jest.fn().mockImplementation(() => ({
+    tab: activeTab,
+  })),
+}));
+
+jest.mock('rest/DataInsightAPI', () => ({
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -41,17 +47,57 @@ describe('Test DataInsightSummary Component', () => {
         <DataInsightSummary
           chartFilter={mockFilter}
           onScrollToChart={mockScrollFunction}
-        />
+        />,
+        { wrapper: MemoryRouter }
       );
     });
 
     const summaryCard = screen.getByTestId('summary-card');
 
-    const totalEntitiesByType = screen.getByTestId(
-      `summary-item-${DataInsightChartType.TotalEntitiesByType}`
+    expect(summaryCard).toBeInTheDocument();
+  });
+
+  it('Should render only the data assets summary', async () => {
+    await act(async () => {
+      render(
+        <DataInsightSummary
+          chartFilter={mockFilter}
+          onScrollToChart={mockScrollFunction}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    const dataAssetSummary = await screen.findAllByTestId(
+      'data-assets-summary'
     );
 
-    expect(summaryCard).toBeInTheDocument();
-    expect(totalEntitiesByType).toBeInTheDocument();
+    expect(dataAssetSummary).toHaveLength(4);
+
+    // should not render the app analytics summary
+    expect(screen.queryByTestId('app-analytics-summary')).toBeNull();
+  });
+
+  it('Should render only the app analytics summary', async () => {
+    activeTab = DataInsightTabs.APP_ANALYTICS;
+
+    await act(async () => {
+      render(
+        <DataInsightSummary
+          chartFilter={mockFilter}
+          onScrollToChart={mockScrollFunction}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    const appAnalyticsSummary = await screen.findAllByTestId(
+      'app-analytics-summary'
+    );
+
+    expect(appAnalyticsSummary).toHaveLength(2);
+
+    // should not render the data assets summary
+    expect(screen.queryByTestId('data-assets-summary')).toBeNull();
   });
 });

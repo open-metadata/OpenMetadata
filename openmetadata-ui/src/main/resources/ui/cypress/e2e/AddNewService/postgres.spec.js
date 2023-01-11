@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -130,8 +130,12 @@ it('Add Usage ingestion', () => {
 });
 
 it('Verify if usage is ingested properly',() => {
+  interceptURL('GET', `/api/v1/tables/name/${serviceName}.*.*${tableName}?fields=*&include=all`, 'entityDetailsPage')
   visitEntityDetailsPage(tableName, serviceName, 'tables');
+  verifyResponseStatusCode('@entityDetailsPage', 200)
+  interceptURL('GET', 'api/v1/tables/*/tableQuery', 'queriesTab')
   cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
+  verifyResponseStatusCode('@queriesTab', 200)
   //Validate that the triggered query is visible in the queries container
   cy.get('[data-testid="queries-container"]').should('be.visible').should('contain', query);
   //Validate queries count is greater than 1

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,7 +26,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
+import { restoreDashboard } from 'rest/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -47,8 +47,6 @@ import {
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import {
   fetchGlossaryTerms,
@@ -58,7 +56,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -72,7 +70,6 @@ import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
@@ -142,7 +139,7 @@ const DashboardDetails = ({
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
+
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -172,13 +169,6 @@ const DashboardDetails = ({
       fetchResourcePermission();
     }
   }, [dashboardDetails.id]);
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -441,14 +431,15 @@ const DashboardDetails = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
+          const tagList = await getTaglist(values[0].value.data);
+          tagsAndTerms = tagList.map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
@@ -540,7 +531,9 @@ const DashboardDetails = ({
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
-        title: t('label.chart-name'),
+        title: t('label.chart-entity', {
+          entity: t('label.name'),
+        }),
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
@@ -559,7 +552,9 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: t('label.chart-type'),
+        title: t('label.chart-entity', {
+          entity: t('label.type'),
+        }),
         dataIndex: 'chartType',
         key: 'chartType',
         width: 100,
@@ -578,7 +573,9 @@ const DashboardDetails = ({
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
                 <span className="tw-no-description">
-                  {t('label.no-description')}
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
                 </span>
               )}
             </div>
@@ -752,7 +749,6 @@ const DashboardDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -830,9 +826,14 @@ const DashboardDetails = ({
       </div>
       {editChart && (
         <ModalWithMarkdownEditor
-          header={`Edit Chart: "${editChart.chart.displayName}"`}
-          placeholder="Enter Chart Description"
+          header={t('label.edit-chart', {
+            chartName: editChart.chart.displayName,
+          })}
+          placeholder={t('label.enter-field-description', {
+            field: t('label.chart'),
+          })}
           value={editChart.chart.description || ''}
+          visible={Boolean(editChart)}
           onCancel={closeEditChartModal}
           onSave={onChartUpdate}
         />
@@ -847,19 +848,6 @@ const DashboardDetails = ({
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
-        />
-      ) : null}
-      {selectedField ? (
-        <RequestDescriptionModal
-          createThread={createThread}
-          defaultValue={getDefaultValue(owner as EntityReference)}
-          header="Request description"
-          threadLink={getEntityFeedLink(
-            EntityType.DASHBOARD,
-            dashboardFQN,
-            selectedField
-          )}
-          onCancel={closeRequestModal}
         />
       ) : null}
     </PageContainerV1>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
+import { getListTestCaseResults } from 'rest/testAPI';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,
@@ -38,6 +38,7 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../generated/tests/testCase';
+import { axisTickFormatter } from '../../../utils/ChartUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
   getCurrentDateTimeStamp,
@@ -130,7 +131,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   };
 
   const fetchTestResults = async () => {
-    if (isEmpty(data)) return;
+    if (isEmpty(data)) {
+      return;
+    }
 
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(
@@ -205,7 +208,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
 
   return (
     <Row gutter={16}>
-      <Col span={14}>
+      <Col span={16}>
         {isLoading ? (
           <Loader />
         ) : (
@@ -232,7 +235,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
                     right: 8,
                   }}>
                   <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
-                  <YAxis allowDataOverflow padding={{ top: 8, bottom: 8 }} />
+                  <YAxis
+                    allowDataOverflow
+                    padding={{ top: 8, bottom: 8 }}
+                    tickFormatter={(value) => axisTickFormatter(value)}
+                  />
                   <Tooltip />
                   <Legend />
                   {data.parameterValues?.length === 2 && referenceArea()}
@@ -258,7 +265,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
           </div>
         )}
       </Col>
-      <Col span={10}>
+      <Col span={8}>
         <Row gutter={[8, 8]}>
           <Col span={24}>
             <Typography.Text type="secondary">Name: </Typography.Text>

@@ -169,6 +169,7 @@ elasticsearch:
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
+  searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
 
 # eventMonitoringConfiguration:
   # eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
@@ -190,32 +191,6 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
-  authConfig:
-    azure:
-      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
-      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
-      clientId:  ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
-    google:
-      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
-      audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
-    okta:
-      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
-      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
-      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
-    auth0:
-      clientId: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID:-""}
-      secretKey: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET:-""}
-      domain: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
-    customOidc:
-      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
-      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
-      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
-    openmetadata:
-      jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
   verifySSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     validate:

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import AddTestSuiteForm from './AddTestSuiteForm';
 
 const mockOnSubmit = jest.fn();
 
-jest.mock('../../axiosAPIs/testAPI', () => ({
+jest.mock('rest/testAPI', () => ({
   getListTestSuites: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE_DATA)),
@@ -31,11 +31,11 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<>RichTextEditor</>)
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 

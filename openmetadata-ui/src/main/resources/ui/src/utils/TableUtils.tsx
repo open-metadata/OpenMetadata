@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,17 +11,22 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Tooltip } from 'antd';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
+import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
+import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -38,7 +43,11 @@ import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constant
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { Column, DataType } from '../generated/entity/data/table';
+import {
+  Column,
+  DataType,
+  TableConstraint,
+} from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
@@ -131,7 +140,11 @@ export const getSearchTableTagsWithoutTier = (
   );
 };
 
-export const getConstraintIcon = (constraint = '', className = '') => {
+export const getConstraintIcon = (
+  constraint = '',
+  className = '',
+  width = '16px'
+) => {
   let title: string, icon: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
@@ -167,14 +180,13 @@ export const getConstraintIcon = (constraint = '', className = '') => {
   }
 
   return (
-    <PopOver
+    <Tooltip
       className={classNames(className)}
-      position="bottom"
-      size="small"
+      placement="bottom"
       title={title}
-      trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="16px" />
-    </PopOver>
+      trigger="hover">
+      <SVGIcons alt={title} icon={icon} width={width} />
+    </Tooltip>
   );
 };
 
@@ -355,4 +367,66 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
     default:
       return '';
   }
+};
+
+export function getTableExpandableConfig<T>(
+  isDraggable?: boolean
+): ExpandableConfig<T> {
+  const expandableConfig: ExpandableConfig<T> = {
+    expandIcon: ({ expanded, onExpand, expandable, record }) =>
+      expandable ? (
+        <>
+          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+          <Icon
+            className="mr-1"
+            component={expanded ? DropDownIcon : RightArrowIcon}
+            data-testid="expand-icon"
+            size={16}
+            onClick={(e) => onExpand(record, e)}
+          />
+        </>
+      ) : (
+        isDraggable && (
+          <>
+            <Icon className="drag-icon" component={DragIcon} />
+            <div className="expand-cell-empty-icon-container" />
+          </>
+        )
+      ),
+  };
+
+  return expandableConfig;
+}
+
+export const prepareConstraintIcon = (
+  columnName: string,
+  columnConstraint?: string,
+  tableConstraints?: TableConstraint[],
+  iconClassName?: string,
+  iconWidth?: string
+) => {
+  // get the table constraint for column
+  const tableConstraint = tableConstraints?.find((constraint) =>
+    constraint.columns?.includes(columnName)
+  );
+
+  // prepare column constraint element
+  const columnConstraintEl = columnConstraint
+    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    : null;
+
+  // prepare table constraint element
+  const tableConstraintEl = tableConstraint
+    ? getConstraintIcon(
+        tableConstraint.constraintType,
+        iconClassName || 'tw-mr-2',
+        iconWidth
+      )
+    : null;
+
+  return (
+    <span data-testid="constraints">
+      {columnConstraintEl} {tableConstraintEl}
+    </span>
+  );
 };

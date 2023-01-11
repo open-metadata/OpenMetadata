@@ -99,6 +99,7 @@ class TableUsageStage(Stage[QueryParserData]):
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
+                    duration=record.duration,
                 )
             )
         else:
@@ -107,10 +108,14 @@ class TableUsageStage(Stage[QueryParserData]):
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
+                    duration=record.duration,
                 )
             ]
 
     def stage_record(self, record: QueryParserData) -> None:
+        """
+        Process the parsed data and store it in a file
+        """
         if not record or not record.parsedData:
             return
         self.table_usage = {}

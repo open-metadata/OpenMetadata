@@ -3,6 +3,19 @@ title: Webhooks
 slug: /developers/webhooks
 ---
 
+<Note>
+
+# Webhooks
+
+In 0.13.1 , webhooks have been deprecated. You should instead use [OpenMetadata alerts](/openmetadata/alerts-notifications)
+
+Before upgrading to 0.13.1 it is recommended to save the existing Webhook configs(like webhook url) to use them later.
+
+We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
+Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
+
+</Note>
+
 # Webhooks
 
 A webhook is a way for an app to provide other applications with real-time information.

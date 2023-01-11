@@ -59,6 +59,13 @@ spec:
       labels:
         role: nfs-server
     spec:
+      initContainers:
+      - name: init-airflow-directories
+        image: busybox
+        command: ['sh', '-c', 'mkdir -p /exports/airflow-dags /exports/airflow-logs']
+        volumeMounts:
+          - mountPath: /exports
+            name: nfs-pvc
       containers:
       - name: nfs-server
         image: gcr.io/google_containers/volume-nfs:0.8
@@ -72,7 +79,7 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
-          - mountPath: /data
+          - mountPath: /exports
             name: nfs-pvc
       volumes:
         - name: nfs-pvc
@@ -126,12 +133,12 @@ metadata:
   name: openmetadata-dependencies-dags-pv
 spec:
   capacity:
-    storage: 11Gi
+    storage: 10Gi
   accessModes:
     - ReadWriteMany
   nfs:
     server: <NFS_SERVER_CLUSTER_IP>
-    path: "/"
+    path: "/airflow-dags"
 
 ---
 apiVersion: v1
@@ -169,12 +176,12 @@ metadata:
   name: openmetadata-dependencies-logs-pv
 spec:
   capacity:
-    storage: 11Gi
+    storage: 10Gi
   accessModes:
     - ReadWriteMany
   nfs:
     server: <NFS_SERVER_CLUSTER_IP>
-    path: "/"
+    path: "/airflow-logs"
 
 ---
 apiVersion: v1

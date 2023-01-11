@@ -24,7 +24,7 @@ from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import SchemaType, TopicSampleData
+from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -32,9 +32,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
+)
+from metadata.parsers.schema_parsers import (
+    InvalidSchemaTypeException,
+    schema_parser_config_registry,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -76,6 +81,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self, topic_details: BrokerTopicDetails
     ) -> Iterable[CreateTopicRequest]:
         try:
+            schema_type_map = {
+                key.lower(): value.value
+                for key, value in SchemaType.__members__.items()
+            }
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
@@ -100,19 +109,28 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
 
             if topic_schema is not None:
-                topic.schemaText = topic_schema.schema_str
-                if topic_schema.schema_type.lower() == SchemaType.Avro.value.lower():
-                    topic.schemaType = SchemaType.Avro.name
-                    if self.generate_sample_data:
-                        topic.sampleData = self._get_sample_data(topic.name)
-                elif (
-                    topic_schema.schema_type.lower() == SchemaType.Protobuf.name.lower()
+                schema_type = topic_schema.schema_type.lower()
+                load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
+                if not load_parser_fn:
+                    raise InvalidSchemaTypeException(
+                        f"Cannot find {schema_type} in parser providers registry."
+                    )
+                schema_fields = load_parser_fn(
+                    topic_details.topic_name, topic_schema.schema_str
+                )
+
+                topic.messageSchema = Topic(
+                    schemaText=topic_schema.schema_str,
+                    schemaType=schema_type_map.get(
+                        topic_schema.schema_type.lower(), SchemaType.Other.value
+                    ),
+                    schemaFields=schema_fields,
+                )
+                if (
+                    topic_schema.schema_type.lower() == SchemaType.Avro.value.lower()
+                    and self.generate_sample_data
                 ):
-                    topic.schemaType = SchemaType.Protobuf.name
-                elif topic_schema.schema_type.lower() == SchemaType.JSON.name.lower():
-                    topic.schemaType = SchemaType.JSON.name
-                else:
-                    topic.schemaType = SchemaType.Other.name
+                    topic.sampleData = self._get_sample_data(topic.name)
 
             self.status.topic_scanned(topic.name.__root__)
             yield topic
@@ -197,13 +215,19 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         else:
             if messages:
                 for message in messages:
-                    sample_data.append(
-                        str(
-                            self.consumer_client._serializer.decode_message(  # pylint: disable=protected-access
-                                message.value()
+                    try:
+                        sample_data.append(
+                            str(
+                                self.consumer_client._serializer.decode_message(  # pylint: disable=protected-access
+                                    message.value()
+                                )
                             )
                         )
-                    )
+                    except Exception as exc:
+                        logger.warning(
+                            f"Failed to decode sample data from topic {topic_name.__root__}: {exc}"
+                        )
+
         self.consumer_client.unsubscribe()
         return TopicSampleData(messages=sample_data)
 

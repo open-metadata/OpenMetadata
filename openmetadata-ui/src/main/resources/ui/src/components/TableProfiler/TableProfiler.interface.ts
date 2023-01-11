@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Column } from '../../generated/entity/data/table';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { SystemProfile } from '../../generated/api/data/createTableProfile';
+import {
+  Column,
+  ColumnProfilerConfig,
+  PartitionProfilerConfig,
+  ProfileSampleType,
+  TableProfile,
+  TableProfilerConfig,
+} from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
@@ -65,3 +74,23 @@ export type OverallTableSummeryType = {
   value: number | string;
   className?: string;
 };
+
+export type TableProfilerData = {
+  tableProfilerData: TableProfile[];
+  systemProfilerData: SystemProfile[];
+};
+
+export type TableProfilerChartProps = {
+  selectedTimeRange: keyof typeof PROFILER_FILTER_RANGE;
+};
+
+export interface ProfilerSettingModalState {
+  data: TableProfilerConfig | undefined;
+  sqlQuery: string;
+  profileSample: number | undefined;
+  excludeCol: string[];
+  includeCol: ColumnProfilerConfig[];
+  enablePartition: boolean;
+  partitionData: PartitionProfilerConfig | undefined;
+  selectedProfileSampleType: ProfileSampleType | undefined;
+}

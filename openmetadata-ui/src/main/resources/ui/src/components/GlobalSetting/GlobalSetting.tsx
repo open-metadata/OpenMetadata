@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,8 +12,9 @@
  */
 
 import React from 'react';
-import GlobalSettingRouter from '../../router/GlobalSettingRouter';
+
 import PageLayoutV1 from '../containers/PageLayoutV1';
+import GlobalSettingRouter from '../router/GlobalSettingRouter';
 import './GlobalSetting.less';
 import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
 

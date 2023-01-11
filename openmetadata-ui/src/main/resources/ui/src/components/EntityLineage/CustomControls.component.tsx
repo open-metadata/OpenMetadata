@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -32,6 +32,7 @@ import {
   ZOOM_SLIDER_STEP,
   ZOOM_TRANSITION_DURATION,
 } from '../../constants/Lineage.constants';
+import { getEntityName } from '../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ControlProps } from './EntityLineage.interface';
@@ -128,7 +129,7 @@ const CustomControls: FC<ControlProps> = ({
   const nodeOptions = useMemo(
     () =>
       [lineageData.entity, ...(lineageData.nodes || [])].map((node) => ({
-        label: node.fullyQualifiedName || node.name || '',
+        label: getEntityName(node),
         value: node.id,
       })),
     [lineageData]
@@ -159,7 +160,9 @@ const CustomControls: FC<ControlProps> = ({
           })}
           filterOption={handleSearchFilterOption}
           options={nodeOptions}
-          placeholder={t('label.search-lineage')}
+          placeholder={t('label.search-entity', {
+            entity: t('label.lineage'),
+          })}
           onChange={onOptionSelect}
         />
       </Col>

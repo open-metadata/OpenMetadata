@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { createUser } from '../../axiosAPIs/userAPI';
+import { createUser } from 'rest/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
 
 const mockUserRole = {
@@ -45,11 +45,11 @@ const mockUserRole = {
   },
 };
 
-jest.mock('../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
-jest.mock('../../components/containers/PageContainerV1', () => {
+jest.mock('components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -57,15 +57,11 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({ isAuthDisabled: true }),
-}));
-
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../components/CreateUser/CreateUser.component', () => {
+jest.mock('components/CreateUser/CreateUser.component', () => {
   return jest
     .fn()
     .mockImplementation(({ onSave }) => (
@@ -73,7 +69,7 @@ jest.mock('../../components/CreateUser/CreateUser.component', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('rest/userAPI', () => ({
   createUser: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -112,6 +108,6 @@ describe('Test AddUserPage component', () => {
       fireEvent.click(await findByText(container, /CreateUser component/i));
     });
 
-    expect(mockCreateUser).toBeCalled();
+    expect(mockCreateUser).toHaveBeenCalled();
   });
 });

@@ -1,4 +1,17 @@
-import { Button, Modal, Space } from 'antd';
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Button, Modal, Space, Typography } from 'antd';
 import { delay } from 'lodash';
 import React, { FunctionComponent, useState } from 'react';
 import { JsonTree } from 'react-awesome-query-builder';
@@ -13,6 +26,7 @@ interface Props {
   searchIndex: SearchIndex;
   onChangeJsonTree: (tree?: JsonTree) => void;
   jsonTree?: JsonTree;
+  onAppliedFilterChange: (value: string) => void;
 }
 
 export const AdvancedSearchModal: FunctionComponent<Props> = ({
@@ -22,6 +36,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
   searchIndex,
   onChangeJsonTree,
   jsonTree,
+  onAppliedFilterChange,
 }: Props) => {
   const [queryFilter, setQueryFilter] = useState<
     Record<string, unknown> | undefined
@@ -59,12 +74,18 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
         </Space>
       }
       okText={t('label.submit')}
-      title={t('label.advanced-search')}
-      visible={visible}
+      open={visible}
+      title={t('label.advanced-entity', {
+        entity: t('label.search'),
+      })}
       width={950}>
+      <Typography.Text data-testid="advanced-search-message">
+        {t('message.advanced-search-message')}
+      </Typography.Text>
       <AdvancedSearch
         jsonTree={jsonTree}
         searchIndex={searchIndex}
+        onAppliedFilterChange={onAppliedFilterChange}
         onChangeJsonTree={(nTree) => onChangeJsonTree(nTree)}
         onChangeQueryFilter={setQueryFilter}
       />

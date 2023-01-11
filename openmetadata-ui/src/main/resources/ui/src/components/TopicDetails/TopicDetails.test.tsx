@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,27 +11,24 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState } from 'Models';
+import {
+  findByTestId,
+  findByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import TopicDetails from './TopicDetails.component';
+import { TOPIC_DETAILS } from './TopicDetails.mock';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
   return jest
     .fn()
@@ -62,11 +59,9 @@ const TopicDetailsProps = {
   maximumMessageSize: 0,
   replicationFactor: 0,
   retentionSize: 0,
-  schemaText: 'schema text',
-  schemaType: 'Avro',
   serviceType: '',
   users: [],
-  topicDetails: {} as Topic,
+  topicDetails: TOPIC_DETAILS,
   entityName: '',
   activeTab: 1,
   owner: {} as EntityReference,
@@ -163,6 +158,12 @@ jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 
+jest.mock('./TopicSchema/TopicSchema', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
@@ -203,8 +204,10 @@ describe('Test TopicDetails component', () => {
       wrapper: MemoryRouter,
     });
     const schema = await findByTestId(container, 'label.schema');
+    const schemaFields = await screen.findByTestId('schema-fields');
 
     expect(schema).toBeInTheDocument();
+    expect(schemaFields).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {

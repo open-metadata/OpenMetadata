@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,24 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { DataInsightTabs } from '../../interface/data-insight.interface';
 import DataInsightPage from './DataInsightPage.component';
+
+let activeTab = DataInsightTabs.DATA_ASSETS;
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
-  useParams: jest.fn().mockReturnValue({ tab: 'data-assets' }),
+  useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
 
-jest.mock('../../components/containers/PageLayoutV1', () =>
+jest.mock('components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 
-jest.mock('../../components/DataInsightDetail/DataInsightSummary', () =>
+jest.mock('components/DataInsightDetail/DataInsightSummary', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -32,7 +36,7 @@ jest.mock('../../components/DataInsightDetail/DataInsightSummary', () =>
     )
 );
 
-jest.mock('../../components/DataInsightDetail/DescriptionInsight', () =>
+jest.mock('components/DataInsightDetail/DescriptionInsight', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -40,21 +44,21 @@ jest.mock('../../components/DataInsightDetail/DescriptionInsight', () =>
     )
 );
 
-jest.mock('../../components/DataInsightDetail/OwnerInsight', () =>
+jest.mock('components/DataInsightDetail/OwnerInsight', () =>
   jest.fn().mockReturnValue(<div data-testid="owner-insight">OwnerInsight</div>)
 );
 
-jest.mock('../../components/DataInsightDetail/TierInsight', () =>
+jest.mock('components/DataInsightDetail/TierInsight', () =>
   jest.fn().mockReturnValue(<div data-testid="tier-insight">TierInsight</div>)
 );
 
-jest.mock('../../components/DataInsightDetail/TopActiveUsers', () =>
+jest.mock('components/DataInsightDetail/TopActiveUsers', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="top-active-user">TopActiveUsers</div>)
 );
 
-jest.mock('../../components/DataInsightDetail/TopViewEntities', () =>
+jest.mock('components/DataInsightDetail/TopViewEntities', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -62,7 +66,7 @@ jest.mock('../../components/DataInsightDetail/TopViewEntities', () =>
     )
 );
 
-jest.mock('../../components/DataInsightDetail/TotalEntityInsight', () =>
+jest.mock('components/DataInsightDetail/TotalEntityInsight', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -74,21 +78,21 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   getTeamFilter: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../components/DataInsightDetail/DailyActiveUsersChart', () =>
+jest.mock('components/DataInsightDetail/DailyActiveUsersChart', () =>
   jest
     .fn()
     .mockReturnValue(
       <div data-testid="daily-active-users">DailyActiveUsersChart</div>
     )
 );
-jest.mock('../../components/DataInsightDetail/PageViewsByEntitiesChart', () =>
+jest.mock('components/DataInsightDetail/PageViewsByEntitiesChart', () =>
   jest
     .fn()
     .mockReturnValue(
       <div data-testid="entities-page-views">PageViewsByEntitiesChart</div>
     )
 );
-jest.mock('../../components/DataInsightDetail/KPIChart', () =>
+jest.mock('components/DataInsightDetail/KPIChart', () =>
   jest.fn().mockReturnValue(<div data-testid="kpi-chart">KPIChart</div>)
 );
 
@@ -120,5 +124,29 @@ describe('Test DataInsightPage Component', () => {
     expect(tierInsight).toBeInTheDocument();
 
     expect(totalEntityInsight).toBeInTheDocument();
+  });
+
+  it('Should not render the KPI chart for app analytics', async () => {
+    activeTab = DataInsightTabs.APP_ANALYTICS;
+
+    await act(async () => {
+      render(<DataInsightPage />, { wrapper: MemoryRouter });
+    });
+
+    const kpiChart = screen.queryByTestId('kpi-chart');
+
+    expect(kpiChart).toBeNull();
+  });
+
+  it('Should not render the insights summary for KPIs', async () => {
+    activeTab = DataInsightTabs.KPIS;
+
+    await act(async () => {
+      render(<DataInsightPage />, { wrapper: MemoryRouter });
+    });
+
+    const dataInsightsSummary = screen.queryByTestId('data-insight-summary');
+
+    expect(dataInsightsSummary).toBeNull();
   });
 });

@@ -12,7 +12,8 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [Data Quality](#data-quality)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -43,25 +44,31 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<h4>Data Catalog API Permissions</h4>
+
+- Go to <a href="https://console.cloud.google.com/apis/library/datacatalog.googleapis.com">https://console.cloud.google.com/apis/library/datacatalog.googleapis.com</a>
+- Select the `GCP Project ID` that you want to enable the `Data Catalog API` on.
+- Click on `Enable API` which will enable the data catalog api on the respective project.
+
 <h4>GCP Permissions</h4>
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
 
 <Table>
 
-| # | GCP Permission | GCP Role | Required For |
-| :---------- | :---------- | :---------- | :---------- |
-| 1 | bigquery.datasets.get | BigQuery Data Viewer | Metadata Ingestion |
-| 2 | bigquery.tables.get | BigQuery Data Viewer | Metadata Ingestion |
-| 3 | bigquery.tables.getData | BigQuery Data Viewer | Metadata Ingestion |
-| 4 | bigquery.tables.list | BigQuery Data Viewer | Metadata Ingestion |
-| 5 | resourcemanager.projects.get | BigQuery Data Viewer | Metadata Ingestion |
-| 6 | bigquery.jobs.create | BigQuery Job User | Metadata Ingestion |
-| 7 | bigquery.jobs.listAll | BigQuery Job User | Metadata Ingestion |
-| 8 | datacatalog.taxonomies.get | BigQuery Policy Admin | Fetch Policy Tags |
-| 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
-| 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
-| 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+| #    | GCP Permission                | GCP Role              | Required For            |
+| :--- | :---------------------------- | :-------------------- | :---------------------- |
+| 1    | bigquery.datasets.get         | BigQuery Data Viewer  | Metadata Ingestion      |
+| 2    | bigquery.tables.get           | BigQuery Data Viewer  | Metadata Ingestion      |
+| 3    | bigquery.tables.getData       | BigQuery Data Viewer  | Metadata Ingestion      |
+| 4    | bigquery.tables.list          | BigQuery Data Viewer  | Metadata Ingestion      |
+| 5    | resourcemanager.projects.get  | BigQuery Data Viewer  | Metadata Ingestion      |
+| 6    | bigquery.jobs.create          | BigQuery Job User     | Metadata Ingestion      |
+| 7    | bigquery.jobs.listAll         | BigQuery Job User     | Metadata Ingestion      |
+| 8    | datacatalog.taxonomies.get    | BigQuery Policy Admin | Fetch Policy Tags       |
+| 9    | datacatalog.taxonomies.list   | BigQuery Policy Admin | Fetch Policy Tags       |
+| 10   | bigquery.readsessions.create  | BigQuery Admin        | Bigquery Usage Workflow |
+| 11   | bigquery.readsessions.getData | BigQuery Admin        | Bigquery Usage Workflow |
 
 </Table>
 
@@ -175,7 +182,7 @@ To add multiple Project ID, select `Multiple Project ID` under `Project ID` opti
     2. Passing a local file path that contains the credentials:
        - GCS Credentials Path
 - **Enable Policy Tag Import (Optional)**: Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.
-- **Tag Category Name (Optional)**: If the Tag import is enabled, the name of the Tag Category will be created at OpenMetadata.
+- **Classification Name (Optional)**: If the Tag import is enabled, the name of the Classification will be created at OpenMetadata.
 - **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs. 
@@ -289,11 +296,11 @@ text="Learn more about how to configure the Data Quality tests from the UI."
 link="/connectors/ingestion/workflows/data-quality"
 />
 
-## DBT Integration
+## dbt Integration
 
 <Tile
 icon="mediation"
-title="DBT Integration"
-text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/connectors/ingestion/workflows/metadata/dbt"
+title="dbt Integration"
+text="Learn more about how to ingest dbt models' definitions and their lineage."
+link="/connectors/ingestion/workflows/dbt"
 />

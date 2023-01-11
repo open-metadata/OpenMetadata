@@ -3,6 +3,8 @@ package org.openmetadata.service.resources.dataInsight;
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -24,10 +26,6 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
         DataInsightChartResource.DataInsightChartList.class,
         "dataInsight",
         DataInsightChartResource.FIELDS);
-    supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
   }
 
   @Test
@@ -40,7 +38,7 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
   }
 
   @Test
-  void post_data_insight_4x(TestInfo test) throws IOException {
+  void post_data_insight_4x(TestInfo test) {
     assertResponseContains(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -57,15 +55,13 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
 
   @Override
   public void validateCreatedEntity(
-      DataInsightChart createdEntity, CreateDataInsightChart request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      DataInsightChart createdEntity, CreateDataInsightChart request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
-  public void compareEntities(DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
     assertEquals(expected.getDescription(), updated.getDescription());
@@ -74,11 +70,21 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
   @Override
   public DataInsightChart validateGetWithDifferentFields(DataInsightChart entity, boolean byName)
       throws HttpResponseException {
-    return null;
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner());
+    fields = "owner";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner());
+    return entity;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    return;
-  }
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 }

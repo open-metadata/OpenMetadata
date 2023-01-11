@@ -50,12 +50,14 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.glossary.GlossaryTermResource.GlossaryTermList;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -64,7 +66,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Glossary collection", tags = "Glossary collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "glossaries", order = 4)
+@Collection(name = "glossaries", order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
 
@@ -363,6 +365,55 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
       throws IOException {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossary",
+      summary = "Export glossary in CSV format",
+      tags = "glossaries",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of glossary terms",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+      })
+  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return super.exportCsvInternal(securityContext, name);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importGlossary",
+      summary = "Import glossary terms from CSV to create, and update glossary terms.",
+      tags = "glossaries",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of glossary terms",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return super.importCsvInternal(securityContext, name, csv, dryRun);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {

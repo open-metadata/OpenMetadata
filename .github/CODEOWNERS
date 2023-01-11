@@ -10,3 +10,6 @@
 /ingestion @open-metadata/ingestion
 /ingestion-core @open-metadata/ingestion
 
+# Review from Devops owners for changes around workflows
+/.github @akash-jain-10 @harshach
+/docker @akash-jain-10 @harshach

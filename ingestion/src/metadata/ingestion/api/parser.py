@@ -86,6 +86,7 @@ HAS_INNER_CONNECTION = {"Airflow"}
 
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
+    "Backend": PipelineConnection,  # For Airflow backend
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},

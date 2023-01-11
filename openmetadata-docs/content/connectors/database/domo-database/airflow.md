@@ -11,7 +11,7 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 

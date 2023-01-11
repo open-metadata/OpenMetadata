@@ -10,7 +10,7 @@ Your credentials and sensitive information are stored in a tool that you control
 OpenMetadata internal requirement and sensitive information.
 
 Without a secret manager configured in OpenMetadata, all your sensitive data, any password field of a service connection 
-parameters, bot credentials configuration or DBT configuration of an ingestion pipeline, were stored in MySQL (or 
+parameters, bot credentials configuration or dbt configuration of an ingestion pipeline, were stored in MySQL (or 
 Postgres) encrypted.
 
 The following diagram shows how is the process between the OM server and Airflow workflows:
@@ -61,7 +61,7 @@ There are two types of secrets manager implementations.
 ### Managed secrets manager
 
 All the sensitive data will be held automatically in the configured secrets manager, i.e., any password field stored in 
-the connection parameters of a service, in a bot credentials configuration, or a DBT configuration of an ingestion 
+the connection parameters of a service, in a bot credentials configuration, or a dbt configuration of an ingestion 
 pipeline.
 
 For example, suppose we create a MySQL service with the name `mysql-test`. In that case, the connection password will be 
@@ -79,7 +79,7 @@ security protection.
 On the other hand, the non-managed configuration allows flexibility on how we want to use our secrets vault. Instead of 
 automatically storing all the sensitive data, we can use the secrets ids from our secrets vault following the convention 
 `secret:{secret_id}` when filling in password fields of the connection parameters of a service, in a bot configuration, 
-or a DBT configuration of an ingestion pipeline.
+or a dbt configuration of an ingestion pipeline.
 
 The rest of the values which don't follow the convention for using a secret will be encrypted using the Fernet algorithm 
 as extra security protection.

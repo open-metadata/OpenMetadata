@@ -51,7 +51,8 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -66,9 +67,9 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.EventPublisherJob;
 import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
@@ -77,7 +78,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
@@ -93,19 +93,18 @@ import org.openmetadata.service.util.JsonUtils;
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private static final String SENDING_REQUEST_TO_ELASTIC_SEARCH = "Sending request to ElasticSearch {}";
   private final RestHighLevelClient client;
-  private final ElasticSearchIndexDefinition esIndexDefinition;
   private final CollectionDAO dao;
   private static final String SERVICE_NAME = "service.name";
   private static final String DATABASE_NAME = "database.name";
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
-    super(esConfig.getBatchSize(), new ArrayList<>());
+    super(esConfig.getBatchSize());
     this.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
-    esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
-    esIndexDefinition.createIndexes();
+    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+    esIndexDefinition.createIndexes(esConfig);
   }
 
   @Override
@@ -172,8 +171,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           case Entity.TAG:
             updateTag(event);
             break;
-          case Entity.TAG_CATEGORY:
-            updateTagCategory(event);
+          case Entity.CLASSIFICATION:
+            updateClassification(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -227,7 +226,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private UpdateRequest applyChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
-    ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexType esIndexType = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
     ChangeDescription changeDescription = event.getChangeDescription();
 
@@ -489,6 +488,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         break;
       case ENTITY_DELETED:
         DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+        new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
         GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
         request.setQuery(
             QueryBuilders.boolQuery()
@@ -644,11 +644,11 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
-  private void updateTagCategory(ChangeEvent event) throws IOException {
+  private void updateClassification(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
-      TagCategory tagCategory = (TagCategory) event.getEntity();
+      Classification classification = (Classification) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
-      String fqnMatch = tagCategory.getName() + ".*";
+      String fqnMatch = classification.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
     }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -80,14 +80,14 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/GlossaryDetails/GlossaryDetails.component', () => {
+jest.mock('components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
 }));
 
-jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
+jest.mock('components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 

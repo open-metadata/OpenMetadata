@@ -17,7 +17,7 @@ from typing import List, Optional, Set, Tuple
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import Column, DataModel
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -65,14 +65,6 @@ class SqlAlchemySource(ABC):
     ) -> str:
         """
         Method returns the table level comment
-        """
-
-    @abstractmethod
-    def get_data_model(
-        self, database: str, schema_name: str, table_name: str
-    ) -> DataModel:
-        """
-        Method to fetch data models
         """
 
     @abstractmethod

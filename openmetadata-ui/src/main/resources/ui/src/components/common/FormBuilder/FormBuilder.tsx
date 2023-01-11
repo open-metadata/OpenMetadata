@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,7 +18,7 @@ import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
-import { getPipelineServiceHostIp } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -55,7 +55,7 @@ const FormBuilder: FunctionComponent<Props> = ({
 }: Props) => {
   const formRef = useRef<CoreForm<ConfigData>>();
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formatFormDataForRender(formData)
+    formatFormDataForRender(formData ?? {})
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
@@ -79,7 +79,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   }, [isAirflowAvailable]);
 
   const handleCancel = () => {
-    setLocalFormData(formatFormDataForRender(formData));
+    setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
     if (onCancel) {
       onCancel();
     }

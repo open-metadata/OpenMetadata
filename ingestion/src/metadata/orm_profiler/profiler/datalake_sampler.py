@@ -15,7 +15,8 @@ for the profiler
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.ingestion.source.database.datalake import DatalakeSource
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 
 RANDOM_LABEL = "random"
 
@@ -30,7 +31,7 @@ class DatalakeSampler:
         self,
         session: Optional[Any],
         table,
-        profile_sample: Optional[float] = None,
+        profile_sample: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):

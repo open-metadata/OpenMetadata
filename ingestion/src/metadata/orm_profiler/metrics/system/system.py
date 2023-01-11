@@ -63,7 +63,6 @@ def get_system_metrics_for_dialect(
             } else returns None
     """
     logger.info(f"System metrics not support for {dialect}. Skipping processing.")
-    return None
 
 
 @get_system_metrics_for_dialect.register(Dialects.BigQuery)
@@ -95,12 +94,12 @@ def _(
 
     jobs = dedent(
         f"""
-        SELECT 
+        SELECT
             statement_type,
             start_time,
             destination_table,
             dml_statistics
-        FROM 
+        FROM
             `{region}`.INFORMATION_SCHEMA.JOBS
         WHERE
             DATE(creation_time) = CURRENT_DATE() - 1 AND
@@ -175,15 +174,15 @@ def _(
     stl_deleted = dedent(
         f"""
         SELECT
-            si."rows",
+            SUM(si."rows") AS "rows",
             sti."database",
             sti."schema",
             sti."table",
             sq.text,
-            MIN(si.starttime) AS starttime
+            DATE_TRUNC('second', si.starttime) AS starttime
         FROM
             pg_catalog.stl_delete si
-            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id 
+            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id
             INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
         WHERE
             sti."database" = '{session.get_bind().url.database}' AND
@@ -191,7 +190,7 @@ def _(
             sti."table" = '{table.__tablename__}' AND
             "rows" != 0 AND
             DATE(starttime) = CURRENT_DATE - 1
-        GROUP BY 1,2,3,4,5
+        GROUP BY 2,3,4,5,6
         ORDER BY 6 desc
         """
     )
@@ -199,15 +198,15 @@ def _(
     stl_insert = dedent(
         f"""
         SELECT
-            si."rows",
+            SUM(si."rows") AS "rows",
             sti."database",
             sti."schema",
             sti."table",
             sq.text,
-            MIN(si.starttime) AS starttime
+            DATE_TRUNC('second', si.starttime) AS starttime
         FROM
             pg_catalog.stl_insert si
-            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id 
+            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id
             INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
         WHERE
             sti."database" = '{session.get_bind().url.database}' AND
@@ -215,7 +214,7 @@ def _(
             sti."table" = '{table.__tablename__}' AND
             "rows" != 0 AND
             DATE(starttime) = CURRENT_DATE - 1
-        GROUP BY 1,2,3,4,5
+        GROUP BY 2,3,4,5,6
         ORDER BY 6 desc
         """
     )
@@ -379,7 +378,7 @@ def _(
             None,
         )
         if not identifier:
-            return None
+            continue
 
         values = identifier.value.split(".")
         database_name, schema_name, table_name = ([None] * (3 - len(values))) + values
@@ -396,7 +395,7 @@ def _(
         if (
             session.get_bind().url.database.lower() == database_name
             and table.__table_args__["schema"].lower() == schema_name
-            and table.__tablename__.lower() == table_name
+            and table.__tablename__ == table_name
         ):
             cursor_for_result_scan = session.execute(
                 text(dedent(result_scan.format(query_id=query_result.query_id)))

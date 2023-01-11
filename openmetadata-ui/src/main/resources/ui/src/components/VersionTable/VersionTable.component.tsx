@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import { Col, Row, Table } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +19,7 @@ import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
-import { makeData } from '../../utils/TableUtils';
+import { getTableExpandableConfig, makeData } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
 import TagsViewer from '../tags-viewer/tags-viewer';
@@ -75,12 +74,14 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
               {getFrequentlyJoinedColumns(
                 columnName,
                 joins,
-                t('label.frequently-joined-columns')
+                t('label.frequently-joined-column-plural')
               )}
             </>
           ) : (
             <span className="tw-no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </span>
           ),
       },
@@ -91,7 +92,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <div className="flex flex-wrap">
+          <div className="d-flex flex-wrap">
             <TagsViewer sizeCap={-1} tags={tags || []} />
           </div>
         ),
@@ -117,7 +118,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
     <Row>
       <Col>
         <Searchbar
-          placeholder={`${t('label.find-in-table')}...`}
+          placeholder={`${t('message.find-in-table')}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}
@@ -129,20 +130,8 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
           data-testid="entity-table"
           dataSource={data}
           expandable={{
+            ...getTableExpandableConfig<Column>(),
             defaultExpandedRowKeys: [],
-            expandIcon: ({ expanded, onExpand, record }) =>
-              record.children ? (
-                <FontAwesomeIcon
-                  className="m-r-xs cursor-pointer"
-                  icon={expanded ? faCaretDown : faCaretRight}
-                  onClick={(e) =>
-                    onExpand(
-                      record,
-                      e as unknown as React.MouseEvent<HTMLElement>
-                    )
-                  }
-                />
-              ) : null,
           }}
           pagination={false}
           size="small"

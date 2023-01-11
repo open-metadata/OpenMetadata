@@ -59,28 +59,6 @@
     "databaseFilterPattern": {
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
-    },
-    "dbtConfigSource": {
-      "mask": true,
-      "title": "DBT Configuration Source",
-      "description": "Available sources to fetch DBT catalog and manifest files.",
-      "oneOf": [
-        {
-          "$ref": "./dbtconfig/dbtCloudConfig.json"
-        },
-        {
-          "$ref": "./dbtconfig/dbtLocalConfig.json"
-        },
-        {
-          "$ref": "./dbtconfig/dbtHttpConfig.json"
-        },
-        {
-          "$ref": "./dbtconfig/dbtS3Config.json"
-        },
-        {
-          "$ref": "./dbtconfig/dbtGCSConfig.json"
-        }
-      ]
     }
   },
   "additionalProperties": false

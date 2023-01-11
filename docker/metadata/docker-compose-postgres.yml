@@ -14,10 +14,11 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+  es-data:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: openmetadata/postgresql:0.12.0
+    image: docker.getcollate.io/openmetadata/postgresql:0.13.1
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -48,11 +49,13 @@ services:
     ports:
       - "9200:9200"
       - "9300:9300"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
 
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.12.0
+    image: docker.getcollate.io/openmetadata/server:0.13.1
     environment:
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -79,31 +82,6 @@ services:
       # OpenMetadata Server Airflow Configuration
       AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
       SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://openmetadata-server:8585/api}
-      AIRFLOW_AUTH_PROVIDER: ${AIRFLOW_AUTH_PROVIDER:-no-auth}
-      # OpenMetadata Airflow Azure SSO Configuration
-      OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
-      OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
-      OM_AUTH_AIRFLOW_AZURE_SCOPES: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
-      OM_AUTH_AIRFLOW_AZURE_CLIENT_ID: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
-      # OpenMetadata Airflow Google SSO Configuration
-      OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
-      OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
-      # OpenMetadata Airflow Okta SSO Configuration
-      OM_AUTH_AIRFLOW_OKTA_CLIENT_ID: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
-      OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-      OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
-      OM_AUTH_AIRFLOW_OKTA_SA_EMAIL: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
-      OM_AUTH_AIRFLOW_OKTA_SCOPES: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
-      # OpenMetadata Airflow Auth0 SSO Configuration
-      OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID:-""}
-      OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET:-""}
-      OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
-      # OpenMetadata Airflow Custom OIDC SSO Configuration
-      OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
-      OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
-      OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
-      # OpenMetadata Airflow JWT Token Configuration
-      OM_AUTH_JWT_TOKEN: ${OM_AUTH_JWT_TOKEN:-""}
       #Database configuration for postgresql
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
@@ -143,7 +121,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.12.0
+    image: docker.getcollate.io/openmetadata/ingestion:0.13.1
     depends_on:
       elasticsearch:
         condition: service_started
@@ -152,7 +130,7 @@ services:
       openmetadata-server:
         condition: service_healthy
     environment:
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
       DB_HOST: ${AIRFLOW_DB_HOST:-postgresql}

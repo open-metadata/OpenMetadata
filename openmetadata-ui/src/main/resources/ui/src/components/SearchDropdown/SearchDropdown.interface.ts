@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,9 +14,16 @@
 export interface SearchDropdownProps {
   label: string;
   isSuggestionsLoading?: boolean;
-  options: string[];
+  options: SearchDropdownOption[];
   searchKey: string;
-  selectedKeys: string[];
-  onChange: (values: string[], searchKey: string) => void;
+  selectedKeys: SearchDropdownOption[];
+  highlight?: boolean;
+  onChange: (values: SearchDropdownOption[], searchKey: string) => void;
+  onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
+}
+
+export interface SearchDropdownOption {
+  key: string;
+  label: string;
 }

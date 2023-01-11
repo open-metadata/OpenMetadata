@@ -19,7 +19,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.dashboard.domodashboard import DomodashboardSource
+from metadata.ingestion.source.dashboard.domodashboard.metadata import (
+    DomodashboardSource,
+)
 
 mock_file_path = (
     Path(__file__).parent.parent.parent
@@ -176,7 +178,9 @@ class DomoDashboardUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
+    )
     @patch("pydomo.Domo")
     def __init__(self, methodName, domo_client, test_connection) -> None:
         super().__init__(methodName)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -52,18 +52,6 @@ const mockPermissions = {
 
 const mockUpdateWorkflows = jest.fn();
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: true,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 const mockPaging = {
   after: 'after',
   before: 'before',
@@ -113,7 +101,7 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
     .mockImplementation(() => <p>IngestionRecentRuns</p>),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -208,7 +196,7 @@ describe('Test Ingestion page', () => {
     const logsButton = await findByTestId('logs');
 
     expect(ingestionTable).toBeInTheDocument();
-    expect(tableHeaderContainer.length).toBe(5);
+    expect(tableHeaderContainer).toHaveLength(5);
     expect(runButton).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
@@ -332,7 +320,7 @@ describe('Test Ingestion page', () => {
       const runButton = await findByTestId(container, 'run');
       fireEvent.click(runButton);
 
-      expect(mockTriggerIngestion).toBeCalled();
+      expect(mockTriggerIngestion).toHaveBeenCalled();
     });
 
     // on click of delete button
@@ -417,7 +405,7 @@ describe('Test Ingestion page', () => {
 
     fireEvent.click(pauseButton);
 
-    expect(handleEnableDisableIngestion).toBeCalled();
+    expect(handleEnableDisableIngestion).toHaveBeenCalled();
   });
 
   it('Unpause button should be present if enabled is false', async () => {
@@ -457,7 +445,7 @@ describe('Test Ingestion page', () => {
 
     fireEvent.click(unpause);
 
-    expect(handleEnableDisableIngestion).toBeCalled();
+    expect(handleEnableDisableIngestion).toHaveBeenCalled();
   });
 
   it('Should render kill modal on click of kill button', async () => {

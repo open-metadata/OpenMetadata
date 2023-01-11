@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,13 +18,14 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getBots } from '../../axiosAPIs/botsAPI';
+import { getBots } from 'rest/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_LARGE,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
@@ -38,6 +39,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
+import PageHeader from '../header/PageHeader.component';
 import Loader from '../Loader/Loader';
 import { BotListV1Props } from './BotListV1.interfaces';
 
@@ -111,22 +113,24 @@ const BotListV1 = ({
             <RichTextEditorPreviewer markdown={record?.description || ''} />
           ) : (
             <span data-testid="no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </span>
           ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'id',
         key: 'id',
         width: 90,
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
           const title = isSystemBot
-            ? t('label.ingestion-bot-cant-be-deleted')
+            ? t('message.ingestion-bot-cant-be-deleted')
             : isAdminUser
             ? t('label.delete')
-            : t('label.admin-only-action');
+            : t('message.admin-only-action');
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
@@ -191,6 +195,8 @@ const BotListV1 = ({
     fetchBots(showDeleted);
   }, [showDeleted]);
 
+  const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
+
   return handleErrorPlaceholder ? (
     <Row>
       <Col className="w-full tw-flex tw-justify-end">
@@ -211,9 +217,7 @@ const BotListV1 = ({
               <Tooltip
                 placement="left"
                 title={
-                  isAdminUser
-                    ? t('label.add-bot')
-                    : t('label.admin-only-action')
+                  isAdminUser ? addBotLabel : t('message.admin-only-action')
                 }>
                 <Button
                   ghost
@@ -221,7 +225,7 @@ const BotListV1 = ({
                   disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddBotClick}>
-                  {t('label.add-bot')}
+                  {addBotLabel}
                 </Button>
               </Tooltip>
             </div>
@@ -234,15 +238,11 @@ const BotListV1 = ({
     </Row>
   ) : (
     <Row gutter={[16, 16]}>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          placeholder={t('label.search-for-bots')}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
+      <Col span={12}>
+        <PageHeader data={PAGE_HEADERS.BOTS} />
       </Col>
-      <Col span={16}>
+
+      <Col span={12}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
@@ -254,18 +254,26 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={
-              isAdminUser ? t('label.add-bot') : t('label.admin-only-action')
-            }>
+            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}
               type="primary"
               onClick={handleAddBotClick}>
-              {t('label.add-bot')}
+              {addBotLabel}
             </Button>
           </Tooltip>
         </Space>
+      </Col>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.bot-plural'),
+          })}...`}
+          typingInterval={500}
+          onSearch={handleSearch}
+        />
       </Col>
       <Col span={24}>
         <Row>

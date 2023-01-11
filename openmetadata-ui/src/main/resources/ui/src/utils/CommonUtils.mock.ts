@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { LabelType, State, TagSource } from '../generated/entity/data/chart';
 
 export const mockTags = [
@@ -105,3 +106,21 @@ export const sortedMockTags = [
     state: State.Confirmed,
   },
 ];
+
+export const mockFQN = 'sample_data.ecommerce_db.dim_product';
+export const mockFQNWithSpecialChar1 =
+  'sample_data.ecommerce_db."dim.api/client"';
+export const mockFQNWithSpecialChar2 =
+  'sample_data."ecommerce_db"."dim.api/client"';
+export const mockFQNWithSpecialChar3 =
+  'sample_data.ecommerce_db."dim.api/"client"';
+export const mockFQNWithSpecialChar4 =
+  'sample_data.ecommerce_db."dim.api/client""';
+export const mockFQNWithSpecialChar5 =
+  'sample_data.ecommerce_db.""dim.api/client"';
+
+export const mockTableNameFromFQN = 'dim_product';
+export const mockTableNameWithSpecialChar = 'dim.api/client';
+export const mockTableNameWithSpecialChar3 = 'api/"client"';
+export const mockTableNameWithSpecialChar4 = 'api/client""';
+export const mockTableNameWithSpecialChar5 = 'api/client"';

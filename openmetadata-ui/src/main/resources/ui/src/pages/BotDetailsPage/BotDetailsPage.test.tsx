@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserByName } from '../../axiosAPIs/userAPI';
+import { getUserByName } from 'rest/userAPI';
 import BotDetailsPage from './BotDetailsPage';
 
 const mockUserDetail = {
@@ -51,20 +51,20 @@ const botData = {
   deleted: false,
 };
 
-jest.mock('../../components/BotDetails/BotDetails.component', () => {
+jest.mock('components/BotDetails/BotDetails.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('rest/userAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve(botData)),
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve()),
   revokeUserToken: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

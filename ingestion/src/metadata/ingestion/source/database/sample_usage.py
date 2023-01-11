@@ -16,8 +16,8 @@ import json
 from datetime import datetime
 from typing import Dict, Iterable, Optional
 
-from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
-    SampleDataConnection,
+from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
+    CustomDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -45,6 +45,10 @@ class SampleUsageSource(UsageSource):
 
     service_type = DatabaseServiceType.BigQuery.value
 
+    database_field = ""  # filtering not required
+
+    schema_field = ""  # filtering not required
+
     def __init__(
         self, config: WorkflowSource, metadata_config: OpenMetadataConnection
     ):  # pylint: disable=super-init-not-called
@@ -57,16 +61,20 @@ class SampleUsageSource(UsageSource):
         self.metadata = OpenMetadata(metadata_config)
         self.analysis_date = datetime.utcnow()
 
+        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+            "sampleDataFolder"
+        )
+        if not sample_data_folder:
+            raise ValueError("Cannot get sampleDataFolder from connection options")
+
         self.service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/datasets/service.json",
+                sample_data_folder + "/datasets/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
-        self.query_log_csv = (
-            self.service_connection.sampleDataFolder + "/datasets/query_log"
-        )
+        self.query_log_csv = sample_data_folder + "/datasets/query_log"
         with open(self.query_log_csv, "r", encoding="utf-8") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
         self.service = self.metadata.get_service_or_create(
@@ -77,8 +85,8 @@ class SampleUsageSource(UsageSource):
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SampleDataConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, SampleDataConnection):
+        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
                 f"Expected SampleDataConnection, but got {connection}"
             )

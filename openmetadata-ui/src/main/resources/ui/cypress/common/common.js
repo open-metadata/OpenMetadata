@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -54,14 +54,14 @@ export const handleIngestionRetry = (
     let timer = BASE_WAIT_TIME;
     const rowIndex = ingestionType === 'metadata' ? 1 : 2;
 
-    interceptURL('GET', '/api/v1/services/ingestionPipelines/*/pipelineStatus?*', 'pipelineStatuses')
+    interceptURL('GET', '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*', 'pipelineStatuses')
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails')
 
     // ingestions page
     let retryCount = count;
     const testIngestionsTab = () => {
 
-        cy.get('[data-testid="Ingestions"]').should('be.visible');
+        cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
         cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
             'have.text',
             rowIndex
@@ -69,9 +69,10 @@ export const handleIngestionRetry = (
         // click on the tab only for the first time
         if (retryCount === 0) {
             // Wait for pipeline status to be loaded
+            verifyResponseStatusCode('@pipelineStatuses', 200);
+            cy.wait(1000); //adding manual wait for ingestion button to attach to DOM
             cy.get('[data-testid="Ingestions"]').click();
         }
-        verifyResponseStatusCode('@pipelineStatuses', 200)
         if (isDatabaseService(type) && testIngestionButton) {
             cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
         }
@@ -85,12 +86,17 @@ export const handleIngestionRetry = (
         }
       });
 
+      if(ingestionType === 'metadata') {
+        cy.get(`[data-row-key*="${ingestionType}"]`).find('[data-testid="pipeline-status"]').as('checkRun');
+     } else {
+        cy.get(`[data-row-key*="${ingestionType}"]`).find('[data-testid="pipeline-status"]').as('checkRun');
+     }
       // the latest run should be success
-      cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+      cy.get('@checkRun').then(
         ($ingestionStatus) => {
           
           if (
-            $ingestionStatus.text() !== 'Success' &&
+            $ingestionStatus.text() !== 'Success' &&  $ingestionStatus.text() !== 'Failed' &&
             retryCount <= RETRY_TIMES
           ) {
             // retry after waiting with log1 method [20s,40s,80s,160s,320s]
@@ -101,7 +107,7 @@ export const handleIngestionRetry = (
             checkSuccessState();
           } else {
             cy.get(
-              `.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`
+              '@checkRun'
             ).should('have.text', 'Success');
           }
         }
@@ -135,7 +141,6 @@ export const testServiceCreationAndIngestion = (
     serviceName,
     type = 'database',
     testIngestionButton = true,
-    configureDBT
 ) => {
     //Storing the created service name and the type of service
     // Select Service in step 1
@@ -199,13 +204,6 @@ export const testServiceCreationAndIngestion = (
     addIngestionInput();
 
     cy.get('[data-testid="next-button"]').should('exist').click();
-
-    // Configure DBT Model
-    if (isDatabaseService(type)) {
-        cy.contains('Configure DBT Model').should('be.visible');
-        configureDBT && configureDBT();
-        cy.get('[data-testid="submit-btn"]').should('be.visible').click();
-    }
 
     scheduleIngestion();
 
@@ -284,22 +282,8 @@ export const deleteCreatedService = (typeOfService, service_Name, apiService) =>
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteService', 200);
 
-    //Waiting to check if myData page redirection is proper after deleting service
-    cy.get('[data-testid="tables"]').should('exist').should('be.visible');
-
     //Closing the toast notification
     toastNotification(`${typeOfService} Service deleted successfully!`)
-
-    //Checking if the service got deleted successfully
-    interceptURL('GET', '/api/v1/teams/name/Organization?fields=users,owns,defaultRoles,policies,owner,parents,childrenCount&include=all', 'getSettingsPage')
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    verifyResponseStatusCode('@getSettingsPage', 200)
-
-    // Services page
-    cy.get('[data-testid="settings-left-panel"]')
-        .contains(typeOfService)
-        .should('be.visible')
-        .click();
 
     cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
@@ -481,10 +465,9 @@ export const addNewTagToEntity = (entityObj, term) => {
         .scrollIntoView()
         .click();
 
-    cy.wait(500);
-    cy.get('[class*="-control"]').should('be.visible').type(term);
-    cy.wait(500);
-    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
+    
+    cy.get(`[title="${term}"]`).should('be.visible').click();
     cy.get(
         '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
     ).contains(term);
@@ -499,12 +482,12 @@ export const addNewTagToEntity = (entityObj, term) => {
         .should('be.visible')
         .click();
 
-    cy.get('[class*="-control"]')
+        cy.get('[data-testid="tag-selector"]')
         .scrollIntoView()
         .should('be.visible')
         .type(term);
     cy.wait(500);
-    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get(`[title="${term}"]`).should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]')
         .scrollIntoView()
         .should('be.visible')
@@ -747,7 +730,7 @@ export const editCreatedProperty = (propertyName) => {
 
     verifyResponseStatusCode('@checkPatchForDescription', 200);
 
-    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('.ant-modal-wrap').should('not.exist');
 
     //Fetching for updated descriptions for the created custom property
     cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="viewer-container"]').should('contain', 'This is new description');
@@ -962,7 +945,7 @@ export const updateDescriptionForIngestedTables = (
         '/api/v1/services/ingestionPipelines/trigger/*',
         'checkRun'
     );
-    cy.get('[data-testid="run"]').should('be.visible').click();
+    cy.get(`[data-row-key*="${serviceName}_metadata"] [data-testid="run"]`).should('be.visible').click();
     verifyResponseStatusCode('@checkRun', 200);
 
     //Close the toast message
@@ -983,11 +966,6 @@ export const followAndOwnTheEntity = (termObj) => {
     // search for the term and redirect to the respective entity tab
   
     visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
-  
-    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
-    cy.get('[data-testid="follow-button"]').should('be.visible').click();
-  
-    verifyResponseStatusCode('@waitAfterFollow', 200);
     // go to manage tab and search for logged in user and set the owner
     interceptURL(
       'GET',
@@ -1018,20 +996,22 @@ export const followAndOwnTheEntity = (termObj) => {
         expect(text).equal('admin');
       });
   
+    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
+    cy.get('[data-testid="follow-button"]').scrollIntoView().should('be.visible').click();
+    verifyResponseStatusCode('@waitAfterFollow', 200);
+
     cy.clickOnLogo();
-  
-    // checks newly generated feed for follow and setting owner
-    cy.get('[data-testid="message-container"]')
-      .first()
-      .contains('Added owner: admin')
-      .should('be.visible');
-  
-    cy.get('[data-testid="message-container"]')
-      .eq(1)
-      .scrollIntoView()
+
+    cy.get('[data-testid="message-container"]').first()
       .contains(`Followed ${termObj.entity.slice(0, -1)}`)
       .should('be.visible');
   
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .eq(1).scrollIntoView()
+      .contains('Added owner: admin')
+      .should('be.visible');
+
     //Check followed entity on mydata page
     cy.get('[data-testid="following-data-container"]')
     .find(`[data-testid="Following data-${termObj.displayName}"]`)

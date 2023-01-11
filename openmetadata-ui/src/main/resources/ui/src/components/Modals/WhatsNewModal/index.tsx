@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -75,18 +75,18 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       }
       data-testid="whats-new-dialog"
       footer={null}
+      open={visible}
       title={
         <Typography.Text strong data-testid="whats-new-header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={1200}>
       <div className="flex w-auto h-full">
         <div
           className="border-r-2 p-x-md p-y-md border-separate"
           style={{ width: '14%' }}>
-          <div className="flex flex-col-reverse">
+          <div className="d-flex flex-col-reverse">
             {WHATS_NEW.map((d) => (
               <div className="flex items-center justify-end mb-2.5" key={d.id}>
                 <VersionIndicatorIcon
@@ -116,27 +116,30 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                 </p>
               </div>
               <div>
-                <div
-                  className={classNames('whats-new-modal-button-container', {
-                    'w-60': activeData.features.length > 0,
-                  })}>
-                  {activeData.features.length > 0 && (
+                {activeData.features.length > 0 && (
+                  <div
+                    className={classNames('whats-new-modal-button-container', {
+                      'w-60': activeData.features.length > 0,
+                    })}>
                     <button
                       className={getToggleButtonClasses('features')}
                       data-testid="WhatsNewModalFeatures"
                       onClick={() => handleToggleChange('features')}>
                       {t('label.feature-plural')}
                     </button>
-                  )}
-                  <button
-                    className={getToggleButtonClasses('change-log')}
-                    data-testid="WhatsNewModalChangeLogs"
-                    onClick={() => {
-                      handleToggleChange('change-log');
-                    }}>
-                    {t('label.change-logs')}
-                  </button>
-                </div>
+
+                    <button
+                      className={getToggleButtonClasses('change-log')}
+                      data-testid="WhatsNewModalChangeLogs"
+                      onClick={() => {
+                        handleToggleChange('change-log');
+                      }}>
+                      {t('label.change-entity', {
+                        entity: t('label.log-plural'),
+                      })}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div>

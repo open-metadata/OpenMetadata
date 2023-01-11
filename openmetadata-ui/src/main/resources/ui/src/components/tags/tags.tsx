@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,8 +14,9 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isString } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
@@ -42,6 +43,7 @@ const Tags: FunctionComponent<TagProps> = ({
   const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
   const textEditStyles = editable ? tagStyles.text.editable : '';
 
+  const { t } = useTranslation();
   const getTagString = (tag: string) => {
     return tag.startsWith('#') ? tag.slice(1) : tag;
   };
@@ -105,19 +107,23 @@ const Tags: FunctionComponent<TagProps> = ({
         getTag(tag, startWith)
       ) : (
         <Tooltip
-          className="tw-cursor-pointer"
+          className="cursor-pointer"
           placement="bottomLeft"
           title={
-            <div className="tw-text-left tw-p-1">
-              {tag.description && (
-                <div className="tw-mb-2">
-                  <RichTextEditorPreviewer
-                    enableSeeMoreVariant={false}
-                    markdown={`**${tag.tagFQN}**\n${tag.description}`}
-                    textVariant="white"
-                  />
-                </div>
-              )}
+            <div className="text-left p-xss">
+              <div className="m-b-xs">
+                <RichTextEditorPreviewer
+                  enableSeeMoreVariant={false}
+                  markdown={
+                    !isEmpty(tag.description)
+                      ? `**${tag.tagFQN}**\n${tag.description}`
+                      : t('label.no-entity', {
+                          entity: t('label.description'),
+                        })
+                  }
+                  textVariant="white"
+                />
+              </div>
             </div>
           }
           trigger="hover">

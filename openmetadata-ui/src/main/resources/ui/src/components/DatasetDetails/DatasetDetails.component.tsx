@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
-import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { restoreTable } from '../../axiosAPIs/tableAPI';
+import { restoreTable } from 'rest/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -48,8 +49,6 @@ import {
   getTableFQNFromColumnFQN,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
@@ -66,7 +65,6 @@ import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -79,6 +77,8 @@ import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
+// css
+import './datasetDetails.style.less';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   entityName,
@@ -146,7 +146,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -176,13 +175,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       fetchResourcePermission();
     }
   }, [tableDetails.id]);
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setUsageDetails = (
     usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
@@ -304,7 +296,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 9,
     },
@@ -661,12 +653,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             tabs={tabs}
           />
           <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
-            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
-              {activeTab === 1 && (
-                <div
-                  className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full"
-                  id="schemaDetails">
-                  <div className="tw-col-span-3">
+            {activeTab === 1 && (
+              <div className="tab-details-container">
+                <Row id="schemaDetails">
+                  <Col span={17}>
                     <Description
                       description={description}
                       entityFieldTasks={getEntityFieldThreadCounts(
@@ -690,17 +680,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       onCancel={onCancel}
                       onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
-                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                     />
-                  </div>
-                  <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
-                    <FrequentlyJoinedTables
-                      header="Frequently Joined Tables"
-                      tableList={getFrequentlyJoinedWithTables()}
-                    />
-                  </div>
-                  <div className="tw-col-span-full">
+                  </Col>
+                  <Col offset={1} span={6}>
+                    <div className="border-1 border-main rounded-6">
+                      <FrequentlyJoinedTables
+                        header="Frequently Joined Tables"
+                        tableList={getFrequentlyJoinedWithTables()}
+                      />
+                    </div>
+                  </Col>
+                  <Col className="m-t-md" span={24}>
                     <SchemaTab
                       columnName={getPartialNameFromTableFQN(
                         datasetFQN,
@@ -725,16 +716,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         tablePermissions.EditAll || tablePermissions.EditTags
                       }
                       isReadOnly={deleted}
-                      joins={tableJoinData.columnJoins as ColumnJoins[]}
+                      joins={tableJoinData.columnJoins || []}
                       tableConstraints={tableDetails.tableConstraints}
-                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}
                     />
-                  </div>
-                </div>
-              )}
-              {activeTab === 2 && (
+                  </Col>
+                </Row>
+              </div>
+            )}
+            {activeTab === 2 && (
+              <div className="tab-details-container">
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                   id="activityfeed">
@@ -752,56 +744,69 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   />
                   <div />
                 </div>
-              )}
-              {activeTab === 3 && (
-                <div id="sampleDataDetails">
-                  <SampleDataTable tableId={tableDetails.id} />
-                </div>
-              )}
-              {activeTab === 4 && <TableQueries tableId={tableDetails.id} />}
-              {activeTab === 5 && (
-                <TableProfilerV1
-                  permissions={tablePermissions}
-                  tableFqn={tableDetails.fullyQualifiedName || ''}
-                />
-              )}
-
-              {activeTab === 7 && (
                 <div
-                  className={classNames(
-                    location.pathname.includes(ROUTES.TOUR)
-                      ? 'tw-h-70vh'
-                      : 'tw-h-full'
-                  )}
-                  id="lineageDetails">
-                  <EntityLineageComponent
-                    addLineageHandler={addLineageHandler}
-                    deleted={deleted}
-                    entityLineage={entityLineage}
-                    entityLineageHandler={entityLineageHandler}
-                    entityType={EntityType.TABLE}
-                    hasEditAccess={
-                      tablePermissions.EditAll || tablePermissions.EditLineage
-                    }
-                    isLoading={isLineageLoading}
-                    isNodeLoading={isNodeLoading}
-                    lineageLeafNodes={lineageLeafNodes}
-                    loadNodeHandler={loadNodeHandler}
-                    removeLineageHandler={removeLineageHandler}
-                    onFullScreenClick={handleFullScreenClick}
-                  />
+                  data-testid="observer-element"
+                  id="observer-element"
+                  ref={elementRef as RefObject<HTMLDivElement>}>
+                  {getLoader()}
                 </div>
-              )}
-              {activeTab === 8 && Boolean(dataModel?.sql) && (
-                <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
-                  <SchemaEditor
-                    className="tw-h-full"
-                    mode={{ name: CSMode.SQL }}
-                    value={dataModel?.sql || ''}
-                  />
-                </div>
-              )}
-              {activeTab === 9 && (
+              </div>
+            )}
+            {activeTab === 3 && (
+              <div className="tab-details-container" id="sampleDataDetails">
+                <SampleDataTable tableId={tableDetails.id} />
+              </div>
+            )}
+            {activeTab === 4 && (
+              <div className="tab-details-container">
+                <TableQueries tableId={tableDetails.id} />
+              </div>
+            )}
+            {activeTab === 5 && (
+              <TableProfilerV1
+                permissions={tablePermissions}
+                tableFqn={tableDetails.fullyQualifiedName || ''}
+              />
+            )}
+
+            {activeTab === 7 && (
+              <div
+                className={classNames(
+                  'tab-details-container',
+                  location.pathname.includes(ROUTES.TOUR)
+                    ? 'tw-h-70vh'
+                    : 'tw-h-full'
+                )}
+                id="lineageDetails">
+                <EntityLineageComponent
+                  addLineageHandler={addLineageHandler}
+                  deleted={deleted}
+                  entityLineage={entityLineage}
+                  entityLineageHandler={entityLineageHandler}
+                  entityType={EntityType.TABLE}
+                  hasEditAccess={
+                    tablePermissions.EditAll || tablePermissions.EditLineage
+                  }
+                  isLoading={isLineageLoading}
+                  isNodeLoading={isNodeLoading}
+                  lineageLeafNodes={lineageLeafNodes}
+                  loadNodeHandler={loadNodeHandler}
+                  removeLineageHandler={removeLineageHandler}
+                  onFullScreenClick={handleFullScreenClick}
+                />
+              </div>
+            )}
+            {activeTab === 8 && Boolean(dataModel?.sql) && (
+              <div className="tab-details-container tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+                <SchemaEditor
+                  className="tw-h-full"
+                  mode={{ name: CSMode.SQL }}
+                  value={dataModel?.sql || ''}
+                />
+              </div>
+            )}
+            {activeTab === 9 && (
+              <div className="tab-details-container">
                 <CustomPropertyTable
                   entityDetails={
                     tableDetails as CustomPropertyProps['entityDetails']
@@ -809,14 +814,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   entityType={EntityType.TABLE}
                   handleExtensionUpdate={handleExtensionUpdate}
                 />
-              )}
-              <div
-                data-testid="observer-element"
-                id="observer-element"
-                ref={elementRef as RefObject<HTMLDivElement>}>
-                {getLoader()}
               </div>
-            </div>
+            )}
           </div>
           {threadLink ? (
             <ActivityThreadPanel
@@ -828,19 +827,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
-            />
-          ) : null}
-          {selectedField ? (
-            <RequestDescriptionModal
-              createThread={createThread}
-              defaultValue={getDefaultValue(owner)}
-              header="Request description"
-              threadLink={getEntityFeedLink(
-                EntityType.TABLE,
-                datasetFQN,
-                selectedField
-              )}
-              onCancel={closeRequestModal}
             />
           ) : null}
         </div>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -68,7 +68,9 @@ const SchemaEditor = ({
     readOnly: true,
     ...options,
   };
-  const [internalValue, setInternalValue] = useState<string>('');
+  const [internalValue, setInternalValue] = useState<string>(
+    getSchemaEditorValue(value)
+  );
   const handleEditorInputBeforeChange = (
     _editor: Editor,
     _data: EditorChange,
@@ -89,7 +91,7 @@ const SchemaEditor = ({
   }, [value]);
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="code-mirror-container">
       <CodeMirror
         className={editorClass}
         options={defaultOptions}

@@ -27,15 +27,12 @@ class ProtobufParserTests(TestCase):
 
     sample_protobuf_schema = """
     syntax = "proto3";
-
     package persons;
-
     enum Gender {
         M = 0; // male 
         F = 1; // female
         O = 2; // other
     }
-
     message PersonInfo {
         int32 age = 1; // age in years
         Gender gender = 2; 
@@ -51,26 +48,19 @@ class ProtobufParserTests(TestCase):
     parsed_schema = protobuf_parser.parse_protobuf_schema()
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema["name"], "PersonInfo")
-        self.assertEqual(self.parsed_schema["full_name"], "persons.PersonInfo")
+        self.assertEqual(self.parsed_schema[0].name.__root__, "PersonInfo")
+
+    def test_schema_type(self):
+        self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {str(field["name"]) for field in self.parsed_schema["fields"]}
+        field_names = {
+            str(field.name.__root__) for field in self.parsed_schema[0].children
+        }
         self.assertEqual(field_names, {"height", "gender", "age"})
 
-    def test_field_full_names(self):
-        field_full_names = {
-            str(field["full_name"]) for field in self.parsed_schema["fields"]
-        }
-        self.assertEqual(
-            field_full_names,
-            {
-                "persons.PersonInfo.height",
-                "persons.PersonInfo.gender",
-                "persons.PersonInfo.age",
-            },
-        )
-
     def test_field_types(self):
-        field_types = {str(field["type"]) for field in self.parsed_schema["fields"]}
-        self.assertEqual(field_types, {"TYPE_INT32", "TYPE_ENUM"})
+        field_types = {
+            str(field.dataType.name) for field in self.parsed_schema[0].children
+        }
+        self.assertEqual(field_types, {"INT", "ENUM"})

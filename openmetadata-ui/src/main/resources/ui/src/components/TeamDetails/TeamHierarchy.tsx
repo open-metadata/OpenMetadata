@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,18 +21,17 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTeamByName, updateTeam } from '../../axiosAPIs/teamsAPI';
+import { getTeamByName, updateTeam } from 'rest/teamsAPI';
 import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   DraggableBodyRowProps,
   MovedTeamProps,
-  TableExpandableDataProps,
   TeamHierarchyProps,
 } from './team.interface';
 import './teams.less';
@@ -133,50 +132,16 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
-  const tableExpandableIconData = useMemo(
-    () =>
-      ({ expanded, onExpand, expandable, record }: TableExpandableDataProps) =>
-        expandable ? (
-          <div
-            draggable
-            className="expand-cell-icon-container"
-            data-testid="expand-table-row"
-            onClick={(e) =>
-              onExpand(
-                record,
-                e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-              )
-            }>
-            <SVGIcons
-              className="drag-icon"
-              draggable="true"
-              icon={Icons.DRAG}
-            />
-            <SVGIcons
-              className="expand-icon"
-              icon={expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT}
-            />
-          </div>
-        ) : (
-          <>
-            <SVGIcons className="drag-icon" icon={Icons.DRAG} />
-            <div className="expand-cell-empty-icon-container" />
-          </>
-        ),
-    []
-  );
-
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
+      ...getTableExpandableConfig<Team>(true),
       onExpand: (isOpen, record) => {
         if (isOpen && isEmpty(record.children)) {
           onTeamExpand(false, record.fullyQualifiedName, true);
         }
       },
-      expandIcon: ({ expanded, onExpand, expandable, record }) =>
-        tableExpandableIconData({ expanded, onExpand, expandable, record }),
     }),
-    [onTeamExpand, tableExpandableIconData]
+    [onTeamExpand]
   );
 
   return (
@@ -212,8 +177,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         closable={false}
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
+        open={isModalOpen}
         title={t('label.move-the-team')}
-        visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
         <Typography.Text>

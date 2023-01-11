@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,4 +14,12 @@
 export enum QueryFilterFieldsEnum {
   MUST = 'must',
   SHOULD = 'should',
+}
+
+export enum ExplorePageTabs {
+  TABLES = 'tables',
+  TOPICS = 'topics',
+  DASHBOARDS = 'dashboards',
+  PIPELINES = 'pipelines',
+  MLMODELS = 'mlmodels',
 }

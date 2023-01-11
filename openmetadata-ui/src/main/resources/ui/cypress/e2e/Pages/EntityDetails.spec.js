@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,7 @@
  */
 
 import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from '../../../src/utils/TimeUtils';
-import { descriptionBox, interceptURL, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { descriptionBox, interceptURL, toastNotification, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -255,8 +255,8 @@ describe('Entity Details Page', () => {
       .click();
 
     verifyResponseStatusCode('@waitForAnnouncement', 201)
-    cy.get('.Toastify__close-button >').should('be.visible').click()
-    cy.get('.anticon > svg').should('be.visible').click();
+    toastNotification('Announcement created successfully')
+    cy.get('[data-testid="title"] .anticon-close').should('be.visible').click();
 
     // reload page to get the active announcement card
     interceptURL('GET', '/api/v1/feed?entityLink=*&type=Announcement&activeAnnouncement=true', 'getEntityDetails')

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import { Operation } from 'fast-json-patch';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
+import { postFeedById, postThread } from 'rest/feedsAPI';
 import AppState from '../../../../AppState';
-import { postFeedById, postThread } from '../../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,
@@ -108,9 +108,9 @@ const AnnouncementDrawer: FC<Props> = ({
       <div data-testid="announcement-drawer">
         <Drawer
           closable={false}
+          open={open}
           placement="right"
           title={title}
-          visible={open}
           width={576}
           onClose={onClose}>
           <div className="tw-flex tw-justify-end">

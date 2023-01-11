@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,41 +12,35 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import {
-  EntityFieldThreadCount,
+  Edge,
+  EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from 'Models';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+} from 'components/EntityLineage/EntityLineage.interface';
+import Loader from 'components/Loader/Loader';
+import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
+import { observer } from 'mobx-react';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
   getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
-} from '../../axiosAPIs/mlModelAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { getMlModelPath } from '../../constants/constants';
+} from 'rest/mlModelAPI';
+
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import { getMlModelPath, getVersionPath } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -58,6 +52,7 @@ import {
   EntityReference,
 } from '../../generated/type/entityLineage';
 import { Paging } from '../../generated/type/paging';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
@@ -108,6 +103,8 @@ const MlModelPage = () => {
   const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+
+  const [currentVersion, setCurrentVersion] = useState<string>();
 
   // get current user details
   const currentUser = useMemo(
@@ -316,6 +313,7 @@ const MlModelPage = () => {
         const mlModelData = response;
         if (mlModelData) {
           setMlModelDetail(mlModelData);
+          setCurrentVersion(mlModelData.version?.toString());
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -338,7 +336,8 @@ const MlModelPage = () => {
     try {
       const response = await saveUpdatedMlModelData(updatedMlModel);
       if (response) {
-        const { description } = response;
+        const { description, version } = response;
+        setCurrentVersion(version?.toString());
         setMlModelDetail((preVDetail) => ({
           ...preVDetail,
           description: description,
@@ -406,6 +405,7 @@ const MlModelPage = () => {
             ...preVDetail,
             tags: res.tags,
           }));
+          setCurrentVersion(res.version?.toString());
         } else {
           throw jsonData['api-error-messages']['update-tags-error'];
         }
@@ -428,6 +428,7 @@ const MlModelPage = () => {
               owner: res.owner,
               tags: res.tags,
             }));
+            setCurrentVersion(res.version?.toString());
             resolve();
           } else {
             showErrorToast(
@@ -454,6 +455,7 @@ const MlModelPage = () => {
           ...preVDetail,
           mlFeatures: response.mlFeatures,
         }));
+        setCurrentVersion(response.version?.toString());
       } else {
         throw jsonData['api-error-messages']['unexpected-error'];
       }
@@ -468,6 +470,7 @@ const MlModelPage = () => {
 
       if (data) {
         setMlModelDetail(data);
+        setCurrentVersion(data.version?.toString());
       } else {
         throw jsonData['api-error-messages']['update-entity-error'];
       }
@@ -516,6 +519,12 @@ const MlModelPage = () => {
         jsonData['api-error-messages']['create-conversation-error']
       );
     }
+  };
+
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(EntityType.MLMODEL, mlModelFqn, currentVersion as string)
+    );
   };
 
   const deletePostHandler = (
@@ -569,6 +578,8 @@ const MlModelPage = () => {
           unfollowMlModelHandler={unfollowMlModel}
           updateMlModelFeatures={updateMlModelFeatures}
           updateThreadHandler={updateThreadHandler}
+          version={currentVersion}
+          versionHandler={versionHandler}
           onExtensionUpdate={handleExtentionUpdate}
         />
       );

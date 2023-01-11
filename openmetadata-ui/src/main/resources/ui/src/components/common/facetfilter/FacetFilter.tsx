@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -59,7 +59,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                   ...buckets,
                   ...filters[aggregationKey]
                     .filter((f) => !buckets.some((b) => b.key === f))
-                    .map((f) => ({ key: f, doc_count: 0 })), // eslint-disable-line @typescript-eslint/camelcase
+                    .map((f) => ({ key: f, doc_count: 0 })),
                 ]
               : buckets,
         },
@@ -74,7 +74,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
       )
       .map(([aggregationKey, values]) => [
         aggregationKey,
-        { buckets: values.map((v) => ({ key: v, doc_count: 0 })) }, // eslint-disable-line @typescript-eslint/camelcase
+        { buckets: values.map((v) => ({ key: v, doc_count: 0 })) },
       ]);
 
     const combinedAggregations = [
@@ -143,7 +143,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           { length: aggregationsLength }
         ) => (
           <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
-            <div className="flex justify-between flex-col">
+            <div className="d-flex justify-between flex-col">
               <h6 className="font-medium text-grey-body m-b-sm m-y-xs">
                 {translateAggregationKeyToTitle(aggregationKey)}
               </h6>
@@ -178,7 +178,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                         [aggregationKey]: prev[aggregationKey] + 5,
                       }))
                     }>
-                    {t('label.view-more')}
+                    {t('label.view-entity', {
+                      entity: t('label.more-lowercase'),
+                    })}
                   </p>
                 )}
                 {aggregationsPageSize[aggregationKey] > 5 && (
@@ -190,7 +192,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                         [aggregationKey]: Math.max(5, prev[aggregationKey] - 5),
                       }))
                     }>
-                    {t('label.view-less')}
+                    {t('label.view-entity', {
+                      entity: t('label.less-lowercase'),
+                    })}
                   </p>
                 )}
               </div>

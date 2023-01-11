@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,10 +18,12 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
-@grey-body: rgb(55, 53, 47);
 @trigger-btn-hover-bg: #efefef;
 
 //font weight
+.font-300 {
+  font-weight: 300;
+}
 .font-medium {
   font-weight: 500;
 }
@@ -65,6 +67,9 @@
 }
 .text-grey-muted {
   color: #6b7280;
+}
+.text-grey-body {
+  color: @text-color-secondary;
 }
 .text-body {
   color: @text-color-secondary;
@@ -126,46 +131,6 @@
   border-radius: 6px;
 }
 
-// flex
-.flex {
-  display: flex;
-}
-.item-start {
-  align-items: flex-start;
-}
-.items-center {
-  align-items: center;
-}
-.justify-end {
-  justify-content: flex-end;
-}
-.justify-between {
-  justify-content: space-between;
-}
-.justify-center {
-  justify-content: center;
-}
-.self-center {
-  align-self: center;
-}
-.flex-col {
-  flex-direction: column;
-}
-.flex-initial {
-  flex: 0 1 auto;
-}
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flex-wrap {
-  flex-wrap: wrap;
-}
-.flex-grow {
-  flex-grow: 1;
-}
-
 .break-word {
   word-break: break-word;
 }
@@ -173,9 +138,6 @@
 .mx-auto {
   margin-right: auto;
   margin-left: auto;
-}
-.text-semi-bold {
-  font-weight: 500;
 }
 .bg-body-main {
   background: @body-bg-color;
@@ -188,6 +150,12 @@
 }
 .bg-primary-hover-lite {
   background-color: @primary-hover-light;
+}
+.bg-grey {
+  background-color: @gray;
+}
+.bg-white {
+  background-color: @white;
 }
 
 .activeCategory {
@@ -209,6 +177,12 @@
   opacity: 0.6;
 }
 
+.link-hover {
+  &:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
 .cursor-pointer {
   cursor: pointer;
 }
@@ -248,6 +222,9 @@
 .font-semibold {
   font-weight: 600;
 }
+.font-bold {
+  font-weight: 700;
+}
 
 .transform-180 {
   transform: rotate(180deg);
@@ -262,6 +239,9 @@
 }
 .z-10 {
   z-index: 10;
+}
+.z-400 {
+  z-index: 400;
 }
 
 .entity-details-container {
@@ -279,11 +259,28 @@
   line-height: 18px;
 }
 
-.heading {
-  font-weight: 500 !important;
-  margin-bottom: 16px !important;
-  color: @grey-body !important;
+/* Opacity CSS start */
+
+.opacity-0 {
+  opacity: 0;
 }
+.opacity-100 {
+  opacity: 1;
+}
+
+/* Opacity CSS end */
+
+/* Group CSS Start */
+
+.custom-group {
+  &:hover {
+    .group-hover-opacity-100 {
+      opacity: 1;
+    }
+  }
+}
+
+/* Group CSS End*/
 
 .quick-filter-dropdown-trigger-btn {
   padding: 4px;
@@ -295,4 +292,17 @@
 .quick-filter-dropdown-trigger-btn:hover,
 .quick-filter-dropdown-trigger-btn:focus {
   background-color: @trigger-btn-hover-bg;
+}
+
+// Rotate
+.rotate-inverse {
+  transform: rotate(180deg);
+}
+
+.rotate-90 {
+  transform: rotate(90deg);
+}
+
+.rotate--90 {
+  transform: rotate(-90deg);
 }

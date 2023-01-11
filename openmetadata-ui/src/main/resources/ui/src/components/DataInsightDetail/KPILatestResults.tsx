@@ -1,4 +1,17 @@
-import { Progress, Space, Typography } from 'antd';
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Space, Typography } from 'antd';
 import { toNumber, uniqueId } from 'lodash';
 
 import React, { FC, useMemo } from 'react';
@@ -6,6 +19,7 @@ import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequ
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';
+import DataInsightProgressBar from './DataInsightProgressBar';
 
 interface Props {
   kpiLatestResultsRecord: Record<string, UIKpiResult>;
@@ -17,7 +31,7 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
   }, [kpiLatestResultsRecord]);
 
   return (
-    <Space className="w-full" direction="vertical">
+    <Space className="w-full" direction="vertical" size={16}>
       {latestResultsList.map((result) => {
         const name = result[0];
         const resultData = result[1];
@@ -45,22 +59,30 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const isTargetMet = targetResult.targetMet;
 
         return (
-          <Space className="w-full" direction="vertical" key={uniqueId()}>
+          <Space
+            className="w-full"
+            direction="vertical"
+            key={uniqueId()}
+            size={8}>
             <Typography.Text className="data-insight-label-text">
               {resultData.displayName ?? name}
             </Typography.Text>
-            <Space className="w-full justify-between">
-              <Typography.Text>{`${
-                isPercentage ? targetPercentValue : targetValue
-              }${suffix}`}</Typography.Text>
-              <Typography.Text>{`${
-                isPercentage ? targetMetPercentValue : targetMetValue
-              }${suffix}`}</Typography.Text>
-            </Space>
-            <Progress percent={currentProgress} showInfo={isTargetMet} />
-            <Typography.Text className="data-insight-label-text">
-              {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-            </Typography.Text>
+            <div>
+              <DataInsightProgressBar
+                showSuccessInfo
+                progress={Number(currentProgress)}
+                showLabel={false}
+                startValue={isPercentage ? targetPercentValue : targetValue}
+                successValue={
+                  isPercentage ? targetMetPercentValue : targetMetValue
+                }
+                suffix={suffix}
+              />
+
+              <Typography.Text className="data-insight-label-text">
+                {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
+              </Typography.Text>
+            </div>
           </Space>
         );
       })}

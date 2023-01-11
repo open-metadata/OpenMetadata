@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 /*!
  * @toast-ui/editor
  * @version 3.1.3 | Thu Feb 10 2022
@@ -236,9 +248,6 @@ li.ProseMirror-selectednode:after {
   position: relative;
   border: 1px solid #dadde6;
   height: 100%;
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
   border-radius: 4px;
 }
 
@@ -821,9 +830,6 @@ li.ProseMirror-selectednode:after {
   font-size: 12px;
   border-radius: 3px;
   color: #fff;
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
 }
 
 .toastui-editor-tooltip .arrow {
@@ -961,9 +967,6 @@ li.ProseMirror-selectednode:after {
   40 - tooltip
 */
 .ProseMirror {
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
   color: #222;
   font-size: 13px;
   overflow-y: auto;
@@ -997,9 +1000,6 @@ table.ProseMirror-selectednode {
   margin: 0;
   padding: 0;
   font-size: 13px;
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
   z-index: 20;
 }
 

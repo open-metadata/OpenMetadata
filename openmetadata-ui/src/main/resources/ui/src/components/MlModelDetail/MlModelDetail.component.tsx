@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
@@ -28,6 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreMlmodel } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -52,13 +54,14 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -98,6 +101,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   createThread,
   entityFieldTaskCount,
   entityFieldThreadCount,
+  version,
+  versionHandler,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -258,7 +263,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 4,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 5,
     },
@@ -376,6 +381,27 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const handleRestoreMlmodel = async () => {
+    try {
+      await restoreMlmodel(mlModelDetail.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.ml-model'),
+        }),
+        // Autoclose timer
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.ml-model'),
+        })
+      );
+    }
+  };
+
   const onFeaturesUpdate = async (features: Mlmodel['mlFeatures']) => {
     await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
   };
@@ -409,9 +435,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlHyperParameters = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">
-          {t('label.hyper-parameters')}{' '}
+          {t('label.hyper-parameter-plural')}{' '}
         </h6>
         <div className="m-t-xs">
           {isEmpty(mlModelDetail.mlHyperParameters) ? (
@@ -434,7 +460,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">{t('label.model-store')}</h6>
         {mlModelDetail.mlStore ? (
           <div className="m-t-xs tw-table-container">
@@ -567,6 +593,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
+          version={version}
+          versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
         />
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,18 +12,33 @@
  */
 
 import { InitOptions } from 'i18next';
+import { map } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
 import frFR from '../../locale/languages/fr-fr.json';
+
+export enum SupportedLocales {
+  English = 'en-US',
+  Français = 'fr-FR',
+}
+
+export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
+  label: key,
+  value,
+}));
 
 // Returns i18next options
 export const getInitOptions = (): InitOptions => {
   return {
-    supportedLngs: ['en-US', 'fr-FR'],
+    supportedLngs: Object.values(SupportedLocales),
     resources: {
       'en-US': { translation: enUS },
       'fr-FR': { translation: frFR },
     },
     fallbackLng: ['en-US'],
+    detection: {
+      order: ['cookie'],
+      caches: ['cookie'], // cache user language on
+    },
     interpolation: {
       escapeValue: false, // XSS safety provided by React
     },

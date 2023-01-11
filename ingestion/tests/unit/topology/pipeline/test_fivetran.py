@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.fivetran import (
+from metadata.ingestion.source.pipeline.fivetran.metadata import (
     FivetranPipelineDetails,
     FivetranSource,
 )
@@ -117,8 +117,10 @@ MOCK_PIPELINE = Pipeline(
 
 
 class FivetranUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("metadata.ingestion.source.pipeline.fivetran.FivetranClient")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranClient")
     def __init__(self, methodName, fivetran_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

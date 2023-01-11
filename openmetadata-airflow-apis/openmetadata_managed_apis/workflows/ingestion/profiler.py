@@ -16,15 +16,6 @@ import json
 from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
 
-from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.logger import set_loggers_level
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -35,6 +26,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
     WorkflowConfig,
 )
+from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
 
 
 def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):

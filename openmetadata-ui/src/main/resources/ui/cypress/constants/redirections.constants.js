@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -135,10 +135,6 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="metadata"]',
     url: `${BASE_URL}/settings/services/metadata`,
   },
-  activityFeed: {
-    testid: '[data-menu-id*="activityFeed"]',
-    url: `${BASE_URL}/settings/collaboration/activityFeed`,
-  },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',
     url: `${BASE_URL}/settings/customAttributes/tables`,
@@ -162,18 +158,6 @@ export const SETTINGS_LEFT_PANEL = {
   elasticsearch: {
     testid: '[data-menu-id*="elasticsearch"]',
     url: `${BASE_URL}/settings/eventPublishers/elasticsearch`,
-  },
-  webhooks: {
-    testid: '[data-menu-id*="webhook"]',
-    url: `${BASE_URL}/settings/integrations/webhook`,
-  },
-  slack: {
-    testid: '[data-menu-id*="slack"]',
-    url: `${BASE_URL}/settings/integrations/slack`,
-  },
-  msTeams: {
-    testid: '[data-menu-id*="msTeams"]',
-    url: `${BASE_URL}/settings/integrations/msTeams`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',

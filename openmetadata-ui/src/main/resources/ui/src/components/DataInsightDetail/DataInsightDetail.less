@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 @label-color: #6b7280;
 @summary-card-bg-hover: #f0f1f3;
 
 .data-insight-card {
   .ant-card-head {
     border-bottom: none;
+    padding: 8px 16px 0px;
+  }
+  .custom-data-insight-tooltip {
+    .ant-card-head {
+      border-bottom: 1px solid @border-gray-color;
+    }
+  }
+  .ant-card-body {
+    padding: 16px 16px;
   }
 }
 

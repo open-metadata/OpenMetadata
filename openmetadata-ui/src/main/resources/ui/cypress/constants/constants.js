@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -42,6 +42,9 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
+  testSuiteName: "critical_metrics_suite",
+  sqlTestCase: "tableCustomSQLQuery",
+  sqlQuery: "Select * from dim_address"
 };
 
 export const SEARCH_ENTITY_TABLE = {
@@ -288,7 +291,7 @@ export const HTTP_CONFIG_SOURCE = {
 };
 
 export const DBT = {
-  tagCategory: 'DBTTags',
+  classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
@@ -302,3 +305,31 @@ export const API_SERVICE = {
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
 }
+
+export const TEST_CASE = {
+  testCaseAlert: `TestCaseAlert-ct-test-${uuid()}`,
+  testCaseDescription: 'This is test case alert description',
+  dataAsset: 'Test Case',
+  filters: 'Test Results === Failed',
+};
+
+export const DESTINATION = {
+  webhook: {
+    name: `webhookAlert-ct-test-${uuid()}`,
+    locator: 'Webhook',
+    description: 'This is webhook description',
+    url: 'http://localhost:8585',
+  },
+  slack: {
+    name: `slackAlert-ct-test-${uuid()}`,
+    locator: 'Slack',
+    description: 'This is slack description',
+    url: 'http://localhost:8585',
+  },
+  msteams: {
+    name: `msteamsAlert-ct-test-${uuid()}`,
+    locator: 'MS Teams',
+    description: 'This is ms teams description',
+    url: 'http://localhost:8585',
+  },
+};

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  queryByTestId,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -42,13 +48,6 @@ const mockDescriptionProp = {
   onEntityFieldSelect: jest.fn(),
 };
 
-jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-    })),
-  };
-});
 jest.mock('../../../hooks/authHooks', () => {
   return {
     useAuth: jest.fn().mockReturnValue({
@@ -72,8 +71,8 @@ jest.mock(
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
-      .mockReturnValue(
-        <p data-testid="editor-modal">ModalWithMarkdownEditor</p>
+      .mockImplementation(({ visible }) =>
+        visible ? <p data-testid="markdown-editor">RichTextPreviewer</p> : null
       ),
   })
 );
@@ -120,30 +119,26 @@ describe('Test Description Component', () => {
   });
 
   it('Check if it has isEdit as true', async () => {
-    const { container } = render(
-      <Description {...mockDescriptionProp} isEdit />,
-      {
+    await act(async () => {
+      render(<Description {...mockDescriptionProp} isEdit />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const descriptionContainer = await findByTestId(container, 'description');
-    const editorModal = await findByTestId(container, 'editor-modal');
+    const descriptionContainer = await screen.findByTestId('description');
+    const editorModal = await screen.findByTestId('markdown-editor');
 
     expect(descriptionContainer).toBeInTheDocument();
     expect(editorModal).toBeInTheDocument();
   });
 
   it('Check if it has isEdit as false', async () => {
-    const { container } = render(
-      <Description {...mockDescriptionProp} isEdit={false} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<Description {...mockDescriptionProp} isEdit={false} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const descriptionContainer = await findByTestId(container, 'description');
-    const editorModal = queryByTestId(container, 'editor-modal');
+    const descriptionContainer = await screen.findByTestId('description');
+    const editorModal = screen.queryByTestId('markdown-editor');
 
     expect(descriptionContainer).toBeInTheDocument();
     expect(editorModal).not.toBeInTheDocument();

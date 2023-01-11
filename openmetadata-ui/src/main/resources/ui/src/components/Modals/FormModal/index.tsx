@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,8 +14,8 @@
 import { Button, Modal, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useRef, useState } from 'react';
+import { Classification } from '../../../generated/entity/classification/classification';
 import { Team } from '../../../generated/entity/teams/team';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { FormData, FormModalProp, FormRef } from './FormModal.interface';
 
 const FormModal = ({
@@ -61,12 +61,12 @@ const FormModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={1300}
       onCancel={onCancel}>
       <form id="form-modal" onSubmit={onSubmitHandler}>
@@ -74,7 +74,7 @@ const FormModal = ({
           errorData={errorData}
           initialData={initialData}
           ref={formRef}
-          saveData={(data: TagsCategory | Team) => {
+          saveData={(data: Classification | Team) => {
             setData(data);
             onChange && onChange(data);
           }}

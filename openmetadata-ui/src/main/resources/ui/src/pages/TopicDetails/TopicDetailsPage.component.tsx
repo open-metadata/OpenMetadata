@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,45 +12,38 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, omitBy } from 'lodash';
-import { observer } from 'mobx-react';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
-  EntityFieldThreadCount,
-  EntityTags,
+  Edge,
+  EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from 'Models';
+} from 'components/EntityLineage/EntityLineage.interface';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import TopicDetails from 'components/TopicDetails/TopicDetails.component';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
+import { observer } from 'mobx-react';
+import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
   getTopicByFqn,
   patchTopicDetails,
   removeFollower,
-} from '../../axiosAPIs/topicsAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
+} from 'rest/topicsAPI';
+import AppState from '../../AppState';
 import {
   getServiceDetailsPath,
   getTopicDetailsPath,
@@ -67,6 +60,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
@@ -99,7 +93,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
-  const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [partitions, setPartitions] = useState<number>(0);
@@ -110,8 +103,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [name, setName] = useState<string>('');
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
-
-  const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -398,8 +389,6 @@ const TopicDetailsPage: FunctionComponent = () => {
             followers,
             fullyQualifiedName,
             name,
-            schemaType,
-            schemaText,
             service,
             tags,
             owner,
@@ -416,12 +405,10 @@ const TopicDetailsPage: FunctionComponent = () => {
           setTopicId(id);
           setCurrentVersion(version?.toString());
           setDescription(description ?? '');
-          setSchemaType(schemaType ?? '');
           setFollowers(followers ?? []);
           setOwner(owner);
           setTier(getTierTags(tags ?? []));
           setTags(getTagsWithoutTier(tags ?? []));
-          setSchemaText(schemaText ?? '');
           setPartitions(partitions);
           setCleanupPolicies(cleanupPolicies ?? []);
           setMaximumMessageSize(maximumMessageSize ?? 0);
@@ -748,8 +735,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               replicationFactor={replicationFactor}
               retentionSize={retentionSize}
               sampleData={sampleData}
-              schemaText={schemaText}
-              schemaType={schemaType}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedTopicName={slashedTopicName}

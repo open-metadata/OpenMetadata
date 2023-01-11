@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,33 +15,30 @@ import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
+import i18next from 'i18next';
 import { isEqual } from 'lodash';
-import {
-  EntityFieldThreadCount,
-  EntityFieldThreads,
-  EntityThreadField,
-} from 'Models';
-import React from 'react';
-import Showdown from 'showdown';
-import TurndownService from 'turndown';
 import {
   deletePostById,
   deleteThread,
   getFeedById,
   updatePost,
   updateThread,
-} from '../axiosAPIs/feedsAPI';
+} from 'rest/feedsAPI';
 import {
   getSearchedUsers,
   getSuggestions,
   getUserSuggestions,
   searchData,
-} from '../axiosAPIs/miscAPI';
+} from 'rest/miscAPI';
+
+import React from 'react';
+import Showdown from 'showdown';
+import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
-  entityRegex,
   EntityRegEx,
+  entityRegex,
   entityUrlMap,
   hashtagRegEx,
   linkRegEx,
@@ -51,6 +48,11 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import {
+  EntityFieldThreadCount,
+  EntityFieldThreads,
+  EntityThreadField,
+} from '../interface/feed.interface';
 import jsonData from '../jsons/en';
 import {
   getEntityPlaceHolder,
@@ -112,10 +114,18 @@ export const getReplyText = (
   singular?: string,
   plural?: string
 ) => {
-  if (count === 0) return 'Reply in conversation';
-  if (count === 1) return `${count} ${singular ? singular : 'older reply'}`;
+  if (count === 0) {
+    return i18next.t('label.reply-in-conversation');
+  }
+  if (count === 1) {
+    return `${count} ${
+      singular ? singular : i18next.t('label.older-reply-lowercase')
+    }`;
+  }
 
-  return `${count} ${plural ? plural : 'older replies'}`;
+  return `${count} ${
+    plural ? plural : i18next.t('label.older-reply-plural-lowercase')
+  }`;
 };
 
 export const getEntityFieldThreadCounts = (
@@ -253,7 +263,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
 export async function matcher(
   searchTerm: string,
-  renderList: Function,
+  renderList: (matches: string[], search: string) => void,
   mentionChar: string
 ) {
   const matches = await suggestions(searchTerm, mentionChar);
@@ -481,10 +491,10 @@ export const updateThreadData = (
 
 export const getFeedAction = (type: ThreadType) => {
   if (type === ThreadType.Task) {
-    return 'created a task';
+    return i18next.t('label.created-a-task-lowercase');
   }
 
-  return 'posted on';
+  return i18next.t('label.posted-on-lowercase');
 };
 
 export const prepareFeedLink = (entityType: string, entityFQN: string) => {
@@ -553,11 +563,11 @@ export const getFeedPanelHeaderText = (
 ) => {
   switch (threadType) {
     case ThreadType.Announcement:
-      return 'Announcement';
+      return i18next.t('label.announcement');
     case ThreadType.Task:
-      return 'Task';
+      return i18next.t('label.task');
     case ThreadType.Conversation:
     default:
-      return 'Conversation';
+      return i18next.t('label.conversation');
   }
 };

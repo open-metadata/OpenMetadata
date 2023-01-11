@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -73,7 +73,8 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-    cy.get('.ant-select-selector')
+    //Enter team name
+    cy.get('#create-user-bot-form .ant-select-selector')
       .should('exist')
       .scrollIntoView()
       .should('be.visible')
@@ -87,7 +88,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     });
 
     teamNames.forEach((teamName) => {
-      cy.get('.ant-select-selector')
+      cy.get('#create-user-bot-form .ant-select-selector')
         .should('exist')
         .scrollIntoView()
         .should('be.visible')

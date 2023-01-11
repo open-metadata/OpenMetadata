@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,9 +14,10 @@
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons from '../../utils/SvgUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import './AnchorDropDownList.style.less';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
@@ -33,9 +34,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
       <div
         aria-labelledby="menu-button"
         aria-orientation="vertical"
-        className="tw-origin-top-right tw-absolute tw-z-9998
-              tw-right-0 tw-mt-2 tw-min-w-max tw-rounded-md tw-shadow-lg
-              tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        className="anchor-drop-down"
         role="menu">
         <div className="py-1" role="none">
           {dropDownList.map((item: DropDownListItem, index: number) =>

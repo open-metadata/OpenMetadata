@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -22,7 +23,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { restoreTopic } from '../../axiosAPIs/topicsAPI';
+import { restoreTopic } from 'rest/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -42,14 +43,13 @@ import {
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getConfigObject } from '../../utils/TopicDetailsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -60,7 +60,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -69,6 +68,7 @@ import {
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
+import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
@@ -77,8 +77,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   maximumMessageSize,
   replicationFactor,
   retentionSize,
-  schemaText,
-  schemaType,
   topicTags,
   activeTab,
   entityName,
@@ -119,7 +117,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -151,13 +148,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicDetails.id]);
 
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
-
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -169,7 +159,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     return [
       {
         key: EntityInfo.PARTITIONS,
-        value: `${partitions} ${t('label.partitions')}`,
+        value: `${partitions} ${t('label.partition-plural')}`,
       },
       {
         key: EntityInfo.REPLICATION_FACTOR,
@@ -181,24 +171,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       {
         key: EntityInfo.CLEAN_UP_POLICIES,
-        value: `${cleanupPolicies.join(', ')} ${t('label.clean-up-policies')}`,
+        value: `${cleanupPolicies.join(', ')} ${t(
+          'label.clean-up-policy-plural-lowercase'
+        )}`,
       },
       {
         key: EntityInfo.MAX_MESSAGE_SIZE,
-        value: `${bytesToSize(maximumMessageSize)} ${t('label.maximum-size')} `,
+        value: `${bytesToSize(maximumMessageSize)} ${t(
+          'label.maximum-size-lowercase'
+        )} `,
       },
     ];
   };
 
-  const getConfigObject = () => {
-    return {
-      Partitions: partitions,
-      'Replication Factor': replicationFactor,
-      'Retention Size': retentionSize,
-      'CleanUp Policies': cleanupPolicies,
-      'Max Message Size': maximumMessageSize,
-    };
-  };
   const tabs = [
     {
       name: t('label.schema'),
@@ -257,7 +242,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 6,
     },
@@ -452,6 +437,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const handleSchemaFieldsUpdate = async (
+    updatedMessageSchema: Topic['messageSchema']
+  ) => {
+    try {
+      await settingsUpdateHandler({
+        ...topicDetails,
+        messageSchema: updatedMessageSchema,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
@@ -556,19 +554,31 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   </div>
-                  {schemaText ? (
+                  {!isEmpty(topicDetails.messageSchema?.schemaFields) ? (
                     <Fragment>
-                      {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                      <div
-                        className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
-                        data-testid="schema">
-                        <SchemaEditor value={schemaText} />
-                      </div>
+                      {getInfoBadge([
+                        {
+                          key: 'Schema',
+                          value: topicDetails.messageSchema?.schemaType ?? '',
+                        },
+                      ])}
+                      <TopicSchemaFields
+                        className="mt-4"
+                        hasDescriptionEditAccess={
+                          topicPermissions.EditAll ||
+                          topicPermissions.EditDescription
+                        }
+                        hasTagEditAccess={
+                          topicPermissions.EditAll || topicPermissions.EditTags
+                        }
+                        isReadOnly={Boolean(deleted)}
+                        messageSchema={topicDetails.messageSchema}
+                        onUpdate={handleSchemaFieldsUpdate}
+                      />
                     </Fragment>
                   ) : (
                     <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
@@ -606,7 +616,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               )}
               {activeTab === 4 && (
                 <div data-testid="config">
-                  <SchemaEditor value={JSON.stringify(getConfigObject())} />
+                  <SchemaEditor
+                    value={JSON.stringify(getConfigObject(topicDetails))}
+                  />
                 </div>
               )}
               {activeTab === 5 && (
@@ -658,19 +670,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
-            />
-          ) : null}
-          {selectedField ? (
-            <RequestDescriptionModal
-              createThread={createThread}
-              defaultValue={getDefaultValue(owner as EntityReference)}
-              header="Request description"
-              threadLink={getEntityFeedLink(
-                EntityType.TOPIC,
-                topicFQN,
-                selectedField
-              )}
-              onCancel={closeRequestModal}
             />
           ) : null}
         </div>

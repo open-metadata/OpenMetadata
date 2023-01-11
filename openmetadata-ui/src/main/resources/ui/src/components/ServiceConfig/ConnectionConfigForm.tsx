@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,15 +14,9 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { TestConnection } from '../../axiosAPIs/serviceAPI';
+import React, { Fragment, FunctionComponent, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { TestConnection } from 'rest/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -30,8 +24,8 @@ import { DashboardServiceType } from '../../generated/entity/services/dashboardS
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
@@ -69,7 +63,8 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onSave,
   disableTestConnection = false,
 }: Props) => {
-  const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
+  const { t } = useTranslation();
+  const { isAirflowAvailable } = useAirflowStatus();
 
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceType);
@@ -95,14 +90,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           if (res.status === 200) {
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['test-connection-error']
-          );
+          showErrorToast(err, t('server.test-connection-error'));
           reject(err);
         });
     });
@@ -173,21 +165,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       />
     );
   };
-
-  useEffect(() => {
-    checkAirflowStatus()
-      .then((res) => {
-        if (res.status === 200) {
-          setIsAirflowAvailable(true);
-        } else {
-          setIsAirflowAvailable(false);
-        }
-      })
-      .catch((error) => {
-        // eslint-disable-next-line no-console
-        console.log(error);
-      });
-  }, []);
 
   return <Fragment>{getDatabaseFields()}</Fragment>;
 };

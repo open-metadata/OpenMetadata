@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -55,7 +55,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
                 <>
-                  <span> {t('label.mention-you-thread-lowercase')} </span>{' '}
+                  <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
                   <span>{entityType} </span>
                   <Link
                     className="tw-truncate"
@@ -66,7 +66,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               ) : (
                 <>
                   <span className="p-x-xss">
-                    {t('label.assign-you-task-lowercase')}
+                    {t('message.assigned-you-a-new-task-lowercase')}
                   </span>
                   <Link
                     to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>

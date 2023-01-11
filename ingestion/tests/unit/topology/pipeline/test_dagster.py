@@ -35,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster import DagsterSource
+from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
@@ -48,12 +48,7 @@ mock_dagster_config = {
         "type": "dagster",
         "serviceName": "dagster_source",
         "serviceConnection": {
-            "config": {
-                "type": "Dagster",
-                "configSource": {
-                    "hostPort": "http://lolhost:3000",
-                },
-            }
+            "config": {"type": "Dagster", "host": "http://lolhost:3000"}
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
@@ -256,7 +251,9 @@ class DagsterUnitTest(TestCase):
     Dagster Pipeline Unit Test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     @patch("dagster_graphql.DagsterGraphQLClient")
     # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
     def __init__(self, methodName, graphql_client, test_connection) -> None:
@@ -279,7 +276,7 @@ class DagsterUnitTest(TestCase):
             in EXPTECTED_PIPELINE_NAME
         )
 
-    @patch("metadata.ingestion.source.pipeline.dagster.DagsterSource.get_jobs")
+    @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
     def test_yield_pipeline(self, get_jobs):
         results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
         get_jobs.return_value = EXPECTED_DAGSTER_DETAILS

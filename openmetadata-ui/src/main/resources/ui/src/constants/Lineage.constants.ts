@@ -1,5 +1,18 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { ElementLoadingState } from 'components/EntityLineage/EntityLineage.interface';
 import { capitalize } from 'lodash';
-import { ElementLoadingState } from '../components/EntityLineage/EntityLineage.interface';
 import { EntityType } from '../enums/entity.enum';
 
 export const FOREIGN_OBJECT_SIZE = 40;
@@ -25,8 +38,8 @@ export const entityData = [
 export const POSITION_X = 150;
 export const POSITION_Y = 60;
 
-export const NODE_WIDTH = 600;
-export const NODE_HEIGHT = 70;
+export const NODE_WIDTH = 400;
+export const NODE_HEIGHT = 50;
 export const EXPANDED_NODE_HEIGHT = 300;
 
 export const ELEMENT_DELETE_STATE = {

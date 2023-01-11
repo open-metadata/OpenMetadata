@@ -33,7 +33,7 @@ from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 
 
-class DataInisghtMixin:
+class DataInsightMixin:
     """data insight mixin used to write results"""
 
     def add_data_insight_report_data(self, record: ReportData) -> ReportData:
