@@ -26,3 +26,11 @@ WHERE serviceType = 'Vertica';
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json ,'$.sourceConfig.config.dbtConfigSource.dbtUpdateDescriptions')
 WHERE json -> '$.sourceConfig.config.type' = 'DBT';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.supportedDataTypes'),
+	'$.supportedDataTypes',
+	JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'TIMESTAMP', 'TIMESTAMPZ','DATETIME', 'DATE')
+)
+WHERE name = 'columnValuesToBeBetween';
