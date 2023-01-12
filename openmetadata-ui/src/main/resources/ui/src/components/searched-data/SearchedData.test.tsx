@@ -126,7 +126,7 @@ describe('Test SearchedData Component', () => {
 
     const searchedDataContainer = getAllByTestId(container, 'table-data-card');
 
-    expect(searchedDataContainer.length).toBe(3);
+    expect(searchedDataContainer).toHaveLength(3);
   });
 
   it('If children is provided it should display', () => {

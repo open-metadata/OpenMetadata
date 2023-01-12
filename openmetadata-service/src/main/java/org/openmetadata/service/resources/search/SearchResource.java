@@ -199,7 +199,6 @@ public class SearchResource {
     }
 
     SearchSourceBuilder searchSourceBuilder;
-    query = this.indexResolver.customizeQueryString(query);
 
     switch (index) {
       case "topic_search_index":

@@ -4,7 +4,7 @@
   "title": "ElasticSearchConfiguration",
   "description": "This schema defines the Elastic Search Configuration.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration",
+  "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration",
   "properties": {
     "host": {
       "description": "Elastic Search Host",
@@ -50,11 +50,11 @@
       "default": 10
     },
     "indexResolverClassName": {
-      "description": "Implementation class name of ElasticSearchIndexResolver interface",
+      "description": "Implementation class name of ElasticSearchIndexResolver interface. The default is 'org.openmetadata.service.elasticsearch.indexresolver.DefaultElasticSearchIndexResolver'. You can choose ngram analyzer by specifying 'org.openmetadata.service.elasticsearch.indexresolver.NgramElasticSearchIndexResolver' instead.",
       "type": "string",
       "default": "org.openmetadata.service.elasticsearch.indexresolver.DefaultElasticSearchIndexResolver"
     }
   },
-  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize"],
+  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

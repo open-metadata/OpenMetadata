@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -210,7 +210,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                 <Typography.Paragraph
                   className="data-insight-label-text"
                   style={{ marginBottom: '4px' }}>
-                  {t('label.completed-description')}
+                  {t('label.completed-entity', {
+                    entity: t('label.description'),
+                  })}
                   {isPercentageGraph ? ' %' : ''}
                 </Typography.Paragraph>
                 <DataInsightProgressBar

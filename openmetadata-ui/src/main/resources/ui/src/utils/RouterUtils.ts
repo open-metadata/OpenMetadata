@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,
@@ -419,7 +419,9 @@ export const getLogEntityPath = (
   path: string,
   logEntityType: string | undefined
 ): string => {
-  if (isUndefined(logEntityType)) return '';
+  if (isUndefined(logEntityType)) {
+    return '';
+  }
 
   const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
 

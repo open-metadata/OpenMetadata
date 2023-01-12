@@ -24,7 +24,7 @@ export interface MyDataProps {
   activityFeeds?: Thread[] | undefined;
   onRefreshFeeds?: () => void;
   error: string;
-  entityCounts: EntitiesCount;
+  data: MyDataState;
   followedDataCount: number;
   pendingTaskCount: number;
   ownedDataCount: number;
@@ -48,4 +48,9 @@ export interface MyDataProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+}
+
+export interface MyDataState {
+  entityCounts: EntitiesCount;
+  entityCountLoading?: boolean;
 }

@@ -12,9 +12,8 @@
  */
 
 /* eslint-disable max-len */
-/* eslint-disable @typescript-eslint/camelcase */
 
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Constraint,

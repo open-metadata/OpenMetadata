@@ -29,8 +29,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreMlmodel } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
-import { restoreMlmodel } from '../../axiosAPIs/mlModelAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -101,6 +101,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   createThread,
   entityFieldTaskCount,
   entityFieldThreadCount,
+  version,
+  versionHandler,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -384,7 +386,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         }),
         // Autoclose timer
         2000
@@ -394,7 +396,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         })
       );
     }
@@ -591,6 +593,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
+          version={version}
+          versionHandler={versionHandler}
           onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
         />

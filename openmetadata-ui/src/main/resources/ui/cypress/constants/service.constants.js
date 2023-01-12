@@ -20,3 +20,11 @@ export const REDSHIFT = {
   DBTTable: 'customers',
   description: `This is Redshift-ct-test-${uniqueID} description`,
 };
+
+export const MYSQL = {
+  serviceType: 'Mysql',
+  serviceName: `mysql-ct-test-${uniqueID}`,
+  tableName: 'team_entity',
+  description: `This is Mysql-ct-test-${uniqueID} description`,
+  database: 'Database',
+};

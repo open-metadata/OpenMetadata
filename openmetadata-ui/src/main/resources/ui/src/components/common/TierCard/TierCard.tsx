@@ -14,13 +14,12 @@
 import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { Status, TableDetail } from 'Models';
+import { LoadingState, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getClassification } from '../../../axiosAPIs/tagAPI';
+import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
@@ -47,7 +46,7 @@ const TierCard = ({
 }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
-  const [statusTier, setStatusTier] = useState<Status>('initial');
+  const [statusTier, setStatusTier] = useState<LoadingState>('initial');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const handleCardSelection = (cardId: string) => {
@@ -60,23 +59,23 @@ const TierCard = ({
 
   const getTierData = () => {
     setIsLoadingTierData(true);
-    getClassification('Tier')
-      .then((res) => {
-        if (res) {
+    getTags({
+      parent: 'Tier',
+    })
+      .then(({ data }) => {
+        if (data) {
           const tierData: CardWithListItems[] =
-            (res as TagsCategory).children?.map(
-              (tier: { name: string; description: string }) => ({
-                id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-                title: tier.name,
-                description: tier.description.substring(
-                  0,
-                  tier.description.indexOf('\n\n')
-                ),
-                data: tier.description.substring(
-                  tier.description.indexOf('\n\n') + 1
-                ),
-              })
-            ) ?? [];
+            data.map((tier: { name: string; description: string }) => ({
+              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+              title: tier.name,
+              description: tier.description.substring(
+                0,
+                tier.description.indexOf('\n\n')
+              ),
+              data: tier.description.substring(
+                tier.description.indexOf('\n\n') + 1
+              ),
+            })) ?? [];
 
           setTierData(tierData);
         } else {

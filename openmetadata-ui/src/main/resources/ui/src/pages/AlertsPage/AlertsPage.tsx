@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import Loader from 'components/Loader/Loader';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import Loader from '../../components/Loader/Loader';
+import { getAllAlerts } from 'rest/alertsAPI';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -109,7 +109,7 @@ const AlertsPage = () => {
                 <Link to={`edit-alert/${id}`}>
                   <Button
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="tw-w-4" icon={Icons.EDIT} />}
+                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
                     type="text"
                   />
                 </Link>
@@ -118,7 +118,7 @@ const AlertsPage = () => {
                 <Button
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="tw-w-4" icon={Icons.DELETE} />}
+                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />
@@ -149,7 +149,7 @@ const AlertsPage = () => {
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
                 GlobalSettingOptions.ADD_ALERTS
               )}>
-              <Button type="primary">
+              <Button data-testid="create-alert" type="primary">
                 {t('label.create-entity', { entity: 'alert' })}
               </Button>
             </Link>

@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { getSuggestions } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';

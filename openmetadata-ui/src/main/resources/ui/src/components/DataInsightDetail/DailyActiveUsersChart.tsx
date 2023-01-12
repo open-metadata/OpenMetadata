@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
@@ -137,7 +137,9 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             <CustomStatistic
               changeInValue={relativePercentage}
               duration={selectedDays}
-              label={t('label.total-active-user')}
+              label={t('label.total-entity', {
+                entity: t('label.active-user'),
+              })}
               value={total}
             />
           </Col>

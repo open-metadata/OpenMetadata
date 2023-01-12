@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { Aggregations } from '../../../interface/search.interface';
@@ -125,7 +123,7 @@ describe('Test FacetFilter Component', () => {
       content.startsWith('filter-heading-')
     );
 
-    expect(filterHeadings.length).toBe(7);
+    expect(filterHeadings).toHaveLength(7);
     expect(
       filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
     ).toStrictEqual(
@@ -158,7 +156,7 @@ describe('Test FacetFilter Component', () => {
       content.startsWith('filter-heading-')
     );
 
-    expect(filterHeadings.length).toBe(8);
+    expect(filterHeadings).toHaveLength(8);
     expect(
       filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
     ).toStrictEqual(

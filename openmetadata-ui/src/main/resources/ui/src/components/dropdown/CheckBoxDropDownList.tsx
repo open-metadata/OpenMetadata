@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import React, { Fragment } from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import React from 'react';
 import { useAuth } from '../../hooks/authHooks';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const CheckBoxDropDownList = ({
@@ -68,7 +68,7 @@ const CheckBoxDropDownList = ({
                 </p>
               </div>
             ) : (
-              <Fragment />
+              <> </>
             )
           )}
         </div>

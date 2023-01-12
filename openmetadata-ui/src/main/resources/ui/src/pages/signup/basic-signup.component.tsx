@@ -12,12 +12,12 @@
  */
 
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
@@ -51,11 +51,15 @@ const BasicSignUp = () => {
   }, [authConfig]);
 
   const handleSubmit = async (data: SignUpFormData) => {
-    if (data.confirmPassword) delete data['confirmPassword'];
+    if (data.confirmPassword) {
+      delete data['confirmPassword'];
+    }
 
     const request = data;
 
-    if (request) handleRegister(request);
+    if (request) {
+      handleRegister(request);
+    }
   };
 
   const handleLogin = () => history.push(ROUTES.SIGNIN);

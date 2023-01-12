@@ -45,13 +45,15 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn
-from metadata.utils.constants import (
+from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
+from metadata.ingestion.source.dashboard.tableau.queries import (
+    TABLEAU_LINEAGE_GRAPHQL_QUERY,
+)
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.graphql_queries import TABLEAU_LINEAGE_GRAPHQL_QUERY
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -256,7 +258,11 @@ class TableauSource(DashboardServiceSource):
                     name=TABLEAU_TAG_CATEGORY,
                     description="Tags associates with tableau entities",
                 ),
-                tag_request=CreateTagRequest(name=tag, description="Tableau Tag"),
+                tag_request=CreateTagRequest(
+                    classification=TABLEAU_TAG_CATEGORY,
+                    name=tag,
+                    description="Tableau Tag",
+                ),
             )
             yield classification
             logger.info(f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested")

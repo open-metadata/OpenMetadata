@@ -45,7 +45,7 @@ export default class Fqn {
   // Equivalent of Java's FullyQualifiedName#quoteName
   static quoteName(name) {
     const matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
-    if (!matcher || matcher[0].length != name.length) {
+    if (!matcher || matcher[0].length !== name.length) {
       throw new Error(`${i18next.t('label.invalid-name')} ${name}`);
     }
 

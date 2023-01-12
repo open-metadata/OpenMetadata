@@ -34,7 +34,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   deleteEntity: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
@@ -86,7 +86,7 @@ describe('Test DeleteWidgetV1 Component', () => {
 
       userEvent.click(discardButton);
 
-      expect(mockProps.onCancel).toBeCalled();
+      expect(mockProps.onCancel).toHaveBeenCalled();
     });
   });
 });

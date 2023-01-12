@@ -28,7 +28,7 @@ import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
+import { addFollower, removeFollower } from 'rest/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,

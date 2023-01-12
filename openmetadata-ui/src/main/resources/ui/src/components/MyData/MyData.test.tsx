@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import {
   findAllByText,
   findByTestId,
@@ -26,18 +24,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import MyData from './MyData.component';
 import { MyDataProps } from './MyData.interface';
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 const mockPaging = {
   after: 'MTY0OTIzNTQ3MzExMg==',
@@ -244,13 +230,13 @@ const currentUserMockData = {
   href: 'http://localhost:8585/api/v1/tables/7b26a534-25e8-4112-ae08-ee059f8918c4',
 } as EntityReference;
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
-jest.mock('../../components/searched-data/SearchedData', () => {
+jest.mock('components/searched-data/SearchedData', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -374,7 +360,7 @@ describe('Test MyData page', () => {
     expect(leftPanel).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
     expect(recentSearchedTerms).toBeInTheDocument();
-    expect(entityList.length).toBe(2);
+    expect(entityList).toHaveLength(2);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

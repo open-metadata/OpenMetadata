@@ -190,7 +190,7 @@ public class UsageRepository {
 
   private void insertToUsageRepository(String method, String entityId, String entityType, DailyCount usage) {
     if (method.equals(POST)) {
-      dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+      dao.usageDAO().insertOrReplaceCount(usage.getDate(), entityId, entityType, usage.getCount());
     } else if (method.equals(PUT)) {
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), entityId, entityType, usage.getCount());
     }

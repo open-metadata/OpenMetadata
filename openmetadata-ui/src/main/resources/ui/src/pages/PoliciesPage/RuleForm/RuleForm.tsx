@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,8 +23,8 @@ import {
   getPolicyFunctions,
   getPolicyResources,
   validateRuleCondition,
-} from '../../../axiosAPIs/rolesAPIV1';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+} from 'rest/rolesAPIV1';
+import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   Effect,
   Operation,
@@ -111,17 +113,14 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   }, [ruleData.resources, policyResources]);
 
   const getConditionOptions = (conditionFunctions: Function[]) => {
-    return conditionFunctions.reduce(
-      (prev: BaseOptionType[], curr: Function) => {
-        const currentValues = (curr.examples || []).map((example: string) => ({
-          label: example,
-          value: example,
-        }));
+    return conditionFunctions.reduce((prev: BaseOptionType[], curr) => {
+      const currentValues = (curr.examples || []).map((example: string) => ({
+        label: example,
+        value: example,
+      }));
 
-        return uniqBy([...prev, ...currentValues], 'value');
-      },
-      []
-    );
+      return uniqBy([...prev, ...currentValues], 'value');
+    }, []);
   };
 
   const handleConditionSearch = (value: string) => {
@@ -203,6 +202,19 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             min: 1,
             message: t('label.field-required', { field: t('label.rule-name') }),
           },
+          {
+            validator: (_, value) => {
+              if (allowedNameRegEx.test(value)) {
+                return Promise.reject(
+                  t('message.field-text-is-invalid', {
+                    fieldText: t('label.rule-name'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            },
+          },
         ]}>
         <Input
           data-testid="rule-name"
@@ -220,7 +232,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           initialValue={ruleData.description || ''}
           placeHolder={t('message.write-your-description')}
           style={{ margin: 0 }}
-          onTextChange={(value) =>
+          onTextChange={(value: string) =>
             setRuleData((prev: Rule) => ({ ...prev, description: value }))
           }
         />
@@ -238,12 +250,14 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
-          className="tw-w-full"
+          className="w-full"
           data-testid="resources"
-          placeholder={t('label.select-resource-plural')}
+          placeholder={t('label.select-field', {
+            field: t('label.resource-plural'),
+          })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
-          onChange={(values) => {
+          onChange={(values: string[]) => {
             setRuleData((prev: Rule) => ({
               ...prev,
               resources: values,
@@ -264,12 +278,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
-          className="tw-w-full"
+          className="w-full"
           data-testid="operations"
           placeholder="Select Operations"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
-          onChange={(values) => {
+          onChange={(values: Operation[]) => {
             setRuleData((prev: Rule) => ({
               ...prev,
               operations: values,
@@ -288,7 +302,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <Select
           data-testid="effect"
-          placeholder={t('label.select-rule-effect')}
+          placeholder={t('label.select-field', {
+            field: t('label.rule-effect'),
+          })}
           value={ruleData.effect}
           onChange={(value) =>
             setRuleData((prev: Rule) => ({ ...prev, effect: value }))
@@ -312,18 +328,18 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             onSearch={handleConditionSearch}
           />
           {validationError && (
-            <div className="tw-mt-1" data-testid="condition-error" role="alert">
+            <div className="m-t-xss" data-testid="condition-error" role="alert">
               {`❌ Invalid condition : ${validationError}`}
             </div>
           )}
           {isValidatingCondition && (
-            <div className="tw-mt-1" role="alert">
+            <div className="m-t-xss" role="alert">
               Validating the condition...
             </div>
           )}
           {isValidCondition && !isValidatingCondition && !validationError && (
             <div
-              className="tw-mt-1"
+              className="m-t-xss"
               data-testid="condition-success"
               role="alert">
               ✅ Valid condition

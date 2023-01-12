@@ -12,7 +12,7 @@
  */
 
 import { CurveType } from 'recharts/types/shape/Curve';
-import { ListTestCaseParams } from '../../axiosAPIs/testAPI';
+import { ListTestCaseParams } from 'rest/testAPI';
 import {
   Column,
   ColumnProfile,

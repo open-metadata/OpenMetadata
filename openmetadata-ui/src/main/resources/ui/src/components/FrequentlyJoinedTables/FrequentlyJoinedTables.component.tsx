@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { getTableDetailsPath } from '../../constants/constants';
 import { JoinedWith } from '../../generated/entity/data/table';
 import { getCountBadge } from '../../utils/CommonUtils';
-import PopOver from '../common/popover/PopOver';
 
 type Props = {
   header: string;
@@ -31,7 +31,9 @@ const getUniqueTablesWithCount = (tableFQNs: Props['tableList']) => {
       let duplicates = false;
       for (const table of resList) {
         if (table.fullyQualifiedName === curr.fullyQualifiedName) {
-          if (table?.joinCount) table.joinCount += curr?.joinCount as number;
+          if (table?.joinCount) {
+            table.joinCount += curr?.joinCount as number;
+          }
           duplicates = true;
 
           break;
@@ -116,15 +118,14 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
         {joinedTables.length > viewCap && (
           <div data-testid="related-tables-data">
-            <PopOver
-              html={additionalOptions()}
-              position="bottom"
-              theme="light"
+            <Popover
+              content={additionalOptions()}
+              placement="bottom"
               trigger="click">
               <span className="show-more">
                 {`+ ${joinedTables.length - viewCap} more`}
               </span>
-            </PopOver>
+            </Popover>
           </div>
         )}
 

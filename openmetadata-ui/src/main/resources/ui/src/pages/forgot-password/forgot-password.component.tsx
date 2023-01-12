@@ -12,9 +12,9 @@
  */
 
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';

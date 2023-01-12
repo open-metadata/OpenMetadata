@@ -14,12 +14,12 @@
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import { isUndefined, uniqueId } from 'lodash';
+import CheckboxUserCard from 'pages/teams/CheckboxUserCard';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
+import { searchData } from 'rest/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
@@ -123,16 +123,18 @@ const RelatedTermsModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}>
       <div className="h-full">
         <Searchbar
-          placeholder={`${t('label.search-for-user')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          })}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}

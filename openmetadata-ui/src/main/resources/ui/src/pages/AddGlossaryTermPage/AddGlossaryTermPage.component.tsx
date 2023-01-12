@@ -12,6 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
+import AddGlossaryTerm from 'components/AddGlossaryTerm/AddGlossaryTerm.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -20,13 +26,7 @@ import {
   addGlossaryTerm,
   getGlossariesByName,
   getGlossaryTermByFQN,
-} from '../../axiosAPIs/glossaryAPI';
-import AddGlossaryTerm from '../../components/AddGlossaryTerm/AddGlossaryTerm.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+} from 'rest/glossaryAPI';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';

@@ -18,7 +18,7 @@ import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
@@ -103,7 +103,9 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           ),
       },
       {
-        title: t('label.total-view-plural'),
+        title: t('label.total-entity', {
+          entity: t('label.view-plural'),
+        }),
         dataIndex: 'pageViews',
         key: 'totalViews',
         render: (pageViews: number) => (

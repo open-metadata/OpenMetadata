@@ -13,11 +13,11 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
-jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('rest/ingestionPipelineAPI', () => ({
   getRunHistoryForPipeline: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: [
@@ -63,7 +63,10 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    expect(getRunHistoryForPipeline).toBeCalledWith('test', expect.anything());
+    expect(getRunHistoryForPipeline).toHaveBeenCalledWith(
+      'test',
+      expect.anything()
+    );
   });
 
   it('should render runs when API returns runs', async () => {

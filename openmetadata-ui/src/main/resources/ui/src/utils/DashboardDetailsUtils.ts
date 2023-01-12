@@ -13,10 +13,10 @@
 
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
-import { getChartById } from '../axiosAPIs/chartAPI';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { getChartById } from 'rest/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
-import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const defaultFields = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},

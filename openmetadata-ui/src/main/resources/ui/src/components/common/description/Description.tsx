@@ -16,12 +16,12 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
-import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -211,13 +211,17 @@ const Description: FC<DescriptionProps> = ({
               />
             ) : (
               <span className="tw-no-description p-y-xs">
-                {t('label.no-description')}
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
               </span>
             )}
           </div>
           <ModalWithMarkdownEditor
             header={t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-description')}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
             value={description}
             visible={Boolean(isEdit)}
             onCancel={onCancel}

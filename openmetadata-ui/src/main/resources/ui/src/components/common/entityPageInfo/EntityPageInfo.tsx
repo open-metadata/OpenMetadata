@@ -18,13 +18,12 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
+import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getActiveAnnouncement } from '../../../axiosAPIs/feedsAPI';
+import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
-import { SettledStatus } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
@@ -32,14 +31,11 @@ import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { useAfterMount } from '../../../hooks/useAfterMount';
+import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getClassifications, getTaglist } from '../../../utils/TagsUtils';
+import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -127,7 +123,6 @@ const EntityPageInfo = ({
     useState<Array<EntityReference>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
     document.getElementById('version-and-follow-section')?.offsetWidth
@@ -261,48 +256,15 @@ const EntityPageInfo = ({
     );
   };
 
-  const fetchTagsAndGlossaryTerms = () => {
+  const fetchTags = async () => {
     setIsTagLoading(true);
-    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then((values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setTagList(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setTagList([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
+    try {
+      const tags = await fetchTagsAndGlossaryTerms();
+      setTagList(tags);
+    } catch (error) {
+      setTagList([]);
+    }
+    setIsTagLoading(false);
   };
 
   const getThreadElements = () => {
@@ -577,8 +539,8 @@ const EntityPageInfo = ({
                   data-testid="tags-wrapper"
                   onClick={() => {
                     // Fetch tags and terms only once
-                    if (tagList.length === 0 || tagFetchFailed) {
-                      fetchTagsAndGlossaryTerms();
+                    if (tagList.length === 0) {
+                      fetchTags();
                     }
                     setIsEditable(true);
                   }}>

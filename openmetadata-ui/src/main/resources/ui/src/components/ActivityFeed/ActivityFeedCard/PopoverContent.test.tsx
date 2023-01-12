@@ -94,7 +94,7 @@ describe('Test Popover content component', () => {
 
     const replyButton = screen.queryByTestId('add-reply');
 
-    expect(replyButton).toBe(null);
+    expect(replyButton).toBeNull();
   });
 
   it('Should render reaction popover on click of reaction button', async () => {
@@ -121,7 +121,7 @@ describe('Test Popover content component', () => {
 
     fireEvent.click(replyButton);
 
-    expect(onReply).toBeCalled();
+    expect(onReply).toHaveBeenCalled();
   });
 
   it('Should call onEdit function on click of edit button', async () => {
@@ -133,7 +133,7 @@ describe('Test Popover content component', () => {
 
     fireEvent.click(editButton);
 
-    expect(onEdit).toBeCalled();
+    expect(onEdit).toHaveBeenCalled();
   });
 
   it('Should call onConfirmation function on click of delete button', async () => {
@@ -145,7 +145,7 @@ describe('Test Popover content component', () => {
 
     fireEvent.click(deleteButton);
 
-    expect(onConfirmation).toBeCalled();
+    expect(onConfirmation).toHaveBeenCalled();
   });
 
   it('Announcement should be editable by admin user', async () => {
@@ -157,7 +157,7 @@ describe('Test Popover content component', () => {
 
     fireEvent.click(editButton);
 
-    expect(onEdit).toBeCalled();
+    expect(onEdit).toHaveBeenCalled();
   });
 
   it('Announcement should be delete by admin user', async () => {
@@ -169,6 +169,6 @@ describe('Test Popover content component', () => {
 
     fireEvent.click(deleteButton);
 
-    expect(onConfirmation).toBeCalled();
+    expect(onConfirmation).toHaveBeenCalled();
   });
 });

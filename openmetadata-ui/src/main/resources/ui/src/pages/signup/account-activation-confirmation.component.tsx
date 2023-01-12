@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { confirmRegistration } from '../../axiosAPIs/auth-API';
+import { confirmRegistration } from 'rest/auth-API';
 import { ROUTES } from '../../constants/constants';
 import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';

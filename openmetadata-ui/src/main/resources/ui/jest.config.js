@@ -15,6 +15,13 @@ module.exports = {
   // Project name
   displayName: '@openmetadata',
 
+  globals: {
+    // TypeScript
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
+    },
+  },
+
   // Working directory
   roots: ['<rootDir>/src'],
 
@@ -27,9 +34,12 @@ module.exports = {
     '<rootDir>/src/**/*.{ts,tsx,js,jsx}', // All files in subdirectories under src/app
     '!<rootDir>/src/*', // Exclude files directly under src/app
   ],
-
-  // TypeScript
-  // preset: 'ts-jest',
+  coveragePathIgnorePatterns: [
+    '<rootDir>/src/@types/*',
+    '<rootDir>/src/interface/*',
+    '<rootDir>/src/generated/*',
+    '<rootDir>/src/enums/*',
+  ],
 
   // Transforms
   transform: {
@@ -52,9 +62,17 @@ module.exports = {
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
   },
 
+  // TypeScript
+  preset: 'ts-jest',
+
+  // Test Environment
+  testEnvironment: 'jsdom',
+
   // Sonar Cloud Configuration
   testResultsProcessor: 'jest-sonar-reporter',
 
   // use fake timers
   timers: 'fake',
+
+  moduleDirectories: ['node_modules', 'src'],
 };

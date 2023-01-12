@@ -20,7 +20,7 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
 }));
 
-jest.mock('../../axiosAPIs/tableAPI', () => ({
+jest.mock('rest/tableAPI', () => ({
   getSampleDataByTableId: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
@@ -33,15 +33,15 @@ describe('Test SampleDataTable Component', () => {
     });
     const columns = screen.getAllByTestId('column-name');
 
-    expect(columns.length).toBe(4);
+    expect(columns).toHaveLength(4);
 
     const rows = screen.getAllByTestId('row');
 
-    expect(rows.length).toBe(3);
+    expect(rows).toHaveLength(3);
 
     const cells = screen.getAllByTestId('cell');
 
-    expect(cells.length).toBe(12);
+    expect(cells).toHaveLength(12);
   });
 
   it('Renders no data if the columns passed are empty', () => {

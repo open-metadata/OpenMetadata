@@ -73,7 +73,9 @@ const FilterPattern = ({
             <Typography.Link
               href={getFilterPatternDocsLinks(type)}
               target="_blank">
-              {t('label.read-more')}{' '}
+              {t('label.read-type', {
+                type: t('label.more-lowercase'),
+              })}{' '}
               <SVGIcons
                 alt="external-link"
                 className="m-l-xss"

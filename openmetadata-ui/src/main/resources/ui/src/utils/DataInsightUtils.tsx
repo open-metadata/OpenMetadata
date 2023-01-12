@@ -13,6 +13,7 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import {
   first,
@@ -31,7 +32,6 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -556,8 +556,9 @@ export const getEntitiesChartSummary = (
     );
 
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
         const { total } = getGraphDataByTierType(chartData.data ?? []);
 
@@ -585,8 +586,9 @@ export const getWebChartSummary = (
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
         const latestData = last(chartData.data);
 

@@ -15,7 +15,7 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
-import { getTableQueryByTableId } from '../../axiosAPIs/tableAPI';
+import { getTableQueryByTableId } from 'rest/tableAPI';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { showErrorToast } from '../../utils/ToastUtils';

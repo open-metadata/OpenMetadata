@@ -92,8 +92,8 @@ describe('Test CronEditor component', () => {
     userEvent.selectOptions(minutOptions, '10');
     userEvent.selectOptions(hourOptions, '2');
 
-    expect((await screen.findAllByText('10')).length).toBe(2);
-    expect((await screen.findAllByText('02')).length).toBe(2);
+    expect(await screen.findAllByText('10')).toHaveLength(2);
+    expect(await screen.findAllByText('02')).toHaveLength(2);
   });
 
   it('week option should render corresponding component', async () => {
@@ -121,8 +121,8 @@ describe('Test CronEditor component', () => {
     userEvent.selectOptions(minutOptions, '10');
     userEvent.selectOptions(hourOptions, '2');
 
-    expect((await screen.findAllByText('10')).length).toBe(2);
-    expect((await screen.findAllByText('02')).length).toBe(2);
+    expect(await screen.findAllByText('10')).toHaveLength(2);
+    expect(await screen.findAllByText('02')).toHaveLength(2);
   });
 
   it('None option should render corresponding component', async () => {

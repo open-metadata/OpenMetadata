@@ -67,7 +67,10 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             </Col>
             <Col span={10}>
               <Typography.Text className="text-grey-muted">
-                {t('label.data-source')}:
+                {t('label.data-entity', {
+                  entity: t('label.source'),
+                })}
+                :
               </Typography.Text>
               <Link
                 className="m-l-xs"

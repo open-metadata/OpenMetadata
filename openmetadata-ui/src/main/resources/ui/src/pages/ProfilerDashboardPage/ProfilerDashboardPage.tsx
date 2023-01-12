@@ -12,6 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import ProfilerDashboard from 'components/ProfilerDashboard/ProfilerDashboard';
+import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -20,18 +30,8 @@ import {
   getColumnProfilerList,
   getTableDetailsByFQN,
   patchTableDetails,
-} from '../../axiosAPIs/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
-import { ProfilerDashboardTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
+} from 'rest/tableAPI';
+import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
@@ -213,7 +213,7 @@ const ProfilerDashboardPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <p className="tw-text-center">
+        <p className="text-center">
           No data found{' '}
           {decodedEntityFQN
             ? `for column ${getNameFromFQN(decodedEntityFQN)}`
@@ -224,7 +224,7 @@ const ProfilerDashboardPage = () => {
   }
 
   return (
-    <PageContainerV1 className="tw-py-4">
+    <PageContainerV1 className="p-y-md">
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
         fetchTestCases={fetchTestCases}

@@ -204,7 +204,9 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-discover-data-assets-with-data-profile"
             renderElement={<strong />}
             values={{
-              text: i18next.t('label.data-profiler'),
+              text: i18next.t('label.data-entity', {
+                entity: i18next.t('label.profiler'),
+              }),
             }}
           />
         </p>

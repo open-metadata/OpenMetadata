@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
+import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
+import {
+  LeafNodes,
+  LineagePos,
+} from 'components/EntityLineage/EntityLineage.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
-import { Bucket, LeafNodes, LineagePos } from 'Models';
+import { Bucket } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import PopOver from '../components/common/popover/PopOver';
-import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
-import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -371,12 +375,14 @@ export const isLeafNode = (
 
 export const ENTITY_LINK_SEPARATOR = '::';
 
-export const getEntityFeedLink: Function = (
-  type: string,
-  fqn: string,
+export const getEntityFeedLink = (
+  type?: string,
+  fqn?: string,
   field?: string
-): string | undefined => {
-  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+): string => {
+  if (isUndefined(type) || isUndefined(fqn)) {
+    return '';
+  }
   // url decode the fqn
   fqn = decodeURIComponent(fqn);
 
@@ -540,8 +546,8 @@ export const getFrequentlyJoinedColumns = (
         ))}
 
         {frequentlyJoinedWithColumns.length > 3 && (
-          <PopOver
-            html={
+          <Popover
+            content={
               <div className="text-left">
                 {frequentlyJoinedWithColumns
                   ?.slice(3)
@@ -567,11 +573,10 @@ export const getFrequentlyJoinedColumns = (
                   ))}
               </div>
             }
-            position="bottom"
-            theme="light"
+            placement="bottom"
             trigger="click">
             <span className="show-more m-l-xss text-underline">...</span>
-          </PopOver>
+          </Popover>
         )}
       </span>
     </div>

@@ -20,7 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAuthMechanismForBotUser } from '../../axiosAPIs/userAPI';
+import { getAuthMechanismForBotUser } from 'rest/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
@@ -99,7 +99,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../axiosAPIs/userAPI', () => {
+jest.mock('rest/userAPI', () => {
   return {
     createUserWithPut: jest
       .fn()
@@ -177,7 +177,7 @@ describe('Test BotsDetail Component', () => {
     fireEvent.click(confirmButton);
 
     // revoke token handler should get called
-    expect(revokeTokenHandler).toBeCalled();
+    expect(revokeTokenHandler).toHaveBeenCalled();
   });
 
   it('Should render the edit form if the authmechanism is empty', async () => {

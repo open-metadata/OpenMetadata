@@ -41,12 +41,12 @@ const SchemaModal: FC<SchemaModalProp> = ({
       }
       data-testid="schema-modal"
       footer={null}
+      open={visible}
       title={
         <Typography.Text strong data-testid="schema-modal-header">
           {t('label.json-data')}
         </Typography.Text>
       }
-      visible={visible}
       width={800}>
       <div data-testid="schema-modal-body">
         <SchemaEditor

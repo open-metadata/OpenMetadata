@@ -9,10 +9,6 @@ import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 public interface ElasticSearchIndexResolver {
   IndexInfo indexInfo(IndexType type);
 
-  default String customizeQueryString(String query) {
-    return query;
-  }
-
   default QueryStringQueryBuilder customizeQuery(QueryStringQueryBuilder builder) {
     return builder;
   }

@@ -33,7 +33,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) throws IOException {
+  public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
     return entity;
   }
 

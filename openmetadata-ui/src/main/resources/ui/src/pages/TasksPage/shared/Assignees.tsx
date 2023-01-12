@@ -12,8 +12,8 @@
  */
 
 import { Select } from 'antd';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
 import React, { FC } from 'react';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 

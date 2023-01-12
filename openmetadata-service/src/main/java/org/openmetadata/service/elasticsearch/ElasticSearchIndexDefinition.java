@@ -65,32 +65,6 @@ public class ElasticSearchIndexDefinition {
     FAILED
   }
 
-  public enum ElasticSearchIndexType {
-    TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/table_index_mapping.json"),
-    TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/topic_index_mapping.json"),
-    DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
-    USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
-    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
-    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json"),
-    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json"),
-    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/tag_index_mapping.json"),
-    ENTITY_REPORT_DATA_INDEX("entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
-    WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
-        "web_analytic_entity_view_report_data_index", "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
-    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
-        "web_analytic_user_activity_report_data_index",
-        "/elasticsearch/web_analytic_user_activity_report_data_index.json");
-
-    public final String indexName;
-    public final String indexMappingFile;
-
-    ElasticSearchIndexType(String indexName, String indexMappingFile) {
-      this.indexName = indexName;
-      this.indexMappingFile = indexMappingFile;
-    }
-  }
-
   public void createIndexes() {
     for (IndexType elasticSearchIndexType : IndexType.values()) {
       createIndex(elasticSearchIndexType);
@@ -234,11 +208,11 @@ public class ElasticSearchIndexDefinition {
       return IndexTypeInfo.of(
           IndexType.ENTITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.ENTITY_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      IndexTypeInfo.of(
+      return IndexTypeInfo.of(
           IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX,
           indexResolver.indexInfo(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      IndexTypeInfo.of(
+      return IndexTypeInfo.of(
           IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX,
           indexResolver.indexInfo(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX));
     }

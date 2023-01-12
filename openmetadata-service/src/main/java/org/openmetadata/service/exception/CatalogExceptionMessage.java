@@ -197,4 +197,8 @@ public final class CatalogExceptionMessage {
         "Tag labels %s and %s are mutually exclusive and can't be assigned together",
         tag1.getTagFQN(), tag2.getTagFQN());
   }
+
+  public static String csvNotSupported(String entityType) {
+    return String.format("Upload/download CSV for bulk operations is not supported for entity [%s]", entityType);
+  }
 }

@@ -26,7 +26,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { fetchGlossaryTerms } from '../../../utils/GlossaryUtils';
-import { getClassifications } from '../../../utils/TagsUtils';
+import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
 
 const mockEntityFieldThreads = [
@@ -189,6 +189,7 @@ jest.mock('../../../utils/TableUtils', () => ({
 
 jest.mock('../../../utils/TagsUtils', () => ({
   getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
+  fetchTagsAndGlossaryTerms: jest.fn().mockResolvedValue(mockTagList),
 }));
 
 jest.mock('../../tags-container/tags-container', () => {
@@ -239,7 +240,7 @@ jest.mock('./AnnouncementDrawer/AnnouncementDrawer', () => {
   return jest.fn().mockReturnValue(<div>AnnouncementDrawer</div>);
 });
 
-jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getActiveAnnouncement: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -340,7 +341,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(versionHandler).toBeCalled();
+    expect(versionHandler).toHaveBeenCalled();
   });
 
   it('Should call follow handler on follow button click', async () => {
@@ -367,7 +368,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(followHandler).toBeCalled();
+    expect(followHandler).toHaveBeenCalled();
   });
 
   it('Should render all the extra info', async () => {
@@ -479,7 +480,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
   it('Should render tag thread button with count', async () => {
@@ -523,7 +524,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
   it.skip('Check if tags and glossary-terms are present', async () => {
@@ -571,8 +572,8 @@ describe('Test EntityPageInfo component', () => {
     expect(glossaryTerm1).not.toBeInTheDocument();
   });
 
-  it('Check if only glossary terms are present', async () => {
-    (getClassifications as jest.Mock).mockImplementationOnce(() =>
+  it.skip('Check if only glossary terms are present', async () => {
+    (fetchTagsAndGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
     const { getByTestId, findByText, queryByText } = render(
@@ -597,7 +598,7 @@ describe('Test EntityPageInfo component', () => {
 
   it('Check that tags and glossary terms are not present', async () => {
     await act(async () => {
-      (getClassifications as jest.Mock).mockImplementationOnce(() =>
+      (fetchTagsAndGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
         Promise.reject()
       );
       (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>

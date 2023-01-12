@@ -16,6 +16,7 @@ import {
     interceptURL, uuid,
     verifyResponseStatusCode
 } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -29,7 +30,7 @@ const policies = {
 };
 
 const errorMessageValidation = {
-  ifPolicyNotSelected: 'At least one policy is required.',
+  ifPolicyNotSelected: 'Enter at least one policy',
   ifNameNotEntered: 'invalid name',
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };
@@ -65,7 +66,7 @@ describe('Roles page should work properly', () => {
 
     verifyResponseStatusCode('@getRoles', 200);
 
-    cy.url().should('eq', 'http://localhost:8585/settings/access/roles');
+    cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
   });
 
   it('Default Role and Policies should be displayed', () => {
@@ -101,7 +102,7 @@ describe('Roles page should work properly', () => {
     //Entering descrription
     cy.get(descriptionBox).type(description);
     //Select the policies
-    cy.get('.ant-select').should('be.visible').click();
+    cy.get('[data-testid="policies"]').should('be.visible').click();
 
     cy.get('[title="Data Consumer Policy"]')
       .scrollIntoView()
@@ -121,7 +122,7 @@ describe('Roles page should work properly', () => {
     //Verify the role is added successfully
     cy.url().should(
       'eq',
-      `http://localhost:8585/settings/access/roles/${roleName}`
+      `${BASE_URL}/settings/access/roles/${roleName}`
     );
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 

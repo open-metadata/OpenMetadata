@@ -14,7 +14,7 @@
 import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { addPropertyToEntity } from '../../../axiosAPIs/metadataTypeAPI';
+import { addPropertyToEntity } from 'rest/metadataTypeAPI';
 import AddCustomProperty from './AddCustomProperty';
 
 const mockPropertyTypes = [
@@ -184,7 +184,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
+jest.mock('rest/metadataTypeAPI', () => ({
   addPropertyToEntity: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockPropertyTypes[0])),
@@ -312,6 +312,6 @@ describe('Test Add Custom Property Component', () => {
 
     fireEvent.click(createButton);
 
-    expect(addPropertyToEntity).toBeCalled();
+    expect(addPropertyToEntity).toHaveBeenCalled();
   });
 });

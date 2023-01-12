@@ -63,10 +63,10 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     }: FeedEditorProp,
     ref
   ) => {
+    const { t } = useTranslation();
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
-    const { t } = useTranslation();
 
     /**
      * Prepare modules for editor
@@ -90,14 +90,18 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           onClose: () => {
             toggleMentionList(true);
           },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onSelect: (item: Record<string, any>, insertItem: Function) => {
+          onSelect: (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            item: Record<string, any>,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            insertItem: (item: Record<string, any>) => void
+          ) => {
             toggleMentionList(true);
             insertItem(item);
           },
           source: matcher,
           showDenotationChar: false,
-          renderLoading: () => 'Loading...',
+          renderLoading: () => `${t('label.loading')}...`,
         },
         markdownOptions: {},
         clipboard: {

@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { getSampleDataByTableId } from '../../axiosAPIs/tableAPI';
+import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table, TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';

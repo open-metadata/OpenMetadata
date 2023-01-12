@@ -15,11 +15,11 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
-import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { restoreTable } from '../../axiosAPIs/tableAPI';
+import { restoreTable } from 'rest/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -77,7 +77,6 @@ import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
-
 // css
 import './datasetDetails.style.less';
 
@@ -717,7 +716,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         tablePermissions.EditAll || tablePermissions.EditTags
                       }
                       isReadOnly={deleted}
-                      joins={tableJoinData.columnJoins as ColumnJoins[]}
+                      joins={tableJoinData.columnJoins || []}
                       tableConstraints={tableDetails.tableConstraints}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}

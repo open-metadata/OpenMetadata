@@ -21,7 +21,7 @@ import {
   getAdvancedFieldOptions,
   getTagSuggestions,
   getUserSuggestions,
-} from '../../axiosAPIs/miscAPI';
+} from 'rest/miscAPI';
 import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,
@@ -150,7 +150,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         className="tw-text-primary tw-self-center tw-cursor-pointer"
         data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
-        {t('label.advanced-search')}
+        {t('label.advanced-entity', {
+          entity: t('label.search'),
+        })}
       </span>
     </Space>
   );

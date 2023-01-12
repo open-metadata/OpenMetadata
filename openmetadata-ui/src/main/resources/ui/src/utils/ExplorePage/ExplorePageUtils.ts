@@ -12,8 +12,8 @@
  */
 
 import { isEmpty, isUndefined } from 'lodash';
+import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
-import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
   queryFilters: QueryFilterInterface[] | undefined

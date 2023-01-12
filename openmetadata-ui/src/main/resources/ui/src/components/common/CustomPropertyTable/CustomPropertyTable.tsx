@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
+import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';

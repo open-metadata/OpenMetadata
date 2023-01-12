@@ -23,12 +23,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -46,7 +43,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void prepare(Tag entity) throws IOException {
+  public void prepare(Tag entity) {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReferenceByName(entity.getParent());
     entity.setParent(parentTerm);
@@ -103,17 +100,6 @@ public class TagRepository extends EntityRepository<Tag> {
 
   private Integer getUsageCount(Tag tag) {
     return daoCollection.tagUsageDAO().getTagCount(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
-  }
-
-  @Transaction
-  public Tag delete(UriInfo uriInfo, UUID id) throws IOException {
-    Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
-    checkSystemEntityDeletion(tag);
-    dao.delete(id.toString());
-    daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
-    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
-    return tag;
   }
 
   private List<EntityReference> getChildren(Tag entity) throws IOException {

@@ -70,6 +70,6 @@ describe('Test Edit Announcement modal', () => {
 
     fireEvent.click(cancelButton);
 
-    expect(onCancel).toBeCalled();
+    expect(onCancel).toHaveBeenCalled();
   });
 });

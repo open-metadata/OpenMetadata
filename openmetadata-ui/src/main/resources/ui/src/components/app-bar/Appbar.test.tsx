@@ -27,7 +27,7 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -43,7 +43,7 @@ jest.mock('../nav-bar/NavBar', () => {
   return jest.fn().mockReturnValue(<p>NavBar</p>);
 });
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   getVersion: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {

@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { postKillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from 'rest/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
 
 const mockHandleClose = jest.fn();
@@ -27,7 +27,7 @@ const mockProps = {
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,
 };
 
-jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('rest/ingestionPipelineAPI', () => ({
   postKillIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
@@ -61,7 +61,7 @@ describe('Test Kill Ingestion Modal component', () => {
 
     fireEvent.click(cancelButton);
 
-    expect(mockHandleClose).toBeCalled();
+    expect(mockHandleClose).toHaveBeenCalled();
   });
 
   it('Should call kill api on click of confirm button', async () => {

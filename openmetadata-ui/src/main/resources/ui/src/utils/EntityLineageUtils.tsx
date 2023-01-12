@@ -16,10 +16,25 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  ModifiedColumn,
+  SelectedEdge,
+  SelectedNode,
+} from 'components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
+import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -31,18 +46,6 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  EdgeData,
-  EdgeTypeEnum,
-  ModifiedColumn,
-  SelectedEdge,
-  SelectedNode,
-} from '../components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {
@@ -144,10 +147,12 @@ const getNodeType = (entityLineage: EntityLineage, id: string) => {
   );
   const hasUpstreamToEntity = upStreamEdges.find((up) => up.toEntity === id);
 
-  if (hasDownStreamToEntity && !hasDownStreamFromEntity)
+  if (hasDownStreamToEntity && !hasDownStreamFromEntity) {
     return EntityLineageNodeType.OUTPUT;
-  if (hasUpstreamFromEntity && !hasUpstreamToEntity)
+  }
+  if (hasUpstreamFromEntity && !hasUpstreamToEntity) {
     return EntityLineageNodeType.INPUT;
+  }
 
   return EntityLineageNodeType.DEFAULT;
 };
@@ -156,10 +161,15 @@ export const getColumnType = (edges: Edge[], id: string) => {
   const sourceEdge = edges.find((edge) => edge.sourceHandle === id);
   const targetEdge = edges.find((edge) => edge.targetHandle === id);
 
-  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id)
+  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id) {
     return EntityLineageNodeType.DEFAULT;
-  if (sourceEdge?.sourceHandle === id) return EntityLineageNodeType.INPUT;
-  if (targetEdge?.targetHandle === id) return EntityLineageNodeType.OUTPUT;
+  }
+  if (sourceEdge?.sourceHandle === id) {
+    return EntityLineageNodeType.INPUT;
+  }
+  if (targetEdge?.targetHandle === id) {
+    return EntityLineageNodeType.OUTPUT;
+  }
 
   return EntityLineageNodeType.NOT_CONNECTED;
 };
@@ -957,7 +967,7 @@ export const getAllTracedNodes = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n.id == tracedNode.id) === -1) {
+    if (prevTraced.findIndex((n) => n.id === tracedNode.id) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedNodes(
@@ -969,7 +979,7 @@ export const getAllTracedNodes = (
       ).forEach((foundNode) => {
         memo.push(foundNode);
 
-        if (prevTraced.findIndex((n) => n.id == foundNode.id) === -1) {
+        if (prevTraced.findIndex((n) => n.id === foundNode.id) === -1) {
           prevTraced.push(foundNode);
         }
       });
@@ -1048,14 +1058,14 @@ export const getAllTracedEdges = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n == tracedNode) === -1) {
+    if (prevTraced.findIndex((n) => n === tracedNode) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
         (foundNode) => {
           memo.push(foundNode);
 
-          if (prevTraced.findIndex((n) => n == foundNode) === -1) {
+          if (prevTraced.findIndex((n) => n === foundNode) === -1) {
             prevTraced.push(foundNode);
           }
         }

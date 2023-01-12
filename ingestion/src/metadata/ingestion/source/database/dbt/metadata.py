@@ -99,15 +99,14 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         return self.report
 
     def test_connection(self) -> None:
-        # DBT does not need to connect to any source to process information
-        # Passing the test connection here
-        pass
+        """
+        DBT does not need to connect to any source to process information
+        """
 
     def prepare(self):
         """
-        By default, there's nothing to prepare
+        By default for DBT nothing is required to be prepared
         """
-        # By default for DBT nothing is required to be prepared
 
     def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """
@@ -149,7 +148,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    classification_name="DBTTags",
+                    classification_name=self.source_config.dbtClassificationName,
                     tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,
@@ -158,6 +157,19 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             )
             for tag in dbt_tags_list
         ] or None
+
+    def check_columns(self, catalog_node, required_catalog_keys):
+        for catalog_key, catalog_column in catalog_node.get("columns").items():
+            if all(
+                required_catalog_key in catalog_column
+                for required_catalog_key in required_catalog_keys
+            ):
+                logger.info(f"Successfully Validated DBT Column: {catalog_key}")
+            else:
+                logger.warning(
+                    f"Error validating DBT Column: {catalog_key}\n"
+                    f"Please check if following keys exist for the column node: {required_catalog_keys}"
+                )
 
     def validate_dbt_files(self, dbt_files: DbtFiles):
         """
@@ -205,21 +217,15 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 # Validate the catalog file if it is passed
                 if dbt_files.dbt_catalog:
                     catalog_node = catalog_entities.get(key)
-                    for catalog_key, catalog_column in catalog_node.get(
-                        "columns"
-                    ).items():
-                        if all(
-                            required_catalog_key in catalog_column
-                            for required_catalog_key in required_catalog_keys
-                        ):
-                            logger.info(
-                                f"Successfully Validated DBT Column: {catalog_key}"
-                            )
-                        else:
-                            logger.warning(
-                                f"Error validating DBT Column: {catalog_key}\n"
-                                f"Please check if following keys exist for the column node: {required_catalog_keys}"
-                            )
+                    if catalog_node and "columns" in catalog_node:
+                        self.check_columns(
+                            catalog_node=catalog_node,
+                            required_catalog_keys=required_catalog_keys,
+                        )
+                    else:
+                        logger.warning(
+                            f"Unable to find the node or columns in the catalog file for dbt node: {key}"
+                        )
 
     def yield_dbt_tags(
         self, dbt_files: DbtFiles
@@ -257,13 +263,14 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             try:
                 # Create all the tags added
                 dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
-                for tag_label in dbt_tag_labels:
+                for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
-                            name="DBTTags",
+                            name=self.source_config.dbtClassificationName,
                             description="dbt classification",
                         ),
                         tag_request=CreateTagRequest(
+                            classification=self.source_config.dbtClassificationName,
                             name=tag_label.tagFQN.__root__.split(".")[1],
                             description="dbt Tags",
                         ),
@@ -434,7 +441,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                 # If catalog file is passed pass the column information from catalog file
                 column_index = None
-                if catalog_node:
+                if catalog_node and "columns" in catalog_node:
                     catalog_column = catalog_node["columns"].get(key)
                     if catalog_column:
                         column_name = catalog_column.get("name")
@@ -564,7 +571,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         entity=Table,
                         entity_id=to_entity.id,
                         description=data_model.description.__root__,
-                        force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                        force=self.source_config.dbtUpdateDescriptions,
                     )
 
                 # Patch column descriptions from DBT
@@ -574,7 +581,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             entity_id=to_entity.id,
                             column_name=column.name.__root__,
                             description=column.description.__root__,
-                            force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                            force=self.source_config.dbtUpdateDescriptions,
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -608,7 +615,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self, dbt_test: dict
     ) -> Iterable[CreateTestDefinitionRequest]:
         """
-        AMethod to add DBT test definitions
+        A Method to add DBT test definitions
         """
         try:
             test_name = dbt_test.get("name")

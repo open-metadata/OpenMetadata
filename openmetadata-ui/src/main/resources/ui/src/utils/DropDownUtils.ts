@@ -21,5 +21,5 @@ export const getTopPosition = (
 ) => {
   const bottomSpace = windowHeight - (bottomPosition + BUFFER_VALUE);
 
-  return bottomSpace < 0 ? { bottom: `${elementHeight + GAP}px` } : {};
+  return bottomSpace < 0 ? { bottom: `${elementHeight + GAP}px` } : undefined;
 };

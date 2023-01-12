@@ -21,7 +21,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTeamByName, updateTeam } from '../../axiosAPIs/teamsAPI';
+import { getTeamByName, updateTeam } from 'rest/teamsAPI';
 import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -177,8 +177,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         closable={false}
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
+        open={isModalOpen}
         title={t('label.move-the-team')}
-        visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
         <Typography.Text>

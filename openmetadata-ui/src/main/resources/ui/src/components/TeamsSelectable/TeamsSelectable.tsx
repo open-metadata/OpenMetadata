@@ -13,7 +13,7 @@
 
 import { TreeSelect } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { getTeamsHierarchy } from '../../axiosAPIs/teamsAPI';
+import { getTeamsHierarchy } from 'rest/teamsAPI';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';

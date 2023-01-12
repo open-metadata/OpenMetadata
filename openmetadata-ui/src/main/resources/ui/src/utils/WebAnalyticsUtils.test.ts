@@ -34,12 +34,12 @@ describe('Web Analytics utils', () => {
   it('getReferrerPath should return pathname if url is correct', () => {
     const pathname = getReferrerPath(mockReferrer);
 
-    expect(pathname).toStrictEqual('/settings/members/teams/Organization');
+    expect(pathname).toBe('/settings/members/teams/Organization');
   });
 
   it('getReferrerPath should return empty string if url is incorrect', () => {
     const pathname = getReferrerPath('incorrectURL');
 
-    expect(pathname).toStrictEqual('');
+    expect(pathname).toBe('');
   });
 });

@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -79,6 +80,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -326,9 +328,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final T findByNameOrNull(String fqn, String fields, Include include) throws IOException {
+  public final T findByNameOrNull(String fqn, String fields, Include include) {
     String json = dao.findJsonByFqn(fqn, include);
-    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+    try {
+      return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  @Transaction
+  public final List<T> listAll(Fields fields, ListFilter filter) throws IOException {
+    // forward scrolling, if after == null then first page is being asked
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+      entities.add(entity);
+    }
+    return entities;
   }
 
   @Transaction
@@ -1162,6 +1180,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
   }
 
+  /** Override this method to support downloading CSV functionality */
+  public String exportToCsv(String name, String user) throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
+  /** Load CSV provided for bulk upload */
+  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user) throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
   public enum Operation {
     PUT,
     PATCH,
@@ -1541,8 +1569,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         String toEntityType,
         UUID toId)
         throws JsonProcessingException {
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
       if (!recordChange(field, originFromRef, updatedFromRef, true, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }

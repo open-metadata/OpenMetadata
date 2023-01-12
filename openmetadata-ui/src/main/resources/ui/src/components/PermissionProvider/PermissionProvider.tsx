@@ -23,13 +23,13 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import AppState from '../../AppState';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
-} from '../../axiosAPIs/permissionAPI';
+} from 'rest/permissionAPI';
+import AppState from '../../AppState';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
   getUrlPathnameExpiryAfterRoute,

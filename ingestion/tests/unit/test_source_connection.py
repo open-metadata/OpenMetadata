@@ -86,11 +86,20 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaScheme,
 )
 from metadata.generated.schema.security.credentials import awsCredentials
-from metadata.utils.source_connections import get_connection_args, get_connection_url
+from metadata.ingestion.connections.builders import (
+    get_connection_args_common,
+    get_connection_url_common,
+)
 
 
-class SouceConnectionTest(TestCase):
+# pylint: disable=import-outside-toplevel
+class SourceConnectionTest(TestCase):
     def test_databricks_url_without_db(self):
+
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
         expected_result = (
             "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443"
         )
@@ -102,6 +111,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_databricks_url_with_db(self):
+
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
         expected_result = (
             "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443"
         )
@@ -113,6 +127,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_hive_url(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive, hostPort="localhost:10000"
@@ -133,6 +152,11 @@ class SouceConnectionTest(TestCase):
         assert exptected_https_result == get_connection_url(http_conn_obj)
 
     def test_hive_url_custom_auth(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
@@ -156,6 +180,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_conn_options_with_db(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://localhost:10000/test_db?Key=Value"
         hive_conn_obj = HiveConnection(
             hostPort="localhost:10000",
@@ -165,6 +194,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_conn_options_without_db(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://localhost:10000?Key=Value"
         hive_conn_obj = HiveConnection(
             hostPort="localhost:10000",
@@ -173,6 +207,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_kerberos_auth(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
@@ -186,6 +225,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_ldap_auth(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
@@ -197,6 +241,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_auth(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
@@ -208,6 +257,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_connection_arguments(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
@@ -218,6 +272,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_connection_arguments_pass(self):
+
+        from metadata.ingestion.source.database.hive.connection import (
+            get_connection_url,
+        )
+
         expected_result = "hive://username@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
@@ -227,6 +286,11 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_trino_url_without_params(self):
+
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_url,
+        )
+
         expected_url = "trino://username:pass@localhost:443/catalog"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
@@ -235,6 +299,7 @@ class SouceConnectionTest(TestCase):
             password="pass",
             catalog="catalog",
         )
+
         assert expected_url == get_connection_url(trino_conn_obj)
 
         # Passing @ in username and password
@@ -250,6 +315,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(trino_conn_obj)
 
     def test_trino_conn_arguments(self):
+
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_args,
+        )
+
         # connection arguments without connectionArguments and without proxies
         expected_args = {}
         trino_conn_obj = TrinoConnection(
@@ -307,6 +377,11 @@ class SouceConnectionTest(TestCase):
         assert expected_args == conn_args
 
     def test_trino_url_with_params(self):
+
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_url,
+        )
+
         expected_url = "trino://username:pass@localhost:443/catalog?param=value"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
@@ -319,6 +394,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(trino_conn_obj)
 
     def test_trino_with_proxies(self):
+
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_args,
+        )
+
         test_proxies = {"http": "http_proxy", "https": "https_proxy"}
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
@@ -334,6 +414,11 @@ class SouceConnectionTest(TestCase):
         )
 
     def test_trino_without_catalog(self):
+
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_url,
+        )
+
         # Test trino url without catalog
         expected_url = "trino://username:pass@localhost:443"
         trino_conn_obj = TrinoConnection(
@@ -356,7 +441,7 @@ class SouceConnectionTest(TestCase):
             password="password",
             database="database",
         )
-        assert expected_url == get_connection_url(vertica_conn_obj)
+        assert expected_url == get_connection_url_common(vertica_conn_obj)
 
         # Passing @ in username and password
         expected_url = "vertica+vertica_python://username%40444:password%40123@localhost:5443/database"
@@ -368,16 +453,27 @@ class SouceConnectionTest(TestCase):
             database="database",
         )
 
-        assert expected_url == get_connection_url(vertica_conn_obj)
+        assert expected_url == get_connection_url_common(vertica_conn_obj)
 
     def test_druid_url(self):
+
+        from metadata.ingestion.source.database.druid.connection import (
+            get_connection_url,
+        )
+
         expected_url = "druid://localhost:8082/druid/v2/sql"
         druid_conn_obj = DruidConnection(
             scheme=DruidScheme.druid, hostPort="localhost:8082"
         )
+
         assert expected_url == get_connection_url(druid_conn_obj)
 
     def test_pinotdb_url(self):
+
+        from metadata.ingestion.source.database.pinotdb.connection import (
+            get_connection_url,
+        )
+
         expected_url = (
             "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
         )
@@ -386,6 +482,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:8099",
             pinotControllerHost="http://localhost:9000/",
         )
+
         assert expected_url == get_connection_url(pinot_conn_obj)
 
     def test_mysql_url(self):
@@ -396,7 +493,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:3306",
             scheme=MySQLScheme.mysql_pymysql,
         )
-        assert expected_url == get_connection_url(mysql_conn_obj)
+        assert expected_url == get_connection_url_common(mysql_conn_obj)
 
         # connection arguments with db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
@@ -405,7 +502,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:3306",
             scheme=MySQLScheme.mysql_pymysql,
         )
-        assert expected_url == get_connection_url(mysql_conn_obj)
+        assert expected_url == get_connection_url_common(mysql_conn_obj)
 
     def test_clickhouse_url(self):
         # connection arguments without db
@@ -416,7 +513,7 @@ class SouceConnectionTest(TestCase):
             scheme=ClickhouseScheme.clickhouse_http,
             databaseSchema=None,
         )
-        assert expected_url == get_connection_url(clickhouse_conn_obj)
+        assert expected_url == get_connection_url_common(clickhouse_conn_obj)
 
         # connection arguments with db
         expected_url = "clickhouse+http://username:@localhost:8123/default"
@@ -426,7 +523,7 @@ class SouceConnectionTest(TestCase):
             scheme=ClickhouseScheme.clickhouse_http,
             databaseSchema="default",
         )
-        assert expected_url == get_connection_url(clickhouse_conn_obj)
+        assert expected_url == get_connection_url_common(clickhouse_conn_obj)
 
         expected_url = (
             "clickhouse+http://username:@localhost:8123/default?protocol=https"
@@ -438,7 +535,7 @@ class SouceConnectionTest(TestCase):
             connectionOptions=dict(protocol="https"),
             databaseSchema="default",
         )
-        assert expected_url == get_connection_url(clickhouse_conn_obj)
+        assert expected_url == get_connection_url_common(clickhouse_conn_obj)
 
     def test_mariadb_url(self):
         # connection arguments without db
@@ -448,7 +545,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:3306",
             scheme=MariaDBScheme.mysql_pymysql,
         )
-        assert expected_url == get_connection_url(mariadb_conn_obj)
+        assert expected_url == get_connection_url_common(mariadb_conn_obj)
 
         # connection arguments with db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
@@ -457,7 +554,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:3306",
             scheme=MariaDBScheme.mysql_pymysql,
         )
-        assert expected_url == get_connection_url(mariadb_conn_obj)
+        assert expected_url == get_connection_url_common(mariadb_conn_obj)
 
     def test_postgres_url(self):
         # connection arguments without db
@@ -468,9 +565,9 @@ class SouceConnectionTest(TestCase):
             scheme=PostgresScheme.postgresql_psycopg2,
             database=None,
         )
-        assert expected_url == get_connection_url(postgres_conn_obj)
+        assert expected_url == get_connection_url_common(postgres_conn_obj)
 
-        # connection arguments witho db
+        # connection arguments with db
         expected_url = "postgresql+psycopg2://openmetadata_user:@localhost:5432/default"
         postgres_conn_obj = PostgresConnection(
             username="openmetadata_user",
@@ -478,7 +575,7 @@ class SouceConnectionTest(TestCase):
             scheme=PostgresScheme.postgresql_psycopg2,
             database="default",
         )
-        assert expected_url == get_connection_url(postgres_conn_obj)
+        assert expected_url == get_connection_url_common(postgres_conn_obj)
 
     def test_redshift_url(self):
         # connection arguments witho db
@@ -490,7 +587,7 @@ class SouceConnectionTest(TestCase):
             scheme=RedshiftScheme.redshift_psycopg2,
             database="dev",
         )
-        assert expected_url == get_connection_url(redshift_conn_obj)
+        assert expected_url == get_connection_url_common(redshift_conn_obj)
 
     def test_singleStore_url(self):
         # connection arguments without db
@@ -500,7 +597,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
         )
-        assert expected_url == get_connection_url(singleStore_conn_obj)
+        assert expected_url == get_connection_url_common(singleStore_conn_obj)
 
         # connection arguments with db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
@@ -509,7 +606,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
         )
-        assert expected_url == get_connection_url(singleStore_conn_obj)
+        assert expected_url == get_connection_url_common(singleStore_conn_obj)
 
     def test_db2_url(self):
         # connection arguments with db
@@ -520,10 +617,15 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:50000",
             database="testdb",
         )
-        assert expected_url == get_connection_url(db2_conn_obj)
+        assert expected_url == get_connection_url_common(db2_conn_obj)
 
     def test_snowflake_url(self):
         # connection arguments without db
+
+        from metadata.ingestion.source.database.snowflake.connection import (
+            get_connection_url,
+        )
+
         expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
         snowflake_conn_obj = SnowflakeConnection(
             scheme=SnowflakeScheme.snowflake,
@@ -532,9 +634,15 @@ class SouceConnectionTest(TestCase):
             warehouse="COMPUTE_WH",
             account="ue18849.us-east-2.aws",
         )
+
         assert expected_url == get_connection_url(snowflake_conn_obj)
 
     def test_snowflake_url(self):
+
+        from metadata.ingestion.source.database.snowflake.connection import (
+            get_connection_url,
+        )
+
         # Passing @ in username and password
         expected_url = "snowflake://coding%40444:Abhi%40123@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
         snowflake_conn_obj = SnowflakeConnection(
@@ -569,7 +677,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=MySQLScheme.mysql_pymysql,
         )
-        assert expected_args == get_connection_args(mysql_conn_obj)
+        assert expected_args == get_connection_args_common(mysql_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -580,7 +688,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MySQLScheme.mysql_pymysql,
         )
-        assert expected_args == get_connection_args(mysql_conn_obj)
+        assert expected_args == get_connection_args_common(mysql_conn_obj)
 
     def test_clickhouse_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -593,7 +701,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=ClickhouseScheme.clickhouse_http,
         )
-        assert expected_args == get_connection_args(clickhouse_conn_obj)
+        assert expected_args == get_connection_args_common(clickhouse_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -605,7 +713,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=ClickhouseScheme.clickhouse_http,
         )
-        assert expected_args == get_connection_args(clickhouse_conn_obj)
+        assert expected_args == get_connection_args_common(clickhouse_conn_obj)
 
     def test_mariadb_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -617,7 +725,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=MariaDBScheme.mysql_pymysql,
         )
-        assert expected_args == get_connection_args(mariadb_conn_obj)
+        assert expected_args == get_connection_args_common(mariadb_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -628,7 +736,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MariaDBScheme.mysql_pymysql,
         )
-        assert expected_args == get_connection_args(mariadb_conn_obj)
+        assert expected_args == get_connection_args_common(mariadb_conn_obj)
 
     def test_postgres_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -641,7 +749,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=PostgresScheme.postgresql_psycopg2,
         )
-        assert expected_args == get_connection_args(postgres_conn_obj)
+        assert expected_args == get_connection_args_common(postgres_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -653,7 +761,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=PostgresScheme.postgresql_psycopg2,
         )
-        assert expected_args == get_connection_args(postgres_conn_obj)
+        assert expected_args == get_connection_args_common(postgres_conn_obj)
 
     def test_redshift_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -666,7 +774,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=RedshiftScheme.redshift_psycopg2,
         )
-        assert expected_args == get_connection_args(redshift_conn_obj)
+        assert expected_args == get_connection_args_common(redshift_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -678,7 +786,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=RedshiftScheme.redshift_psycopg2,
         )
-        assert expected_args == get_connection_args(redshift_conn_obj)
+        assert expected_args == get_connection_args_common(redshift_conn_obj)
 
     def test_singleStore_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -690,7 +798,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=SingleStoreScheme.mysql_pymysql,
         )
-        assert expected_args == get_connection_args(singleStore_conn_obj)
+        assert expected_args == get_connection_args_common(singleStore_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -701,7 +809,7 @@ class SouceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SingleStoreScheme.mysql_pymysql,
         )
-        assert expected_args == get_connection_args(singleStore_conn_obj)
+        assert expected_args == get_connection_args_common(singleStore_conn_obj)
 
     def test_db2_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -714,7 +822,7 @@ class SouceConnectionTest(TestCase):
             scheme=Db2Scheme.db2_ibm_db,
             database="testdb",
         )
-        assert expected_args == get_connection_args(db2_conn_obj)
+        assert expected_args == get_connection_args_common(db2_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -726,7 +834,7 @@ class SouceConnectionTest(TestCase):
             scheme=Db2Scheme.db2_ibm_db,
             database="testdb",
         )
-        assert expected_args == get_connection_args(db2_conn_obj)
+        assert expected_args == get_connection_args_common(db2_conn_obj)
 
     def test_snowflake_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -739,7 +847,7 @@ class SouceConnectionTest(TestCase):
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
         )
-        assert expected_args == get_connection_args(snowflake_conn_obj)
+        assert expected_args == get_connection_args_common(snowflake_conn_obj)
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
@@ -752,9 +860,14 @@ class SouceConnectionTest(TestCase):
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
         )
-        assert expected_args == get_connection_args(snowflake_conn_obj)
+        assert expected_args == get_connection_args_common(snowflake_conn_obj)
 
     def test_athena_url(self):
+
+        from metadata.ingestion.source.database.athena.connection import (
+            get_connection_url,
+        )
+
         # connection arguments without db
         awsCreds = awsCredentials.AWSCredentials(
             awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
@@ -767,6 +880,7 @@ class SouceConnectionTest(TestCase):
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
         )
+
         assert expected_url == get_connection_url(athena_conn_obj)
 
         # connection arguments witho db
@@ -780,6 +894,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(athena_conn_obj)
 
     def test_mssql_url(self):
+
+        from metadata.ingestion.source.database.mssql.connection import (
+            get_connection_url,
+        )
+
         # connection arguments without db
         expected_url = "mssql+pytds://sa:password@localhost:1433"
         mssql_conn_obj = MssqlConnection(
@@ -793,6 +912,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(mssql_conn_obj)
 
     def test_mssql_url(self):
+
+        from metadata.ingestion.source.database.mssql.connection import (
+            get_connection_url,
+        )
+
         # Passing @ in username and password
         expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433"
         mssql_conn_obj = MssqlConnection(
@@ -817,6 +941,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(mssql_conn_obj)
 
     def test_presto_url(self):
+
+        from metadata.ingestion.source.database.presto.connection import (
+            get_connection_url,
+        )
+
         # connection arguments without db
         expected_url = "presto://admin@localhost:8080/test_catalog"
 
@@ -826,6 +955,7 @@ class SouceConnectionTest(TestCase):
             scheme=PrestoScheme.presto,
             catalog="test_catalog",
         )
+
         assert expected_url == get_connection_url(presto_conn_obj)
 
         # Passing @ in username and password
@@ -842,6 +972,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(presto_conn_obj)
 
     def test_presto_without_catalog(self):
+
+        from metadata.ingestion.source.database.presto.connection import (
+            get_connection_url,
+        )
+
         # Test presto url without catalog
         expected_url = "presto://username:pass@localhost:8080"
         presto_conn_obj = PrestoConnection(
@@ -854,6 +989,11 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(presto_conn_obj)
 
     def test_oracle_url(self):
+
+        from metadata.ingestion.source.database.oracle.connection import (
+            get_connection_url,
+        )
+
         # oracle with db
         expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
 
@@ -864,6 +1004,7 @@ class SouceConnectionTest(TestCase):
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
         )
+
         assert expected_url == get_connection_url(oracle_conn_obj)
 
         # oracle with service name

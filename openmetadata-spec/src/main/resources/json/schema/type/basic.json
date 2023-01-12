@@ -138,8 +138,13 @@
       "description": "key/value pairs to pass to workflow component.",
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        ".{1,}": { "type": "string" }
       }
+    },
+    "status" : {
+      "description": "State of an action over API.",
+      "type" : "string",
+      "enum" : ["success", "failure", "aborted", "partialSuccess"]
     }
   }
 }

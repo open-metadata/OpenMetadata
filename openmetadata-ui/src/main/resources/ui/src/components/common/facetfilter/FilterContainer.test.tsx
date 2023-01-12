@@ -54,7 +54,7 @@ describe('Test FilterContainer Component', () => {
       })
     );
 
-    expect(mockSelect).toBeCalledTimes(1);
+    expect(mockSelect).toHaveBeenCalledTimes(1);
   });
 
   it('if disable onClick of checkbox callback function should not call', () => {

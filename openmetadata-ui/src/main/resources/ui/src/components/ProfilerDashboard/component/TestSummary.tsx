@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
+import { getListTestCaseResults } from 'rest/testAPI';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,
@@ -131,7 +131,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   };
 
   const fetchTestResults = async () => {
-    if (isEmpty(data)) return;
+    if (isEmpty(data)) {
+      return;
+    }
 
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(

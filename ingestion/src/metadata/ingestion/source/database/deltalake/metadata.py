@@ -42,13 +42,13 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -100,11 +100,10 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.connection = get_connection(self.service_connection)
+        self.spark = get_connection(self.service_connection)
 
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
-        self.spark = self.connection.client
         self.table_type_map = {
             TableType.External.value.lower(): TableType.External.value,
             TableType.View.value.lower(): TableType.View.value,

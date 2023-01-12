@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CarouselProps } from 'antd';
 import lineage from '../assets/img/lineage.png';
 import screenShot2 from '../assets/img/screenShot1.png';
 import screenShot1 from '../assets/img/screenShot2.png';
@@ -40,13 +41,12 @@ export const LOGIN_SLIDE = [
   },
 ];
 
-export const LOGIN_SLIDER_SETTINGS = {
-  arrows: false,
+export const LOGIN_CAROUSEL_SETTINGS = {
   autoplay: true,
-  dots: true,
-  dotsClass: 'login-slider slick-dots',
-  infinite: true,
+  prefixCls: 'login-carousel',
+  dots: {
+    className: 'carousel-dots',
+  },
   slidesToShow: 1,
   slidesToScroll: 1,
-  speed: 500,
-};
+} as CarouselProps;

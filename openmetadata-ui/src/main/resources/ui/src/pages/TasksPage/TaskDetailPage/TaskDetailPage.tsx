@@ -16,14 +16,22 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Card, Dropdown, Layout, MenuProps, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import FeedPanelBody from 'components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
+import ActivityThreadPanelBody from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import AssigneeList from 'components/common/AssigneeList/AssigneeList';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import {
   getFeedById,
   getTask,
@@ -32,16 +40,8 @@ import {
   updatePost,
   updateTask,
   updateThread,
-} from '../../../axiosAPIs/feedsAPI';
-import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
-import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
+} from 'rest/feedsAPI';
+import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PanelTab, TaskOperation } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -312,8 +312,11 @@ const TaskDetailPage = () => {
   };
 
   const onTaskResolve = () => {
-    const updateTaskData = (data: Record<string, string>) => {
-      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
+    const updateTaskData = (data: TaskDetails) => {
+      if (!taskDetail.task?.id) {
+        return;
+      }
+      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id + '', data)
         .then(() => {
           showSuccessToast(t('server.task-resolved-successfully'));
           history.push(
@@ -329,14 +332,14 @@ const TaskDetailPage = () => {
     if (isTaskTags) {
       if (!isEmpty(tagsSuggestion)) {
         const data = { newValue: JSON.stringify(tagsSuggestion || '[]') };
-        updateTaskData(data);
+        updateTaskData(data as TaskDetails);
       } else {
         showErrorToast(t('server.please-add-tags'));
       }
     } else {
       if (suggestion) {
         const data = { newValue: suggestion };
-        updateTaskData(data);
+        updateTaskData(data as TaskDetails);
       } else {
         showErrorToast(t('server.please-add-description'));
       }
@@ -344,11 +347,11 @@ const TaskDetailPage = () => {
   };
 
   const onTaskReject = () => {
-    if (comment) {
+    if (comment && taskDetail.task?.id) {
       setIsLoadingOnSave(true);
-      updateTask(TaskOperation.REJECT, taskDetail.task?.id, {
+      updateTask(TaskOperation.REJECT, taskDetail.task?.id + '', {
         comment,
-      })
+      } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
           setModalVisible(false);
@@ -712,7 +715,9 @@ const TaskDetailPage = () => {
                             disabled={!suggestion}
                             type="primary"
                             onClick={onTaskResolve}>
-                            {t('label.add-description')}
+                            {t('label.add-entity', {
+                              entity: t('label.description'),
+                            })}
                           </Button>
                         )}
                       </Fragment>

@@ -84,7 +84,9 @@ export default function SummaryList({
         tags: feature.tags,
         description: feature.description,
       }));
-    } else return [];
+    } else {
+      return [];
+    }
   }, [columns, charts, tasks, mlFeatures]);
 
   return (
@@ -168,7 +170,9 @@ export default function SummaryList({
                       maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                     />
                   ) : (
-                    t('label.no-description')
+                    t('label.no-entity', {
+                      entity: t('label.description'),
+                    })
                   )}
                 </Paragraph>
               </Col>

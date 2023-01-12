@@ -16,6 +16,7 @@ import { Button, Popover } from 'antd';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
 import { ReactionOperation } from '../../enums/reactions.enum';
@@ -36,6 +37,7 @@ const Emoji: FC<EmojiProps> = ({
   reactionList,
   onReactionSelect,
 }) => {
+  const { t } = useTranslation();
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -84,8 +86,12 @@ const Emoji: FC<EmojiProps> = ({
         className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
         data-testid="popover-content">
         {`${visibleList.join(', ')}`}
-        {hasMore ? `, +${moreList.length} more` : ''}{' '}
-        <span className="tw-font-semibold">{`reacted with ${reactionType} emoji`}</span>
+        {hasMore
+          ? `, +${moreList.length} ${t('label.more-lowercase')}`
+          : ''}{' '}
+        <span className="tw-font-semibold">
+          {t('message.reacted-with-emoji', { type: reactionType })}
+        </span>
       </p>
     );
   };
@@ -99,10 +105,10 @@ const Emoji: FC<EmojiProps> = ({
     <Popover
       content={popoverContent}
       key="reaction-detail-popover"
+      open={visible}
       trigger="hover"
-      visible={visible}
       zIndex={9999}
-      onVisibleChange={setVisible}>
+      onOpenChange={setVisible}>
       <Button
         className={classNames('ant-btn-reaction tw-mr-1 d-flex', {
           'ant-btn-isReacted': isReacted,

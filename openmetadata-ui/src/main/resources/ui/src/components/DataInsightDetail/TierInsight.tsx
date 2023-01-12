@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,

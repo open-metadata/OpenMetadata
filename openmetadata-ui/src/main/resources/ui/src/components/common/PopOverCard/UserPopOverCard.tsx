@@ -21,8 +21,8 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getUserByName } from 'rest/userAPI';
 import AppState from '../../../AppState';
-import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';

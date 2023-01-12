@@ -21,7 +21,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -124,13 +124,14 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
     Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then((values) => {
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
+          const tagList = await getTaglist(values[0].value.data);
+          tagsAndTerms = tagList.map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
@@ -193,7 +194,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                 bordered
                 className="m-b-xlg"
                 data-testid="feature-card"
-                key={uniqueId()}>
+                key={feature.fullyQualifiedName}>
                 <Row>
                   <Col className="m-b-xs" span={24}>
                     <Typography.Text className="font-semibold">
@@ -314,8 +315,10 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             markdown={feature.description}
                           />
                         ) : (
-                          <Typography.Text className="tw-no-description">
-                            {t('label.no-description')}
+                          <Typography.Text className="text-grey-muted">
+                            {t('label.no-entity', {
+                              entity: t('label.description'),
+                            })}
                           </Typography.Text>
                         )}
                         <Tooltip
@@ -339,7 +342,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             <SVGIcons
                               alt="edit"
                               icon="icon-edit"
-                              title="Edit"
                               width="16px"
                             />
                           </Button>
@@ -357,10 +359,13 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         </Row>
         {!isEmpty(selectedFeature) && (
           <ModalWithMarkdownEditor
-            header={t('label.edit-feature', {
-              featureName: selectedFeature.name,
+            header={t('label.edit-entity-name', {
+              entityType: t('label.feature'),
+              entityName: selectedFeature.name,
             })}
-            placeholder={t('label.enter-feature-description')}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.feature-lowercase'),
+            })}
             value={selectedFeature.description as string}
             visible={editDescription}
             onCancel={handleCancelEditDescription}

@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -113,7 +113,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   )}
                   {r.startDate && (
                     <p>
-                      {t('label.start-date')}:{' '}
+                      {t('label.start-entity', { entity: t('label.date') })}:{' '}
                       {getDateTimeFromMilliSeconds(r.startDate)}
                     </p>
                   )}

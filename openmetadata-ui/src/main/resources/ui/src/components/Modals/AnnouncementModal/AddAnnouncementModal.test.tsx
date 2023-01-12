@@ -26,7 +26,7 @@ jest.mock('../../../AppState', () => ({
   getCurrentUserDetails: jest.fn(),
 }));
 
-jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -83,6 +83,6 @@ describe('Test Add Announcement modal', () => {
 
     fireEvent.click(cancelButton);
 
-    expect(onCancel).toBeCalled();
+    expect(onCancel).toHaveBeenCalled();
   });
 });

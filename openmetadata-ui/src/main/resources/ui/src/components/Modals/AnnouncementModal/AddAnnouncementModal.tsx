@@ -16,8 +16,8 @@ import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { postThread } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,
@@ -103,8 +103,8 @@ const AddAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText="Submit"
+      open={open}
       title={t('message.make-an-announcement')}
-      visible={open}
       width={720}
       onCancel={onCancel}>
       <Form

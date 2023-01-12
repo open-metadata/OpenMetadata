@@ -14,14 +14,14 @@
 import { Button, Col, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { isUndefined, uniqueId } from 'lodash';
+import CheckboxUserCard from 'pages/teams/CheckboxUserCard';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSuggestedUsers, searchData } from '../../../axiosAPIs/miscAPI';
+import { getSuggestedUsers, searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { SearchResponse } from '../../../interface/search.interface';
-import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
@@ -144,16 +144,18 @@ const ReviewerModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}>
       <>
         <Searchbar
-          placeholder={`${t('label.search-for-user')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          })}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}

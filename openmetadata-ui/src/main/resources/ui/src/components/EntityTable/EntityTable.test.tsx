@@ -166,14 +166,6 @@ const mockGlossaryList = [
   },
 ];
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-    })),
-  };
-});
-
 jest.mock('../../hooks/authHooks', () => {
   return {
     useAuth: jest.fn().mockReturnValue({
@@ -278,6 +270,6 @@ describe('Test EntityTable Component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 });

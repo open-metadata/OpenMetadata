@@ -320,12 +320,6 @@ public final class TestUtils {
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
-  public static <T> T put(WebTarget target, Class<T> clz, Status expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response = SecurityUtil.addHeaders(target, headers).method("PUT");
-    return readResponse(response, clz, expectedStatus.getStatusCode());
-  }
-
   public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
@@ -341,6 +335,14 @@ public final class TestUtils {
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
+  public static <T> T putCsv(
+      WebTarget target, String request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.TEXT_PLAIN));
+    return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
   public static void get(WebTarget target, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     readResponse(response, Status.NO_CONTENT.getStatusCode());
@@ -349,6 +351,12 @@ public final class TestUtils {
   public static <T> T get(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <T> T getWithResponse(WebTarget target, Class<T> clz, Map<String, String> headers, int statusConde)
+      throws HttpResponseException {
+    final Response response = SecurityUtil.addHeaders(target, headers).get();
+    return readResponse(response, clz, statusConde);
   }
 
   public static <T> T delete(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {

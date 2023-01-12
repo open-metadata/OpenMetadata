@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -121,7 +121,6 @@ export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 export const CUSTOM_AIRFLOW_DOCS =
   'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
-/* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
@@ -396,6 +395,17 @@ export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
 export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   let path = tab ? ROUTES.PIPELINE_DETAILS_WITH_TAB : ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getMlModelDetailsPath = (mlModelFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.MLMODEL_DETAILS_WITH_TAB : ROUTES.MLMODEL_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);

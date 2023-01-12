@@ -29,9 +29,9 @@ import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getPipelineStatus } from 'rest/pipelineAPI';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
-import { getPipelineStatus } from '../../axiosAPIs/pipelineAPI';
 import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,

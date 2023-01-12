@@ -9,27 +9,6 @@ public class NgramElasticSearchIndexResolver extends DefaultElasticSearchIndexRe
   private static final Logger LOGGER = LoggerFactory.getLogger(NgramElasticSearchIndexResolver.class);
 
   @Override
-  public String customizeQueryString(String query) {
-    // Convert query string like '*Word*' to '(Word OR *Word*)' for Ngram-search,
-    // because wildcard query doesn't work correctly for ngram-index but ngram-search
-    // runs always partial-matching-search which logically is same with '*Word*',
-    // so we should use 'Word' instead of '*Word*' for ngram index.
-    // For other fields we must use '*Word*', so '(Word OR *Word*)' is most desirable.
-    String q = query;
-    if (q.startsWith("*") && q.length() > 1) {
-      q = q.substring(1);
-    }
-    if (q.endsWith("*") && q.length() > 1) {
-      q = q.substring(0, q.length() - 1);
-    }
-    if (q.equals(query)) {
-      return query;
-    } else {
-      return "(" + q + " OR " + query + ")";
-    }
-  }
-
-  @Override
   public QueryStringQueryBuilder customizeQuery(QueryStringQueryBuilder builder) {
     return builder.type(MultiMatchQueryBuilder.Type.PHRASE);
   }

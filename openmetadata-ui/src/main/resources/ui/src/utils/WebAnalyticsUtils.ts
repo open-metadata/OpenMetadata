@@ -17,8 +17,8 @@ import {
   setSession,
 } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
-import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
+import { WebPageData } from 'components/WebAnalytics/WebAnalytics.interface';
+import { postPageView } from 'rest/WebAnalyticsAPI';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,
