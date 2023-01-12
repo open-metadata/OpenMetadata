@@ -88,9 +88,11 @@ jobs:
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
       - name: Build PR with Maven
+        id: cache-output
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'pull_request_target' && steps.cache-dependencies.outputs.cache-hit != 'true' }}
+          CACHE_NAME: cache-out
+        if: ${{ github.event_name == 'pull_request_target'}}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
@@ -100,7 +102,22 @@ jobs:
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
-        
+
+
+      - name: Use cached output
+        run: |
+          git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
+          mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+              -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+              -Dsonar.pullrequest.base=main \
+              -Dsonar.pullrequest.github.repository=OpenMetadata \
+              -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
+              -Dsonar.pullrequest.provider=github clean install
+        env:
+          CACHE_NAME: cache-out
+        if: steps.cache-output.outputs.cache-hit == 'true'
+
       - name: Cache dependencies
         id: cache-dependencies
         uses: actions/cache@v3
