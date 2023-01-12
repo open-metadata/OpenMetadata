@@ -87,7 +87,7 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
+  const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
 
   const profilePicture = useMemo(
     () => currentUser?.profile?.images?.image512,
@@ -127,27 +127,30 @@ const NavBar = ({
     setHasMentionNotification(false);
   };
 
-  const handleBellClick = (visible: boolean) => {
-    if (visible) {
-      switch (activeTab) {
-        case 'Task':
-          hasTaskNotification &&
-            setTimeout(() => {
-              handleTaskNotificationRead();
-            }, NOTIFICATION_READ_TIMER);
+  const handleBellClick = useCallback(
+    (visible: boolean) => {
+      if (visible) {
+        switch (activeTab) {
+          case 'Task':
+            hasTaskNotification &&
+              setTimeout(() => {
+                handleTaskNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
 
-          break;
+            break;
 
-        case 'Conversation':
-          hasMentionNotification &&
-            setTimeout(() => {
-              handleMentionsNotificationRead();
-            }, NOTIFICATION_READ_TIMER);
+          case 'Conversation':
+            hasMentionNotification &&
+              setTimeout(() => {
+                handleMentionsNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
 
-          break;
+            break;
+        }
       }
-    }
-  };
+    },
+    [hasTaskNotification]
+  );
 
   const handleActiveTab = (key: string) => {
     setActiveTab(key);
@@ -266,14 +269,27 @@ const NavBar = ({
 
   useEffect(() => {
     if (profilePicture) {
-      SetIsImgUrlValid(true);
+      setIsImgUrlValid(true);
     }
   }, [profilePicture]);
 
-  const handleLanguageChange = (langCode: string) => {
+  const handleLanguageChange = useCallback((langCode: string) => {
     setLanguage(langCode);
     i18next.changeLanguage(langCode);
-  };
+  }, []);
+
+  const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
+
+  const handleOnImageError = useCallback(() => {
+    setIsImgUrlValid(false);
+  }, []);
+
+  const handleSelectOption = useCallback(
+    (text) => {
+      AppState.inPageSearchText = text;
+    },
+    [AppState]
+  );
 
   return (
     <>
@@ -373,9 +389,7 @@ const NavBar = ({
                   isOpen={isSearchBoxOpen}
                   options={inPageSearchOptions(pathname)}
                   searchText={searchValue}
-                  selectOption={(text) => {
-                    AppState.inPageSearchText = text;
-                  }}
+                  selectOption={handleSelectOption}
                   setIsOpen={handleSearchBoxOpen}
                 />
               ) : (
@@ -464,9 +478,7 @@ const NavBar = ({
                           preview={false}
                           referrerPolicy="no-referrer"
                           src={profilePicture || ''}
-                          onError={() => {
-                            SetIsImgUrlValid(false);
-                          }}
+                          onError={handleOnImageError}
                         />
                       </div>
                     ) : (
@@ -483,7 +495,7 @@ const NavBar = ({
         <WhatsNewModal
           header={`${t('label.whats-new')}!`}
           visible={isFeatureModalOpen}
-          onCancel={() => handleFeatureModal(false)}
+          onCancel={handleModalCancel}
         />
       </div>
     </>

@@ -12,6 +12,7 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { t } from 'i18next';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -74,8 +75,8 @@ export const imageTypes = {
 };
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR404 = 'No data found';
-export const ERROR500 = 'Something went wrong';
+export const ERROR404 = t('label.no-data-found');
+export const ERROR500 = t('message.something-went-wrong');
 const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
@@ -130,9 +131,9 @@ export const tiers = [
 ];
 
 export const versionTypes = [
-  { name: 'All', value: 'all' },
-  { name: 'Major', value: 'major' },
-  { name: 'Minor', value: 'minor' },
+  { name: t('label.all'), value: 'all' },
+  { name: t('label.major'), value: 'major' },
+  { name: t('label.minor'), value: 'minor' },
 ];
 
 export const DESCRIPTIONLENGTH = 100;
@@ -144,33 +145,6 @@ export const visibleFilters = [
   'database',
   'databaseschema',
   'servicename',
-];
-
-export const facetFilterPlaceholder = [
-  {
-    name: 'Service',
-    value: 'Service',
-  },
-  {
-    name: 'Tier',
-    value: 'Tier',
-  },
-  {
-    name: 'Tags',
-    value: 'Tags',
-  },
-  {
-    name: 'Database',
-    value: 'Database',
-  },
-  {
-    name: 'DatabaseSchema',
-    value: 'Schema',
-  },
-  {
-    name: 'ServiceName',
-    value: 'Service Name',
-  },
 ];
 
 export const ROUTES = {
@@ -286,7 +260,7 @@ export const SOCKET_EVENTS = {
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': ['In this Database'],
+  '/database/': [t('message.in-this-database')],
 };
 
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
@@ -501,24 +475,6 @@ export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
 };
-
-export const navLinkDevelop = [
-  { name: 'Reports', to: '/reports', disabled: false },
-  { name: 'SQL Builder', to: '/sql-builder', disabled: false },
-  { name: 'Workflows', to: '/workflows', disabled: false },
-];
-
-export const TITLE_FOR_NON_OWNER_ACTION =
-  'You need to be owner to perform this action';
-
-export const TITLE_FOR_NON_ADMIN_ACTION =
-  'Only Admin is allowed for the action';
-
-export const TITLE_FOR_UPDATE_OWNER =
-  'You do not have permissions to update the owner.';
-
-export const TITLE_FOR_UPDATE_DESCRIPTION =
-  'You do not have permissions to update the description.';
 
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },
