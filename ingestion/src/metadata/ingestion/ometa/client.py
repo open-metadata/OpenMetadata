@@ -101,8 +101,7 @@ class ClientConfig(ConfigModel):
     access_token: Optional[str] = None
     expires_in: Optional[int] = None
     auth_header: Optional[str] = None
-    extra_auth_header: Optional[str] = None
-    extra_auth_header_value: Optional[str] = None
+    extra_headers: Optional[dict] = None
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
     auth_token_mode: Optional[str] = "Bearer"
@@ -159,15 +158,16 @@ class REST:
             self.config.auth_header
         ] = f"{self._auth_token_mode} {self.config.access_token}"
 
-        # Include extra auth header if specified,
-        # use Authorization header value if no value is provided
-        if self.config.extra_auth_header:
-            logger.debug(
-                "Extra auth header '%s' provided", self.config.extra_auth_header
-            )
-            headers[self.config.extra_auth_header] = (
-                self.config.extra_auth_header_value or headers[self.config.auth_header]
-            )
+        # Merge extra headers if provided.
+        # If a header value is provided in modulo string format and matches an existing header,
+        # the value will be set to that value.
+        # Example: "Proxy-Authorization": "%(Authorization)s"
+        # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
+        if self.config.extra_headers:
+            extra_headers = self.config.extra_headers.get("__root__", {})
+            extra_headers = [extra_headers[eh] % headers for eh in extra_headers]
+            logger.debug("Extra headers provided '%s'", extra_headers)
+            headers = headers | extra_headers
 
         opts = {
             "headers": headers,
