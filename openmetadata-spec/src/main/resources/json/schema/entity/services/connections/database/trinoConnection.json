@@ -53,11 +53,6 @@
       "description": "Catalog of the data source.",
       "type": "string"
     },
-    "database": {
-      "title": "Database",
-      "description": "Database name of the data source. This is an user defined parameter, When left blank, OpenMetadata Ingestion will use default as the database name.",
-      "type": "string"
-    },
     "databaseSchema": {
       "title": "databaseSchema",
       "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",

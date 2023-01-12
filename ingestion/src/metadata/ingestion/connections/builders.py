@@ -112,7 +112,7 @@ def get_connection_url_common(connection):
         url += "@"
 
     url += connection.hostPort
-    if hasattr(connection, "database") and hasattr(connection, "supportsDatabase"):
+    if hasattr(connection, "database"):
         url += f"/{connection.database}" if connection.database else ""
 
     elif hasattr(connection, "databaseSchema"):

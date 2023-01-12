@@ -79,8 +79,8 @@
       "type": "string",
       "default": ""
     },
-    "database": {
-      "title": "Database",
+    "databaseName": {
+      "title": "Database Name",
       "description": "Database name of the data source. This is an user defined parameter, When left blank, OpenMetadata Ingestion will use default as the database name.",
       "type": "string"
     },
