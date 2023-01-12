@@ -358,8 +358,8 @@ class DatabaseServiceSource(
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    classification_name=tag_and_category.category_name.name.__root__,
-                    tag_name=tag_and_category.category_details.name.__root__,
+                    classification_name=tag_and_category.classification_request.name.__root__,
+                    tag_name=tag_and_category.tag_request.name.__root__,
                 ),
                 labelType=LabelType.Automated,
                 state=State.Suggested,
