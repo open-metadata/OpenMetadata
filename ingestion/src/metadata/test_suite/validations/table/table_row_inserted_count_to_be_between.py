@@ -21,7 +21,8 @@ from metadata.test_suite.runner.models import TestCaseResultResponse
 
 
 def table_row_inserted_count_to_be_between(
-    test_case: TestCaseDefinition,
-    execution_date: datetime,
-    runner: QueryRunner,
-) -> TestCaseResultResponse:
+        test_case: TestCaseDefinition,
+        execution_date: datetime,
+        runner: QueryRunner,
+    ) -> TestCaseResultResponse:
+        ...
