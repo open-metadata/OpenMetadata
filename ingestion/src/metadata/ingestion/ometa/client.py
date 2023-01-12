@@ -165,10 +165,10 @@ class REST:
         # Example: "Proxy-Authorization": "%(Authorization)s"
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
         if self.config.extra_headers:
-            extra_headers = self.config.extra_headers.get("__root__", {})
-            extra_headers = [extra_headers[eh] % headers for eh in extra_headers]
+            extra_headers: dict[str, str] = self.config.extra_headers
+            extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             logger.debug("Extra headers provided '%s'", extra_headers)
-            headers = headers | extra_headers
+            headers = {**headers, **extra_headers}
 
         opts = {
             "headers": headers,
