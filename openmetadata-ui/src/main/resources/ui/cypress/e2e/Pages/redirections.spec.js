@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { BASE_URL } from '../../constants/constants';
 import { LEFT_PANEL_DETAILS, NAVBAR_DETAILS, SETTINGS_LEFT_PANEL } from '../../constants/redirections.constants';
 
 const validateURL = (url) => {
