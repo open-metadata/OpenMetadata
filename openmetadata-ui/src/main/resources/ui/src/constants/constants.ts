@@ -12,7 +12,7 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
-import i18next from 'i18next';
+import { t } from 'i18next';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -75,8 +75,8 @@ export const imageTypes = {
 };
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR404 = i18next.t('label.no-data-found');
-export const ERROR500 = i18next.t('message.something-went-wrong');
+export const ERROR404 = t('label.no-data-found');
+export const ERROR500 = t('message.something-went-wrong');
 const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
@@ -131,9 +131,9 @@ export const tiers = [
 ];
 
 export const versionTypes = [
-  { name: i18next.t('label.all'), value: 'all' },
-  { name: i18next.t('label.major'), value: 'major' },
-  { name: i18next.t('label.minor'), value: 'minor' },
+  { name: t('label.all'), value: 'all' },
+  { name: t('label.major'), value: 'major' },
+  { name: t('label.minor'), value: 'minor' },
 ];
 
 export const DESCRIPTIONLENGTH = 100;
@@ -260,7 +260,7 @@ export const SOCKET_EVENTS = {
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': [i18next.t('message.in-this-database')],
+  '/database/': [t('message.in-this-database')],
 };
 
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
