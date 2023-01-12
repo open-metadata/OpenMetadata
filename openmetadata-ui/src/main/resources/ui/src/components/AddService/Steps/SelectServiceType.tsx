@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
+import { map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   excludedService,
   serviceTypes,
@@ -23,9 +25,7 @@ import { MetadataServiceType } from '../../../generated/entity/services/metadata
 import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
-import { Field } from '../../Field/Field';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -37,6 +37,7 @@ const SelectServiceType = ({
   onCancel,
   onNext,
 }: SelectServiceTypeProps) => {
+  const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
@@ -76,27 +77,24 @@ const SelectServiceType = ({
 
   return (
     <div>
-      <Field>
-        <select
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="service-category"
-          id="serviceCategory"
-          name="serviceCategory"
-          value={category}
-          onChange={(e) => {
-            setConnectorSearchTerm('');
-            serviceCategoryHandler(e.target.value as ServiceCategory);
-          }}>
-          {Object.values(ServiceCategory).map((option, i) => (
-            <option key={i} value={option}>
-              {startCase(option)}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field className="tw-mt-7">
-        <Field>
+      <Row>
+        <Col span={24}>
+          <Select
+            className="tw-form-inputs"
+            data-testid="service-category"
+            id="serviceCategory"
+            options={map(ServiceCategory, (value) => ({
+              label: startCase(value),
+              value,
+            }))}
+            value={category}
+            onChange={(value) => {
+              setConnectorSearchTerm('');
+              serviceCategoryHandler(value as ServiceCategory);
+            }}
+          />
+        </Col>
+        <Col className="m-t-lg" span={24}>
           <Searchbar
             removeMargin
             placeholder="Search for connector..."
@@ -104,61 +102,62 @@ const SelectServiceType = ({
             typingInterval={500}
             onSearch={handleConnectorSearchTerm}
           />
-        </Field>
-        <div className="tw-flex">
-          <div
-            className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
-            data-testid="select-service">
-            {filteredConnectors.map((type) => (
-              <div
-                className={classNames(
-                  'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
-                  {
-                    'tw-border-primary': type === selectServiceType,
-                  }
-                )}
-                data-testid={type}
-                key={type}
-                onClick={() => handleServiceTypeClick(type)}>
-                <div className="tw-mb-2.5">
-                  <div data-testid="service-icon">
-                    {getServiceLogo(type || '', 'tw-h-9')}
+          <div className="tw-flex">
+            <div
+              className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
+              data-testid="select-service">
+              {filteredConnectors.map((type) => (
+                <div
+                  className={classNames(
+                    'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
+                    {
+                      'tw-border-primary': type === selectServiceType,
+                    }
+                  )}
+                  data-testid={type}
+                  key={type}
+                  onClick={() => handleServiceTypeClick(type)}>
+                  <div className="tw-mb-2.5">
+                    <div data-testid="service-icon">
+                      {getServiceLogo(type || '', 'tw-h-9')}
+                    </div>
+                    <div className="tw-absolute tw-top-0 tw-right-1.5">
+                      {type === selectServiceType && (
+                        <SVGIcons
+                          alt="checkbox"
+                          icon={Icons.CHECKBOX_PRIMARY}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="tw-absolute tw-top-0 tw-right-1.5">
-                    {type === selectServiceType && (
-                      <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
-                    )}
-                  </div>
+                  <p className="break-word text-center">
+                    {type.includes('Custom') ? startCase(type) : type}
+                  </p>
                 </div>
-                <p className="break-word text-center">
-                  {type.includes('Custom') ? startCase(type) : type}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-        {showError && errorMsg('Service is required')}
-      </Field>
-      <Field className="tw-flex tw-justify-end tw-mt-10">
-        <Button
-          className={classNames('tw-mr-2')}
-          data-testid="previous-button"
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={onCancel}>
-          <span>Cancel</span>
-        </Button>
+          {showError && errorMsg('Service is required')}
+        </Col>
 
-        <Button
-          data-testid="next-button"
-          size="regular"
-          theme="primary"
-          variant="contained"
-          onClick={onNext}>
-          <span>Next</span>
-        </Button>
-      </Field>
+        <Col className="d-flex justify-end mt-12" span={24}>
+          <Button
+            className="m-r-xs"
+            data-testid="previous-button"
+            type="link"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+
+          <Button
+            className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+            data-testid="next-button"
+            type="primary"
+            onClick={onNext}>
+            {t('label.next')}
+          </Button>
+        </Col>
+      </Row>
     </div>
   );
 };
