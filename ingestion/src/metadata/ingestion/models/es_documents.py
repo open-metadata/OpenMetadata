@@ -97,9 +97,8 @@ class TopicESDocument(BaseModel):
     href: Optional[str]
     deleted: bool
     service: EntityReference
-    messageSchema: Optional[schema.Topic] = None
     schemaText: Optional[str] = None
-    schemaType: Optional[str] = None
+    schemaType: Optional[schema.SchemaType] = None
     cleanupPolicies: List[str] = None
     replicationFactor: Optional[int] = None
     maximumMessageSize: Optional[int] = None
