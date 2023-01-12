@@ -22,7 +22,7 @@ import { getEntityName, getTagValue } from '../../../../utils/CommonUtils';
 import SVGIcons from '../../../../utils/SvgUtils';
 import { prepareConstraintIcon } from '../../../../utils/TableUtils';
 import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from '../../../tags-viewer/tags-viewer';
+import TagsViewer from '../../../Tag/TagsViewer/tags-viewer';
 import { BasicColumnInfo, SummaryListProps } from './SummaryList.interface';
 
 const { Text, Paragraph } = Typography;

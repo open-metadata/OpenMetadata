@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
+import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import React from 'react';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import Tags from './tags';
 
 const mockCallback = jest.fn();
