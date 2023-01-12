@@ -103,6 +103,14 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Clean Up
         run: |
           cd ./docker/local-metadata
