@@ -1,6 +1,13 @@
 {
   "settings": {
     "analysis": {
+      "char_filter": {
+        "remove_whitespace_char_filter": {
+          "type": "pattern_replace",
+          "pattern": "[\\s　]+",
+          "replacement": ""
+        }
+      },
       "tokenizer": {
         "2gram": {
           "type": "ngram",
@@ -12,8 +19,8 @@
         "ngram_text_analyzer": {
           "type": "custom",
           "tokenizer": "2gram",
-          "char_filter": ["icu_normalizer"],
-          "filter": ["ja_stop", "lowercase"]
+          "char_filter": ["icu_normalizer", "remove_whitespace_char_filter"],
+          "filter": ["lowercase"]
         }
       }
     }
