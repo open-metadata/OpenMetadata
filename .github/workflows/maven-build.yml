@@ -107,7 +107,6 @@ jobs:
           path: ~/.m2 # The path to the dependencies you want to cache
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }} # A unique key for the cache
           save-cache: true
-
       - name: Build with Maven
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         env:
