@@ -9,21 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Custom wrapper for Tag and Classification
+Model required to ingest topic sample data
 """
-
-from typing import Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 
 
-class OMetaTagAndClassification(BaseModel):
-    fqn: Optional[FullyQualifiedEntityName]
-    classification_request: CreateClassificationRequest
-    tag_request: CreateTagRequest
+class OMetaTopicSampleData(BaseModel):
+    topic: Topic
+    sample_data: TopicSampleData
