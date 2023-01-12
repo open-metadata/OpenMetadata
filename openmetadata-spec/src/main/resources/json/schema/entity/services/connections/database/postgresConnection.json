@@ -53,6 +53,12 @@
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
+    "classificationName": {
+      "title": "Classification Name",
+      "description": "Custom OpenMetadata Classification name for Postgres policy tags.",
+      "type": "string",
+      "default": "PostgresPolicyTags"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
