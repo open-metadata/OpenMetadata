@@ -224,6 +224,7 @@ overrides:
   - files:
       - src/**/*.{js,jsx,json}
       - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
     rules:
       i18next/no-literal-string:
         - off
