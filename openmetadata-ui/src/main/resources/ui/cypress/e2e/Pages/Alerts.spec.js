@@ -173,6 +173,28 @@ describe('Alerts page should work properly', () => {
     cy.get('table').should('contain', alertForAllAssets);
   });
 
+  it('Delete created alert', () => {
+    cy.get('table').should('contain', alertForAllAssets).click();
+    cy.get(`[data-testid="alert-delete-${alertForAllAssets}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('.ant-modal-header')
+      .should('be.visible')
+      .should('contain', `Delete ${alertForAllAssets}`);
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.disabled')
+      .click();
+    verifyResponseStatusCode('@deleteAlert', 200);
+
+    toastNotification('Alert deleted successfully!');
+    cy.get('table').should('not.contain', alertForAllAssets);
+  });
+
   it('Create new alert for Test case data asset', () => {
     interceptURL('GET', '/api/v1/alerts/*', 'createAlert');
     //Click on create alert button
@@ -239,6 +261,28 @@ describe('Alerts page should work properly', () => {
     cy.get('div.ant-typography').should('contain', TEST_CASE.filters);
   });
 
+  it('Delete test case alert', () => {
+    cy.get('table').should('contain', TEST_CASE.testCaseAlert).click();
+    cy.get(`[data-testid="alert-delete-${TEST_CASE.testCaseAlert}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('.ant-modal-header')
+      .should('be.visible')
+      .should('contain', `Delete ${TEST_CASE.testCaseAlert}`);
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.disabled')
+      .click();
+    verifyResponseStatusCode('@deleteAlert', 200);
+
+    toastNotification('Alert deleted successfully!');
+    cy.get('table').should('not.contain', TEST_CASE.testCaseAlert);
+  });
+
   Object.values(DESTINATION).forEach((destination) => {
     it(`Create alert for ${destination.locator}`, () => {
       interceptURL('POST', '/api/v1/alerts', 'createAlert');
@@ -283,6 +327,27 @@ describe('Alerts page should work properly', () => {
       toastNotification('Alerts created successfully.');
       //Verify created alert
       cy.get('table').should('contain', destination.name);
+    });
+    it(`Delete created alert for ${destination.name} `, () => {
+      cy.get('table').should('contain', destination.name).click();
+      cy.get(`[data-testid="alert-delete-${destination.name}"]`)
+        .should('be.visible')
+        .click();
+      cy.get('.ant-modal-header')
+        .should('be.visible')
+        .should('contain', `Delete ${destination.name}`);
+      cy.get('[data-testid="confirmation-text-input"]')
+        .should('be.visible')
+        .type(DELETE_TERM);
+      interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
+      cy.get('[data-testid="confirm-button"]')
+        .should('be.visible')
+        .should('not.disabled')
+        .click();
+      verifyResponseStatusCode('@deleteAlert', 200);
+  
+      toastNotification('Alert deleted successfully!');
+      cy.get('table').should('not.contain', destination.name);
     });
   });
 });

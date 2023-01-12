@@ -316,6 +316,7 @@ export const editOwnerforCreatedService = (
         'waitForIngestion'
     );
 
+    interceptURL('GET', '/api/v1/config/airflow', 'airflow')
     //click on created service
     cy.get(`[data-testid="service-name-${service_Name}"]`)
         .should('exist')
@@ -324,7 +325,7 @@ export const editOwnerforCreatedService = (
 
     verifyResponseStatusCode('@getSelectedService', 200);
     verifyResponseStatusCode('@waitForIngestion', 200);
-
+    verifyResponseStatusCode('@airflow', 200)
     interceptURL(
         'GET',
         '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
@@ -905,8 +906,8 @@ export const updateDescriptionForIngestedTables = (
     type,
     entity
 ) => {
+    interceptURL('GET', '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*', 'pipelineStatuses')
     //Navigate to ingested table
-
     visitEntityDetailsPage(tableName, serviceName, entity);
 
     //update description
@@ -930,6 +931,7 @@ export const updateDescriptionForIngestedTables = (
         `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
         'getSelectedService'
     );
+    interceptURL('GET', '/api/v1/config/airflow', 'airflow')
 
     //click on created service
     cy.get(`[data-testid="service-name-${serviceName}"]`)
@@ -938,7 +940,8 @@ export const updateDescriptionForIngestedTables = (
         .click();
 
     verifyResponseStatusCode('@getSelectedService', 200);
-
+    verifyResponseStatusCode('@pipelineStatuses', 200)
+    verifyResponseStatusCode('@airflow', 200)
     cy.get('[data-testid="Ingestions"]').should('be.visible').click();
     interceptURL(
         'POST',

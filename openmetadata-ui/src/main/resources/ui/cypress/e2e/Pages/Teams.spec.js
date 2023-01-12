@@ -119,8 +119,10 @@ describe('Teams flow should work properly', () => {
 
     //Saving the added user
     interceptURL('PATCH', '/api/v1/teams/*', 'saveUser');
+    interceptURL('GET', 'api/v1/teams/name/Organization?fields=parents&include=all', 'getSelectedTeam')
     cy.get('[id="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@saveUser', 200);
+    verifyResponseStatusCode('@getSelectedTeam', 200)
     //Asseting the added user
     cy.get('[data-testid="Users"]')
       .should('exist')
