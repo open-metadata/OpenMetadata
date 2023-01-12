@@ -206,6 +206,8 @@ dev = {
 
 test = {
     "coverage",
+    # Only install GE because it's not in the `all` plugin
+    VERSIONS["great-expectations"],
     "moto==4.0.8",
     "pytest==7.0.0",
     "pytest-cov",
