@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
 import { Modal } from 'antd';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thread } from '../../../generated/entity/feed/thread';

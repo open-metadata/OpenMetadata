@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { getTagSuggestions } from '@rest/miscAPI';
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { getTagSuggestions } from 'rest/miscAPI';
 import {
   LabelType,
   State,

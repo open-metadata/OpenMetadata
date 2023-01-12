@@ -12,12 +12,21 @@
  */
 
 import classnames from 'classnames';
-import PropTypes from 'prop-types';
-import React from 'react';
+import React, { FC, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/authHooks';
 
-const PageContainer = ({ children, leftPanelContent, className }) => {
+interface Props {
+  children: ReactNode;
+  leftPanelContent?: ReactNode;
+  className?: string;
+}
+
+const PageContainer: FC<Props> = ({
+  children,
+  leftPanelContent,
+  className,
+}) => {
   const location = useLocation();
   const { isAuthenticatedRoute } = useAuth(location.pathname);
 
@@ -37,18 +46,6 @@ const PageContainer = ({ children, leftPanelContent, className }) => {
       </div>
     </div>
   );
-};
-
-PageContainer.propTypes = {
-  children: PropTypes.oneOfType([
-    PropTypes.node,
-    PropTypes.arrayOf(PropTypes.node),
-  ]).isRequired,
-  leftPanelContent: PropTypes.oneOfType([
-    PropTypes.node,
-    PropTypes.arrayOf(PropTypes.node),
-  ]),
-  className: PropTypes.string,
 };
 
 export default PageContainer;

@@ -13,7 +13,6 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Typography } from 'antd';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,6 +75,7 @@ const MessageCard = ({ message }: { message: string }) => {
 };
 
 const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
+  const { t } = useTranslation();
   if (!isUndefined(sampleData)) {
     return (
       <div className="tw-p-4 tw-flex tw-flex-col">

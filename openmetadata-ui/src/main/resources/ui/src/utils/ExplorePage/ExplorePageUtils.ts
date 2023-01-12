@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { QueryFilterInterface } from '@pages/explore/ExplorePage.interface';
 import { isEmpty, isUndefined } from 'lodash';
+import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
 
 export const getQueryFiltersArray = (

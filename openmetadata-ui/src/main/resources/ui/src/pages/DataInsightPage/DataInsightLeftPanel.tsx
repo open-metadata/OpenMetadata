@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import LeftPanelCard from '@components/common/LeftPanelCard/LeftPanelCard';
 import { Menu, MenuProps } from 'antd';
+import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';

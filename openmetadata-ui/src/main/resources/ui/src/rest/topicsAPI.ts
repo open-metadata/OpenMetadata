@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { ServicePageData } from '@pages/service';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { RestoreRequestType } from 'Models';
+import { ServicePageData } from 'pages/service';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';

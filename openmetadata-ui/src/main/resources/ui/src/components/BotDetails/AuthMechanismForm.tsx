@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { checkEmailInUse } from '@rest/auth-API';
-import { createBotWithPut } from '@rest/botsAPI';
-import { createUserWithPut, getUserByName } from '@rest/userAPI';
 import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { checkEmailInUse } from 'rest/auth-API';
+import { createBotWithPut } from 'rest/botsAPI';
+import { createUserWithPut, getUserByName } from 'rest/userAPI';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';

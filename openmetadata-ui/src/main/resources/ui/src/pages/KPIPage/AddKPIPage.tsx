@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import RichTextEditor from '@components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '@components/common/title-breadcrumb/title-breadcrumb.component';
-import { getListDataInsightCharts } from '@rest/DataInsightAPI';
-import { getListKPIs, postKPI } from '@rest/KpiAPI';
 import {
   Button,
   Card,
@@ -31,11 +27,15 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { getListDataInsightCharts } from 'rest/DataInsightAPI';
+import { getListKPIs, postKPI } from 'rest/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -352,14 +352,16 @@ const AddKPIPage = () => {
             <Row gutter={[8, 8]}>
               <Col span={12}>
                 <Form.Item
-                  label={t('label.start-date')}
+                  label={t('label.start-entity', { entity: t('label.date') })}
                   messageVariables={{ fieldName: 'startDate' }}
                   name="startDate"
                   rules={[
                     {
                       required: true,
                       message: t('label.field-required', {
-                        field: t('label.start-date'),
+                        field: t('label.start-entity', {
+                          entity: t('label.date'),
+                        }),
                       }),
                     },
                   ]}>

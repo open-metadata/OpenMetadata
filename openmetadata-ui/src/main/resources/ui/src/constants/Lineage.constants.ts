@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ElementLoadingState } from '@components/EntityLineage/EntityLineage.interface';
+import { ElementLoadingState } from 'components/EntityLineage/EntityLineage.interface';
 import { capitalize } from 'lodash';
 import { EntityType } from '../enums/entity.enum';
 

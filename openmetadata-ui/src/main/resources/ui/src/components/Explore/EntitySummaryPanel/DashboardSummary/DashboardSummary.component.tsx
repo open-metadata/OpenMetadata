@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ChartType } from '@pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

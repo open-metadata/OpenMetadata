@@ -12,20 +12,6 @@
  */
 
 import {
-  getAllFeeds,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from '@rest/feedsAPI';
-import { getLineageByFQN } from '@rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from '@rest/miscAPI';
-import {
-  addFollower,
-  getTableDetailsByFQN,
-  patchTableDetails,
-  removeFollower,
-} from '@rest/tableAPI';
-import {
   act,
   findByTestId,
   findByText,
@@ -34,6 +20,20 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+  postThread,
+} from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import {
+  addFollower,
+  getTableDetailsByFQN,
+  patchTableDetails,
+  removeFollower,
+} from 'rest/tableAPI';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import DatasetDetailsPage from './DatasetDetailsPage.component';
 import {
@@ -66,7 +66,7 @@ jest.mock('../../AppState', () => ({
   ],
 }));
 
-jest.mock('@components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({
@@ -119,7 +119,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('@components/DatasetDetails/DatasetDetails.component', () => {
+jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -236,7 +236,7 @@ jest.mock('@components/DatasetDetails/DatasetDetails.component', () => {
     );
 });
 
-jest.mock('@components/common/error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
@@ -244,7 +244,7 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('@rest/tableAPI', () => ({
+jest.mock('rest/tableAPI', () => ({
   addColumnTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve(updateTagRes)),
@@ -274,7 +274,7 @@ jest.mock('../../utils/FeedUtils', () => ({
     .mockImplementation(() => Promise.resolve({ id: 'test', posts: [] })),
 }));
 
-jest.mock('@rest/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: { data: [] } })),
@@ -299,13 +299,13 @@ jest.mock('@rest/feedsAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: createPostRes })),
 }));
 
-jest.mock('@rest/lineageAPI', () => ({
+jest.mock('rest/lineageAPI', () => ({
   getLineageByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLineageRes })),
 }));
 
-jest.mock('@rest/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteLineageEdge: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

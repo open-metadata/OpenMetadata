@@ -21,7 +21,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -194,7 +194,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                 bordered
                 className="m-b-xlg"
                 data-testid="feature-card"
-                key={uniqueId()}>
+                key={feature.fullyQualifiedName}>
                 <Row>
                   <Col className="m-b-xs" span={24}>
                     <Typography.Text className="font-semibold">
@@ -315,7 +315,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             markdown={feature.description}
                           />
                         ) : (
-                          <Typography.Text className="tw-no-description">
+                          <Typography.Text className="text-grey-muted">
                             {t('label.no-entity', {
                               entity: t('label.description'),
                             })}
@@ -342,7 +342,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             <SVGIcons
                               alt="edit"
                               icon="icon-edit"
-                              title="Edit"
                               width="16px"
                             />
                           </Button>
