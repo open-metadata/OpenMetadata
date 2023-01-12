@@ -87,11 +87,10 @@ jobs:
           sudo make install_antlr_cli
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
-      - if: ${{ steps.caching.outputs.cache-hit != 'true' }}
-        name: Build PR with Maven
+      - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' && steps.cache-dependencies.outputs.cache-hit != 'true' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
@@ -102,19 +101,23 @@ jobs:
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
         
-      - name: Save dependencies to cache
-        id: caching
+      - name: Cache dependencies
+        id: cache-dependencies
         uses: actions/cache@v3
         with:
-          path: ~/.m2 # The path to the dependencies you want to cache
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }} # A unique key for the cache
-          save-cache: true
-      - if: ${{ steps.caching.outputs.cache-hit != 'true' }}
-        name: Build with Maven
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build with Maven
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
+        
+
 
       - name: Clean Up
         run: |
