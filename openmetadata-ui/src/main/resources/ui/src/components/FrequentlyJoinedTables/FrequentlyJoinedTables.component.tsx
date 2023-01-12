@@ -12,6 +12,7 @@
  */
 
 import { Popover } from 'antd';
+import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { getTableDetailsPath } from '../../constants/constants';
@@ -131,7 +132,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
         {joinedTables.length <= 0 ? (
           <div className="tw-py-1 tw-text-grey-muted">
-            No information about joined tables.
+            {t('message.no-info-about-joined-tables')}
           </div>
         ) : null}
       </div>

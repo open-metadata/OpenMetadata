@@ -182,10 +182,9 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <Typography.Paragraph
                   className="data-insight-label-text"
                   style={{ marginBottom: '4px' }}>
-                  {t('label.assigned-entity', {
+                  {`${t('label.assigned-entity', {
                     entity: t('label.tier'),
-                  })}{' '}
-                  %
+                  })} %`}
                 </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}

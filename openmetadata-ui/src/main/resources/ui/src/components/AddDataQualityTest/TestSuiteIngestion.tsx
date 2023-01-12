@@ -13,6 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { camelCase, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -75,7 +76,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     return (
       <span>
         <span className="tw-mr-1 tw-font-semibold">
-          &quot;{ingestionData?.name ?? 'Test Suite'}&quot;
+          {`"${ingestionData?.name ?? 'Test Suite'}"`}
         </span>
         <span>{createMessage}</span>
       </span>
@@ -200,7 +201,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         <Typography.Paragraph
           className="tw-heading tw-text-base"
           data-testid="header">
-          Schedule for Ingestion
+          {t('label.schedule-for-ingestion')}
         </Typography.Paragraph>
       </Col>
 

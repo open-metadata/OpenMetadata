@@ -121,7 +121,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                     'tw-text-primary-active':
                       toString(currV?.version) === currentVersion,
                   })}>
-                  <span>v{parseFloat(currV?.version).toFixed(1)}</span>
+                  <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
                     <span className="tw-ml-2 tw-text-xs tw-font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
                       {t('label.major')}

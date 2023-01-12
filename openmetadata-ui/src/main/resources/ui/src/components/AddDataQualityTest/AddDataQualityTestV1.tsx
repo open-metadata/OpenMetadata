@@ -13,6 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -220,12 +221,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
       const successMessage = selectedTestSuite?.isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">
-            &quot;{successName}&quot;
-          </span>
+          <span className="tw-mr-1 tw-font-semibold">{`"${successName}"`}</span>
           <span>
-            has been created successfully. This will be picked up in the next
-            run.
+            {`${t('message.has-been-created-successfully')}.`}
+            {t('message.this-will-pick-in-next-run')}
           </span>
         </span>
       );

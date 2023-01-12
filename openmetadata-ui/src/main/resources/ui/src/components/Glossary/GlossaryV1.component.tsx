@@ -279,11 +279,11 @@ const GlossaryV1 = ({
           <SVGIcons alt="Delete" icon={Icons.DELETE} />
           <div className="tw-text-left" data-testid="delete-button">
             <p className="tw-font-medium" data-testid="delete-button-title">
-              Delete
+              {t('label.delete')}
             </p>
             <p className="tw-text-grey-muted tw-text-xs">
-              Deleting this {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}{' '}
-              will permanently remove its metadata from OpenMetadata.
+              {`Deleting this ${isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}
+              will permanently remove its metadata from OpenMetadata.`}
             </p>
           </div>
         </Space>
@@ -402,7 +402,7 @@ const GlossaryV1 = ({
               disabled={!createGlossaryTermPermission}
               type="primary"
               onClick={handleAddGlossaryTermClick}>
-              Add term
+              {t('label.add-entity', { entity: t('label.term') })}
             </ButtonAntd>
           </Tooltip>
 
@@ -517,7 +517,7 @@ const GlossaryV1 = ({
           </div>
           <Space className="m-b-md" data-testid="updated-by-container" size={8}>
             <Typography.Text className="text-grey-muted">
-              {t('label.updated-by')} -
+              {`${t('label.updated-by')} - `}
             </Typography.Text>
             {selectedData.updatedBy && selectedData.updatedAt ? (
               <>
@@ -587,7 +587,7 @@ const GlossaryV1 = ({
             disabled={!createGlossaryPermission}
             type="primary"
             onClick={handleAddGlossaryClick}>
-            Add New Glossary
+            {t('label.add-new-entity', { entity: t('label.glossary') })}
           </ButtonAntd>
         }
         doc={GLOSSARIES_DOCS}
