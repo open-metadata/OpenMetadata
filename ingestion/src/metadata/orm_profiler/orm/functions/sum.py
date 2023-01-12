@@ -58,3 +58,18 @@ def _(element, compiler, **kw):
     """These database types have all int types as alias for int64 so don't need a cast"""
     proc = compiler.process(element.clauses, **kw)
     return f"SUM({proc})"
+
+
+@compiles(SumFn, Dialects.Oracle)
+def _(element, compiler, **kw):
+    """Oracle casting"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST({proc} AS NUMBER))"
+
+
+@compiles(SumFn, Dialects.IbmDbSa)
+@compiles(SumFn, Dialects.Db2)
+def _(element, compiler, **kw):
+    """Handle the case for DB2 where it requires to type cast the variables"""
+    proc = compiler.process(element.clauses, **kw).replace("?", "CAST(? AS INT)")
+    return f"SUM(CAST({proc} AS BIGINT))"
