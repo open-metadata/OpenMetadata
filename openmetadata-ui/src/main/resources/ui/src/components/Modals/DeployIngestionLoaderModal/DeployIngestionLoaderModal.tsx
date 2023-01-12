@@ -78,7 +78,7 @@ const DeployIngestionLoaderModal = ({
         <Typography.Text className="text-center mt-24">
           {action}
           <Typography.Text className="font-semibold m-l-xss">
-            “{ingestionName}”
+            {`“${ingestionName}”`}
           </Typography.Text>
         </Typography.Text>
       </div>

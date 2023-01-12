@@ -12,6 +12,7 @@
  */
 
 import { Button, Space, Tooltip, Typography } from 'antd';
+import { t } from 'i18next';
 import { kebabCase } from 'lodash';
 import React from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -88,7 +89,7 @@ const SummaryDetail = ({
             size="small"
             type="link"
             onClick={onSave}>
-            Save
+            {t('label.save')}
           </Button>
         )}
       </Space>

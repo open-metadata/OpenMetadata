@@ -12,6 +12,7 @@
  */
 
 import { Button as ButtonAntd, Card, Col, Row, Space, Tooltip } from 'antd';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -124,7 +125,7 @@ const Services = ({
                   theme="primary"
                   variant="contained"
                   onClick={handleAddServiceClick}>
-                  Add New Service
+                  {t('label.add-a-new-service')}
                 </Button>
               </Tooltip>
             </Space>
@@ -167,14 +168,16 @@ const Services = ({
                               />
                             ) : (
                               <span className="tw-no-description">
-                                No description
+                                {t('label.no-description')}
                               </span>
                             )}
                           </div>
                           {getOptionalFields(service, serviceName)}
                         </div>
                         <div className="" data-testid="service-type">
-                          <label className="tw-mb-0">Type:</label>
+                          <label className="tw-mb-0">{`${t(
+                            'label.type'
+                          )}:`}</label>
                           <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                             {service.serviceType}
                           </span>
@@ -222,7 +225,9 @@ const Services = ({
                   size="small"
                   type="primary"
                   onClick={handleAddServiceClick}>
-                  Add new {servicesDisplayName[serviceName]}
+                  {t('label.add-new-entity', {
+                    entity: servicesDisplayName[serviceName],
+                  })}
                 </ButtonAntd>
               </Tooltip>
             }

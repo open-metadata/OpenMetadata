@@ -19,6 +19,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, {
   FunctionComponent,
@@ -178,7 +179,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
                       <Space direction="vertical" size={0}>
                         <span>{column.name}</span>
                         <span className="tw-text-grey-muted">
-                          ({lowerCase(column.dataType)})
+                          {`(${lowerCase(column.dataType)})`}
                         </span>
                       </Space>
                     </th>
@@ -219,19 +220,18 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
             <div className="tw-max-w-x tw-text-center">
               <Typography.Paragraph style={{ marginBottom: '4px' }}>
                 {' '}
-                No sample data available
+                {t('message.no-data-available')}
               </Typography.Paragraph>
               <Typography.Paragraph>
                 {' '}
-                To view Sample Data, run the Profiler Ingestion. Please refer to
-                this doc to schedule the{' '}
+                {t('message.view-sample-data')}
                 <Link
                   className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname: WORKFLOWS_PROFILER_DOCS,
                   }}>
-                  Profiler Ingestion
+                  {t('label.profiler-ingestion')}
                 </Link>
               </Typography.Paragraph>
             </div>

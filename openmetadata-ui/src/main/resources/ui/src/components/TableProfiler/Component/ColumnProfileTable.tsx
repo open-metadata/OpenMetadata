@@ -13,6 +13,7 @@
 
 import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -188,7 +189,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               ))}
             </Space>
           ) : (
-            <Typography.Text> --- </Typography.Text>
+            <Typography.Text> {t('label.three-dash-symbol')} </Typography.Text>
           );
         },
       },

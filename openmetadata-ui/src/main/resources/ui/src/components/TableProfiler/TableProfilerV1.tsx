@@ -463,7 +463,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                     pathname:
                       'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
                   }}>
-                  {t('label.here-lowercase')}.
+                  {`${t('label.here-lowercase')}.`}
                 </Link>
               </p>
             </div>

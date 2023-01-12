@@ -388,7 +388,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           </div>
         ) : (
           <div className="tw-text-grey-muted tw-mx-5 tw-text-center">
-            No reviewer
+            {t('label.reviewer')}
           </div>
         )}
       </div>
@@ -500,7 +500,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
                   {getEntityName(glossary.owner)}
                 </Link>
               ) : (
-                <span className="tw-text-grey-muted">No owner</span>
+                <span className="tw-text-grey-muted">
+                  {t('label.no-entity', { entity: t('label.owner') })}
+                </span>
               )}
             </div>
           </Card>

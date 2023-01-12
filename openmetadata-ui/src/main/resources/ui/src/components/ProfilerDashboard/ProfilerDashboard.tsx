@@ -25,6 +25,7 @@ import {
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -547,7 +548,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                   }
                   type="primary"
                   onClick={handleAddTestClick}>
-                  Add Test
+                  {t('label.add-entity', { entity: t('label.test') })}
                 </Button>
               </Tooltip>
             </Space>

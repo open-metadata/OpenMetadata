@@ -448,7 +448,7 @@ const TestSuitePipelineTab = () => {
                         )
                       );
                     }}>
-                    Edit
+                    {t('label.edit')}
                   </Button>
                 </Tooltip>
                 {separator}
@@ -491,7 +491,7 @@ const TestSuitePipelineTab = () => {
                       setIsKillModalOpen(true);
                       setSelectedPipeline(record);
                     }}>
-                    Kill
+                    {t('label.kill')}
                   </Button>
                 </Tooltip>
                 {separator}
@@ -513,7 +513,7 @@ const TestSuitePipelineTab = () => {
                     onClick={() => {
                       setSelectedPipeline(record);
                     }}>
-                    Logs
+                    {t('label.log-plural')}
                   </Button>
                 </Tooltip>
               </div>

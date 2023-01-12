@@ -12,6 +12,7 @@
  */
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
+import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { Fragment, useEffect, useState } from 'react';
 import {
@@ -96,7 +97,7 @@ const GlossaryTermReferences = ({
               ))
             ) : (
               <Typography.Text type="secondary">
-                No references available.
+                {t('message.no-reference-available')}
               </Typography.Text>
             )}
           </div>

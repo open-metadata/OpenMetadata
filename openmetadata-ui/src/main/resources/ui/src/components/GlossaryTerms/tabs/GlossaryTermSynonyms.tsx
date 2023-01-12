@@ -12,6 +12,7 @@
  */
 
 import { Select, Typography } from 'antd';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -40,7 +41,9 @@ const GlossaryTermSynonyms = ({
         </span>
       ))
     ) : (
-      <Typography.Text type="secondary">No synonyms available.</Typography.Text>
+      <Typography.Text type="secondary">
+        {t('message.no-synonyms-available')}
+      </Typography.Text>
     );
   };
 

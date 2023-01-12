@@ -289,7 +289,7 @@ const GlossaryTermsV1 = ({
           </div>
         ) : (
           <div className="tw-text-grey-muted tw-mx-5 tw-text-center">
-            No reviewer
+            {t('label.no-reviewer')}
           </div>
         )}
       </div>
@@ -338,7 +338,7 @@ const GlossaryTermsV1 = ({
           <Card
             className="glossary-card right-card tw-border tw-border-border-gray"
             extra={addReviewerButton()}
-            title={<Text>Reviewer</Text>}>
+            title={<Text>{t('label.reviewer')}</Text>}>
             <div>{getReviewerTabData()}</div>
           </Card>
         </Col>
