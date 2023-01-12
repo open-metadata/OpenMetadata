@@ -34,6 +34,7 @@ import {
 import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
+// Todo: enable below tests once ES issue is fixed for explore page
 
 describe.skip('Advance search should work properly for all fields', () => {
   beforeEach(() => {

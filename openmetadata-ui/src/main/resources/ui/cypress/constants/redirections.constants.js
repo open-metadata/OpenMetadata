@@ -14,6 +14,7 @@
 import { BASE_URL } from './constants';
 
 export const LEFT_PANEL_DETAILS = {
+  // Todo: uncomment below test once ES issue is fixed for explore page
   // tables: {
   //   testid: '[data-testid="tables"]',
   //   url: `${BASE_URL}/explore/tables`,

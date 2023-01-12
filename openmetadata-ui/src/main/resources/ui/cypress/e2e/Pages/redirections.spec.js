@@ -39,6 +39,8 @@ describe('Redirection link should work properly', () => {
       cy.get(leftpanel.testid).should('be.visible').click();
       validateURL(leftpanel.url);
       cy.wait(1000);
+      cy.clickOnLogo();
+      validateURL(`${BASE_URL}/my-data`);
     });
   });
 
