@@ -71,6 +71,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache dependencies
+        id: cache-dependencies
         uses: actions/cache@v3
         with:
           path: ~/.m2
@@ -96,6 +97,7 @@ jobs:
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
       - name: Build PR with Maven
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -108,14 +110,15 @@ jobs:
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
-        if: steps.cache-dependencies.outputs.cache-hit != 'true'
+        
 
       - name: Build with Maven
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
-        if: steps.cache-dependencies.outputs.cache-hit != 'true'
+        
 
 
       - name: Clean Up
