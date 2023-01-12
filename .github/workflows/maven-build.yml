@@ -70,15 +70,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache dependencies
-        id: cache-dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
       - name: Set up JDK 11
         uses: actions/setup-java@v3
         with:
@@ -97,7 +88,6 @@ jobs:
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
       - name: Build PR with Maven
-        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -111,6 +101,12 @@ jobs:
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
         
+      - name: Save dependencies to cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2 # The path to the dependencies you want to cache
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }} # A unique key for the cache
+          save-cache: true
 
       - name: Build with Maven
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
