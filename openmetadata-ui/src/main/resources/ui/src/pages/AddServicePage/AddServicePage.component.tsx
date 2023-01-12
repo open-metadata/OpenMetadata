@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import AddService from '@components/AddService/AddService.component';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import {
-  addIngestionPipeline,
-  deployIngestionPipelineById,
-  getIngestionPipelineByFqn,
-} from '@rest/ingestionPipelineAPI';
-import { postService } from '@rest/serviceAPI';
 import { AxiosError } from 'axios';
+import AddService from 'components/AddService/AddService.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+  getIngestionPipelineByFqn,
+} from 'rest/ingestionPipelineAPI';
+import { postService } from 'rest/serviceAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,

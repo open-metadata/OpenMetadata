@@ -84,3 +84,20 @@ export const mockedGlossaries = [
     version: 0.1,
   },
 ];
+
+export const mockGlossaryList = [
+  {
+    name: 'Tag1',
+    displayName: 'Tag1',
+    fullyQualifiedName: 'Glossary.Tag1',
+    type: 'glossaryTerm',
+    id: 'glossaryTagId1',
+  },
+  {
+    name: 'Tag2',
+    displayName: 'Tag2',
+    fullyQualifiedName: 'Glossary.Tag2',
+    type: 'glossaryTerm',
+    id: 'glossaryTagId2',
+  },
+];

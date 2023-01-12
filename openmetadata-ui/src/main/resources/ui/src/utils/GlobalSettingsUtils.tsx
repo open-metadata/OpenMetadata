@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Badge } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   ResourceEntity,
   UIPermission,
-} from '@components/PermissionProvider/PermissionProvider.interface';
-import { Badge } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import i18next from 'i18next';
 import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';

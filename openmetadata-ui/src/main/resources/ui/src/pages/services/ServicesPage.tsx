@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '@components/Loader/Loader';
-import { usePermissionProvider } from '@components/PermissionProvider/PermissionProvider';
-import Services from '@components/Services/Services';
-import { getServices } from '@rest/serviceAPI';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import Services from 'components/Services/Services';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { getServices } from 'rest/serviceAPI';
 import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';

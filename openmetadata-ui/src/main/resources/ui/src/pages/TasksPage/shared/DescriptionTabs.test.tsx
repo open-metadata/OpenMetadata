@@ -19,7 +19,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getDescriptionDiff: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('@components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }) => {
       return (
@@ -35,7 +35,7 @@ jest.mock('@components/common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
-jest.mock('@components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockReturnValue(

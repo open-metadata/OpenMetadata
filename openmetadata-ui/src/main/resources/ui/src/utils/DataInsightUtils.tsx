@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from '@components/SearchDropdown/SearchDropdown.interface';
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import {
   first,

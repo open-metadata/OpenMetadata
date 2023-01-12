@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { getListTestCase } from '@rest/testAPI';
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { getListTestCase } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import {
   INITIAL_COUNT_METRIC_VALUE,

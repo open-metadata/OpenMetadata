@@ -171,6 +171,8 @@ const mockProp = {
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
   createThread: jest.fn(),
+  version: '0.1',
+  versionHandler: jest.fn(),
 };
 
 jest.mock('../common/description/Description', () => {

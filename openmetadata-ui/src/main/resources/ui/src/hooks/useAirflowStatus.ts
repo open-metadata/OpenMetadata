@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { checkAirflowStatus } from '@rest/ingestionPipelineAPI';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
+import { checkAirflowStatus } from 'rest/ingestionPipelineAPI';
 
 interface UseAirflowStatusProps {
   isFetchingStatus: boolean;

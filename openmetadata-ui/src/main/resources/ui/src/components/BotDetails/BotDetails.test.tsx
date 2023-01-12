@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getAuthMechanismForBotUser } from '@rest/userAPI';
 import {
   act,
   findByTestId,
@@ -21,6 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAuthMechanismForBotUser } from 'rest/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
@@ -99,7 +99,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('@rest/userAPI', () => {
+jest.mock('rest/userAPI', () => {
   return {
     createUserWithPut: jest
       .fn()

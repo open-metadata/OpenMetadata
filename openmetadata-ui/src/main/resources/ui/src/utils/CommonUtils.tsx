@@ -13,17 +13,16 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import {
-  getDayCron,
-  getHourCron,
-} from '@components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '@components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '@components/Loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getFeedCount } from '@rest/feedsAPI';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import {
+  getDayCron,
+  getHourCron,
+} from 'components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -46,7 +45,9 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { getFeedCount } from 'rest/feedsAPI';
 import AppState from '../AppState';
+import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -904,6 +905,34 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
 
     default:
       return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
+  }
+};
+
+/**
+ * It takes a string and returns a string
+ * @param {FilterPatternEnum} type - FilterPatternEnum
+ * @returns A function that takes in a type and returns a keyof AddIngestionState
+ */
+export const getFilterTypes = (
+  type: FilterPatternEnum
+): keyof AddIngestionState => {
+  switch (type) {
+    case FilterPatternEnum.CHART:
+      return 'chartFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DASHBOARD:
+      return 'dashboardFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DATABASE:
+      return 'databaseFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.MLMODEL:
+      return 'mlModelFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.PIPELINE:
+      return 'pipelineFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.SCHEMA:
+      return 'schemaFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.TABLE:
+      return 'tableFilterPattern' as keyof AddIngestionState;
+    default:
+      return 'topicFilterPattern' as keyof AddIngestionState;
   }
 };
 
