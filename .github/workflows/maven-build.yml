@@ -118,14 +118,14 @@ jobs:
           CACHE_NAME: cache-out
         if: steps.cache-output.outputs.cache-hit == 'true'
 
-      - name: Cache dependencies
-        id: cache-dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      # - name: Cache dependencies
+      #   id: cache-dependencies
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.m2
+      #     key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-maven-
 
       - name: Build with Maven
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
@@ -134,8 +134,6 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
         
-
-
       - name: Clean Up
         run: |
           cd ./docker/local-metadata
