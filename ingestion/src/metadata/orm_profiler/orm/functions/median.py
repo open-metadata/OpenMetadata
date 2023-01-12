@@ -30,7 +30,7 @@ class MedianFn(FunctionElement):
 
 @compiles(MedianFn)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = elements.clauses.clauses[0].name
+    col = compiler.process(elements.clauses.clauses[0])
     return "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s ASC)" % col
 
 
