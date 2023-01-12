@@ -274,7 +274,7 @@ const AddGlossaryTerm = ({
             theme="primary"
             variant="contained"
             onClick={handleSave}>
-            Save
+            {t('label.save')}
           </Button>
         )}
       </>
@@ -284,15 +284,10 @@ const AddGlossaryTerm = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Glossary Term</h6>
-        <div className="tw-mb-5">
-          Every term in the glossary has a unique definition. Along with
-          defining the standard term for a concept, the synonyms as well as
-          related terms (for e.g., parent and child terms) can be specified.
-          References can be added to the assets related to the terms. New terms
-          can be added or updated to the Glossary. The glossary terms can be
-          reviewed by certain users, who can accept or reject the terms.
-        </div>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.configure-glossary-term')}
+        </h6>
+        <div className="tw-mb-5">{t('message.glossary-term-description')}</div>
       </>
     );
   };
@@ -304,7 +299,9 @@ const AddGlossaryTerm = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.add-entity', { entity: t('label.glossary-term') })}
+        </h6>
         <div className="tw-pb-3" data-testid="add-glossary-term">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
@@ -346,7 +343,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <Space className="w-full" direction="vertical">
-              <label htmlFor="tags">Tags:</label>
+              <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
               <AddTags
                 data-testid="tags"
                 setTags={(tag: EntityTags[]) => setTags(tag)}
@@ -356,7 +353,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              Synonyms:
+              {`${t('label.synonyms')}:`}
             </label>
 
             <input
@@ -373,7 +370,9 @@ const AddGlossaryTerm = ({
 
           <div data-testid="references">
             <div className="tw-flex tw-items-center tw-mt-6">
-              <p className="w-form-label tw-mr-3">References</p>
+              <p className="w-form-label tw-mr-3">
+                {`${t('label.reference-plural')}:`}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 size="x-small"
@@ -440,7 +439,9 @@ const AddGlossaryTerm = ({
 
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Related terms </p>
+              <p className="w-form-label tw-mr-3">
+                {t('label.related-term-plural')}{' '}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 size="x-small"
@@ -469,7 +470,9 @@ const AddGlossaryTerm = ({
           </Field>
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Reviewers </p>
+              <p className="w-form-label tw-mr-3">
+                {t('label.reviewer-plural')}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-reviewers"
@@ -505,7 +508,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="text"
               onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
             {getSaveButton()}
           </Field>

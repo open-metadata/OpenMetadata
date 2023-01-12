@@ -98,10 +98,10 @@ export const AlertDetailsComponent = ({
               {t('label.trigger')}
             </Typography.Title>
             <Typography.Text type="secondary">
-              {getDisplayNameForTriggerType(
+              {`${getDisplayNameForTriggerType(
                 alerts?.triggerConfig.type ?? AlertTriggerType.AllDataAssets
               )}
-              :
+              :`}
             </Typography.Text>
             <Typography.Text>
               {alerts?.triggerConfig.entities

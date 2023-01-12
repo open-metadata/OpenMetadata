@@ -24,6 +24,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -158,7 +159,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
               <Typography.Paragraph
                 className="text-base m-t-lg"
                 data-testid="new-test-title">
-                New Test Suite
+                {t('label.new-test-suite')}
               </Typography.Paragraph>
               <Form.Item
                 label="Name:"
@@ -229,7 +230,9 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   />
                 }
                 onClick={() => setIsNewTestSuite(true)}>
-                <span className="tw-text-primary">Create new test suite</span>
+                <span className="tw-text-primary">
+                  {t('label.create-new-test-suite')}
+                </span>
               </Button>
             </Row>
           )}
@@ -238,9 +241,9 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
 
       <Form.Item noStyle>
         <Space className="tw-w-full tw-justify-end" size={16}>
-          <Button onClick={handleCancelClick}>Cancel</Button>
+          <Button onClick={handleCancelClick}>{t('label.cancel')}</Button>
           <Button data-testid="next-button" htmlType="submit" type="primary">
-            Next
+            {t('label.next')}
           </Button>
         </Space>
       </Form.Item>
