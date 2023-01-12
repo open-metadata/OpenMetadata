@@ -300,7 +300,11 @@ class SnowflakeSource(CommonDbSourceService):
 
         for res in result:
             row = list(res)
+            fqn_elements = [name for name in row[2:] if name]
             yield OMetaTagAndClassification(
+                fqn=fqn._build(  # pylint: disable=protected-access
+                    self.context.database_service.name.__root__, *fqn_elements
+                ),
                 classification_request=CreateClassificationRequest(
                     name=row[0],
                     description="SNOWFLAKE TAG NAME",
