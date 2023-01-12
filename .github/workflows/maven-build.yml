@@ -21,7 +21,7 @@ on:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
-  pull:
+  pull_request:
     branches:
       - issue_9638
   pull_request_target:
