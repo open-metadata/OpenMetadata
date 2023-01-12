@@ -148,7 +148,6 @@ const SuccessScreen = ({
                 target="_blank">
                 {t('label.documentation-lowercase')}
               </a>
-              .
             </p>
           )}
         </div>

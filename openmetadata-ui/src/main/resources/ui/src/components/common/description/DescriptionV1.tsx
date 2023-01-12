@@ -92,7 +92,7 @@ const DescriptionV1 = ({
           width: '100%',
           justifyContent: 'space-between',
         }}>
-        <Text type="secondary">Description</Text>
+        <Text type="secondary">{t('label.description')}</Text>
         <div>{editButton()}</div>
       </Space>
       <div>
@@ -102,7 +102,7 @@ const DescriptionV1 = ({
             markdown={description}
           />
         ) : (
-          <span className="">No description </span>
+          <span>{t('label.no-description')}</span>
         )}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}

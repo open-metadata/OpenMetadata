@@ -453,7 +453,9 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
-      {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
+      {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
+      {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
+      {t('label.not-found-lowercase')}
     </p>
   );
 };

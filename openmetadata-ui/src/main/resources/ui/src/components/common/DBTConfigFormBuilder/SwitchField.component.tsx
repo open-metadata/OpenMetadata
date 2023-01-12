@@ -12,6 +12,7 @@
  */
 
 import { Space, Switch } from 'antd';
+import { t } from 'i18next';
 import React from 'react';
 import { Field } from '../../Field/Field';
 
@@ -33,7 +34,7 @@ function SwitchField({
           className="tw-block tw-form-label m-b-0"
           data-testid={id}
           htmlFor={id}>
-          Update Description
+          {t('label.update-entity', { entity: t('label.description') })}
         </label>
         <Switch
           checked={dbtUpdateDescriptions}
@@ -44,7 +45,7 @@ function SwitchField({
       <p
         className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs"
         data-testid="switch-description">
-        Optional configuration to update the description from dbt or not
+        {t('message.dbt-optional-config')}
       </p>
     </Field>
   );

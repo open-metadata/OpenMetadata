@@ -211,13 +211,13 @@ const EntityPageInfo = ({
             ))}
           </div>
         ) : (
-          <p>{entityName} doesn&#39;t have any followers yet</p>
+          <p>{t('label.entity-does-not-have-followers', { entityName })}</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
           <p
             className="link-text tw-text-sm tw-py-2"
             onClick={() => setIsViewMore(true)}>
-            View more
+            {t('label.view-more')}
           </p>
         )}
       </div>
@@ -241,7 +241,7 @@ const EntityPageInfo = ({
               alt="version icon"
               icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
             />
-            <span>Versions</span>
+            <span>{t('label.version-plural')}</span>
           </span>
           <span
             className={classNames(
@@ -393,7 +393,7 @@ const EntityPageInfo = ({
                   className="tw-mr-1"
                   icon={faExclamationCircle}
                 />
-                Deleted
+                {t('label.deleted')}
               </div>
             </>
           )}
@@ -406,8 +406,7 @@ const EntityPageInfo = ({
                   placement="bottom"
                   title={
                     <p className="tw-text-xs">
-                      Viewing older version <br />
-                      Go to latest to update details
+                      {t('message.viewing-older-version')}
                     </p>
                   }
                   trigger="hover">
@@ -434,12 +433,12 @@ const EntityPageInfo = ({
                 {isFollowing ? (
                   <>
                     <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
-                    Unfollow
+                    {t('label.un-follow')}
                   </>
                 ) : (
                   <>
                     <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
-                    Follow
+                    {t('label.follow')}
                   </>
                 )}
                 <Popover content={getFollowers()} trigger="click">
@@ -497,7 +496,7 @@ const EntityPageInfo = ({
                 />
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                   <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    |
+                    {t('label.pipe-symbol')}
                   </span>
                 ) : null}
               </span>

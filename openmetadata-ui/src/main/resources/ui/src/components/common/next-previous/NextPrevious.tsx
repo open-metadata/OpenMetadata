@@ -13,6 +13,7 @@
 
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { t } from 'i18next';
 import React, { FC, useEffect, useState } from 'react';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -97,7 +98,7 @@ const NextPrevious: FC<Prop> = ({
           className="tw-text-sm tw-align-middle tw-pr-1.5"
           icon={faArrowLeft}
         />{' '}
-        <span>Previous</span>
+        <span>{t('label.previous')}</span>
       </Button>
       <span
         className="tw-px-2"
@@ -113,7 +114,7 @@ const NextPrevious: FC<Prop> = ({
         theme="primary"
         variant="outlined"
         onClick={onNextHandler}>
-        <span> Next</span>{' '}
+        <span> {t('label.next')}</span>{' '}
         <FontAwesomeIcon
           className="tw-text-sm tw-align-middle tw-pl-1.5"
           icon={faArrowRight}

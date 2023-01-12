@@ -13,10 +13,11 @@
 
 import { Button, Divider } from 'antd';
 import classNames from 'classnames';
+import { AggregationEntry } from 'interface/search.interface';
 import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AggregationEntry } from '../../../interface/search.interface';
+
 import {
   compareAggregationKey,
   translateAggregationKeyToTitle,
@@ -119,7 +120,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           data-testid="filter-container-deleted">
           <div className="flex">
             <div className="filters-title w-36 truncate custom-checkbox-label">
-              Show Deleted
+              {t('label.show-deleted')}
             </div>
           </div>
           <div
