@@ -19,7 +19,7 @@ import Tags from './tags';
 const mockCallback = jest.fn();
 const mockPush = jest.fn();
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

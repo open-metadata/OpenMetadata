@@ -192,7 +192,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest.fn().mockReturnValue(<p>EditorModal</p>),
 }));
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
     return (
       <>
@@ -204,11 +204,11 @@ jest.mock('../tags-container/tags-container', () => {
   });
 });
 
-jest.mock('../tags-viewer/tags-viewer', () => {
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p>TagViewer</p>);
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tag</p>);
 });
 
