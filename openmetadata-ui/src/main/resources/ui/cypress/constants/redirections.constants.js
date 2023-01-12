@@ -14,26 +14,26 @@
 import { BASE_URL } from './constants';
 
 export const LEFT_PANEL_DETAILS = {
-  tables: {
-    testid: '[data-testid="tables"]',
-    url: `${BASE_URL}/explore/tables`,
-  },
-  topics: {
-    testid: '[data-testid="topics"]',
-    url: `${BASE_URL}/explore/topics`,
-  },
-  dashboard: {
-    testid: '[data-testid="dashboards"]',
-    url: `${BASE_URL}/explore/dashboards`,
-  },
-  pipelines: {
-    testid: '[data-testid="pipelines"]',
-    url: `${BASE_URL}/explore/pipelines`,
-  },
-  mlmodels: {
-    testid: '[data-testid="mlmodels"]',
-    url: `${BASE_URL}/explore/mlmodels`,
-  },
+  // tables: {
+  //   testid: '[data-testid="tables"]',
+  //   url: `${BASE_URL}/explore/tables`,
+  // },
+  // topics: {
+  //   testid: '[data-testid="topics"]',
+  //   url: `${BASE_URL}/explore/topics`,
+  // },
+  // dashboard: {
+  //   testid: '[data-testid="dashboards"]',
+  //   url: `${BASE_URL}/explore/dashboards`,
+  // },
+  // pipelines: {
+  //   testid: '[data-testid="pipelines"]',
+  //   url: `${BASE_URL}/explore/pipelines`,
+  // },
+  // mlmodels: {
+  //   testid: '[data-testid="mlmodels"]',
+  //   url: `${BASE_URL}/explore/mlmodels`,
+  // },
   testSuites: {
     testid: '[data-testid="test-suite"]',
     url: `${BASE_URL}/test-suites`,
