@@ -122,10 +122,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     setIsDescriptionEditable(false);
   };
 
-  const handleSelectOwnerDropdown = () => {
-    setListVisible((visible) => !visible);
-  };
-
   const getOwnerSearch = useCallback(
     (searchQuery = WILD_CARD_CHAR, from = 1) => {
       setIsUserLoading(true);
@@ -143,7 +139,17 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     },
     [setListOwners, setIsUserLoading]
   );
+  const handleSelectOwnerDropdown = () => {
+    setListVisible((visible) => {
+      const newState = !visible;
 
+      if (newState) {
+        getOwnerSearch();
+      }
+
+      return newState;
+    });
+  };
   const getOwnerSuggestion = useCallback(
     (qSearchText = '') => {
       setIsUserLoading(true);
