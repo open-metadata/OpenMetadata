@@ -34,7 +34,7 @@ jest.mock('utils/UserDataUtils', () => {
   };
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>tags</p>);
 });
 
