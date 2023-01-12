@@ -205,8 +205,10 @@ dev = {
 }
 
 test = {
+    # Install Airflow as it's not part of `all` plugin
+    VERSIONS["airflow"],
     "coverage",
-    # Only install GE because it's not in the `all` plugin
+    # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto==4.0.8",
     "pytest==7.0.0",
