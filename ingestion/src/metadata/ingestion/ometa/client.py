@@ -136,6 +136,7 @@ class REST:
         api_version: str = None,
         headers: dict = None,
     ):
+        # pylint: disable=too-many-locals
         if not headers:
             headers = {"Content-type": "application/json"}
         base_url = base_url or self._base_url
