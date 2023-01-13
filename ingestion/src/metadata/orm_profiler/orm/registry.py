@@ -19,7 +19,6 @@ from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
-from metadata.orm_profiler.orm.types.binary_to_string import BinaryToString
 from metadata.orm_profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
@@ -30,7 +29,6 @@ class CustomTypes(TypeRegistry):
     BYTES = HexByteString
     UUID = UUIDString
     BYTEA = ByteaToHex
-    BINARY = BinaryToString
 
 
 class Dialects(Enum):
