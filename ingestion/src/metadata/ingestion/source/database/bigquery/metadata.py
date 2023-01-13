@@ -30,6 +30,7 @@ from metadata.generated.schema.api.classification.createTag import CreateTagRequ
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    DataType,
     IntervalType,
     TablePartition,
     TableType,
@@ -58,7 +59,7 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.generated.schema.entity.data.table import DataType
+
 logger = ingestion_logger()
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
