@@ -172,7 +172,7 @@ export const getEntityOverview = (
           isLink: false,
         },
         {
-          name: i18next.t('label.columns-plural'),
+          name: i18next.t('label.column-plural'),
           value: columns ? columns.length : '--',
           isLink: false,
         },

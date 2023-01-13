@@ -38,7 +38,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityId,
@@ -165,7 +164,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       setTablePermissions(tablePermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('label.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
       );
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
@@ -397,9 +398,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: EntityInfo.COLUMNS,
       value:
         tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} ${t('label.columns-plural')}`
+          ? `${tableProfile.columnCount} ${t('label.column-plural')}`
           : columns.length
-          ? `${columns.length} ${t('label.columns-plural')}`
+          ? `${columns.length} ${t('label.column-plural')}`
           : '',
     },
     {
