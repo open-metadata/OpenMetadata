@@ -14,9 +14,9 @@
 package org.openmetadata.service.alerts;
 
 import com.lmax.disruptor.BatchEventProcessor;
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
@@ -46,7 +46,7 @@ import org.openmetadata.service.resources.events.EventResource;
 @Slf4j
 public class AlertsActionPublisher extends AbstractAlertPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
-  private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
+  @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
 
   public AlertsActionPublisher(Alert alert, AlertAction alertAction) {
     super(alert, alertAction);
@@ -132,11 +132,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  public BatchEventProcessor<EventPubSub.ChangeEventHolder> getProcessor() {
-    return processor;
-  }
-
-  protected void sendAlert(EventResource.ChangeEventList list) throws IOException {}
+  protected void sendAlert(EventResource.ChangeEventList list) {}
 
   protected void onStartDelegate() {}
 

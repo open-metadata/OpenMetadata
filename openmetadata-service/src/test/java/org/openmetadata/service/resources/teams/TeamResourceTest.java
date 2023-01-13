@@ -752,7 +752,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     List<EntityReference> expectedOwnedEntities = new ArrayList<>();
     for (EntityReference ref : listOrEmpty(teamBeforeDeletion.getOwns())) {
-      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+      expectedOwnedEntities.add(reduceEntityReference(ref));
     }
     TestUtils.assertEntityReferences(expectedOwnedEntities, teamAfterDeletion.getOwns());
   }
