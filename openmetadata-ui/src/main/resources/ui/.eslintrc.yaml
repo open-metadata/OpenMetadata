@@ -182,7 +182,7 @@ rules:
 
   # i18next rules
 
-  i18next/no-literal-string: warn
+  i18next/no-literal-string: error
 
   # i18next rules
 
