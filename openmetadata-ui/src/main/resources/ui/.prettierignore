@@ -51,3 +51,9 @@ src/generated/
 # cypress
 **/*.spec.js
 cypress/
+
+# Assets
+*.svg
+*.png
+*.ico
+*.ttf

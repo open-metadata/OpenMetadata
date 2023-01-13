@@ -152,3 +152,11 @@ export const deleteGlossaryTerm = (id: string) => {
     `/glossaryTerms/${id}?recursive=true&hardDelete=true`
   );
 };
+
+export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
+  const response = await APIClient.get<string>(
+    `/glossaries/name/${glossaryName}/export`
+  );
+
+  return response.data;
+};

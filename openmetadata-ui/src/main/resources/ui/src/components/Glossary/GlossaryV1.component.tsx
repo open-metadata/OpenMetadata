@@ -69,6 +69,10 @@ import GlossaryV1Skeleton from '../Skeleton/GlossaryV1/GlossaryV1LeftPanelSkelet
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
+
 const { Title } = Typography;
 
 const GlossaryV1 = ({
@@ -125,6 +129,12 @@ const GlossaryV1 = ({
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  const handleGlossaryExport = () => setIsExporting(true);
+
+  const handleCancelGlossaryExport = () => setIsExporting(false);
 
   const fetchGlossaryPermission = async () => {
     try {
@@ -266,6 +276,68 @@ const GlossaryV1 = ({
   });
 
   const manageButtonContent = [
+    ...(isGlossaryActive
+      ? [
+          {
+            label: (
+              <Row
+                className="tw-cursor-pointer manage-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleGlossaryExport();
+                  setShowActions(false);
+                }}>
+                <Col className="self-center" span={3}>
+                  <ExportIcon width="20px" />
+                </Col>
+                <Col span={21}>
+                  <Row data-testid="export-button">
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="export-button-title">
+                        {t('label.export')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        Export glossary terms
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'export-button',
+          },
+          {
+            label: (
+              <Row className="tw-cursor-pointer manage-button">
+                <Col className="self-center" span={3}>
+                  <ImportIcon width="20px" />
+                </Col>
+                <Col span={21}>
+                  <Row data-testid="import-button">
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="import-button-title">
+                        {t('label.import')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        Import glossary terms
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
     {
       label: (
         <Space
@@ -573,6 +645,14 @@ const GlossaryV1 = ({
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
+        />
+      )}
+      {isExporting && (
+        <ExportGlossaryModal
+          glossaryName={selectedData.name}
+          isModalOpen={isExporting}
+          onCancel={handleCancelGlossaryExport}
+          onOk={handleCancelGlossaryExport}
         />
       )}
     </PageLayoutV1>
