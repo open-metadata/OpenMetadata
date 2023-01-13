@@ -36,7 +36,7 @@ describe('Superset Ingestion', () => {
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').should('be.visible').click();
     cy.get('.ant-select-item-option-content')
-    .contains('dashboardServices')
+    .contains('Dashboard Services')
     .click();
 
     const connectionInput = () => {
