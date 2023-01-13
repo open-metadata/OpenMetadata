@@ -11,18 +11,22 @@
  *  limitations under the License.
  */
 
-import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityTags, TagOption } from 'Models';
+import { ReactNode } from 'react';
+import { TagProps } from '../Tags/tags.interface';
 
-export type TagProps = {
-  className?: string;
+export type TagsContainerProps = {
+  children?: ReactNode;
   editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label' | 'border';
-  startWith?: '#' | '+ ';
-  tag: string | TagLabel;
-  isRemovable?: boolean;
-  showOnlyName?: boolean;
-  removeTag?: (
-    event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => void;
+  dropDownHorzPosRight?: boolean;
+  selectedTags: Array<EntityTags>;
+  tagList: Array<TagOption | string>;
+  type?: TagProps['type'];
+  showTags?: boolean;
+  showAddTagButton?: boolean;
+  className?: string;
+  containerClass?: string;
+  buttonContainerClass?: string;
+  onSelectionChange?: (selectedTags: Array<EntityTags>) => void;
+  onCancel?: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
 };

@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTagGrey } from '../../../../../assets/svg/tag-grey.svg';
@@ -19,7 +20,6 @@ import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constant
 import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
 import RichTextEditorPreviewer from '../../../../common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from '../../../../tags-viewer/tags-viewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
 
 const { Text, Paragraph } = Typography;

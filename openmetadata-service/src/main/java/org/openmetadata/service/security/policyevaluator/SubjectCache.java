@@ -94,19 +94,6 @@ public class SubjectCache {
     }
   }
 
-  public List<User> getAllUsers() throws EntityNotFoundException {
-    // TODO: this needs correction
-    List<User> allUsers = new ArrayList<>();
-    try {
-      for (SubjectContext context : USER_CACHE.asMap().values()) {
-        allUsers.add(context.getUser());
-      }
-    } catch (UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
-    }
-    return allUsers;
-  }
-
   public Team getTeam(UUID teamId) throws EntityNotFoundException {
     try {
       return TEAM_CACHE.get(teamId);

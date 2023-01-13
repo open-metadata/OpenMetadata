@@ -68,7 +68,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 

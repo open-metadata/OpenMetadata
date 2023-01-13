@@ -15,77 +15,19 @@ package org.openmetadata.client.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 public class OktaSSOConfig {
   /** Okta Client ID for the service application. (Required) */
-  private String clientId;
+  @Getter @Setter private String clientId;
   /** Okta Client Secret for the API service application. (Required) */
-  private String clientSecret;
+  @Getter @Setter private String clientSecret;
   /** Okta Authorization Server Url. (Required) */
-  private String authorizationServerURL;
+  @Getter private String authorizationServerURL;
 
   /** Okta client scopes. */
-  private List<String> scopes = new ArrayList<>();
-
-  /** Okta Client ID. (Required) */
-  public String getClientId() {
-    return clientId;
-  }
-
-  /** Okta Client ID. (Required) */
-  public void setClientId(String clientId) {
-    this.clientId = clientId;
-  }
-
-  public OktaSSOConfig withClientId(String clientId) {
-    this.clientId = clientId;
-    return this;
-  }
-
-  /** Okta Client Secret. (Required) */
-  public String getClientSecret() {
-    return clientSecret;
-  }
-
-  /** Okta Client Secret. (Required) */
-  public void setClientSecret(String clientId) {
-    this.clientSecret = clientId;
-  }
-
-  public OktaSSOConfig withClientSecret(String clientId) {
-    this.clientSecret = clientId;
-    return this;
-  }
-
-  /** Okta org url. (Required) */
-  public String getAuthorizationServerURL() {
-    return authorizationServerURL;
-  }
-
-  /** Okta org url. (Required) */
-  public void setAuthorizationServerURL(String orgURL) {
-    this.authorizationServerURL = orgURL;
-  }
-
-  public OktaSSOConfig withAuthorizationServerURL(String orgURL) {
-    this.authorizationServerURL = orgURL;
-    return this;
-  }
-
-  /** Okta client scopes. */
-  public List<String> getScopes() {
-    return scopes;
-  }
-
-  /** Okta client scopes. */
-  public void setScopes(List<String> scopes) {
-    this.scopes = scopes;
-  }
-
-  public OktaSSOConfig withScopes(List<String> scopes) {
-    this.scopes = scopes;
-    return this;
-  }
+  @Getter @Setter private List<String> scopes = new ArrayList<>();
 
   @Override
   public String toString() {

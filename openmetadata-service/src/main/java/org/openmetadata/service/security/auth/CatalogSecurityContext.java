@@ -25,11 +25,6 @@ public class CatalogSecurityContext implements SecurityContext {
   private final String authenticationScheme;
 
   public static final String OPENID_AUTH = "openid";
-  public static final String JWT_AUTH = "jwt";
-
-  public CatalogSecurityContext(Principal principal, String scheme) {
-    this(principal, scheme, SecurityContext.DIGEST_AUTH);
-  }
 
   public CatalogSecurityContext(Principal principal, String scheme, String authenticationScheme) {
     this.principal = principal;
