@@ -51,12 +51,12 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has source as mentioned in condition",
       examples = {"matchAnySource('bot', 'user')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchAnySource(String... originEntity) {
-    if (changeEvent == null) {
+  public boolean matchAnySource(String... originEntities) {
+    if (changeEvent == null || changeEvent.getEntityType() == null) {
       return false;
     }
     String changeEventEntity = changeEvent.getEntityType();
-    for (String entityType : originEntity) {
+    for (String entityType : originEntities) {
       if (changeEventEntity.equals(entityType)) {
         return true;
       }
@@ -74,14 +74,7 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(changeEvent.getEntityType());
-    EntityInterface entity;
-    if (changeEvent.getEntity() instanceof String) {
-      entity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
-    } else {
-      entity = JsonUtils.convertValue(changeEvent.getEntity(), entityClass);
-    }
-
+    EntityInterface entity = getEntity(changeEvent);
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
@@ -109,11 +102,11 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following entityName from the List.",
       examples = {"matchAnyEntityFqn('Name1', 'Name')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityFqn(String... entityNames) {
+  public boolean matchAnyEntityFqn(String... entityNames) throws IOException {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    EntityInterface entity = (EntityInterface) changeEvent.getEntity();
+    EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
       if (entity.getFullyQualifiedName().equals(name)) {
         return true;
@@ -128,11 +121,11 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityId(String... entityIds) {
+  public boolean matchAnyEntityId(String... entityIds) throws IOException {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    EntityInterface entity = (EntityInterface) changeEvent.getEntity();
+    EntityInterface entity = getEntity(changeEvent);
     for (String id : entityIds) {
       if (entity.getId().equals(UUID.fromString(id))) {
         return true;
@@ -148,7 +141,7 @@ public class AlertsRuleEvaluator {
       examples = {"matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchAnyEventType(String... eventTypesList) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
+    if (changeEvent == null || changeEvent.getEventType() == null) {
       return false;
     }
     String eventType = changeEvent.getEventType().toString();
@@ -167,7 +160,7 @@ public class AlertsRuleEvaluator {
       examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchTestResult(String... testResults) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)) {
@@ -195,7 +188,7 @@ public class AlertsRuleEvaluator {
       examples = {"matchUpdatedBy('user1', 'user2')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchUpdatedBy(String... updatedByUserList) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
+    if (changeEvent == null || changeEvent.getUserName() == null) {
       return false;
     }
     String entityUpdatedBy = changeEvent.getUserName();
@@ -214,7 +207,7 @@ public class AlertsRuleEvaluator {
       examples = {"matchAnyFieldChange('fieldName1', 'fieldName')"},
       paramInputType = NOT_REQUIRED)
   public boolean matchAnyFieldChange(String... fieldChangeUpdate) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
     Set<String> fields = ChangeEventParser.getUpdatedField(changeEvent);
@@ -224,5 +217,16 @@ public class AlertsRuleEvaluator {
       }
     }
     return false;
+  }
+
+  private EntityInterface getEntity(ChangeEvent event) throws IOException {
+    Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
+    EntityInterface entity;
+    if (event.getEntity() instanceof String) {
+      entity = JsonUtils.readValue((String) event.getEntity(), entityClass);
+    } else {
+      entity = JsonUtils.convertValue(event.getEntity(), entityClass);
+    }
+    return entity;
   }
 }
