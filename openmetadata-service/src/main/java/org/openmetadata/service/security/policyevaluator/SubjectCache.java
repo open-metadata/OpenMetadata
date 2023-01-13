@@ -54,14 +54,14 @@ public class SubjectCache {
   public static void initialize() {
     if (!INITIALIZED) {
       USER_CACHE =
-          CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new UserLoader());
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new UserLoader());
       USER_CACHE_WIH_ID =
           CacheBuilder.newBuilder()
               .maximumSize(1000)
-              .expireAfterAccess(1, TimeUnit.MINUTES)
+              .expireAfterWrite(3, TimeUnit.MINUTES)
               .build(new UserLoaderWithId());
       TEAM_CACHE =
-          CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new TeamLoader());
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoader());
       USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
       USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin");
       TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
