@@ -43,3 +43,8 @@ export type GlossaryV1Props = {
   handleUserRedirection?: (name: string) => void;
   isChildLoading: boolean;
 };
+
+export enum GlossaryAction {
+  EXPORT = 'export',
+  IMPORT = 'import',
+}
