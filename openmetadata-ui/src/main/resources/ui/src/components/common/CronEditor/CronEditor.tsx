@@ -248,16 +248,14 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const { disabled } = props;
 
     return (
-      <>
-        <Select
-          className="tw-form-inputs"
-          data-testid="hour-options"
-          disabled={disabled}
-          options={hourOptions.map(getOptionComponent())}
-          value={selectedOption.hour}
-          onChange={onChangeCB}
-        />
-      </>
+      <Select
+        className="tw-form-inputs"
+        data-testid="hour-options"
+        disabled={disabled}
+        options={hourOptions.map(getOptionComponent())}
+        value={selectedOption.hour}
+        onChange={onChangeCB}
+      />
     );
   };
   const getMinuteSelect = (
@@ -267,16 +265,14 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const { disabled } = props;
 
     return (
-      <>
-        <Select
-          className="tw-form-inputs"
-          data-testid="minute-options"
-          disabled={disabled}
-          options={minuteOptions.map(getOptionComponent())}
-          value={selectedOption.min}
-          onChange={onChangeCB}
-        />
-      </>
+      <Select
+        className="tw-form-inputs"
+        data-testid="minute-options"
+        disabled={disabled}
+        options={minuteOptions.map(getOptionComponent())}
+        value={selectedOption.min}
+        onChange={onChangeCB}
+      />
     );
   };
 
@@ -285,16 +281,14 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     onChangeCB: (e: number) => void
   ) => {
     return (
-      <>
-        <Select
-          className="tw-form-inputs"
-          data-testid="minute-segment-options"
-          disabled={props.disabled}
-          options={minuteSegmentOptions.map(getOptionComponent())}
-          value={selectedOption.min}
-          onChange={onChangeCB}
-        />
-      </>
+      <Select
+        className="tw-form-inputs"
+        data-testid="minute-segment-options"
+        disabled={props.disabled}
+        options={minuteSegmentOptions.map(getOptionComponent())}
+        value={selectedOption.min}
+        onChange={onChangeCB}
+      />
     );
   };
 
