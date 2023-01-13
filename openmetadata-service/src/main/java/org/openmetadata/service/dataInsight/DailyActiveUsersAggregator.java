@@ -8,7 +8,7 @@ import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
 
-public class DailyActiveUsersAggregator extends DataInsightAggregatorInterface<DailyActiveUsers> {
+public class DailyActiveUsersAggregator extends DataInsightAggregatorInterface {
 
   public DailyActiveUsersAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
@@ -17,15 +17,14 @@ public class DailyActiveUsersAggregator extends DataInsightAggregatorInterface<D
 
   @Override
   public DataInsightChartResult process() throws ParseException {
-    List data = this.aggregate();
-    DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
-    return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
+    List<Object> data = this.aggregate();
+    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<DailyActiveUsers> aggregate() throws ParseException {
+  List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<DailyActiveUsers> data = new ArrayList<>();
+    List<Object> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);

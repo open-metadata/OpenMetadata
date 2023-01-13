@@ -223,6 +223,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       return;
     }
     if (fieldName.equals("policies")) {
+      @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertEntityReferences(expectedRefs, actualRefs);
