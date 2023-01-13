@@ -13,13 +13,25 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
+import { Include } from 'generated/type/include';
+import { PagingResponse } from 'Models';
+import { ModifiedGlossaryData } from 'pages/Glossary/GlossaryPageV1.component';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+
+type Params = {
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  include?: Include;
+};
+
+const BASE_URL = '/glossaries';
 
 export const getGlossaries = async (
   paging = '',
@@ -32,6 +44,14 @@ export const getGlossaries = async (
   const response = await APIClient.get<{ data: ModifiedGlossaryData[] }>(
     paging ? `${url}&${paging}` : url
   );
+
+  return response.data;
+};
+
+export const getGlossariesList = async (params?: Params) => {
+  const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
+    params,
+  });
 
   return response.data;
 };

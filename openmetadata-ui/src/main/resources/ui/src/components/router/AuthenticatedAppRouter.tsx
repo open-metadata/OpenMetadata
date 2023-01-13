@@ -12,6 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
+import GlossaryPage from 'pages/Glossary/GlossaryPage/GlossaryPage.component';
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -144,7 +145,7 @@ const ExplorePage = withSuspenseFallback(
   React.lazy(() => import('pages/explore/ExplorePage.component'))
 );
 const GlossaryPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/GlossaryPage/GlossaryPageV1.component'))
+  React.lazy(() => import('pages/Glossary/GlossaryPageV1.component'))
 );
 
 const MlModelPage = withSuspenseFallback(
@@ -353,19 +354,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <AdminProtectedRoute
         exact
-        component={GlossaryPageV1}
+        component={GlossaryPage}
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY}
       />
       <AdminProtectedRoute
         exact
-        component={GlossaryPageV1}
+        component={GlossaryPage}
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS}
       />
       <AdminProtectedRoute
         exact
-        component={GlossaryPageV1}
+        component={GlossaryPage}
         hasPermission={glossaryTermPermission}
         path={ROUTES.GLOSSARY_TERMS}
       />

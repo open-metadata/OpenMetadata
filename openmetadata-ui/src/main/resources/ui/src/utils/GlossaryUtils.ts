@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
-import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
+import { ModifiedGlossaryData } from 'pages/Glossary/GlossaryPageV1.component';
 import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,

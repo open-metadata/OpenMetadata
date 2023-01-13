@@ -13,29 +13,16 @@
 import { AssetsDataType, LoadingState } from 'Models';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 
 export type GlossaryV1Props = {
   assetData: AssetsDataType;
   deleteStatus: LoadingState;
-  isSearchResultEmpty: boolean;
-  glossaryList: ModifiedGlossaryData[];
-  selectedKey: string;
-  expandedKey: string[];
-  loadingKey: string[];
-  handleExpandedKey: (key: string[]) => void;
   handleSelectedKey?: (key: string) => void;
-  searchText: string;
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
   currentPage: number;
-  handleAddGlossaryClick: () => void;
-  handleAddGlossaryTermClick: () => void;
   updateGlossary: (value: Glossary) => Promise<void>;
   handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
-  handleSelectedData: (key: string) => void;
-  handleChildLoading: (status: boolean) => void;
-  handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
