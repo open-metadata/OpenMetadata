@@ -60,6 +60,7 @@ public final class CatalogExceptionMessage {
   public static final String FORBIDDEN_AUTHENTICATOR_OP = "Operation is not permitted with the Selected Authenticator.";
   public static final String TOKEN_EXPIRY_ERROR =
       "Email Verification Token %s is expired. Please issue a new request for email verification.";
+  public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
 
   private CatalogExceptionMessage() {}
 
@@ -170,10 +171,6 @@ public final class CatalogExceptionMessage {
 
   public static String invalidTeamOwner(TeamType teamType) {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
-  }
-
-  public static String invalidBotUser() {
-    return "Revoke Token can only be applied to Bot Users.";
   }
 
   public static String failedToParse(String message) {

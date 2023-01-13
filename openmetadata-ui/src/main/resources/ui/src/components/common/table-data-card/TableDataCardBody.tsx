@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTagValue } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import TagsViewer from '../../tags-viewer/tags-viewer';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 

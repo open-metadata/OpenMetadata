@@ -10,7 +10,7 @@ import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 
-public class TotalEntitiesAggregator extends DataInsightAggregatorInterface<TotalEntitiesByType> {
+public class TotalEntitiesAggregator extends DataInsightAggregatorInterface {
 
   public TotalEntitiesAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
@@ -19,15 +19,14 @@ public class TotalEntitiesAggregator extends DataInsightAggregatorInterface<Tota
 
   @Override
   public DataInsightChartResult process() throws ParseException {
-    List data = this.aggregate();
-    DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
-    return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
+    List<Object> data = this.aggregate();
+    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<TotalEntitiesByType> aggregate() throws ParseException {
+  List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<TotalEntitiesByType> data = new ArrayList<>();
+    List<Object> data = new ArrayList<>();
     List<Double> entityCount = new ArrayList<>();
 
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
@@ -48,7 +47,8 @@ public class TotalEntitiesAggregator extends DataInsightAggregatorInterface<Tota
 
     double totalEntities = entityCount.stream().mapToDouble(v -> v).sum();
 
-    for (TotalEntitiesByType el : data) {
+    for (Object o : data) {
+      TotalEntitiesByType el = (TotalEntitiesByType) o;
       el.withEntityCountFraction(el.getEntityCount() / totalEntities);
     }
 

@@ -265,14 +265,14 @@ public class EmailUtil {
     }
   }
 
-  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMesssage) {
+  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
     if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
-      templatePopulator.put("updatedBy", emailMesssage.getUpdatedBy());
-      templatePopulator.put("entityUrl", emailMesssage.getEntityUrl());
+      templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
+      templatePopulator.put("entityUrl", emailMessaged.getEntityUrl());
       StringBuilder buff = new StringBuilder();
-      for (String cmessage : emailMesssage.getChangeMessage()) {
+      for (String cmessage : emailMessaged.getChangeMessage()) {
         buff.append(cmessage);
         buff.append("\n");
       }

@@ -13,13 +13,13 @@
 
 import { Popover } from 'antd';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
-import { sortBy } from 'lodash';
+import { sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
-import { LIST_SIZE } from '../../constants/constants';
-import { TagSource } from '../../generated/type/tagLabel';
-import Tags from '../tags/tags';
+import { LIST_SIZE } from '../../../constants/constants';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { TagsViewerProps } from './tags-viewer.interface';
 
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
@@ -51,7 +51,10 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   );
 
   // sort tags by source so that "Glossary" tags always comes first
-  const sortedTagsBySource = useMemo(() => sortBy(tags, 'source'), [tags]);
+  const sortedTagsBySource = useMemo(
+    () => sortBy(uniqBy(tags, 'tagFQN'), 'source'),
+    [tags]
+  );
 
   return sizeCap > -1 ? (
     <>

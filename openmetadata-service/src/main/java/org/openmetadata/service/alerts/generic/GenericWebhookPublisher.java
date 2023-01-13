@@ -1,6 +1,5 @@
 package org.openmetadata.service.alerts.generic;
 
-import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +55,7 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list) throws EventPublisherException, IOException {
+  public void sendAlert(EventResource.ChangeEventList list) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
       String json = JsonUtils.pojoToJson(list);

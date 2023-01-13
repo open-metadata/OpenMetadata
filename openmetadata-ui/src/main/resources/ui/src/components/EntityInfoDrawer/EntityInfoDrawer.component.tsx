@@ -35,7 +35,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
-import TagsViewer from '../tags-viewer/tags-viewer';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.less';
 

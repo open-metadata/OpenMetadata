@@ -16,6 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Popover, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
@@ -42,9 +43,8 @@ import {
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import TagsContainer from '../../tags-container/tags-container';
-import TagsViewer from '../../tags-viewer/tags-viewer';
-import Tags from '../../tags/tags';
+import TagsContainer from '../../Tag/TagsContainer/tags-container';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';

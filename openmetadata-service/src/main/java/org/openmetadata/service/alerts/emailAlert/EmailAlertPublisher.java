@@ -3,7 +3,6 @@ package org.openmetadata.service.alerts.emailAlert;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -56,7 +55,7 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list) throws IOException {
+  public void sendAlert(EventResource.ChangeEventList list) {
     for (ChangeEvent event : list.getData()) {
       try {
         Set<String> receivers = buildReceiversList(event);

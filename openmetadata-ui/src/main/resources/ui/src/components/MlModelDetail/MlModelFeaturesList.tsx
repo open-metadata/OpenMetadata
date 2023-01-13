@@ -21,6 +21,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import Tags from 'components/Tag/Tags/tags';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
@@ -38,8 +39,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../tags-container/tags-container';
-import Tags from '../tags/tags';
+import TagsContainer from '../Tag/TagsContainer/tags-container';
 import SourceList from './SourceList.component';
 
 interface MlModelFeaturesListProp {

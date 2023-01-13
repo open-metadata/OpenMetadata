@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import SourceList from 'components/MlModelDetail/SourceList.component';
-import TagsContainer from 'components/tags-container/tags-container';
+import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
