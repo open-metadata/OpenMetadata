@@ -51,12 +51,12 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has source as mentioned in condition",
       examples = {"matchAnySource('bot', 'user')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
-  public boolean matchAnySource(String... originEntity) {
+  public boolean matchAnySource(String... originEntities) {
     if (changeEvent == null || changeEvent.getEntityType() == null) {
       return false;
     }
     String changeEventEntity = changeEvent.getEntityType();
-    for (String entityType : originEntity) {
+    for (String entityType : originEntities) {
       if (changeEventEntity.equals(entityType)) {
         return true;
       }

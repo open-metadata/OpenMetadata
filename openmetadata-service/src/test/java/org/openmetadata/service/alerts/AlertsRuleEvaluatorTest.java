@@ -40,7 +40,7 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchAnySource() {
-    // Create a change Event
+    // Create a change Event with Entity Type and test for source in list and not in list
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType("alert");
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
@@ -51,16 +51,18 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchAnyOwnerName(TestInfo test) throws IOException {
-    // Create Table
-    List<Column> columns = List.of(new Column().withName("c1").withDataType(ColumnDataType.INT));
+    // Create Table Entity
+    List<Column> columns = List.of(TableResourceTest.getColumn("c1", ColumnDataType.INT, null));
     CreateTable create =
         tableResourceTest.createRequest(test).withColumns(columns).withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    // Create a change Event
+
+    // Create a change Event with the Entity Table
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TABLE);
     changeEvent.setEntity(createdTable);
 
+    // Test Owner Name Present in list and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(
@@ -70,16 +72,17 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchAnyEntityFqn(TestInfo test) throws IOException {
-    // Create Table
-    List<Column> columns = List.of(new Column().withName("c1").withDataType(ColumnDataType.INT));
+    // Create Table Entity
+    List<Column> columns = List.of(TableResourceTest.getColumn("c1", ColumnDataType.INT, null));
     CreateTable create = tableResourceTest.createRequest(test).withColumns(columns);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    // Create a change Event
+
+    // Create a change Event with the Entity Table
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TABLE);
     changeEvent.setEntity(createdTable);
 
-    // Check AlertRuleEvaluator
+    // Test Entity Fqn in List of match and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     String fqn = createdTable.getFullyQualifiedName();
@@ -89,16 +92,17 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchAnyEntityId(TestInfo test) throws IOException {
-    // Create Table
-    List<Column> columns = List.of(new Column().withName("c1").withDataType(ColumnDataType.INT));
+    // Create Table Entity
+    List<Column> columns = List.of(TableResourceTest.getColumn("c1", ColumnDataType.INT, null));
     CreateTable create = tableResourceTest.createRequest(test).withColumns(columns);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    // Create a change Event
+
+    // Create a change Event with Table Entity and Type
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TABLE);
     changeEvent.setEntity(createdTable);
 
-    // Check AlertRuleEvaluator
+    // Test Entity Id in List of match and not present in list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     String id = createdTable.getId().toString();
@@ -108,9 +112,11 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchAnyEventType() {
-    // Create a change Event
+    // Create a change Event with EventType
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEventType(EventType.ENTITY_CREATED);
+
+    // Check if eventType present in list or absent from the list
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(evaluateExpression("matchAnyEventType('entityCreated')", evaluationContext));
@@ -119,7 +125,7 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchTestResult() {
-    // Create a change Event
+    // Create a change Description with Test Result Field
     ChangeDescription changeDescription = new ChangeDescription();
     changeDescription.setFieldsUpdated(
         List.of(
@@ -127,9 +133,13 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
                 .withName("testCaseResult")
                 .withOldValue("test1")
                 .withNewValue(new TestCaseResult().withTestCaseStatus(TestCaseStatus.Success))));
+
+    // Create a change event with Test Case and Test Result Change Description
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
     changeEvent.setChangeDescription(changeDescription);
+
+    // Test If Test Result status matches in list and if status not matches
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(evaluateExpression("matchTestResult('Success')", evaluationContext));
@@ -138,9 +148,11 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchUpdatedBy() {
-    // Create a change Event
+    // Create a change Event with updatedBy username
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setUserName("test");
+
+    // Test if the username is in list or not
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(evaluateExpression("matchUpdatedBy('test')", evaluationContext));
@@ -149,12 +161,15 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_matchAnyFieldChange() {
-    // Create a change Event
+    // Create a change Event with some Change Description and Field Change
     ChangeDescription changeDescription = new ChangeDescription();
     changeDescription.setFieldsUpdated(
         List.of(new FieldChange().withName("test").withOldValue("test1").withNewValue("test2")));
+
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setChangeDescription(changeDescription);
+
+    // Test if the updated field matches from the list or not
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(evaluateExpression("matchAnyFieldChange('test')", evaluationContext));
