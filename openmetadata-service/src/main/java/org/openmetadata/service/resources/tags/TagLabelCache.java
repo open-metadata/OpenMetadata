@@ -58,7 +58,7 @@ public class TagLabelCache {
       TAG_CATEGORY_CACHE =
           CacheBuilder.newBuilder()
               .maximumSize(25)
-              .expireAfterAccess(1, TimeUnit.MINUTES)
+              .expireAfterWrite(2, TimeUnit.MINUTES)
               .build(new TagCategoryLoader());
       TAG_CACHE =
           CacheBuilder.newBuilder().maximumSize(100).expireAfterAccess(1, TimeUnit.MINUTES).build(new TagLoader());
