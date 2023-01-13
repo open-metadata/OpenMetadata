@@ -124,11 +124,7 @@ public abstract class PipelineServiceClient {
 
   public final Map<String, String> getHostIp() {
     try {
-      if (CommonUtil.nullOrEmpty(this.hostIp)) {
-        return requestGetHostIp();
-      } else {
-        return Map.of("ip", this.hostIp);
-      }
+      return CommonUtil.nullOrEmpty(this.hostIp) ? requestGetHostIp() : Map.of("ip", this.hostIp);
     } catch (Exception e) {
       LOG.error("Failed to get Pipeline Service host IP. {}", e.getMessage());
       return Map.of(

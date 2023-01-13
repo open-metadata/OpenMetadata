@@ -999,7 +999,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
+    EntityReference userRef = reduceEntityReference(user);
     locationResourceTest.createEntity(
         locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
     locationResourceTest.createEntity(
@@ -1015,7 +1015,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     List<EntityReference> expectedOwnedEntities = new ArrayList<>();
     for (EntityReference ref : listOrEmpty(userBeforeDeletion.getOwns())) {
-      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+      expectedOwnedEntities.add(reduceEntityReference(ref));
     }
 
     TestUtils.assertEntityReferences(expectedOwnedEntities, userAfterDeletion.getOwns());

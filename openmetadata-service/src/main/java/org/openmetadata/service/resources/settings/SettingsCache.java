@@ -58,10 +58,6 @@ public class SettingsCache {
     }
   }
 
-  public void putSettings(Settings setting) throws RuntimeException {
-    SETTINGS_CACHE.put(setting.getConfigType().toString(), setting);
-  }
-
   public static void cleanUp() {
     SETTINGS_CACHE.invalidateAll();
     INITIALIZED = false;
