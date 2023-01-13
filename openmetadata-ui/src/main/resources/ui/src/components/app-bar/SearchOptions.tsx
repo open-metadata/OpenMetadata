@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import Tags from 'components/Tag/Tags/tags';
 import React, { FunctionComponent, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getExplorePathWithSearch } from '../../constants/constants';
-import Tags from '../tags/tags';
 
 type SearchOptionsProp = {
   searchText: string;

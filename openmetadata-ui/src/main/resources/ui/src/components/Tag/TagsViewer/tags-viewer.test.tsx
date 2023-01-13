@@ -33,7 +33,7 @@ const tagsWithTerm = [
   { tagFQN: `test.tags.term`, source: 'Glossary' },
 ];
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
