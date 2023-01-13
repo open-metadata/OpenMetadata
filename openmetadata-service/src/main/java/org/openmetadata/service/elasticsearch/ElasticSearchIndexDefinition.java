@@ -272,9 +272,12 @@ class ParseTags {
     if (!tags.isEmpty()) {
       List<TagLabel> tagsList = new ArrayList<>(tags);
       for (TagLabel tag : tagsList) {
-        if (tag.getTagFQN().toLowerCase().matches("(.*)tier(.*)")) {
-          tierTag = tag;
-          break;
+        if (tag.getTagFQN().contains(".")) {
+          String tier = tag.getTagFQN().split("\\.")[0];
+          if (tier.equalsIgnoreCase("tier")) {
+            tierTag = tag;
+            break;
+          }
         }
       }
       if (tierTag != null) {
