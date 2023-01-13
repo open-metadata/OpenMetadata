@@ -522,8 +522,7 @@ public class FeedRepository {
   }
 
   public EntityReference getOwnerReference(String username) {
-    User fromUser = dao.userDAO().findEntityByName(username);
-    return fromUser.getEntityReference();
+    return dao.userDAO().findEntityByName(username).getEntityReference();
   }
 
   @Transaction

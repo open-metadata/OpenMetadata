@@ -5,11 +5,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 public class ListFilter {
-  private final Include include;
+  @Getter private final Include include;
   private final Map<String, String> queryParams = new HashMap<>();
 
   public ListFilter() {
@@ -26,14 +27,7 @@ public class ListFilter {
   }
 
   public String getQueryParam(String name) {
-    if (name.equals("include")) {
-      return include.value();
-    }
-    return queryParams.get(name);
-  }
-
-  public Include getInclude() {
-    return include;
+    return name.equals("include") ? include.value() : queryParams.get(name);
   }
 
   public String getCondition() {

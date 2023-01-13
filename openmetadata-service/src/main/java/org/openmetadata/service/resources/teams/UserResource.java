@@ -603,7 +603,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     authorizer.authorizeAdmin(securityContext);
     User user = dao.get(uriInfo, revokeTokenRequest.getId(), dao.getFieldsWithUserAuth("*"));
     if (!user.getIsBot()) {
-      throw new IllegalStateException(CatalogExceptionMessage.invalidBotUser());
+      throw new IllegalStateException(CatalogExceptionMessage.INVALID_BOT_USER);
     }
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =

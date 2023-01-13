@@ -20,6 +20,10 @@ from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import String
 
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -36,11 +40,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
 from metadata.ingestion.source.database.postgres.queries import (
+    POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
 )
@@ -192,3 +198,37 @@ class PostgresSource(CommonDbSourceService):
         if pgtype in ("geometry", "geography"):
             return "GEOGRAPHY"
         return sa_type
+
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+        """
+        Fetch Tags
+        """
+        try:
+            result = self.engine.execute(
+                POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                )
+            ).all()
+
+            for res in result:
+                row = list(res)
+                fqn_elements = [name for name in row[2:] if name]
+                yield OMetaTagAndClassification(
+                    fqn=fqn._build(  # pylint: disable=protected-access
+                        self.context.database_service.name.__root__, *fqn_elements
+                    ),
+                    classification_request=CreateClassificationRequest(
+                        name=self.service_connection.classificationName,
+                        description="Postgres Tag Name",
+                    ),
+                    tag_request=CreateTagRequest(
+                        classification=self.service_connection.classificationName,
+                        name=row[1],
+                        description="Postgres Tag Value",
+                    ),
+                )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")

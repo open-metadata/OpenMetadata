@@ -68,7 +68,11 @@ export default function EntitySummaryPanel({
   return (
     <div className={classNames('summary-panel-container')}>
       {summaryComponent}
-      <CloseOutlined className="close-icon" onClick={handleClosePanel} />
+      <CloseOutlined
+        className="close-icon"
+        data-testid="summary-panel-close-icon"
+        onClick={handleClosePanel}
+      />
     </div>
   );
 }

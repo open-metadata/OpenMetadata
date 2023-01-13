@@ -109,8 +109,8 @@ const ID = {
     button: 'add-bot',
   },
 };
-// Todo:- Need to fix flaky test
-describe.skip('DataConsumer Edit policy should work properly', () => {
+
+describe('DataConsumer Edit policy should work properly', () => {
   it('Create a new account and assign Data consumer role to the user', () => {
     interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
     cy.visit('/');
@@ -190,7 +190,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       cy.get('[data-testid="header"]')
         .should('be.visible')
         .invoke('text')
-        .should('eq', `Edit description for ${entity.displayName}`);
+        .should('eq', `Edit Description for ${entity.displayName}`);
 
       cy.get('[data-testid="cancel"]').should('be.visible').click();
 
@@ -267,7 +267,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       .should('be.visible')
       .should('be.disabled');
 
-    cy.get('[data-testid="delete-tag-category-button"]')
+      cy.get('[data-testid="delete-classification-or-tag"]')
       .should('be.visible')
       .should('be.disabled');
   });

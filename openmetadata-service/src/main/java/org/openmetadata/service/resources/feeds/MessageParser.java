@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -61,14 +62,14 @@ public final class MessageParser {
               ">"); // Match for end of link name
 
   public static class EntityLink {
-    private final LinkType linkType;
-    private final String entityType;
-    private final String entityFQN;
-    private final String fieldName;
-    private final String arrayFieldName;
-    private final String arrayFieldValue;
-    private final String fullyQualifiedFieldType;
-    private final String fullyQualifiedFieldValue;
+    @Getter private final LinkType linkType;
+    @Getter private final String entityType;
+    @Getter private final String entityFQN;
+    @Getter private final String fieldName;
+    @Getter private final String arrayFieldName;
+    @Getter private final String arrayFieldValue;
+    @Getter private final String fullyQualifiedFieldType;
+    @Getter private final String fullyQualifiedFieldValue;
 
     public enum LinkType {
       ENTITY,
@@ -156,38 +157,6 @@ public final class MessageParser {
         throw new IllegalArgumentException("Entity link was not found in " + link);
       }
       return entityLink;
-    }
-
-    public LinkType getLinkType() {
-      return linkType;
-    }
-
-    public String getEntityType() {
-      return entityType;
-    }
-
-    public String getEntityFQN() {
-      return entityFQN;
-    }
-
-    public String getFieldName() {
-      return fieldName;
-    }
-
-    public String getArrayFieldName() {
-      return arrayFieldName;
-    }
-
-    public String getArrayFieldValue() {
-      return arrayFieldValue;
-    }
-
-    public String getFullyQualifiedFieldType() {
-      return fullyQualifiedFieldType;
-    }
-
-    public String getFullyQualifiedFieldValue() {
-      return fullyQualifiedFieldValue;
     }
 
     @Override
