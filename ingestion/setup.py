@@ -32,7 +32,7 @@ VERSIONS = {
     "great-expectations": "great-expectations~=0.15.0",
     "grpc-tools": "grpcio-tools==1.47.2",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=4.4.0",
+    "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas==1.3.5",
     "pyarrow": "pyarrow~=8.0",
     "pydomo": "pydomo~=0.3",
