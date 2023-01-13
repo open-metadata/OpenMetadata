@@ -18,6 +18,10 @@ from unittest.mock import patch
 
 from pydantic import AnyUrl
 
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -43,12 +47,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import Href
-from metadata.generated.schema.type.entityHistory import (
-    ChangeDescription,
-    FieldChange,
-    FieldName,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.ingestion.source.metadata.atlas.metadata import AtlasSource
@@ -110,141 +110,9 @@ def mock_list_entities(self, entity_type):  # pylint: disable=unused-argument
     return LIST_ENTITIES
 
 
-EXPTECTED_DATABASE = Database(
-    id="6d8e0c24-9bb6-43f0-bd31-f239b1351859",
-    name="Reporting",
-    fullyQualifiedName="hive.Reporting",
-    displayName=None,
-    description="THIS IS TEST_DESCRIPTION FOR DATABASE",
-    tags=None,
-    version=0.2,
-    updatedAt=1673374883917,
-    updatedBy="admin",
-    href=Href(
-        __root__=AnyUrl(
-            "http://localhost:8585/api/v1/databases/6d8e0c24-9bb6-43f0-bd31-f239b1351859",
-            scheme="http",
-            host="localhost",
-            host_type="int_domain",
-            port="8585",
-            path="/api/v1/databases/6d8e0c24-9bb6-43f0-bd31-f239b1351859",
-        )
-    ),
-    owner=None,
-    service=EntityReference(
-        id="b025499a-2f12-4e01-95e7-9a1665e05318",
-        type="databaseService",
-        name="hive",
-        fullyQualifiedName="hive",
-        description=None,
-        displayName=None,
-        deleted=False,
-        href=Href(
-            __root__=AnyUrl(
-                "http://localhost:8585/api/v1/services/databaseServices/b025499a-2f12-4e01-95e7-9a1665e05318",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/b025499a-2f12-4e01-95e7-9a1665e05318",
-            )
-        ),
-    ),
-    serviceType="Hive",
-    location=None,
-    usageSummary=None,
-    databaseSchemas=None,
-    changeDescription=ChangeDescription(
-        fieldsAdded=[
-            FieldChange(
-                name="description",
-                oldValue=None,
-                newValue="THIS IS TEST_DESCRIPTION FOR DATABASE",
-            )
-        ],
-        fieldsUpdated=[],
-        fieldsDeleted=[],
-        previousVersion=0.1,
-    ),
-    default=False,
-    deleted=False,
-)
+EXPECTED_DATABASE_DESCRIPTION = "THIS IS TEST_DESCRIPTION FOR DATABASE"
 
-EXPTECTED_DATABASE_SCHEMA = DatabaseSchema(
-    id="5c2d7878-abde-4b06-9b61-2c91838fa6d4",
-    name="Reporting",
-    fullyQualifiedName="hive.Reporting.Reporting",
-    displayName=None,
-    description="THIS IS TEST_DESCRIPTION FOR DATABASE",
-    version=0.2,
-    updatedAt=1673374884083,
-    updatedBy="admin",
-    href=Href(
-        __root__=AnyUrl(
-            "http://localhost:8585/api/v1/databaseSchemas/5c2d7878-abde-4b06-9b61-2c91838fa6d4",
-            scheme="http",
-            host="localhost",
-            host_type="int_domain",
-            port="8585",
-            path="/api/v1/databaseSchemas/5c2d7878-abde-4b06-9b61-2c91838fa6d4",
-        )
-    ),
-    owner=None,
-    service=EntityReference(
-        id="b025499a-2f12-4e01-95e7-9a1665e05318",
-        type="databaseService",
-        name="hive",
-        fullyQualifiedName="hive",
-        description=None,
-        displayName=None,
-        deleted=False,
-        href=Href(
-            __root__=AnyUrl(
-                "http://localhost:8585/api/v1/services/databaseServices/b025499a-2f12-4e01-95e7-9a1665e05318",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/b025499a-2f12-4e01-95e7-9a1665e05318",
-            )
-        ),
-    ),
-    serviceType="Hive",
-    database=EntityReference(
-        id="6d8e0c24-9bb6-43f0-bd31-f239b1351859",
-        type="database",
-        name="Reporting",
-        fullyQualifiedName="hive.Reporting",
-        description="THIS IS TEST_DESCRIPTION FOR DATABASE",
-        displayName=None,
-        deleted=False,
-        href=Href(
-            __root__=AnyUrl(
-                "http://localhost:8585/api/v1/databases/6d8e0c24-9bb6-43f0-bd31-f239b1351859",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databases/6d8e0c24-9bb6-43f0-bd31-f239b1351859",
-            )
-        ),
-    ),
-    tables=None,
-    usageSummary=None,
-    changeDescription=ChangeDescription(
-        fieldsAdded=[
-            FieldChange(
-                name=FieldName(__root__="description"),
-                oldValue=None,
-                newValue="THIS IS TEST_DESCRIPTION FOR DATABASE",
-            )
-        ],
-        fieldsUpdated=[],
-        fieldsDeleted=[],
-        previousVersion=0.1,
-    ),
-    deleted=False,
-)
+EXPTECTED_DATABASE_SCHEMA_DESCRIPTION = "THIS IS TEST_DESCRIPTION FOR DATABASE"
 
 EXPTECTED_TABLE = Table(
     id="124d078d-dcf2-43a8-b59e-33bc7953f680",
@@ -408,7 +276,16 @@ EXPTECTED_TABLE = Table(
     serviceType="Hive",
     location=None,
     viewDefinition=None,
-    tags=None,
+    tags=[
+        TagLabel(
+            tagFQN="AtlasMetadata.atlas_table",
+            description="test tag",
+            source="Tag",
+            labelType="Automated",
+            state="Confirmed",
+            href=None,
+        )
+    ],
     usageSummary=None,
     followers=None,
     joins=None,
@@ -576,7 +453,18 @@ class AtlasUnitTest(TestCase):
         return []
 
     def mock_create_tag(self):
-        return []
+        classification = CreateClassificationRequest(
+            description="test tag", name="AtlasMetadata"
+        )
+
+        self.metadata.create_or_update(classification)
+        self.metadata.create_or_update(
+            CreateTagRequest(
+                classification="AtlasMetadata",
+                name="atlas_table",
+                description="test tag",
+            )
+        )
 
     @patch.object(AtlasClient, "list_entities", mock_list_entities)
     @patch.object(AtlasClient, "get_entity", mock_get_entity)
@@ -590,23 +478,29 @@ class AtlasUnitTest(TestCase):
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
         )
-        assert updated_database.description == EXPTECTED_DATABASE.description
+        assert updated_database.description.__root__ == EXPECTED_DATABASE_DESCRIPTION
 
         updated_database_schema = self.metadata.get_by_name(
             entity=DatabaseSchema, fqn="hive.Reporting.Reporting"
         )
         assert (
-            updated_database_schema.description == EXPTECTED_DATABASE_SCHEMA.description
+            updated_database_schema.description.__root__
+            == EXPTECTED_DATABASE_SCHEMA_DESCRIPTION
         )
 
         updated_table = self.metadata.get_by_name(
-            entity=Table, fqn="hive.Reporting.Reporting.sales_fact_daily_mv"
+            entity=Table,
+            fqn="hive.Reporting.Reporting.sales_fact_daily_mv",
+            fields=["tags"],
         )
 
         assert updated_table.description == EXPTECTED_TABLE.description
+
+        assert updated_table.tags == EXPTECTED_TABLE.tags
 
         self.metadata.delete(
             entity=DatabaseService,
             entity_id=self.atlas_source.service.id,
             recursive=True,
+            hard_delete=True,
         )
