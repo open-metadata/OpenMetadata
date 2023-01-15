@@ -67,6 +67,7 @@ _TYPE_MAP = {
     DataType.JSON: sqlalchemy.JSON,
     DataType.UUID: CustomTypes.UUID.value,
     DataType.BYTEA: CustomTypes.BYTEA.value,
+    sqlalchemy.types.LargeBinary: CustomTypes.BYTES.value,
 }
 
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
