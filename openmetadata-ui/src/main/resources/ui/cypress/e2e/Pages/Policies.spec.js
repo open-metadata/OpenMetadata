@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
+import {
+  descriptionBox,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
+} from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
 
 const roles = {
@@ -53,25 +58,25 @@ const updatedRuleName = `New-Rule-test-${uuid()}-updated`;
 
 const addRule = (rulename, ruleDescription, descriptionIndex) => {
   cy.get('[data-testid="rule-name"]').should('be.visible').type(rulename);
-  //Enter rule description
+  // Enter rule description
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
     .eq(descriptionIndex)
     .scrollIntoView()
     .type(ruleDescription);
-  //Select resource dropdown
+  // Select resource dropdown
   cy.get('[data-testid="resources"]')
     .scrollIntoView()
     .should('be.visible')
     .click();
 
-  //Select All
+  // Select All
   cy.get('.ant-select-tree-checkbox-inner').should('be.visible').click();
 
-  //Click on operations dropdown
+  // Click on operations dropdown
   cy.get('[data-testid="operations"]').should('be.visible').click();
 
   cy.get('.ant-select-tree-checkbox-inner').eq(1).should('be.visible').click();
-  //Click on condition combobox
+  // Click on condition combobox
 
   cy.get('[data-testid="condition"]')
     .scrollIntoView()
@@ -83,7 +88,7 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
   cy.get('[data-testid="condition-success"]').contains('✅ Valid condition');
 
   cy.wait(500);
-  //Submit
+  // Submit
   cy.get('[data-testid="submit-btn"]')
     .scrollIntoView()
     .should('be.visible')
@@ -97,7 +102,10 @@ describe('Policy page should work properly', () => {
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Policies').should('be.visible').click();
+    cy.get('[data-testid="settings-left-panel"]')
+      .contains('Policies')
+      .should('be.visible')
+      .click();
 
     cy.wait('@getPolicies', { timeout: 15000 })
       .its('response.statusCode')
@@ -107,14 +115,14 @@ describe('Policy page should work properly', () => {
   });
 
   it('Default Policies and Roles should be displayed', () => {
-    //Verifying the default roles and policies are present
+    // Verifying the default roles and policies are present
 
     Object.values(policies).forEach((policy) => {
       cy.get('[data-testid="policy-name"]')
         .should('contain', policy)
         .should('be.visible');
     });
-    //Validate role is displayed
+    // Validate role is displayed
     cy.get('[data-testid="role-link"]')
       .should('contain', roles.dataConsumer)
       .should('be.visible');
@@ -124,20 +132,20 @@ describe('Policy page should work properly', () => {
   });
 
   it('Add new policy', () => {
-    //Click on add new policy
+    // Click on add new policy
     cy.get('[data-testid="add-policy"]').should('be.visible').click();
     cy.get('[data-testid="inactive-link"]');
 
-    //Enter policy name
+    // Enter policy name
     cy.get('[data-testid="policy-name"]').should('be.visible').type(policyName);
 
-    //Enter description
+    // Enter description
     cy.get(descriptionBox).eq(0).type(description);
 
-    //Enter rule name
+    // Enter rule name
     addRule(ruleName, ruleDescription, 1);
 
-    //Validate the added policy
+    // Validate the added policy
     cy.get('[data-testid="inactive-link"]')
       .should('be.visible')
       .should('have.text', policyName);
@@ -146,18 +154,18 @@ describe('Policy page should work properly', () => {
       .should('be.visible')
       .should('contain', ruleName);
 
-    //Verify policy description
+    // Verify policy description
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .eq(0)
       .should('be.visible')
       .should('contain', description);
 
-    //verify rule description
+    // verify rule description
     cy.get('[data-testid="viewer-container"] > [data-testid="markdown-parser"]')
       .should('be.visible')
       .should('contain', ruleDescription);
 
-    //Verify other details
+    // Verify other details
     cy.get('[data-testid="rule-name"]').should('be.visible').click();
 
     cy.get('[data-testid="resources"]')
@@ -183,19 +191,19 @@ describe('Policy page should work properly', () => {
       `/api/v1/policies/name/${policyName}*`,
       'getSelectedPolicy'
     );
-    //Click on created policy name
+    // Click on created policy name
     cy.get('[data-testid="policy-name"]').contains(policyName).click();
     verifyResponseStatusCode('@getSelectedPolicy', 200);
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
-    //Enter updated description
+    // Enter updated description
     cy.get(descriptionBox)
       .should('be.visible')
       .clear()
       .type(`${updatedDescription}-${policyName}`);
-    //Click on save
+    // Click on save
     cy.get('[data-testid="save"]').should('be.visible').click();
 
-    //Validate added description
+    // Validate added description
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .should('be.visible')
       .should('contain', `${updatedDescription}-${policyName}`);
@@ -207,24 +215,24 @@ describe('Policy page should work properly', () => {
       `/api/v1/policies/name/${policyName}*`,
       'getSelectedPolicy'
     );
-    //Click on created policy name
+    // Click on created policy name
     cy.get('[data-testid="policy-name"]').contains(policyName).click();
     verifyResponseStatusCode('@getSelectedPolicy', 200);
 
     interceptURL('GET', '/api/v1/policies/*', 'addRulepage');
-    //Click on add rule button
+    // Click on add rule button
     cy.get('[data-testid="add-rule"]').should('be.visible').click();
 
     verifyResponseStatusCode('@addRulepage', 200);
 
     addRule(newRuleName, newRuledescription, 0);
 
-    //Validate added rule
+    // Validate added rule
     cy.get('[data-testid="rule-name"]')
       .should('be.visible')
       .should('contain', ruleName);
 
-    //Verify other details
+    // Verify other details
     cy.get('[data-testid="rule-name"]')
       .last()
       .scrollIntoView()
@@ -263,11 +271,11 @@ describe('Policy page should work properly', () => {
       `/api/v1/policies/name/${policyName}*`,
       'getSelectedPolicy'
     );
-    //Click on created policy name
+    // Click on created policy name
     cy.get('[data-testid="policy-name"]').contains(policyName).click();
 
     verifyResponseStatusCode('@getSelectedPolicy', 200);
-    //Click on new rule manage button
+    // Click on new rule manage button
     cy.get(`[data-testid="manage-button-${newRuleName}"]`)
       .should('be.visible')
       .click();
@@ -277,7 +285,7 @@ describe('Policy page should work properly', () => {
 
     verifyResponseStatusCode('@editRulepage', 200);
 
-    //Enter new name
+    // Enter new name
     cy.get('[data-testid="rule-name"]').clear().type(updatedRuleName);
 
     interceptURL('PATCH', '/api/v1/policies/*', 'updateRule');
@@ -301,19 +309,19 @@ describe('Policy page should work properly', () => {
       `/api/v1/policies/name/${policyName}*`,
       'getSelectedPolicy'
     );
-    //Click on created policy name
+    // Click on created policy name
     cy.get('[data-testid="policy-name"]').contains(policyName).click();
 
     verifyResponseStatusCode('@getSelectedPolicy', 200);
 
-    //Click on new rule manage button
+    // Click on new rule manage button
     cy.get(`[data-testid="manage-button-${updatedRuleName}"]`)
       .should('be.visible')
       .click();
 
     cy.get('[data-testid="delete-rule"]').should('be.visible').click();
 
-    //Validate the deleted rule
+    // Validate the deleted rule
     cy.get('[data-testid="rule-name"]')
       .should('be.visible')
       .should('not.contain', updatedRuleName);
@@ -325,12 +333,12 @@ describe('Policy page should work properly', () => {
       `/api/v1/policies/name/${policyName}*`,
       'getSelectedPolicy'
     );
-    //Click on created policy name
+    // Click on created policy name
     cy.get('[data-testid="policy-name"]').contains(policyName).click();
 
     verifyResponseStatusCode('@getSelectedPolicy', 200);
 
-    //Click on new rule manage button
+    // Click on new rule manage button
     cy.get(`[data-testid="manage-button-${ruleName}"]`)
       .should('be.visible')
       .click();
@@ -357,7 +365,7 @@ describe('Policy page should work properly', () => {
 
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
 
-    //Validate deleted policy
+    // Validate deleted policy
     cy.get('[data-testid="policy-name"]').should('not.contain', policyName);
   });
 });
