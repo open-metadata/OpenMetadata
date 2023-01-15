@@ -12,17 +12,17 @@
  */
 
 import {
-    descriptionBox,
-    interceptURL,
-    toastNotification,
-    verifyResponseStatusCode,
-    visitEntityDetailsPage
+  descriptionBox,
+  interceptURL,
+  toastNotification,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
 } from '../../common/common';
 import {
-    DELETE_TERM,
-    NEW_GLOSSARY,
-    NEW_GLOSSARY_TERMS,
-    SEARCH_ENTITY_TABLE
+  DELETE_TERM,
+  NEW_GLOSSARY,
+  NEW_GLOSSARY_TERMS,
+  SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
@@ -131,7 +131,7 @@ describe('Glossary page should work properly', () => {
       .and('be.visible')
       .click({ animationDistanceThreshold: 20 });
 
-    //Clicking on Glossary
+    // Clicking on Glossary
     cy.get('.ant-dropdown-menu')
       .should('exist')
       .and('be.visible')
@@ -186,7 +186,7 @@ describe('Glossary page should work properly', () => {
         cy.get('[role="dialog"]').should('be.visible');
       });
 
-    //Change this once issue related to suggestion API is fixed.
+    // Change this once issue related to suggestion API is fixed.
     cy.get('[data-testid="user-card-container"]')
       .first()
       .should('be.visible')
@@ -237,7 +237,7 @@ describe('Glossary page should work properly', () => {
         expect(text).to.contain(NEW_GLOSSARY.description);
       });
     cy.get('[data-testid="reviewer-card-container"]').should('have.length', 1);
-    //Uncomment once the suggestion API issue gets resolved
+    // Uncomment once the suggestion API issue gets resolved
     cy.get('[data-testid="reviewer-card-container"]')
       .invoke('text')
       .then((text) => {
@@ -320,7 +320,8 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
 
     cy.wait(200);
-    cy.get('[data-testid="section-synonyms"]').find('[data-testid="edit-button"]')
+    cy.get('[data-testid="section-synonyms"]')
+      .find('[data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -350,7 +351,7 @@ describe('Glossary page should work properly', () => {
   it('Update glossary term reference and related terms', () => {
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
-    //Navigate to glossary term
+    // Navigate to glossary term
     interceptURL(
       'GET',
       `/api/v1/glossaryTerms/name/*.${NEW_GLOSSARY_TERMS.term_1.name}?fields=*`,
@@ -367,10 +368,11 @@ describe('Glossary page should work properly', () => {
       .click();
     verifyResponseStatusCode('@getGlossaryTerm', 200);
     verifyResponseStatusCode('@waitForTermPermission', 200);
-    cy.get('[data-testid="section-references"]').should('be.visible')
+    cy.get('[data-testid="section-references"]').should('be.visible');
     cy.wait(200);
     // updating References
-    cy.get('[data-testid="section-references"]').find('[data-testid="edit-button"]')
+    cy.get('[data-testid="section-references"]')
+      .find('[data-testid="edit-button"]')
       .should('exist')
       .click();
     cy.get('[data-testid="add-button"]').should('be.visible').click();
@@ -472,12 +474,15 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="no-data-image"]').should('be.visible');
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
-    //Add tag to breadcrumb
+    // Add tag to breadcrumb
     cy.get('[data-testid="tag-container"] [data-testid="tags"]')
       .eq(0)
       .should('be.visible')
       .click();
-    cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(`${glossary}.${term}`);
+    cy.get('[data-testid="tag-selector"]')
+      .should('be.visible')
+      .click()
+      .type(`${glossary}.${term}`);
     cy.get(`[title*="${term}"]`).should('be.visible').click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
@@ -494,7 +499,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .contains(term);
 
-    //Add tag to schema table
+    // Add tag to schema table
     cy.get(
       '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
     )
@@ -502,7 +507,10 @@ describe('Glossary page should work properly', () => {
       .first()
       .click();
 
-    cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(`${glossary}.${term}`);
+    cy.get('[data-testid="tag-selector"]')
+      .should('be.visible')
+      .click()
+      .type(`${glossary}.${term}`);
     cy.get(`[title*="${term}"]`).should('be.visible').click();
 
     cy.get(
@@ -551,7 +559,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Remove all added tags from breadcrumb
+    // Remove all added tags from breadcrumb
     cy.get('.ant-select-selection-item-remove')
       .eq(0)
       .should('be.visible')
@@ -569,8 +577,8 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="entity-tags"]')
       .should('not.contain', term)
       .and('not.contain', 'Personal');
-    //Remove the added column tag from entity
-    
+    // Remove the added column tag from entity
+
     cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
     cy.wait(200);
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');

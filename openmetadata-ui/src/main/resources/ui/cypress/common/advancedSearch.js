@@ -115,21 +115,27 @@ export const OPERATOR = {
 };
 
 export const searchForField = (condition, fieldid, searchCriteria, index) => {
-  //Click on field dropdown
-  cy.get('.rule--field > .ant-select > .ant-select-selector').eq(index).should('be.visible').click();
-  //Select owner fields
+  // Click on field dropdown
+  cy.get('.rule--field > .ant-select > .ant-select-selector')
+    .eq(index)
+    .should('be.visible')
+    .click();
+  // Select owner fields
   cy.get(`${fieldid}`).eq(index).should('be.visible').click();
-  //Select the condition
-  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(index).should('be.visible').click();
+  // Select the condition
+  cy.get('.rule--operator > .ant-select > .ant-select-selector')
+    .eq(index)
+    .should('be.visible')
+    .click();
 
   cy.get(`[title="${condition}"]`).eq(index).should('be.visible').click();
-  //Verify the condition
+  // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition}`);
   cy.wait(500);
 
-  //Verify the search criteria for the condition
+  // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
@@ -145,7 +151,7 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
   });
 
   cy.wait(1000);
-  //if condition has a dropdown then select value from dropdown
+  // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if ($body.find(`.ant-select-dropdown [title="${searchCriteria}"]`).length) {
       cy.get(`[title = '${searchCriteria}']`)
@@ -157,7 +163,12 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
 };
 
 export const goToAdvanceSearch = () => {
-  //Navigate to explore page
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc',
+    'explorePage'
+  );
+  // Navigate to explore page
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
     .and('be.visible')
@@ -168,7 +179,7 @@ export const goToAdvanceSearch = () => {
     .should('exist')
     .and('be.visible');
   cy.wait(1000);
-  //Click on advance search button
+  // Click on advance search button
   cy.get('[data-testid="advance-search-button"]').should('be.visible').click();
 
   cy.wait(1000);
@@ -183,7 +194,7 @@ export const checkmustPaths = (
 ) => {
   goToAdvanceSearch();
 
-  //Search with advance search
+  // Search with advance search
   searchForField(condition, field, searchCriteria, index);
 
   interceptURL(
@@ -196,6 +207,7 @@ export const checkmustPaths = (
 
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
+
     expect(request.url).to.contain(searchCriteria);
     expect(resBody).to.include(`${responseSearch}`);
   });
@@ -210,18 +222,19 @@ export const checkmust_notPaths = (
 ) => {
   goToAdvanceSearch();
 
-  //Search with advance search
+  // Search with advance search
   searchForField(condition, field, searchCriteria, index);
   interceptURL(
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${searchCriteria}*&sort_field=_score&sort_order=desc`,
     'search_must_not'
   );
-  //Click on apply filter
+  // Click on apply filter
   cy.get('.ant-btn-primary').contains('Apply').click();
 
   cy.wait('@search_must_not').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
+
     expect(request.url).to.contain(searchCriteria);
     expect(resBody).to.not.include(`${responseSearch}`);
   });
@@ -248,7 +261,7 @@ export const addOwner = (ownerName) => {
   cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
   verifyResponseStatusCode('@waitForTeams', 200);
-  //Clicking on users tab
+  // Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')
     .contains('Users')
     .should('exist')
@@ -270,7 +283,7 @@ export const addOwner = (ownerName) => {
   verifyResponseStatusCode('@searchOwner', 200);
 
   interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
-  //Selecting the user
+  // Selecting the user
   cy.get('[data-testid="user-tag"]')
     .contains(ownerName)
     .should('exist')
@@ -365,27 +378,27 @@ export const checkAddGroupWithOperator = (
   response_2
 ) => {
   goToAdvanceSearch();
-  //Click on field dropdown
+  // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
     .eq(index_1)
     .should('be.visible')
     .click();
-  //Select owner fields
+  // Select owner fields
   cy.get(fieldid).eq(0).should('be.visible').click();
-  //Select the condition
+  // Select the condition
   cy.get('.rule--operator > .ant-select > .ant-select-selector')
     .eq(index_1)
     .should('be.visible')
     .click();
 
   cy.get(`[label="${condition_1}"]`).eq(index_1).should('be.visible').click();
-  //Verify the condition
+  // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_1}`);
   cy.wait(500);
 
-  //Verify the search criteria for the condition
+  // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
@@ -401,7 +414,7 @@ export const checkAddGroupWithOperator = (
   });
 
   cy.wait(1000);
-  //if condition has a dropdown then select value from dropdown
+  // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
       $body.find(`.ant-select-dropdown [title="${searchCriteria_1}"]`).length
@@ -412,33 +425,33 @@ export const checkAddGroupWithOperator = (
         .trigger('click');
     }
   });
-  //To close the dropdown for anyin and notin condition
+  // To close the dropdown for anyin and notin condition
   cy.get('.ant-modal-header').click();
 
-  //Select add-group button
+  // Select add-group button
   cy.get('.action--ADD-GROUP').eq(0).should('be.visible').click();
 
-  //Select the AND/OR condition
+  // Select the AND/OR condition
   cy.get(
     `.group--conjunctions > .ant-btn-group > :nth-child(${operatorindex})`
   ).click();
 
-  //Click on field dropdown
+  // Click on field dropdown
   cy.get('.rule--field').eq(index_2).should('be.visible').click();
 
   cy.get(fieldid).eq(2).should('be.visible').click();
 
-  //Select the condition
+  // Select the condition
   cy.get('.rule--operator').eq(index_2).should('be.visible').click();
 
   cy.get(`[label="${condition_2}"]`).eq(index_2).should('be.visible').click();
-  //Verify the condition
+  // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_2}`);
   cy.wait(500);
 
-  //Verify the search criteria for the condition
+  // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
@@ -454,7 +467,7 @@ export const checkAddGroupWithOperator = (
   });
 
   cy.wait(1000);
-  //if condition has a dropdown then select value from dropdown
+  // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
       $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length &&
@@ -479,11 +492,12 @@ export const checkAddGroupWithOperator = (
     'search'
   );
 
-  //Click on apply filter
+  // Click on apply filter
   cy.get('.ant-btn-primary').contains('Apply').click();
 
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
+
     expect(request.url).to.contain(searchCriteria_1);
     expect(resBody).to.not.include(response_2);
   });
@@ -504,21 +518,21 @@ export const checkAddRuleWithOperator = (
   response_2
 ) => {
   goToAdvanceSearch();
-  //Click on field dropdown
+  // Click on field dropdown
   cy.get('.rule--field').eq(index_1).should('be.visible').click();
-  //Select owner fields
+  // Select owner fields
   cy.get(fieldid).eq(0).should('be.visible').click();
-  //Select the condition
+  // Select the condition
   cy.get('.rule--operator').eq(index_1).should('be.visible').click();
 
   cy.get(`[label="${condition_1}"]`).eq(index_1).should('be.visible').click();
-  //Verify the condition
+  // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_1}`);
   cy.wait(500);
 
-  //Verify the search criteria for the condition
+  // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
@@ -534,7 +548,7 @@ export const checkAddRuleWithOperator = (
   });
 
   cy.wait(1000);
-  //if condition has a dropdown then select value from dropdown
+  // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
       $body.find(`.ant-select-dropdown [title="${searchCriteria_1}"]`).length
@@ -545,33 +559,33 @@ export const checkAddRuleWithOperator = (
         .trigger('click');
     }
   });
-  //To close the dropdown for anyin and notin condition
+  // To close the dropdown for anyin and notin condition
   cy.get('.ant-modal-header').click();
 
-  //Select add-group button
+  // Select add-group button
   cy.get('.action--ADD-RULE').eq(1).should('be.visible').click();
 
-  //Select the AND/OR condition
+  // Select the AND/OR condition
   cy.get(
     `.group--conjunctions > .ant-btn-group > :nth-child(${operatorindex})`
   ).click();
 
-  //Click on field dropdown
+  // Click on field dropdown
   cy.get('.rule--field').eq(index_2).should('be.visible').click();
 
   cy.get(fieldid).eq(2).should('be.visible').click();
 
-  //Select the condition
+  // Select the condition
   cy.get('.rule--operator').eq(index_2).should('be.visible').click();
 
   cy.get(`[label="${condition_2}"]`).eq(index_2).should('be.visible').click();
-  //Verify the condition
+  // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_2}`);
   cy.wait(500);
 
-  //Verify the search criteria for the condition
+  // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
     if ($body.find('.ant-col > .ant-input').length) {
       cy.get('.ant-col > .ant-input')
@@ -587,7 +601,7 @@ export const checkAddRuleWithOperator = (
   });
 
   cy.wait(1000);
-  //if condition has a dropdown then select value from dropdown
+  // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
       $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length &&
@@ -612,11 +626,12 @@ export const checkAddRuleWithOperator = (
     'search'
   );
 
-  //Click on apply filter
+  // Click on apply filter
   cy.get('.ant-btn-primary').contains('Apply').click();
 
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
+
     expect(request.url).to.contain(searchCriteria_1);
     expect(resBody).to.not.include(response_2);
   });
