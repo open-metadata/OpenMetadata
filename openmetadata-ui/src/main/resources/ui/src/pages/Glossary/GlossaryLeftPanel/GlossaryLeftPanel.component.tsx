@@ -123,14 +123,29 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
             </Tooltip>
           </Col>
           <Col span={24}>
-            <Menu
-              className="custom-menu"
-              data-testid="glossary-left-panel"
-              items={menuItems}
-              mode="inline"
-              selectedKeys={[selectedKey]}
-              onClick={handleMenuClick}
-            />
+            {menuItems.length ? (
+              <Menu
+                className="custom-menu"
+                data-testid="glossary-left-panel"
+                items={menuItems}
+                mode="inline"
+                selectedKeys={[selectedKey]}
+                onClick={handleMenuClick}
+              />
+            ) : (
+              <p className="text-grey-muted text-center">
+                {searchTerm ? (
+                  <span>
+                    {t('message.no-entity-found-for-name', {
+                      entity: t('label.glossary-term'),
+                      name: searchTerm,
+                    })}
+                  </span>
+                ) : (
+                  <span>{t('label.no-glossary-found')}</span>
+                )}
+              </p>
+            )}
           </Col>
         </Row>
       </GlossaryV1Skeleton>
