@@ -498,5 +498,15 @@
       "ViewAll",
       "EditDescription"
     ]
+  },
+  {
+    "name" : "query",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewTableQuery",
+      "Edit"
+    ]
   }
 ]
