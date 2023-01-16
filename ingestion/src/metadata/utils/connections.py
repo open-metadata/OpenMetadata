@@ -336,7 +336,9 @@ def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
         )
 
         if connection.privateKey:
-            connection.connectionArguments = ConnectionArguments(private_key=pkb)
+            if not connection.connectionArguments:
+                connection.connectionArguments = ConnectionArguments()
+            connection.connectionArguments.private_key = pkb
 
     return create_generic_connection(connection, verbose)
 
