@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import React, { ChangeEvent, FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { exportGlossaryInCSVFormat } from 'rest/glossaryAPI';
+import { getCurrentLocaleDate } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 interface Props {
@@ -46,8 +47,9 @@ const ExportGlossaryModal: FC<Props> = ({
 
     const file = new Blob([data], { type: 'text/plain' });
 
+    element.textContent = 'download-file';
     element.href = URL.createObjectURL(file);
-    element.download = `${fileName}.csv`;
+    element.download = `${fileName}_${getCurrentLocaleDate()}.csv`;
     document.body.appendChild(element);
     element.click();
 
@@ -71,15 +73,17 @@ const ExportGlossaryModal: FC<Props> = ({
       centered
       cancelText={t('label.cancel')}
       closable={false}
+      data-testid="export-glossary-modal"
       okText={t('label.export')}
       open={isModalOpen}
-      title="Export Glossary Terms"
+      title={t('label.export-glossary-terms')}
       onCancel={onCancel}
       onOk={handleExport}>
       <Form layout="vertical">
-        <Form.Item colon label="File Name">
+        <Form.Item label="File Name:">
           <Input
             addonAfter=".csv"
+            data-testid="file-name-input"
             value={fileName}
             onChange={handleOnFileNameChange}
           />
