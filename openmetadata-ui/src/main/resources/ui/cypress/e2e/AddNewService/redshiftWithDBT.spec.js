@@ -147,8 +147,6 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
 
-    cy.get('[data-testid="submit-btn"]').should('be.visible').click();
-
     scheduleIngestion();
 
     cy.wait('@deployIngestion').then(() => {
