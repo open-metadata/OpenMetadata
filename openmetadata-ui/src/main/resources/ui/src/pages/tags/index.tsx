@@ -954,6 +954,7 @@ const TagsPage = () => {
               onSave={updatePrimaryTag}
             />
             <FormModal
+              showHiddenFields
               errorData={errorDataClassification}
               form={Form}
               header={t('label.adding-new-classification')}

@@ -28,6 +28,7 @@ const FormModal = ({
   errorData,
   isSaveButtonDisabled,
   visible,
+  showHiddenFields = false,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
@@ -78,6 +79,7 @@ const FormModal = ({
             setData(data);
             onChange && onChange(data);
           }}
+          showHiddenFields={showHiddenFields}
         />
       </form>
     </Modal>

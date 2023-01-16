@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space } from 'antd';
+import { Space, Switch } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
@@ -76,6 +76,7 @@ const AddGlossaryTerm = ({
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [relatedTerms, setRelatedTerms] = useState<GlossaryTerm[]>([]);
   const [synonyms, setSynonyms] = useState('');
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
@@ -232,6 +233,7 @@ const AddGlossaryTerm = ({
             }
           : undefined,
         synonyms: synonyms ? synonyms.split(',') : undefined,
+        mutuallyExclusive,
         glossary: {
           id: glossaryData.id,
           type: 'glossary',
@@ -369,6 +371,23 @@ const AddGlossaryTerm = ({
               value={synonyms}
               onChange={handleValidation}
             />
+          </Field>
+
+          <Field>
+            <Space align="end" className="m-b-xs">
+              <label
+                className="tw-form-label m-b-0 tw-mb-1"
+                data-testid="mutually-exclusive-label"
+                htmlFor="mutuallyExclusive">
+                {t('label.mutually-exclusive')}
+              </label>
+              <Switch
+                checked={mutuallyExclusive}
+                data-testid="mutually-exclusive-button"
+                id="mutuallyExclusive"
+                onChange={(value) => setMutuallyExclusive(value)}
+              />
+            </Space>
           </Field>
 
           <div data-testid="references">
