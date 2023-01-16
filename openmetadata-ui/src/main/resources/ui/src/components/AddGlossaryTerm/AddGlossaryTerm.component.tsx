@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space } from 'antd';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
@@ -37,7 +38,6 @@ import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
-import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const Field = ({

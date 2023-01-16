@@ -90,7 +90,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     }
   }
 
-  static final String FIELDS = "owner,tags,reviewers,usageCount";
+  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
 
   @GET
   @Valid

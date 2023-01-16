@@ -28,8 +28,8 @@ import {
 } from '../../../utils/TopicSchema.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../tags-container/tags-container';
-import TagsViewer from '../../tags-viewer/tags-viewer';
+import TagsContainer from '../../Tag/TagsContainer/tags-container';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import { CellRendered, TopicSchemaFieldsProps } from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({

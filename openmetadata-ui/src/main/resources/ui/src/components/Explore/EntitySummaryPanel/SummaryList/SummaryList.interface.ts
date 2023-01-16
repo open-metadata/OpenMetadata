@@ -12,27 +12,13 @@
  */
 
 import { ReactNode } from 'react';
-import { Chart, ChartType } from '../../../../generated/entity/data/chart';
-import {
-  FeatureType,
-  MlFeature,
-} from '../../../../generated/entity/data/mlmodel';
-import { Task } from '../../../../generated/entity/data/pipeline';
-import {
-  Column,
-  Constraint,
-  DataType,
-} from '../../../../generated/entity/data/table';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ChartType } from '../../../../generated/entity/data/chart';
+import { FeatureType } from '../../../../generated/entity/data/mlmodel';
+import { Constraint, DataType } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 
-export interface SummaryListProps {
-  columns?: Column[];
-  charts?: Chart[];
-  tasks?: Task[];
-  mlFeatures?: MlFeature[];
-}
-
-export interface BasicColumnInfo {
+export interface BasicEntityInfo {
   algorithm?: string;
   name: string;
   title: ReactNode;
@@ -40,4 +26,10 @@ export interface BasicColumnInfo {
   tags?: TagLabel[];
   description?: string;
   constraint?: Constraint;
+  children?: BasicEntityInfo[];
+}
+
+export interface SummaryListProps {
+  formattedEntityData: BasicEntityInfo[];
+  entityType?: SummaryEntityType;
 }

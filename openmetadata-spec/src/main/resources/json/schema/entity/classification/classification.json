@@ -30,6 +30,11 @@
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
+    "termCount" : {
+      "description": "Total number of children tag terms under this classification. This includes all the children in the hierarchy.",
+      "type" : "integer",
+      "minimum": 0
+    },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"

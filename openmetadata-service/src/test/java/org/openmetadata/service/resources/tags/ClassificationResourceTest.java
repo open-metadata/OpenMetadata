@@ -133,6 +133,7 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
   }
 
   public void renameClassificationAndCheck(Classification classification, String newName) throws IOException {
+    // User PATCH operation to rename a classification
     String oldName = classification.getName();
     String json = JsonUtils.pojoToJson(classification);
     ChangeDescription change = getChangeDescription(classification.getVersion());

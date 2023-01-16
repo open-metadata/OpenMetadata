@@ -72,6 +72,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public Glossary setFields(Glossary glossary, Fields fields) throws IOException {
+    glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
     return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : null);
   }
@@ -108,6 +109,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   private Integer getUsageCount(Glossary glossary) {
     return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+  }
+
+  private Integer getTermCount(Glossary glossary) {
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", glossary.getName());
+    return daoCollection.glossaryTermDAO().listCount(filter);
   }
 
   @Override

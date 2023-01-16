@@ -46,6 +46,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import DeleteTable
@@ -121,6 +122,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
+        self.write_record.register(OMetaTopicSampleData, self.write_topic_sample_data)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -562,6 +564,28 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected error writing test case result sample [{record}]: {exc}"
+            )
+
+    def write_topic_sample_data(self, record: OMetaTopicSampleData):
+        """
+        Use the /testCase endpoint to ingest sample test suite
+        """
+        try:
+            if record.sample_data.messages:
+                self.metadata.ingest_topic_sample_data(
+                    record.topic,
+                    record.sample_data,
+                )
+                logger.debug(
+                    f"Successfully ingested sample data for {record.topic.name.__root__}"
+                )
+                self.status.records_written(
+                    f"topicSampleData: {record.topic.name.__root__}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error while ingesting sample data for topic [{record.topic.name.__root__}]: {exc}"
             )
 
     def get_status(self):
