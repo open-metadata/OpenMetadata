@@ -14,6 +14,7 @@
 package org.openmetadata.service.exception;
 
 import javax.ws.rs.core.Response;
+import org.openmetadata.sdk.exception.WebServiceException;
 
 public class EntityNotFoundException extends WebServiceException {
   private static final String BY_ID_MESSAGE = "Entity with id [%s] not found.";

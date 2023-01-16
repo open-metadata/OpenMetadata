@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.exception.PipelineServiceVersionException;
+import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
 public class PipelineServiceClientTest {
 

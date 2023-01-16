@@ -7,7 +7,7 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.service.util.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 

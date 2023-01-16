@@ -1,4 +1,4 @@
-package org.openmetadata.service.util;
+package org.openmetadata.sdk;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,9 +20,8 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.service.OpenMetadataApplication;
-import org.openmetadata.service.exception.PipelineServiceClientException;
-import org.openmetadata.service.exception.PipelineServiceVersionException;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
 /**
  * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as Airflow. Core
@@ -97,7 +96,7 @@ public abstract class PipelineServiceClient {
   }
 
   public static String getServerVersion() throws IOException {
-    InputStream fileInput = OpenMetadataApplication.class.getResourceAsStream("/catalog/VERSION");
+    InputStream fileInput = PipelineServiceClient.class.getResourceAsStream("/catalog/VERSION");
     Properties props = new Properties();
     props.load(fileInput);
     return props.getProperty("version", "unknown");

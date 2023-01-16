@@ -28,10 +28,10 @@ import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnec
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
-import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.PipelineServiceClient;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
