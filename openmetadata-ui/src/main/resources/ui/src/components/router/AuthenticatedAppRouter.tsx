@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import GlossaryPage from 'pages/Glossary/GlossaryPage/GlossaryPage.component';
+
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -144,8 +144,9 @@ const EntityVersionPage = withSuspenseFallback(
 const ExplorePage = withSuspenseFallback(
   React.lazy(() => import('pages/explore/ExplorePage.component'))
 );
-const GlossaryPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/Glossary/GlossaryPageV1.component'))
+
+const GlossaryPage = withSuspenseFallback(
+  React.lazy(() => import('pages/Glossary/GlossaryPage/GlossaryPage.component'))
 );
 
 const MlModelPage = withSuspenseFallback(

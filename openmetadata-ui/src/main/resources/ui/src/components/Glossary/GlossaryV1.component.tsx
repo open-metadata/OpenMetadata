@@ -66,18 +66,13 @@ const { Title } = Typography;
 
 const GlossaryV1 = ({
   isGlossaryActive,
-  assetData,
   deleteStatus = 'initial',
-  handleUserRedirection,
   selectedData,
   isChildLoading,
   handleGlossaryTermUpdate,
   updateGlossary,
   onGlossaryDelete,
   onGlossaryTermDelete,
-  onAssetPaginate,
-  onRelatedTermClick,
-  currentPage,
 }: GlossaryV1Props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
   const history = useHistory();
@@ -443,20 +438,14 @@ const GlossaryV1 = ({
             (isGlossaryActive ? (
               <GlossaryDetails
                 glossary={selectedData as Glossary}
-                handleUserRedirection={handleUserRedirection}
                 permissions={glossaryPermission}
                 updateGlossary={updateGlossary}
               />
             ) : (
               <GlossaryTermsV1
-                assetData={assetData}
-                currentPage={currentPage}
                 glossaryTerm={selectedData as GlossaryTerm}
                 handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-                handleUserRedirection={handleUserRedirection}
                 permissions={glossaryTermPermission}
-                onAssetPaginate={onAssetPaginate}
-                onRelatedTermClick={onRelatedTermClick}
               />
             ))}
         </>

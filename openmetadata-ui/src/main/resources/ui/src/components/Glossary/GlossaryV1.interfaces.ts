@@ -10,23 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AssetsDataType, LoadingState } from 'Models';
+import { LoadingState } from 'Models';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 
 export type GlossaryV1Props = {
-  assetData: AssetsDataType;
   deleteStatus: LoadingState;
   handleSelectedKey?: (key: string) => void;
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
-  currentPage: number;
   updateGlossary: (value: Glossary) => Promise<void>;
   handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
-  onAssetPaginate: (num: string | number, activePage?: number) => void;
-  onRelatedTermClick?: (fqn: string) => void;
-  handleUserRedirection?: (name: string) => void;
   isChildLoading: boolean;
 };

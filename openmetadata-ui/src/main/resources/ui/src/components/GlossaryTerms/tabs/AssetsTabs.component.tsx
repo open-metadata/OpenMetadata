@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Loader from 'components/Loader/Loader';
 import { AssetsDataType } from 'Models';
 import React from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
@@ -31,26 +32,30 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
     <div data-testid="table-container">
       {assetData.data.length ? (
         <>
-          {assetData.data.map((entity, index) => (
-            <div className="m-b-sm" key={index}>
-              <TableDataCard
-                database={entity.database}
-                databaseSchema={entity.databaseSchema}
-                deleted={entity.deleted}
-                description={entity.description}
-                fullyQualifiedName={entity.fullyQualifiedName}
-                id={`tabledatacard${index}`}
-                indexType={entity.index}
-                name={entity.name}
-                owner={entity.owner}
-                service={entity.service}
-                serviceType={entity.serviceType || '--'}
-                tags={entity.tags}
-                tier={getTierFromEntityInfo(entity)}
-                usage={entity.weeklyPercentileRank}
-              />
-            </div>
-          ))}
+          {assetData.isLoading ? (
+            <Loader />
+          ) : (
+            assetData.data.map((entity, index) => (
+              <div className="m-b-sm" key={index}>
+                <TableDataCard
+                  database={entity.database}
+                  databaseSchema={entity.databaseSchema}
+                  deleted={entity.deleted}
+                  description={entity.description}
+                  fullyQualifiedName={entity.fullyQualifiedName}
+                  id={`tabledatacard${index}`}
+                  indexType={entity.index}
+                  name={entity.name}
+                  owner={entity.owner}
+                  service={entity.service}
+                  serviceType={entity.serviceType || '--'}
+                  tags={entity.tags}
+                  tier={getTierFromEntityInfo(entity)}
+                  usage={entity.weeklyPercentileRank}
+                />
+              </div>
+            ))
+          )}
           {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
             <NextPrevious
               isNumberBased

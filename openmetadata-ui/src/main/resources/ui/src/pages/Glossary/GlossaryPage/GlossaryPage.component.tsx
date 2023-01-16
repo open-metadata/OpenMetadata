@@ -34,8 +34,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   deleteGlossary,
+  deleteGlossaryTerm,
   getGlossariesList,
+  getGlossaryTermByFQN,
   patchGlossaries,
+  patchGlossaryTerm,
 } from 'rest/glossaryAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
@@ -52,6 +55,7 @@ const GlossaryPage = () => {
   const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
     LOADING_STATE.INITIAL
   );
+  const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
 
   const isGlossaryActive = useMemo(() => {
     if (glossaryFqn) {
@@ -60,20 +64,6 @@ const GlossaryPage = () => {
 
     return true;
   }, [glossaryFqn]);
-  const selectedData = useMemo(() => {
-    if (isGlossaryActive && glossaries.length) {
-      if (glossaryFqn) {
-        return (
-          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
-          glossaries[0]
-        );
-      }
-
-      return glossaries[0];
-    }
-
-    return undefined;
-  }, [glossaryFqn, glossaries, isGlossaryActive]);
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -102,6 +92,30 @@ const GlossaryPage = () => {
   useEffect(() => {
     fetchGlossaryList();
   }, []);
+
+  const fetchGlossaryTermDetails = async () => {
+    try {
+      const response = await getGlossaryTermByFQN(
+        glossaryFqn,
+        'relatedTerms,reviewers,tags'
+      );
+      setSelectedData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  useEffect(() => {
+    if (glossaries.length) {
+      if (!isGlossaryActive) {
+        fetchGlossaryTermDetails();
+      } else {
+        setSelectedData(
+          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
+            glossaries[0]
+        );
+      }
+    }
+  }, [isGlossaryActive, glossaryFqn, glossaries]);
 
   const updateGlossary = async (updatedData: Glossary) => {
     const jsonPatch = compare(selectedData as Glossary, updatedData);
@@ -151,6 +165,54 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
+  const handleGlossaryTermUpdate = async (updatedData: GlossaryTerm) => {
+    const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
+    try {
+      const response = await patchGlossaryTerm(
+        selectedData?.id as string,
+        jsonPatch
+      );
+      if (response) {
+        setSelectedData(response);
+        if (selectedData?.name !== updatedData.name) {
+          history.push(getGlossaryPath(response.fullyQualifiedName));
+          fetchGlossaryList();
+        }
+      } else {
+        throw jsonData['api-error-messages']['update-glossary-term-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleGlossaryTermDelete = (id: string) => {
+    setDeleteStatus(LOADING_STATE.WAITING);
+    deleteGlossaryTerm(id)
+      .then(() => {
+        setDeleteStatus(LOADING_STATE.SUCCESS);
+        showSuccessToast(
+          jsonData['api-success-messages']['delete-glossary-term-success']
+        );
+        let fqn;
+        if (glossaryFqn) {
+          const fqnArr = glossaryFqn.split(FQN_SEPARATOR_CHAR);
+          fqnArr.pop();
+          fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
+        }
+
+        history.push(getGlossaryPath(fqn));
+        fetchGlossaryList();
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-glossary-term-error']
+        );
+      })
+      .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
+  };
+
   if (isLoading || isUndefined(selectedData)) {
     return <Loader />;
   }
@@ -180,32 +242,14 @@ const GlossaryPage = () => {
     <PageContainerV1>
       <PageLayoutV1 leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}>
         <GlossaryV1
-          assetData={{
-            data: [],
-            total: 1,
-            currPage: 1,
-          }}
-          currentPage={0}
           deleteStatus={deleteStatus}
-          handleGlossaryTermUpdate={function (
-            value: GlossaryTerm
-          ): Promise<void> {
-            throw new Error('Function not implemented.');
-          }}
+          handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           isChildLoading={false}
           isGlossaryActive={isGlossaryActive}
           selectedData={selectedData}
           updateGlossary={updateGlossary}
-          onAssetPaginate={function (
-            num: string | number,
-            activePage?: number | undefined
-          ): void {
-            throw new Error('Function not implemented.');
-          }}
           onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={function (id: string): void {
-            throw new Error('Function not implemented.');
-          }}
+          onGlossaryTermDelete={handleGlossaryTermDelete}
         />
       </PageLayoutV1>
     </PageContainerV1>

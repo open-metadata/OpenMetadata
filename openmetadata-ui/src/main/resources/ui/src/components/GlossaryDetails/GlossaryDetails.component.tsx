@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button as ButtonAntd, Card as AntdCard, Tabs, Tooltip } from 'antd';
 import classNames from 'classnames';
+import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
@@ -52,7 +53,6 @@ type props = {
   permissions: OperationPermission;
   glossary: Glossary;
   updateGlossary: (value: Glossary) => Promise<void>;
-  handleUserRedirection?: (name: string) => void;
 };
 
 const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
@@ -478,7 +478,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         activeKey={activeTab}
         items={[
           {
-            label: 'Summary',
+            label: t('label.summary'),
             key: 'summary',
             children: (
               <div className="tw-flex tw-gap-3">
@@ -522,7 +522,11 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
                           {getEntityName(glossary.owner)}
                         </Link>
                       ) : (
-                        <span className="tw-text-grey-muted">No owner</span>
+                        <span className="tw-text-grey-muted">
+                          {t('label.no-entity', {
+                            entity: t('label.owner-lowercase'),
+                          })}
+                        </span>
                       )}
                     </div>
                   </Card>
@@ -537,9 +541,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             ),
           },
           {
-            label: 'Glossary Terms',
+            label: t('label.glossary-term-plural'),
             key: 'glossaryTerms',
-            children: <h1>Glossary term</h1>,
+            children: <GlossaryTermTab glossaryId={glossary.id} />,
           },
         ]}
         onChange={(key) => setActiveTab(key)}
