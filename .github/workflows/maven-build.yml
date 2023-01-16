@@ -97,7 +97,6 @@ jobs:
         run: |
           sudo make install_antlr_cli
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
-
       - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
