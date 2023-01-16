@@ -115,7 +115,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         },
       },
     ],
-    [parsedRecords]
+    []
   );
 
   return (
@@ -157,6 +157,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           data-testid="import-result-table"
           dataSource={parsedRecords}
           pagination={false}
+          rowKey="name"
           size="small"
         />
       </Col>
