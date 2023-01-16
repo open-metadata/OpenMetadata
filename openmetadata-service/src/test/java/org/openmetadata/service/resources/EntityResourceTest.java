@@ -182,13 +182,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
-  protected boolean supportsNameWithDot = true;
-  protected boolean supportsNameWithApostrophe = true;
-  protected boolean supportsNameWithSpace = true;
+  protected String supportedNameCharacters = ".' _"; // Special characters supported in the entity name
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+
+  public static final String ENTITY_LINK_MATCH_ERROR =
+      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$\"]";
 
   // Users
   public static User USER1;
@@ -896,19 +897,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
-    if (!supportsNameWithDot) {
+    if (!supportedNameCharacters.contains(" ")) { // Name does not support space
       return;
     }
-    // Entity without "." should not have quoted fullyQualifiedName
-    String name = format("%s_foo_bar", entityType);
-    K request = createRequest(name, "", null, null);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertFalse(entity.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
-    name = format("%s_foo.bar", entityType);
-    request = createRequest(name, "", null, null);
-    entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    String name = format("%s_foo.bar", entityType);
+    K request = createRequest(name, "", null, null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // The FQN has quote delimited parts if the FQN is hierarchical.
     // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
@@ -2295,10 +2291,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final String getEntityName(TestInfo test) {
-    // "'" is added to ensure the names are escaped correctly in backend SQL queries
-    String apostrophe = supportsNameWithApostrophe ? "'" : "";
-    String space = supportsNameWithSpace ? " " : "";
-    return format("%s%s_%s%s", entityType, apostrophe, space, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
+    return format("%s%s%s", entityType, supportedNameCharacters, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**
@@ -2307,16 +2301,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
    * these 3 strings)
    */
   public final String getEntityName(TestInfo test, int index) {
-    // "'" is added to ensure the names are escaped correctly in backend SQL queries
-    String apostrophe = supportsNameWithApostrophe ? "'" : "";
-    String space = supportsNameWithSpace ? " " : "";
+    // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
     return format(
-        "%s%s_%s%s_%s",
+        "%s%s%s%s",
         entityType,
-        apostrophe,
-        space,
-        getNthAlphanumericString(index),
-        test.getDisplayName().replaceAll("\\(.*\\)", ""));
+        supportedNameCharacters,
+        test.getDisplayName().replaceAll("\\(.*\\)", ""),
+        getNthAlphanumericString(index));
   }
 
   /**

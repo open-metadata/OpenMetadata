@@ -399,9 +399,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Validate fully qualified name
     String fqn =
         entity.getParent() == null
-            ? entity.getGlossary().getFullyQualifiedName()
-            : entity.getParent().getFullyQualifiedName();
-    fqn = FullyQualifiedName.add(fqn, entity.getName());
+            ? FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName())
+            : FullyQualifiedName.add(entity.getParent().getFullyQualifiedName(), entity.getName());
     assertEquals(fqn, entity.getFullyQualifiedName());
 
     // Validate glossary that holds this term is present

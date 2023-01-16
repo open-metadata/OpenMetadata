@@ -60,8 +60,8 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
     supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
-    supportsNameWithDot = false;
-    supportsNameWithApostrophe = false;
+    // Special characters are not supported in the name
+    supportedNameCharacters = supportedNameCharacters.replaceAll("[ ':&/.]", "");
   }
 
   public void setupTypes() throws HttpResponseException {
@@ -203,9 +203,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   @Override
   public CreateType createRequest(String name) {
-    if (name != null) {
-      name = name.replaceAll("[. _-]", "");
-    }
     return new CreateType().withName(name).withCategory(Category.Field).withSchema(INT_TYPE.getSchema());
   }
 

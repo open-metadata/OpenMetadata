@@ -49,7 +49,8 @@ import org.openmetadata.service.util.TestUtils;
 public class LocationResourceTest extends EntityResourceTest<Location, CreateLocation> {
   public LocationResourceTest() {
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
-    supportsNameWithSpace = false;
+    // TODO quoted location is not allowed by the Location listPrefix APIs
+    supportedNameCharacters = supportedNameCharacters.replaceAll("[ .]", ""); // Space not supported
   }
 
   @Override

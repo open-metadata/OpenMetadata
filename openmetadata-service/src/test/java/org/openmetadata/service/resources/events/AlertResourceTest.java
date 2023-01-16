@@ -63,7 +63,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
 
   public AlertResourceTest() {
     super(Entity.ALERT, Alert.class, AlertResource.AlertList.class, "alerts", AlertResource.FIELDS);
-    supportsNameWithSpace = false;
+    supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsSoftDelete = false;
     supportsFieldsQueryParam = false;
     supportsEmptyDescription = true;

@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -114,6 +115,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     INVALID_LINK2 = String.format("<#E::table::%s>", "non-existent");
   }
 
+  @Test
+  void test_getEntityName(TestInfo test) {
+    assertTrue(getEntityName(test).contains(supportedNameCharacters));
+  }
+
   @Override
   @Test
   public void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
@@ -164,9 +170,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     create.withEntityLink(INVALID_LINK1).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(
-        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[entityLink must match \"^<#E::\\w+::[\\w'\\- .:+/]+>$\"]");
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_LINK_MATCH_ERROR);
 
     create.withEntityLink(INVALID_LINK2).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(

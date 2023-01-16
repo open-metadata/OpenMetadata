@@ -861,10 +861,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a user with TeamManager role.
     UserResourceTest userResourceTest = new UserResourceTest();
     return userResourceTest.createEntity(
-        userResourceTest
-            .createRequest(testInfo)
-            .withName(getEntityName(testInfo) + "manager")
-            .withRoles(List.of(teamManager.getId())),
+        userResourceTest.createRequest(testInfo).withName("user.TeamManager").withRoles(List.of(teamManager.getId())),
         ADMIN_AUTH_HEADERS);
   }
 

@@ -173,7 +173,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
-      entity.setFullyQualifiedName(FullyQualifiedName.add(entity.getGlossary().getName(), entity.getName()));
+      entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName()));
     } else { // Glossary term that is a child of another glossary term
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
@@ -230,11 +230,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void validateHierarchy(GlossaryTerm term) {
-    // The glossary and the parent term must belong to the same hierachy
+    // The glossary and the parent term must belong to the same hierarchy
     if (term.getParent() == null) {
       return; // Parent is the root of the glossary
     }
-    if (!term.getParent().getFullyQualifiedName().startsWith(term.getGlossary().getFullyQualifiedName())) {
+    String glossaryFqn = FullyQualifiedName.build(term.getGlossary().getName());
+    if (!term.getParent().getFullyQualifiedName().startsWith(glossaryFqn)) {
       throw new IllegalArgumentException(
           String.format(
               "Invalid hierarchy - parent [%s] does not belong to glossary[%s]",
