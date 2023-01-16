@@ -30,11 +30,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-CARDS_URL = (
-    "cards?includeV4PageLayouts=true&parts=metadata"
-    ",datasources,library,drillPathURNs,owners,certification,dateInfo,subscriptions,slicers"
-)
-
 HEADERS = {"Content-Type": "application/json"}
 WORKFLOW_URL = "dataprocessing/v1/dataflows"
 
