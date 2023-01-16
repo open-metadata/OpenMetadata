@@ -13,31 +13,43 @@
 
 import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import SwitchField from './SwitchField.component';
+import DBTCommonFields from './DBTCommonFields.component';
 
 const mockProps = {
   dbtUpdateDescriptions: false,
-  id: 'test-id',
+  descriptionId: 'test-id',
+  dbtClassificationName: 'DBT',
   handleUpdateDescriptions: jest.fn(),
+  handleUpdateDBTClassification: jest.fn(),
 };
 
-jest.mock('antd', () => ({
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Switch: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="switch">Switch</div>),
-}));
-
-describe('SwitchField', () => {
+describe('DBTCommonFields', () => {
   it('Component should render properly', () => {
-    const { container } = render(<SwitchField {...mockProps} />);
+    const { container } = render(<DBTCommonFields {...mockProps} />);
 
     const switchLabel = getByTestId(container, 'test-id');
-    const switchButton = getByTestId(container, 'switch');
+    const switchButton = getByTestId(container, 'description-switch');
     const switchDescription = getByTestId(container, 'switch-description');
 
     expect(switchLabel).toBeInTheDocument();
     expect(switchButton).toBeInTheDocument();
     expect(switchDescription).toBeInTheDocument();
+
+    const classificationLabel = getByTestId(
+      container,
+      'dbt-classification-label'
+    );
+    const classificationInput = getByTestId(
+      container,
+      'dbt-classification-name'
+    );
+    const classificationDescription = getByTestId(
+      container,
+      'dbt-classification-description'
+    );
+
+    expect(classificationLabel).toBeInTheDocument();
+    expect(classificationInput).toBeInTheDocument();
+    expect(classificationDescription).toBeInTheDocument();
   });
 });
