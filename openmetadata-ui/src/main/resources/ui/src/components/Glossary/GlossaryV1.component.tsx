@@ -332,8 +332,9 @@ const GlossaryV1 = ({
                   <p className="tw-text-grey-muted tw-text-center">
                     {searchText ? (
                       <span>
-                        {t('label.no-glossary-found-for-searchText', {
-                          searchText,
+                        {t('message.no-entity-found-for-name', {
+                          entity: t('label.glossary-term'),
+                          name: searchText,
                         })}
                       </span>
                     ) : (
