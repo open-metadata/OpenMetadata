@@ -58,6 +58,16 @@
     ]
   },
   {
+    "name" : "query",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewQueries",
+      "EditAll"
+    ]
+  },
+  {
     "name" : "dashboard",
     "operations" : [
       "Create",
@@ -497,16 +507,6 @@
       "Delete",
       "ViewAll",
       "EditDescription"
-    ]
-  },
-  {
-    "name" : "query",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "ViewTableQuery",
-      "Edit"
     ]
   }
 ]
