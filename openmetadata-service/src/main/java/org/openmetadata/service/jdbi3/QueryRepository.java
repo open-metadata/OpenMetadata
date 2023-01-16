@@ -17,8 +17,8 @@ import org.openmetadata.service.util.ResultList;
 
 public class QueryRepository extends EntityRepository<Query> {
 
-  private static final String SQL_PATCH_FIELDS = "";
-  private static final String SQL_UPDATE_FIELDS = "";
+  private static final String QUERY_PATCH_FIELDS = "";
+  private static final String QUERY_UPDATE_FIELDS = "";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -27,8 +27,8 @@ public class QueryRepository extends EntityRepository<Query> {
         Query.class,
         dao.queryDao(),
         dao,
-        SQL_PATCH_FIELDS,
-        SQL_UPDATE_FIELDS);
+        QUERY_PATCH_FIELDS,
+        QUERY_UPDATE_FIELDS);
   }
 
   @Override
@@ -61,7 +61,7 @@ public class QueryRepository extends EntityRepository<Query> {
 
   public ResultList<Query> getQueriesByEntityId(String id, String before, String after, int limit) {
     RestUtil.validateCursors(before, after);
-    int totalQueryCount = daoCollection.queryDao().listSqlQueryCount(id, Entity.QUERY, Relationship.HAS.ordinal());
+    int totalQueryCount = daoCollection.queryDao().listQueryCount(id, Entity.QUERY, Relationship.HAS.ordinal());
     List<CollectionDAO.QueryList> queries;
     if (before != null) {
       queries =
@@ -96,11 +96,11 @@ public class QueryRepository extends EntityRepository<Query> {
       beforeCursor = tableQueries.get(0).getFqn();
     }
     afterCursor = tableQueries.get(tableQueries.size() - 1).getFqn();
-    List<Query> sqlQueries = new ArrayList<>();
-    for (CollectionDAO.QueryList sqlQueryRow : tableQueries) {
-      sqlQueries.add(sqlQueryRow.getQuery());
+    List<Query> queries = new ArrayList<>();
+    for (CollectionDAO.QueryList queryRow : tableQueries) {
+      queries.add(queryRow.getQuery());
     }
-    return new ResultList<>(sqlQueries, beforeCursor, afterCursor, total);
+    return new ResultList<>(queries, beforeCursor, afterCursor, total);
   }
 
   private ResultList<Query> getAfterQueriesList(
@@ -112,10 +112,10 @@ public class QueryRepository extends EntityRepository<Query> {
       tableQueries.remove(limit);
       afterCursor = tableQueries.get(limit - 1).getFqn();
     }
-    List<Query> sqlQueries = new ArrayList<>();
-    for (CollectionDAO.QueryList sqlQueryRow : tableQueries) {
-      sqlQueries.add(sqlQueryRow.getQuery());
+    List<Query> queries = new ArrayList<>();
+    for (CollectionDAO.QueryList queryRow : tableQueries) {
+      queries.add(queryRow.getQuery());
     }
-    return new ResultList<>(sqlQueries, beforeCursor, afterCursor, total);
+    return new ResultList<>(queries, beforeCursor, afterCursor, total);
   }
 }

@@ -1966,7 +1966,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT count(*) FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity")
-    int listSqlQueryCount(@Bind("id") String id, @Bind("entity") String entity, @Bind("relation") int relation);
+    int listQueryCount(@Bind("id") String id, @Bind("entity") String entity, @Bind("relation") int relation);
   }
 
   interface PipelineDAO extends EntityDAO<Pipeline> {
