@@ -78,7 +78,6 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
 
-
       - name: Cache dependencies
         id: cache-output
         uses: actions/cache@v2
