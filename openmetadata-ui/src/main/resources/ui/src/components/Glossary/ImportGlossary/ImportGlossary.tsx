@@ -30,11 +30,12 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import Loader from 'components/Loader/Loader';
 import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
-import React, { FC, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { importGlossaryInCSVFormat } from 'rest/glossaryAPI';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import ImportResult from '../ImportResult/ImportResult';
 import './ImportGlossary.less';
 
 interface Props {
@@ -46,27 +47,36 @@ const { Dragger } = Upload;
 
 const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const { t } = useTranslation();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isPreview, setIsPreview] = useState<boolean>(false);
+
   const [fileName, setFileName] = useState<string>('');
+
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = [
-    {
-      name: glossaryName,
-      url: getGlossaryPath(glossaryName),
-    },
-    {
-      name: 'Import Glossary Terms',
-      url: '',
-      activeTitle: true,
-    },
-  ];
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () => [
+      {
+        name: glossaryName,
+        url: getGlossaryPath(glossaryName),
+      },
+      {
+        name: 'Import Glossary Terms',
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [glossaryName]
+  );
 
   const handleUpload: UploadProps['customRequest'] = async (options) => {
     setIsLoading(true);
     try {
       const reader = new FileReader();
+
       reader.readAsText(options.file as Blob);
+
       reader.addEventListener('load', async (e) => {
         const result = e.target?.result;
         if (result) {
@@ -78,6 +88,10 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
           setCsvImportResult(response);
         }
       });
+
+      reader.addEventListener('error', () => {
+        throw t('server.unexpected-error');
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -86,12 +100,25 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   };
 
   return (
-    <div>
-      <TitleBreadcrumb titleLinks={breadcrumbList} />
-      <Row gutter={[16, 16]}>
-        <Col>
-          <Title level={5}>Import Glossary Terms</Title>
+    <Row gutter={[16, 16]}>
+      <Col span={24}>
+        <TitleBreadcrumb titleLinks={breadcrumbList} />
+      </Col>
+      <Col span={24}>
+        <Space className="w-full justify-between">
+          <Title level={5}>
+            {isPreview ? glossaryName : 'Import Glossary Terms'}
+          </Title>
+          {isPreview && !isUndefined(csvImportResult) && (
+            <Button type="primary">{t('label.import')}</Button>
+          )}
+        </Space>
+      </Col>
+      {isPreview && !isUndefined(csvImportResult) ? (
+        <Col span={24}>
+          <ImportResult csvImportResult={csvImportResult} />
         </Col>
+      ) : (
         <Col span={24}>
           {isUndefined(csvImportResult) ? (
             <Dragger
@@ -100,7 +127,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                 setIsLoading(true);
                 setFileName(file.name);
               }}
-              className="file-dragger-wrapper p-lg"
+              className="file-dragger-wrapper p-lg bg-white"
               customRequest={handleUpload}
               multiple={false}
               showUploadList={false}>
@@ -147,14 +174,16 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                   <Button onClick={() => setCsvImportResult(undefined)}>
                     {t('label.cancel')}
                   </Button>
-                  <Button type="primary">{t('label.preview')}</Button>
+                  <Button type="primary" onClick={() => setIsPreview(true)}>
+                    {t('label.preview')}
+                  </Button>
                 </Space>
               </Space>
             </Card>
           )}
         </Col>
-      </Row>
-    </div>
+      )}
+    </Row>
   );
 };
 

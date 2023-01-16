@@ -1,5 +1,6 @@
 {
   "label": {
+    "Synonyms": "synonyms",
     "aborted": "Aborted",
     "accept-suggestion": "Accept Suggestion",
     "account": "Account",
@@ -332,6 +333,7 @@
     "not-null": "Not Null",
     "not-used": "Not Used",
     "notification-plural": "Notifications",
+    "number-of-rows": "Number of rows",
     "of-lowercase": "of",
     "okta": "Okta",
     "okta-email": "Okta Service Account Email",
@@ -352,6 +354,7 @@
     "owner-lowercase": "owner",
     "owner-plural": "Owners",
     "page-views-by-data-asset-plural": "Page Views by Data Assets",
+    "parent": "Parent",
     "partition-lowercase-plural": "partitions",
     "partition-plural": "Partitions",
     "partitions": "Partitions",
