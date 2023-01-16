@@ -52,7 +52,7 @@ _TYPE_MAP = {
     DataType.CHAR: sqlalchemy.CHAR,
     DataType.VARCHAR: sqlalchemy.VARCHAR,
     DataType.BOOLEAN: sqlalchemy.BOOLEAN,
-    DataType.BINARY: sqlalchemy.LargeBinary,
+    DataType.BINARY: CustomTypes.BYTES.value,
     DataType.VARBINARY: sqlalchemy.VARBINARY,
     DataType.ARRAY: sqlalchemy.ARRAY,
     DataType.BLOB: CustomTypes.BYTES.value,
@@ -67,7 +67,6 @@ _TYPE_MAP = {
     DataType.JSON: sqlalchemy.JSON,
     DataType.UUID: CustomTypes.UUID.value,
     DataType.BYTEA: CustomTypes.BYTEA.value,
-    sqlalchemy.types.LargeBinary: CustomTypes.BYTES.value,
 }
 
 SQA_RESERVED_ATTRIBUTES = ["metadata"]

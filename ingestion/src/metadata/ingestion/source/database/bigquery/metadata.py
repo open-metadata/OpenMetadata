@@ -20,8 +20,6 @@ from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql.sqltypes import _Binary
-from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
@@ -57,29 +55,13 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
-
-class Bytes(_Binary, TypeEngine):
-
-    """Define base behavior for bytes types."""
-
-    def __init__(self, length=None):
-        super().__init__()
-        self.length = length
-
-    @property
-    def python_type(self):
-        return CustomTypes.BYTES
-
-
 logger = ingestion_logger()
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
-_types._type_map["BYTES"] = Bytes  # pylint: disable=protected-access
 
 
 def get_columns(bq_schema):
