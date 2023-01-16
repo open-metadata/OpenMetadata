@@ -12,9 +12,10 @@
  */
 
 import {
-    addTeam,
-    interceptURL, uuid,
-    verifyResponseStatusCode
+  addTeam,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
 } from '../../common/common';
 
 const buTeamName = `bu-${uuid()}`;
@@ -53,11 +54,15 @@ describe('Add nested teams and test TeamsSelectable', () => {
       addTeam(getTeam(teamName));
 
       cy.reload();
-      interceptURL('GET','/api/v1/search/query?q=*&from=*&size=*&index=*', 'getCreatedTeam')
+      interceptURL(
+        'GET',
+        '/api/v1/search/query?q=*&from=*&size=*&index=*',
+        'getCreatedTeam'
+      );
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
 
-      verifyResponseStatusCode('@getCreatedTeam', 200)
+      verifyResponseStatusCode('@getCreatedTeam', 200);
     });
 
     verifyResponseStatusCode('@getPermissions', 200);
@@ -73,7 +78,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-    //Enter team name
+    // Enter team name
     cy.get('#create-user-bot-form .ant-select-selector')
       .should('exist')
       .scrollIntoView()

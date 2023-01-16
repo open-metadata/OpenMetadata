@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Python Dependencies
+"""
+
 import os
 from typing import Dict, Set
 
@@ -17,8 +21,8 @@ from setuptools import find_namespace_packages, setup
 
 def get_long_description():
     root = os.path.dirname(__file__)
-    with open(os.path.join(root, "README.md")) as f:
-        description = f.read()
+    with open(os.path.join(root, "README.md"), encoding="UTF-8") as file:
+        description = file.read()
     return description
 
 
