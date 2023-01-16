@@ -71,12 +71,23 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 11
+        needs: Cache dependencies
         uses: actions/setup-java@v3
         with:
           java-version: '11'
           distribution: 'adopt'
 
+      - name: Cache dependencies
+        id: cache-output
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Install Ubuntu dependencies
+        needs: Cache dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
@@ -90,7 +101,7 @@ jobs:
       - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'pull_request'}}
+        if: ${{ github.event_name == 'pull_request' &&  steps.cache-output.outputs.cache-hit == 'true'}}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
@@ -100,22 +111,6 @@ jobs:
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      # - name: Cache dependencies
-      #   id: cache-dependencies
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.m2
-      #     key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-maven-
 
       - name: Build with Maven
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
