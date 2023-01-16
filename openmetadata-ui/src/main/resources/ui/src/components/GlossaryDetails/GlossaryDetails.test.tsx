@@ -17,13 +17,6 @@ import { mockedGlossaries } from '../../mocks/Glossary.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetails from './GlossaryDetails.component';
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
-    glossaryName: 'GlossaryName',
-  }),
-}));
-
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
@@ -39,12 +32,21 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
+jest.mock(
+  'components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
+  }
+);
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p>{children}</p>
     )),
+  useParams: jest.fn().mockImplementation(() => ({
+    glossaryName: 'GlossaryName',
+  })),
 }));
 
 const mockProps = {

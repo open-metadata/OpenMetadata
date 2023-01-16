@@ -23,8 +23,9 @@ import {
 import { omit } from 'lodash';
 import { LoadingState } from 'Models';
 import React from 'react';
-import { mockedAssetData, mockedGlossaries } from '../../mocks/Glossary.mock';
+import { mockedGlossaries } from '../../mocks/Glossary.mock';
 import GlossaryV1 from './GlossaryV1.component';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -78,15 +79,12 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
+  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
 }));
 
 jest.mock('components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
-}));
-
 jest.mock('components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
@@ -109,33 +107,15 @@ jest.mock('../../utils/TimeUtils', () => ({
   formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
 }));
 
-const mockProps = {
-  assetData: mockedAssetData,
-  currentPage: 1,
+const mockProps: GlossaryV1Props = {
   deleteStatus: 'initial' as LoadingState,
-  isSearchResultEmpty: false,
-  isHasAccess: true,
-  glossaryList: mockedGlossaries,
-  selectedKey: 'Mock Glossary',
-  expandedKey: ['Mock Glossary'],
-  loadingKey: [],
-  handleExpandedKey: jest.fn(),
-  searchText: '',
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
   isChildLoading: false,
-  handleSelectedData: jest.fn(),
-  handleAddGlossaryClick: jest.fn(),
-  handleAddGlossaryTermClick: jest.fn(),
   handleGlossaryTermUpdate: jest.fn(),
   updateGlossary: jest.fn(),
-  handleChildLoading: jest.fn(),
-  handleSearchText: jest.fn(),
   onGlossaryDelete: jest.fn(),
   onGlossaryTermDelete: jest.fn(),
-  onAssetPaginate: jest.fn(),
-  onRelatedTermClick: jest.fn(),
-  handleUserRedirection: jest.fn(),
 };
 
 describe('Test Glossary component', () => {

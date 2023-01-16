@@ -18,7 +18,7 @@ import {
   deleteGlossaryTerm,
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
-import { mockSearchData, MOCK_GLOSSARY } from './glossary.mock';
+import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPage from './GlossaryPage.component';
 
 jest.useRealTimers();
@@ -32,41 +32,10 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockSearchData)),
-}));
-
 jest.mock('components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>
-      <button
-        data-testid="handleAddGlossaryClick"
-        onClick={props.handleAddGlossaryClick}>
-        handleAddGlossaryClick
-      </button>
-      <button
-        data-testid="handleAddGlossaryTermClick"
-        onClick={props.handleAddGlossaryTermClick}>
-        handleAddGlossaryTermClick
-      </button>
-      <button
-        data-testid="handleChildLoading"
-        onClick={() => props.handleChildLoading(false)}>
-        handleChildLoading
-      </button>
-      <button
-        data-testid="handleExpandedKey"
-        onClick={() => props.handleExpandedKey(['test', 'test1'], true)}>
-        handleExpandedKey
-      </button>
-      <button
-        data-testid="handleExpandedKeyDefaultValue"
-        onClick={() => props.handleExpandedKey(['test', 'test1'], false)}>
-        handleExpandedKeyDefaultValue
-      </button>
       <button
         data-testid="handleGlossaryTermUpdate"
         onClick={() => props.handleGlossaryTermUpdate(MOCK_GLOSSARY)}>
@@ -83,26 +52,6 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
         handleGlossaryTermDelete
       </button>
       <button
-        data-testid="handleRelatedTermClick"
-        onClick={() => props.onRelatedTermClick(MOCK_GLOSSARY.id)}>
-        handleRelatedTermClick
-      </button>
-      <button
-        data-testid="handleAssetPagination"
-        onClick={() => props.onAssetPaginate('next')}>
-        handleAssetPagination
-      </button>
-      <button
-        data-testid="handleUserRedirection"
-        onClick={() => props.handleUserRedirection('test')}>
-        handleUserRedirection
-      </button>
-      <button
-        data-testid="handleSearchText"
-        onClick={() => props.handleSearchText('test')}>
-        handleSearchText
-      </button>
-      <button
         data-testid="updateGlossary"
         onClick={() => props.updateGlossary(MOCK_GLOSSARY)}>
         updateGlossary
@@ -114,25 +63,15 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
 jest.mock('rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  getGlossariesList: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: [MOCK_GLOSSARY] })),
   patchGlossaryTerm: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
   patchGlossaries: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
-}));
-
-jest.mock('../../utils/GlossaryUtils', () => ({
-  getGlossariesWithRootTerms: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve([MOCK_GLOSSARY])),
-  getHierarchicalKeysByFQN: jest.fn().mockReturnValue(['test', 'test1']),
-  getChildGlossaryTerms: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: [MOCK_GLOSSARY] })),
-  getTermDataFromGlossary: jest.fn().mockReturnValue(MOCK_GLOSSARY),
-  getTermPosFromGlossaries: jest.fn().mockReturnValue([1, 2]),
-  updateGlossaryListBySearchedTerms: jest.fn().mockReturnValue([MOCK_GLOSSARY]),
 }));
 
 describe('Test GlossaryComponent page', () => {
@@ -149,26 +88,11 @@ describe('Test GlossaryComponent page', () => {
       render(<GlossaryPage />);
 
       const glossaryComponent = await screen.findByText(/Glossary.component/i);
-      const handleExpandedKeyDefaultValue = await screen.findByTestId(
-        'handleExpandedKeyDefaultValue'
-      );
-      const handleRelatedTermClick = await screen.findByTestId(
-        'handleRelatedTermClick'
-      );
-      const handleAssetPagination = await screen.findByTestId(
-        'handleAssetPagination'
-      );
-      const handleUserRedirection = await screen.findByTestId(
-        'handleUserRedirection'
-      );
+
       const updateGlossary = await screen.findByTestId('updateGlossary');
 
       expect(glossaryComponent).toBeInTheDocument();
 
-      fireEvent.click(handleExpandedKeyDefaultValue);
-      fireEvent.click(handleRelatedTermClick);
-      fireEvent.click(handleAssetPagination);
-      fireEvent.click(handleUserRedirection);
       fireEvent.click(updateGlossary);
     });
   });
@@ -178,39 +102,18 @@ describe('Test GlossaryComponent page', () => {
       render(<GlossaryPage />);
 
       const glossaryComponent = await screen.findByText(/Glossary.component/i);
-      const handleAddGlossaryClick = await screen.findByTestId(
-        'handleAddGlossaryClick'
-      );
-      const handleAddGlossaryTermClick = await screen.findByTestId(
-        'handleAddGlossaryTermClick'
-      );
-      const handleChildLoading = await screen.findByTestId(
-        'handleChildLoading'
-      );
-      const handleExpandedKey = await screen.findByTestId('handleExpandedKey');
-      const handleGlossaryDelete = await screen.findByTestId(
-        'handleGlossaryDelete'
-      );
+
       const handleGlossaryTermUpdate = await screen.findByTestId(
         'handleGlossaryTermUpdate'
       );
       const handleGlossaryTermDelete = await screen.findByTestId(
         'handleGlossaryTermDelete'
       );
-      const handleSearchText = await screen.findByTestId('handleSearchText');
 
       expect(glossaryComponent).toBeInTheDocument();
 
-      fireEvent.click(handleAddGlossaryClick);
-      fireEvent.click(handleAddGlossaryTermClick);
-      fireEvent.click(handleChildLoading);
-      fireEvent.click(handleExpandedKey);
-      fireEvent.click(handleGlossaryDelete);
-
       fireEvent.click(handleGlossaryTermUpdate);
       fireEvent.click(handleGlossaryTermDelete);
-
-      fireEvent.click(handleSearchText);
     });
   });
 
