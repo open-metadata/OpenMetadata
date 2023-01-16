@@ -47,6 +47,24 @@ jobs:
 
     steps:
 
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      # - name: Verify PR labels
+      #   uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+      #   if: ${{ github.event_name == 'pull_request_target' }}
+      #   with:
+      #     github-token: '${{ secrets.GITHUB_TOKEN }}'
+      #     valid-labels: 'safe to test'
+      #     pull-request-number: '${{ github.event.pull_request.number }}'
+      #     disable-reviews: true  # To not auto approve changes
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -84,21 +102,13 @@ jobs:
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
-
-
-      - name: Use cached output
-        run: |
-          git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-          mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-              -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-              -Dsonar.pullrequest.base=main \
-              -Dsonar.pullrequest.github.repository=OpenMetadata \
-              -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-              -Dsonar.pullrequest.provider=github clean install
-        env:
-          CACHE_NAME: cache-out
-        if: steps.cache-output.outputs.cache-hit == 'true'
+        - name: Cache dependencies
+          uses: actions/cache@v2
+          with:
+            path: ~/.m2/repository
+            key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            restore-keys: |
+              ${{ runner.os }}-maven-
 
       # - name: Cache dependencies
       #   id: cache-dependencies
