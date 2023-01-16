@@ -45,7 +45,7 @@ SET json = JSON_INSERT(
 )
 WHERE name = 'columnValuesToBeBetween';
 
-UPDATE pipeline_entity 
+UPDATE pipeline_entity
 SET json = JSON_INSERT(
         JSON_REMOVE(json, '$.name'),
         '$.name',
@@ -73,3 +73,14 @@ JSON_OBJECT(
 	)
 )
 WHERE serviceType = 'Superset';
+
+CREATE TABLE IF NOT EXISTS query_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    UNIQUE(fullyQualifiedName),
+    INDEX name_index (fullyQualifiedName)
+);

@@ -68,3 +68,12 @@ jsonb_build_object('connection',jsonb_build_object(
 )), true)
 where servicetype = 'Superset';
 
+CREATE TABLE IF NOT EXISTS query_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    UNIQUE (fullyQualifiedName)
+);

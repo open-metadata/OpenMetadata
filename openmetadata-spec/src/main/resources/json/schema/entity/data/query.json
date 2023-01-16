@@ -1,0 +1,91 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/Query.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Query",
+  "description": "This schema defines the type to capture the table's queries.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Query",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the query.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "query": {
+      "description": "query.",
+      "type": "string"
+    },
+    "duration": {
+      "description": "How long did the query took to run in seconds.",
+      "type": "number"
+    },
+    "users": {
+      "description": "List of users who ran this query.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "vote": {
+      "description": "Users can vote up to rank the popular queries.",
+      "type": "number",
+      "default": 1
+    },
+    "checksum": {
+      "description": "Checksum to avoid registering duplicate queries.",
+      "type": "string"
+    },
+    "queryDate": {
+      "description": "Date on which the query ran.",
+      "$ref": "../../type/basic.json#/definitions/date"
+    },
+    "description": {
+      "description": "Description of a query.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the query.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this Query resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this query.",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of a entity to which the query belong",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a query in the form `checksum.entityName`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "entityName": {
+      "description": "Name of a entity to which the query belong",
+      "type": "string"
+    }
+  },
+  "required": ["query", "entityName"],
+  "additionalProperties": false
+}
