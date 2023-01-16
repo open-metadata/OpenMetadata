@@ -12,9 +12,10 @@
  */
 import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
 import {
-    descriptionBox,
-    interceptURL, uuid,
-    verifyResponseStatusCode
+  descriptionBox,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
 
@@ -35,7 +36,7 @@ const expirationTime = {
 };
 const getCreatedBot = () => {
   interceptURL('GET', `/api/v1/bots/name/${botName}`, 'getCreatedBot');
-  //Click on created Bot name
+  // Click on created Bot name
   cy.get(`[data-testid="bot-link-${botName}"]`)
     .should('exist')
     .should('be.visible')
@@ -44,22 +45,22 @@ const getCreatedBot = () => {
 };
 
 const revokeToken = () => {
-  //Click on revoke button
+  // Click on revoke button
   cy.get('[data-testid="revoke-button"]')
     .should('contain', 'Revoke token')
     .should('be.visible')
     .click();
-  //Verify the revoke text
+  // Verify the revoke text
   cy.get('[data-testid="body-text"]').should(
     'contain',
     'Are you sure you want to revoke access for JWT token?'
   );
-  //Click on confirm button
+  // Click on confirm button
   cy.get('[data-testid="save-button"]')
     .should('exist')
     .should('be.visible')
     .click();
-  //Verify the revoke is successful
+  // Verify the revoke is successful
   cy.get('[data-testid="revoke-button"]').should('not.exist');
   cy.get('[data-testid="auth-mechanism"]')
     .should('be.visible')
@@ -101,21 +102,21 @@ describe('Bots Page should work properly', () => {
       .should('be.visible')
       .as('addBotButton');
     cy.wait(500);
-    //Click on add bot button
+    // Click on add bot button
     cy.get('@addBotButton').click();
-    //Enter email
+    // Enter email
     cy.get('[data-testid="email"]').should('exist').type(botEmail);
-    //Enter display name
+    // Enter display name
     cy.get('[data-testid="displayName"]').should('exist').type(botName);
-    //Select token type
+    // Select token type
     cy.get('[data-testid="auth-mechanism"]').should('be.visible').click();
     cy.contains(JWTToken).should('exist').should('be.visible').click();
-    //Select expiry time
+    // Select expiry time
     cy.get('[data-testid="token-expiry"]').should('be.visible').click();
     cy.contains('1 hr').should('exist').should('be.visible').click();
-    //Enter description
+    // Enter description
     cy.get(descriptionBox).type(description);
-    //Click on save button
+    // Click on save button
     cy.wait(1000);
     interceptURL('PUT', '/api/v1/bots', 'createBot');
     cy.get('[data-testid="save-user"]')
@@ -124,7 +125,7 @@ describe('Bots Page should work properly', () => {
       .click();
     verifyResponseStatusCode('@createBot', 201);
     verifyResponseStatusCode('@getBotsList', 200);
-    //Verify bot is getting added in the bots listing page
+    // Verify bot is getting added in the bots listing page
     cy.get('table').should('contain', botName).and('contain', description);
 
     getCreatedBot();
@@ -135,7 +136,7 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="center-panel"]')
       .should('be.visible')
       .should('contain', `${JWTToken} Token`);
-    //Verify expiration time
+    // Verify expiration time
     cy.get('[data-testid="token-expiry"]').should('be.visible');
   });
 
@@ -144,14 +145,14 @@ describe('Bots Page should work properly', () => {
       getCreatedBot();
 
       revokeToken();
-      //Click on token expiry dropdown
+      // Click on token expiry dropdown
       cy.get('[data-testid="token-expiry"]').should('be.visible').click();
-      //Select the expiration period
+      // Select the expiration period
       cy.contains(`${expiry} days`)
         .should('exist')
         .should('be.visible')
         .click();
-      //Save the updated date
+      // Save the updated date
       const expiryDate = getExpiryDateTimeFromDate(
         expiry,
         'days',
@@ -161,7 +162,7 @@ describe('Bots Page should work properly', () => {
       cy.get('[data-testid="center-panel"]')
         .find('[data-testid="revoke-button"]')
         .should('be.visible');
-      //Verify the expiry time
+      // Verify the expiry time
       cy.get('[data-testid="token-expiry"]')
         .should('be.visible')
         .invoke('text')
@@ -172,23 +173,23 @@ describe('Bots Page should work properly', () => {
   it('Update token expiration for unlimited days', () => {
     getCreatedBot();
     revokeToken();
-    //Click on expiry token dropdown
+    // Click on expiry token dropdown
     cy.get('[data-testid="token-expiry"]')
       .should('exist')
       .should('be.visible')
       .click();
-    //Select unlimited days
+    // Select unlimited days
     cy.contains('Unlimited days').should('exist').should('be.visible').click();
-    //Save the selected changes
+    // Save the selected changes
     cy.get('[data-testid="save-edit"]')
       .should('exist')
       .should('be.visible')
       .click();
-    //Verify the updated expiry time
+    // Verify the updated expiry time
     cy.get('[data-testid="center-panel"]')
       .find('[data-testid="revoke-button"]')
       .should('be.visible');
-    //Verify the expiry time
+    // Verify the expiry time
     cy.get('[data-testid="token-expiry"]')
       .should('be.visible')
       .invoke('text')
@@ -198,26 +199,26 @@ describe('Bots Page should work properly', () => {
   it('Update display name and description', () => {
     getCreatedBot();
 
-    //Click on edit display name
+    // Click on edit display name
     cy.get('[data-testid="edit-displayName"]')
       .should('exist')
       .should('be.visible')
       .click();
-    //Enter new display name
+    // Enter new display name
     cy.get('[data-testid="displayName"]')
       .should('be.visible')
       .clear()
       .type(updatedBotName);
-    //Save the updated display name
+    // Save the updated display name
 
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
 
-    //Verify the display name is updated on bot details page
+    // Verify the display name is updated on bot details page
     cy.get('[data-testid="container"]').should('contain', updatedBotName);
     cy.wait(1000);
-    //Click on edit description button
+    // Click on edit description button
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
-    //Enter updated description and save
+    // Enter updated description and save
     cy.get(descriptionBox).clear().type(updatedDescription);
     cy.get('[data-testid="save"]').click();
 
@@ -225,7 +226,7 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="breadcrumb-link"]').first().click();
     verifyResponseStatusCode('@getBotsPage', 200);
 
-    //Verify the updated name is displayed in the Bots listing page
+    // Verify the updated name is displayed in the Bots listing page
     cy.get(`[data-testid="bot-link-${updatedBotName}"]`).should(
       'contain',
       updatedBotName
@@ -237,13 +238,13 @@ describe('Bots Page should work properly', () => {
   });
 
   it('Delete created bot', () => {
-    //Click on delete button
+    // Click on delete button
     cy.get(`[data-testid="bot-delete-${updatedBotName}"]`)
       .should('be.visible')
       .click();
-    //Select permanent delete
+    // Select permanent delete
     cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
-    //Enter confirmation text
+    // Enter confirmation text
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
       .type(DELETE_TERM);

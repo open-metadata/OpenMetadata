@@ -11,24 +11,25 @@
  *  limitations under the License.
  */
 import {
-    addOwner,
-    addTag,
-    addTier,
-    checkAddGroupWithOperator,
-    checkAddRuleWithOperator,
-    checkmustPaths,
-    checkmust_notPaths,
-    CONDITIONS_MUST,
-    CONDITIONS_MUST_NOT,
-    FIELDS,
-    OPERATOR
+  addOwner,
+  addTag,
+  addTier,
+  checkAddGroupWithOperator,
+  checkAddRuleWithOperator,
+  checkmustPaths,
+  checkmust_notPaths,
+  CONDITIONS_MUST,
+  CONDITIONS_MUST_NOT,
+  FIELDS,
+  OPERATOR,
 } from '../../common/advancedSearch';
 
 import {
-    deleteCreatedService, interceptURL,
-    mySqlConnectionInput,
-    testServiceCreationAndIngestion,
-    verifyResponseStatusCode
+  deleteCreatedService,
+  interceptURL,
+  mySqlConnectionInput,
+  testServiceCreationAndIngestion,
+  verifyResponseStatusCode,
 } from '../../common/common';
 
 import { API_SERVICE } from '../../constants/constants';
@@ -39,7 +40,6 @@ const service_name = MYSQL.serviceName;
 describe('Advance search should work properly for all fields', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
 
   it('Pre-requisite for advance search', () => {
@@ -114,13 +114,17 @@ describe('Advance search should work properly for all fields', () => {
       });
     });
   });
+
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
+  });
 });
 
 describe('Advance search should work properly for Add Group functionality', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
+
   Object.values(OPERATOR).forEach((operator) => {
     it(`Verify Add group functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.equalTo.name} and ${CONDITIONS_MUST_NOT.notEqualTo.name} `, () => {
       Object.values(FIELDS).forEach((field) => {
@@ -172,9 +176,9 @@ describe('Advance search should work properly for Add Group functionality', () =
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
         if (field.owner) {
-          val = field.searchCriteriaSecondGroup.split(' ')[0];;
+          val = field.searchCriteriaSecondGroup.split(' ')[0];
         }
-        
+
         checkAddGroupWithOperator(
           CONDITIONS_MUST.contains.name,
           CONDITIONS_MUST_NOT.notContains.name,
@@ -192,13 +196,16 @@ describe('Advance search should work properly for Add Group functionality', () =
       });
     });
   });
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
+  });
 });
 
 describe('Advance search should work properly for Add Rule functionality', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
+
   Object.values(OPERATOR).forEach((operator) => {
     it(`Verify Add Rule functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.equalTo.name} and ${CONDITIONS_MUST_NOT.notEqualTo.name} `, () => {
       Object.values(FIELDS).forEach((field) => {
@@ -250,7 +257,7 @@ describe('Advance search should work properly for Add Rule functionality', () =>
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
         if (field.owner) {
-          val = field.searchCriteriaSecondGroup.split(' ')[0];;
+          val = field.searchCriteriaSecondGroup.split(' ')[0];
         }
         checkAddRuleWithOperator(
           CONDITIONS_MUST.contains.name,
@@ -269,11 +276,16 @@ describe('Advance search should work properly for Add Rule functionality', () =>
       });
     });
   });
+
   it('Delete Created Service', () => {
     deleteCreatedService(
       MYSQL.database,
       service_name,
       API_SERVICE.databaseServices
     );
+  });
+
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
   });
 });
