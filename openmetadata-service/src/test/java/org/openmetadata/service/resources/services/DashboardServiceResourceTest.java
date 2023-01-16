@@ -158,7 +158,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     try {
       return new CreateDashboardService()
           .withName(name)
-          .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
+          .withServiceType(CreateDashboardService.DashboardServiceType.Metabase)
           .withConnection(
               new DashboardConnection()
                   .withConfig(
@@ -178,7 +178,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     try {
       return new CreateDashboardService()
           .withName(name)
-          .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
+          .withServiceType(CreateDashboardService.DashboardServiceType.Metabase)
           .withConnection(
               new DashboardConnection()
                   .withConfig(
@@ -240,7 +240,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
       DashboardServiceType dashboardServiceType,
       Map<String, String> authHeaders) {
     if (expectedDashboardConnection != null && actualDashboardConnection != null) {
-      if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Superset) {
+      if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Metabase) {
         MetabaseConnection expectedSupersetConnection = (MetabaseConnection) expectedDashboardConnection.getConfig();
         MetabaseConnection actualSupersetConnection;
         if (actualDashboardConnection.getConfig() instanceof MetabaseConnection) {
@@ -265,7 +265,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   public void setupDashboardServices(TestInfo test) throws HttpResponseException, URISyntaxException {
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
-        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Superset);
+        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Metabase);
     DashboardConnection dashboardConnection =
         new DashboardConnection()
             .withConfig(
