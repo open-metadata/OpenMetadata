@@ -199,12 +199,6 @@ class MetadataUsageBulkSink(BulkSink):
                 self.get_table_usage_and_joins(table_entities, table_usage)
 
             self.__publish_usage_records()
-        try:
-            self.metadata.compute_percentile(Table, self.today)
-            self.metadata.compute_percentile(Database, self.today)
-        except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to publish compute.percentile: {err}")
 
     def get_table_usage_and_joins(
         self, table_entities: List[Table], table_usage: TableUsageCount
@@ -327,4 +321,11 @@ class MetadataUsageBulkSink(BulkSink):
     def close(self):
         if Path(self.config.filename).exists():
             shutil.rmtree(self.config.filename)
+        try:
+            self.metadata.compute_percentile(Table, self.today)
+            self.metadata.compute_percentile(Database, self.today)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to publish compute.percentile: {err}")
+
         self.metadata.close()

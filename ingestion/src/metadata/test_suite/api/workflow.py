@@ -57,6 +57,7 @@ from metadata.interfaces.datalake.datalake_test_suite_interface import (
     DataLakeTestSuiteInterface,
 )
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
@@ -193,7 +194,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return self.metadata.get_by_name(
             entity=Table,
             fqn=entity_fqn,
-            fields=["profile"],
+            fields=["tableProfilerConfig"],
         )
 
     def _get_profile_sample(self, entity: Table) -> Optional[float]:
@@ -202,8 +203,16 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         Args:
             entity: table entity
         """
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileSample
+        if (
+            hasattr(entity, "tableProfilerConfig")
+            and hasattr(entity.tableProfilerConfig, "profileSample")
+            and entity.tableProfilerConfig.profileSample
+        ):
+            return ProfileSampleConfig(
+                profile_sample=entity.tableProfilerConfig.profileSample,
+                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+            )
+
         return None
 
     def _get_profile_query(self, entity: Table) -> Optional[str]:
