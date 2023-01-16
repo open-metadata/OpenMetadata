@@ -17,13 +17,10 @@ import React from 'react';
 import SVGIcons from 'utils/SvgUtils';
 import { DeleteTagsType } from './TagsPage.interface';
 
-export const RenderDeleteIcon = ({
-  deleteTags,
-  id,
-}: {
-  deleteTags: DeleteTagsType;
-  id: string | undefined;
-}) => {
+export const getDeleteIcon = (
+  deleteTags: DeleteTagsType,
+  id: string | undefined
+) => {
   if (deleteTags.data?.id === id) {
     if (deleteTags.data?.status === 'success') {
       return <FontAwesomeIcon icon="check" />;

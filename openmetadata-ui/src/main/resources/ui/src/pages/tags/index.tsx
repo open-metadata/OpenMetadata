@@ -92,7 +92,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
 import { DeleteTagsType } from './TagsPage.interface';
-import { RenderDeleteIcon } from './TagsPageUtils';
+import { getDeleteIcon } from './TagsPageUtils';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -223,14 +223,18 @@ const TagsPage = () => {
           'termCount',
         ]);
         if (currentClassification) {
-          const updatedClassificationData = classifications.map((data) => {
-            if (data.name === name) {
-              return { ...data, termCount: currentClassification.termCount };
-            }
+          setClassifications((prevClassifications) =>
+            prevClassifications.map((data) => {
+              if (data.name === name) {
+                return {
+                  ...data,
+                  termCount: currentClassification.termCount,
+                };
+              }
 
-            return data;
-          });
-          setClassifications(updatedClassificationData);
+              return data;
+            })
+          );
           setCurrentClassification(currentClassification);
           setCurrentClassificationName(currentClassification.name);
           setIsLoading(false);
@@ -730,7 +734,7 @@ const TagsPage = () => {
               !classificationPermissions.EditAll
             }
             onClick={() => handleActionDeleteTag(record)}>
-            <RenderDeleteIcon deleteTags={deleteTags} id={record.id} />
+            {getDeleteIcon(deleteTags, record.id)}
           </button>
         ),
       },
