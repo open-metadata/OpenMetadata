@@ -323,7 +323,7 @@ const GlossaryV1 = ({
                       data-testid="add-glossary"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
-                      <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                      <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMARY} />{' '}
                       <span>{t('label.add-glossary')}</span>
                     </button>
                   </Tooltip>
