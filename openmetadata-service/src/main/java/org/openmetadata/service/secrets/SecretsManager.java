@@ -36,11 +36,8 @@ import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class SecretsManager {
-
   @Getter private final String clusterPrefix;
-
   @Getter private final SecretsManagerProvider secretsManagerProvider;
-
   private Fernet fernet;
 
   private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES = Set.of(OpenMetadataJWTClientConfig.class);

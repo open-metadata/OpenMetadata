@@ -175,10 +175,8 @@ public class AlertUtil {
     // OpenMetadataWide Setting apply to all ChangeEvents
     if (config.getType() == TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS) {
       return true;
-    } else {
-      // Use Trigger Specific Settings
-      return config.getEntities().contains(entityType);
     }
+    return config.getEntities().contains(entityType); // Use Trigger Specific Settings
   }
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {

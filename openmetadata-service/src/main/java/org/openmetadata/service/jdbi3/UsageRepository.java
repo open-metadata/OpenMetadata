@@ -140,7 +140,6 @@ public class UsageRepository {
     dao.usageDAO()
         .insertOrUpdateCount(
             usage.getDate(), table.getDatabase().getId().toString(), Entity.DATABASE, usage.getCount());
-    dao.usageDAO().computePercentile(entityType, usage.getDate());
 
     ChangeDescription change =
         getChangeDescription(table.getVersion(), updated.getUsageSummary(), table.getUsageSummary());

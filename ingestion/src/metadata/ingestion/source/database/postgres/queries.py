@@ -72,3 +72,13 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
      where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
     """
 )
+
+POSTGRES_GET_ALL_TABLE_PG_POLICY = """
+SELECT oid, polname, table_catalog , table_schema ,table_name  
+FROM information_schema.tables AS it
+JOIN (SELECT pc.relname, pp.*
+      FROM pg_policy AS pp
+      JOIN pg_class AS pc ON pp.polrelid = pc.oid
+      JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
+WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
+"""

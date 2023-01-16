@@ -12,7 +12,11 @@
  */
 
 import { visitEntityDetailsPage } from '../../common/common';
-import { SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import {
+  SEARCH_ENTITY_PIPELINE,
+  SEARCH_ENTITY_TABLE,
+  SEARCH_ENTITY_TOPIC,
+} from '../../constants/constants';
 
 const tableEntity = SEARCH_ENTITY_TABLE.table_1;
 const topicEntity = SEARCH_ENTITY_TOPIC.topic_1;
