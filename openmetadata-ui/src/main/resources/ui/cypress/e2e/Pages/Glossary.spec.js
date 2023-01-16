@@ -52,7 +52,7 @@ const createGlossaryTerm = (term) => {
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="references"] > .tw-flex > .button-comp')
+  cy.get('[data-testid="references"] > .ant-space-item > .button-comp')
     .scrollIntoView()
     .should('be.visible')
     .click();

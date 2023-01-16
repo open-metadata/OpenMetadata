@@ -389,7 +389,7 @@ const AddGlossaryTerm = ({
             />
           </Field>
 
-          <div className="m-t-lg" data-testid="references">
+          <div className="m-t-lg">
             <Field>
               <Space align="end">
                 <label
@@ -408,7 +408,7 @@ const AddGlossaryTerm = ({
             </Field>
 
             <Field>
-              <Space align="end">
+              <Space align="end" data-testid="references">
                 <label className="tw-form-label m-b-0">
                   {t('label.reference-plural')}
                 </label>
