@@ -100,7 +100,7 @@ jobs:
       - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ steps.cache-output.outputs.cache-hit == 'true' && steps.cache-output.outputs.exit-code == 0 }}
+        if: ${{ steps.cache-output.outputs.cache-hit != 'true' && steps.cache-output.outputs.exit-code == 0 }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
