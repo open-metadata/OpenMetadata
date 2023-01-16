@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Card, Col, Row, Space, Tag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -119,8 +119,8 @@ const GlossaryTermTab = ({
                     {term.name}
                   </Typography.Text>
                 </Link>
-                <Space className="w-full tw-flex-wrap" size={8}>
-                  <Typography.Text className="text-grey-muted">
+                <Space className="w-full tw-flex-wrap" size={4}>
+                  <Typography.Text className="text-grey-muted m-r-xs">
                     {t('label.tag-plural')}:
                   </Typography.Text>
                   {term.tags?.length
@@ -151,9 +151,7 @@ const GlossaryTermTab = ({
                             to={getTagPath(
                               tag.tagFQN.split(FQN_SEPARATOR_CHAR)[0]
                             )}>
-                            <Button className="text-xs px-1.5">
-                              {tag.tagFQN}
-                            </Button>
+                            <Tag>{tag.tagFQN}</Tag>
                           </Link>
                         </Tooltip>
                       ))

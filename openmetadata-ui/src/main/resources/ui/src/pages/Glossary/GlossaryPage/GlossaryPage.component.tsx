@@ -56,6 +56,7 @@ const GlossaryPage = () => {
     LOADING_STATE.INITIAL
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
+  const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
 
   const isGlossaryActive = useMemo(() => {
     if (glossaryFqn) {
@@ -94,6 +95,7 @@ const GlossaryPage = () => {
   }, []);
 
   const fetchGlossaryTermDetails = async () => {
+    setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
@@ -102,9 +104,12 @@ const GlossaryPage = () => {
       setSelectedData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsRightPanelLoading(false);
     }
   };
   useEffect(() => {
+    setIsRightPanelLoading(true);
     if (glossaries.length) {
       if (!isGlossaryActive) {
         fetchGlossaryTermDetails();
@@ -113,6 +118,7 @@ const GlossaryPage = () => {
           glossaries.find((glossary) => glossary.name === glossaryFqn) ||
             glossaries[0]
         );
+        setIsRightPanelLoading(false);
       }
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
@@ -244,7 +250,7 @@ const GlossaryPage = () => {
         <GlossaryV1
           deleteStatus={deleteStatus}
           handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-          isChildLoading={false}
+          isChildLoading={isRightPanelLoading}
           isGlossaryActive={isGlossaryActive}
           selectedData={selectedData}
           updateGlossary={updateGlossary}
