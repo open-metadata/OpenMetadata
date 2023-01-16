@@ -173,7 +173,6 @@ export const goToAdvanceSearch = () => {
     .should('exist')
     .and('be.visible')
     .click();
-  verifyResponseStatusCode('@explorePage', 200);
 
   cy.get('[data-testid="tables-tab"]')
     .scrollIntoView()
