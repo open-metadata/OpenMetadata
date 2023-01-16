@@ -71,13 +71,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
 
-      - name: Set up JDK 11
-        needs: Cache dependencies
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'adopt'
-
       - name: Cache dependencies
         id: cache-output
         uses: actions/cache@v2
@@ -86,6 +79,13 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+      - name: Set up JDK 11
+        needs: Cache dependencies
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
 
       - name: Install Ubuntu dependencies
         needs: Cache dependencies
