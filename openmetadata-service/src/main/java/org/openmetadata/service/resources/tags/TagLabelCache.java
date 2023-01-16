@@ -58,19 +58,19 @@ public class TagLabelCache {
       TAG_CATEGORY_CACHE =
           CacheBuilder.newBuilder()
               .maximumSize(25)
-              .expireAfterAccess(1, TimeUnit.MINUTES)
+              .expireAfterWrite(2, TimeUnit.MINUTES)
               .build(new ClassificationLoader());
       TAG_CACHE =
-          CacheBuilder.newBuilder().maximumSize(100).expireAfterAccess(1, TimeUnit.MINUTES).build(new TagLoader());
+          CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(2, TimeUnit.MINUTES).build(new TagLoader());
       TAG_REPOSITORY = Entity.getEntityRepository(Entity.TAG);
       TAG_CATEGORY_REPOSITORY = Entity.getEntityRepository(Entity.CLASSIFICATION);
 
       GLOSSARY_CACHE =
-          CacheBuilder.newBuilder().maximumSize(25).expireAfterAccess(1, TimeUnit.MINUTES).build(new GlossaryLoader());
+          CacheBuilder.newBuilder().maximumSize(25).expireAfterWrite(2, TimeUnit.MINUTES).build(new GlossaryLoader());
       GLOSSARY_TERM_CACHE =
           CacheBuilder.newBuilder()
               .maximumSize(100)
-              .expireAfterAccess(1, TimeUnit.MINUTES)
+              .expireAfterWrite(2, TimeUnit.MINUTES)
               .build(new GlossaryTermLoader());
       GLOSSARY_TERM_REPOSITORY = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
       GLOSSARY_REPOSITORY = Entity.getEntityRepository(Entity.GLOSSARY);

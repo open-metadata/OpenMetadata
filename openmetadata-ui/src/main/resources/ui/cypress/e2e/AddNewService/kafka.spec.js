@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import {
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
+} from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Kafka';
@@ -23,14 +30,15 @@ describe('Kafka Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });
+
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Messaging);
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').should('be.visible').click();
     cy.get('.ant-select-item-option-content')
-    .contains('Messaging Services')
-    .click();
+      .contains('Messaging Services')
+      .click();
 
     const connectionInput = () => {
       cy.get('#root_bootstrapServers').type(
@@ -43,7 +51,8 @@ describe('Kafka Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="topic-filter-pattern-checkbox"]')
-      .invoke('show').trigger('mouseover')
+        .invoke('show')
+        .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-topic"]')
         .should('be.visible')
@@ -78,6 +87,10 @@ describe('Kafka Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Messaging, serviceName, API_SERVICE.messagingServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Messaging,
+      serviceName,
+      API_SERVICE.messagingServices
+    );
   });
 });

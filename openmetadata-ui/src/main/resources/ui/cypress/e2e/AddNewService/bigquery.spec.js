@@ -12,12 +12,12 @@
  */
 
 import {
-    deleteCreatedService,
-    editOwnerforCreatedService,
-    goToAddNewServicePage,
-    testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables,
-    uuid
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
 } from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
@@ -25,7 +25,7 @@ const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const tableName = 'personsx';
 const description = `This is ${serviceName} description`;
-const filterPattern = 'dbt_jaffle'
+const filterPattern = 'dbt_jaffle';
 
 describe('BigQuery Ingestion', () => {
   beforeEach(() => {
@@ -71,12 +71,11 @@ describe('BigQuery Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      
       cy.get('[data-testid="schema-filter-pattern-checkbox"]')
         .invoke('show')
         .trigger('mouseover')
         .check();
-        cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
         .type(filterPattern);
@@ -109,6 +108,10 @@ describe('BigQuery Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 });

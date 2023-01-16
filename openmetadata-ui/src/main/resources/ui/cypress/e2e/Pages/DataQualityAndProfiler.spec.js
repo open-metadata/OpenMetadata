@@ -11,32 +11,32 @@
  *  limitations under the License.
  */
 
-/// <reference types="cypress" />
+// / <reference types="cypress" />
 
 import {
-    deleteCreatedService,
-    descriptionBox,
-    goToAddNewServicePage,
-    handleIngestionRetry,
-    interceptURL,
-    mySqlConnectionInput,
-    scheduleIngestion,
-    testServiceCreationAndIngestion,
-    toastNotification,
-    uuid,
-    verifyResponseStatusCode,
-    visitEntityDetailsPage
+  deleteCreatedService,
+  descriptionBox,
+  goToAddNewServicePage,
+  handleIngestionRetry,
+  interceptURL,
+  mySqlConnectionInput,
+  scheduleIngestion,
+  testServiceCreationAndIngestion,
+  toastNotification,
+  uuid,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
 } from '../../common/common';
 import {
-    API_SERVICE,
-    DATA_QUALITY_SAMPLE_DATA_TABLE,
-    DELETE_TERM,
-    MYDATA_SUMMARY_OPTIONS,
-    NEW_COLUMN_TEST_CASE,
-    NEW_TABLE_TEST_CASE,
-    NEW_TEST_SUITE,
-    SERVICE_TYPE,
-    TEAM_ENTITY
+  API_SERVICE,
+  DATA_QUALITY_SAMPLE_DATA_TABLE,
+  DELETE_TERM,
+  MYDATA_SUMMARY_OPTIONS,
+  NEW_COLUMN_TEST_CASE,
+  NEW_TABLE_TEST_CASE,
+  NEW_TEST_SUITE,
+  SERVICE_TYPE,
+  TEAM_ENTITY,
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
@@ -65,6 +65,7 @@ describe('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
   });
+
   it('Add and ingest mysql data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
@@ -118,10 +119,10 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Profiler Ingestion')
       .click();
     cy.get('[data-testid="slider-input"]')
-       .scrollIntoView()
-       .should('be.visible')
-       .and('not.be.disabled')
-       .type(10);
+      .scrollIntoView()
+      .should('be.visible')
+      .and('not.be.disabled')
+      .type(10);
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -147,12 +148,16 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Add table test case with new test suite', () => {
     const term = TEAM_ENTITY;
     goToProfilerTab();
-    interceptURL('GET', `api/v1/tables/name/${serviceName}.*.${term}?include=all`, 'addTableTestPage')
+    interceptURL(
+      'GET',
+      `api/v1/tables/name/${serviceName}.*.${term}?include=all`,
+      'addTableTestPage'
+    );
     cy.get('[data-testid="profiler-add-table-test-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@addTableTestPage', 200)
+    verifyResponseStatusCode('@addTableTestPage', 200);
     cy.get('[data-testid="create-new-test-suite"]')
       .should('be.visible')
       .click();
@@ -268,10 +273,10 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Add Column test case should work properly', () => {
     goToProfilerTab();
     cy.get('[data-testid="profiler-tab-left-panel"]')
-    .contains('Column Profile')
-    .should('be.visible')
-    .click();
-    
+      .contains('Column Profile')
+      .should('be.visible')
+      .click();
+
     cy.get('[data-testid="add-test-id"]')
       .scrollIntoView()
       .should('be.visible')
@@ -314,7 +319,10 @@ describe('Data Quality and Profiler should work properly', () => {
       )
       .should('be.visible');
     cy.get('[data-testid="view-service-button"]').scrollIntoView().click();
-    cy.get('.ant-table-row').should('contain', "id_columnValueLengthsToBeBetween");
+    cy.get('.ant-table-row').should(
+      'contain',
+      'id_columnValueLengthsToBeBetween'
+    );
   });
 
   it('Edit column test case should work properly', () => {
@@ -322,9 +330,9 @@ describe('Data Quality and Profiler should work properly', () => {
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-tab-left-panel"]')
-    .contains('Column Profile')
-    .should('be.visible')
-    .click();
+      .contains('Column Profile')
+      .should('be.visible')
+      .click();
     cy.get('[data-testid="id-test-count"]').should('be.visible').click();
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
     cy.get(`[data-testid="edit-${columnTestName}"]`)
@@ -351,9 +359,9 @@ describe('Data Quality and Profiler should work properly', () => {
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-tab-left-panel"]')
-    .contains('Column Profile')
-    .should('be.visible')
-    .click();
+      .contains('Column Profile')
+      .should('be.visible')
+      .click();
     cy.get('[data-testid="id-test-count"]').should('be.visible').click();
 
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
@@ -434,9 +442,9 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
-    .contains('Column Profile')
-    .should('be.visible')
-    .click();
+      .contains('Column Profile')
+      .should('be.visible')
+      .click();
     cy.get('[data-row-key="shop_id"] > :nth-child(1) > a')
       .scrollIntoView()
       .should('be.visible')
@@ -478,11 +486,15 @@ describe('Data Quality and Profiler should work properly', () => {
       'have.class',
       'active'
     );
-    interceptURL('GET', `api/v1/tables/name/${serviceName}.*.${term}?include=all`, 'addTableTestPage')
+    interceptURL(
+      'GET',
+      `api/v1/tables/name/${serviceName}.*.${term}?include=all`,
+      'addTableTestPage'
+    );
     cy.get('[data-testid="profiler-add-table-test-btn"]')
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@addTableTestPage', 200)
+    verifyResponseStatusCode('@addTableTestPage', 200);
 
     // selecting existing test suite
     cy.get('#selectTestSuite_testSuiteId').should('exist').click();

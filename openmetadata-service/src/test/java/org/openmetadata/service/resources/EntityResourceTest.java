@@ -1736,7 +1736,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   /** Helper function to create an entity, submit POST API request and validate response. */
-  public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
+  public T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -1762,7 +1762,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
-  public final T updateAndCheckEntity(
+  public T updateAndCheckEntity(
       K request,
       Status status,
       Map<String, String> authHeaders,
@@ -2331,7 +2331,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return ref != null ? new EntityReference().withType(ref.getType()).withId(ref.getId()) : null;
   }
 
-  protected String getAllowedFields() {
+  public String getAllowedFields() {
     return String.join(",", Entity.getAllowedFields(entityClass));
   }
 }

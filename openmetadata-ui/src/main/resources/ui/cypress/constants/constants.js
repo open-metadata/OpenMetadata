@@ -16,7 +16,8 @@ const id = uuid();
 
 export const BASE_URL = location.origin;
 
-export const LOGIN_ERROR_MESSAGE = 'You have entered an invalid username or password.';
+export const LOGIN_ERROR_MESSAGE =
+  'You have entered an invalid username or password.';
 
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
@@ -42,9 +43,9 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
-  testSuiteName: "critical_metrics_suite",
-  sqlTestCase: "tableCustomSQLQuery",
-  sqlQuery: "Select * from dim_address"
+  testSuiteName: 'critical_metrics_suite',
+  sqlTestCase: 'tableCustomSQLQuery',
+  sqlQuery: 'Select * from dim_address',
 };
 
 export const SEARCH_ENTITY_TABLE = {
@@ -207,7 +208,7 @@ export const NEW_GLOSSARY = {
   name: 'Business Glossary',
   description: 'This is the Business glossary',
   reviewer: 'Aaron Johnson',
-  tag: 'PII.None'
+  tag: 'PII.None',
 };
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
@@ -254,15 +255,15 @@ export const ENTITIES = {
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
-// commenting the dashboard test for not, need to make changes in dynamic data-test side
-//   entity_dashboard: {
-//     name: 'dashboard',
-//     description: 'This is Dashboard custom property',
-//     integerValue: '14',
-//     stringValue: 'This is string propery',
-//     markdownValue: 'This is markdown value',
-//     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-//   },
+  // commenting the dashboard test for not, need to make changes in dynamic data-test side
+  //   entity_dashboard: {
+  //     name: 'dashboard',
+  //     description: 'This is Dashboard custom property',
+  //     integerValue: '14',
+  //     stringValue: 'This is string propery',
+  //     markdownValue: 'This is markdown value',
+  //     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+  //   },
   entity_pipeline: {
     name: 'pipeline',
     description: 'This is Pipeline custom property',
@@ -279,7 +280,11 @@ export const LOGIN = {
 };
 
 // For now skipping the dashboard entity "SEARCH_ENTITY_DASHBOARD.dashboard_1"
-export const ANNOUNCEMENT_ENTITIES = [SEARCH_ENTITY_TABLE.table_1, SEARCH_ENTITY_TOPIC.topic_1, SEARCH_ENTITY_PIPELINE.pipeline_1]
+export const ANNOUNCEMENT_ENTITIES = [
+  SEARCH_ENTITY_TABLE.table_1,
+  SEARCH_ENTITY_TOPIC.topic_1,
+  SEARCH_ENTITY_PIPELINE.pipeline_1,
+];
 
 export const HTTP_CONFIG_SOURCE = {
   DBT_CATALOG_HTTP_PATH:
@@ -304,7 +309,7 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
-}
+};
 
 export const TEST_CASE = {
   testCaseAlert: `TestCaseAlert-ct-test-${uuid()}`,
