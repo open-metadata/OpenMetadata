@@ -46,6 +46,11 @@ const createGlossaryTerm = (term) => {
     .scrollIntoView()
     .should('be.visible')
     .type(term.synonyms);
+  cy.get('[data-testid="mutually-exclusive-button"]')
+    .scrollIntoView()
+    .should('exist')
+    .should('be.visible')
+    .click();
 
   cy.get('[data-testid="references"] > .tw-flex > .button-comp')
     .scrollIntoView()
@@ -174,6 +179,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .type(NEW_GLOSSARY.description);
+
+    cy.get('[data-testid="mutually-exclusive-button"]')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="add-reviewers"]')
       .scrollIntoView()

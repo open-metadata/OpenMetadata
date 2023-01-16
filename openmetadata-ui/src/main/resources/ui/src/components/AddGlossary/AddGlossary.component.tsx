@@ -248,7 +248,7 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space align="end" className="m-b-xs">
+            <Space align="end">
               <label
                 className="tw-form-label m-b-0 tw-mb-1"
                 data-testid="mutually-exclusive-label"
