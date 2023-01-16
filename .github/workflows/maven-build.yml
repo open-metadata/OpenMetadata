@@ -70,7 +70,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-
       - name: Cache dependencies
         id: cache-output
         uses: actions/cache@v2
