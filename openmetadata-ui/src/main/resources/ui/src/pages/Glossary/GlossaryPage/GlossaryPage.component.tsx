@@ -21,7 +21,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_LARGE } from 'constants/constants';
+import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
@@ -73,7 +73,7 @@ const GlossaryPage = () => {
   );
 
   const handleAddGlossaryClick = () => {
-    history.push(getGlossaryPath());
+    history.push(ROUTES.ADD_GLOSSARY);
   };
 
   const fetchGlossaryList = async () => {
@@ -219,10 +219,6 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
-  if (isLoading || isUndefined(selectedData)) {
-    return <Loader />;
-  }
-
   if (glossaries.length === 0 && !isLoading) {
     return (
       <ErrorPlaceHolder
@@ -242,6 +238,10 @@ const GlossaryPage = () => {
         type="ADD_DATA"
       />
     );
+  }
+
+  if (isLoading || isUndefined(selectedData)) {
+    return <Loader />;
   }
 
   return (
