@@ -126,7 +126,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       <Col span={24}>
         <Space className="w-full justify-between">
           <Title level={5}>
-            {isPreview ? glossaryName : 'Import Glossary Terms'}
+            {isPreview ? glossaryName : t('label.import-glossary-terms')}
           </Title>
           {isPreview && !isUndefined(csvImportResult) && (
             <Button loading={isLoading} type="primary" onClick={handleImport}>
@@ -162,7 +162,9 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                     direction="vertical"
                     size={16}>
                     <ImportIcon height={58} width={58} />
-                    <Typography.Text>Drag & drop files here</Typography.Text>
+                    <Typography.Text>
+                      {t('label.drag-and-drop-files-here')}
+                    </Typography.Text>
                   </Space>
                   <Divider plain>
                     <Typography.Text type="secondary">
@@ -173,7 +175,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                     <Space>
                       <BrowseFileIcon width={16} />
                       <Typography.Text className="text-primary">
-                        Browse csv file
+                        {t('label.browse-csv-file')}
                       </Typography.Text>
                     </Space>
                   </Button>
@@ -189,7 +191,8 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                 size={16}>
                 <SuccessBadgeIcon width={58} />
                 <Typography.Text>
-                  <strong>{fileName}</strong> is ready for preview.
+                  <strong>{fileName}</strong>{' '}
+                  {`${t('label.is-ready-for-preview')}.`}
                 </Typography.Text>
                 <Space size={16}>
                   <Button onClick={() => setCsvImportResult(undefined)}>

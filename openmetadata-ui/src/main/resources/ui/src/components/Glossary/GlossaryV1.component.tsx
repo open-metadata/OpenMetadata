@@ -317,7 +317,7 @@ const GlossaryV1 = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        Export glossary terms
+                        {t('label.export-glossary-terms')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
@@ -349,7 +349,7 @@ const GlossaryV1 = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        Import glossary terms
+                        {t('label.import-glossary-terms')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
