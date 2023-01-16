@@ -91,7 +91,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev
-      
+    
       - name: Setup Test Containers Properties
         run: |
           sudo make install_antlr_cli
