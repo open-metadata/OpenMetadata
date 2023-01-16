@@ -32,6 +32,7 @@ import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { importGlossaryInCSVFormat } from 'rest/glossaryAPI';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -48,10 +49,14 @@ const { Dragger } = Upload;
 const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const { t } = useTranslation();
 
+  const history = useHistory();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPreview, setIsPreview] = useState<boolean>(false);
 
   const [fileName, setFileName] = useState<string>('');
+
+  const [csvFileResult, setCsvFileResult] = useState<string>('');
 
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
 
@@ -78,20 +83,34 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       reader.readAsText(options.file as Blob);
 
       reader.addEventListener('load', async (e) => {
-        const result = e.target?.result;
+        const result = e.target?.result as string;
         if (result) {
           const response = await importGlossaryInCSVFormat(
             glossaryName,
-            result as string
+            result
           );
 
           setCsvImportResult(response);
+          setCsvFileResult(result);
         }
       });
 
       reader.addEventListener('error', () => {
         throw t('server.unexpected-error');
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImport = async () => {
+    setIsLoading(true);
+    try {
+      await importGlossaryInCSVFormat(glossaryName, csvFileResult, false);
+
+      history.push(getGlossaryPath(glossaryName));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -110,7 +129,9 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
             {isPreview ? glossaryName : 'Import Glossary Terms'}
           </Title>
           {isPreview && !isUndefined(csvImportResult) && (
-            <Button type="primary">{t('label.import')}</Button>
+            <Button loading={isLoading} type="primary" onClick={handleImport}>
+              {t('label.import')}
+            </Button>
           )}
         </Space>
       </Col>
