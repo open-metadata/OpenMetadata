@@ -90,7 +90,7 @@ jobs:
       - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'pull_request_target'}}
+        if: ${{ github.event_name == 'pull_request'}}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
