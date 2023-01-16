@@ -102,13 +102,13 @@ jobs:
               -Dsonar.pullrequest.github.repository=OpenMetadata \
               -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
               -Dsonar.pullrequest.provider=github clean install
-        - name: Cache dependencies
-          uses: actions/cache@v2
-          with:
-            path: ~/.m2/repository
-            key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-            restore-keys: |
-              ${{ runner.os }}-maven-
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       # - name: Cache dependencies
       #   id: cache-dependencies
