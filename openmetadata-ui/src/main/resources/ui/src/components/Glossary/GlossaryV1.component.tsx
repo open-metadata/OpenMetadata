@@ -298,6 +298,7 @@ const GlossaryV1 = ({
             label: (
               <Row
                 className="tw-cursor-pointer manage-button"
+                data-testid="export-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleGlossaryExport();
@@ -307,7 +308,7 @@ const GlossaryV1 = ({
                   <ExportIcon width="20px" />
                 </Col>
                 <Col span={21}>
-                  <Row data-testid="export-button">
+                  <Row>
                     <Col span={21}>
                       <Typography.Text
                         className="font-medium"
@@ -330,6 +331,7 @@ const GlossaryV1 = ({
             label: (
               <Row
                 className="tw-cursor-pointer manage-button"
+                data-testid="import-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleGlossaryImport();
@@ -339,7 +341,7 @@ const GlossaryV1 = ({
                   <ImportIcon width="20px" />
                 </Col>
                 <Col span={21}>
-                  <Row data-testid="import-button">
+                  <Row>
                     <Col span={21}>
                       <Typography.Text
                         className="font-medium"
@@ -682,14 +684,12 @@ const GlossaryV1 = ({
               onConfirm={handleDelete}
             />
           )}
-          {isExporting && (
-            <ExportGlossaryModal
-              glossaryName={selectedData.name}
-              isModalOpen={isExporting}
-              onCancel={handleCancelGlossaryExport}
-              onOk={handleCancelGlossaryExport}
-            />
-          )}
+          <ExportGlossaryModal
+            glossaryName={selectedData.name}
+            isModalOpen={isExporting}
+            onCancel={handleCancelGlossaryExport}
+            onOk={handleCancelGlossaryExport}
+          />
         </>
       )}
     </PageLayoutV1>
