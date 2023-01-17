@@ -92,5 +92,18 @@ POSTGRES_TABLE_COMMENTS = """
         LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
     WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
       AND pgd.description IS NOT NULL
-    ORDER BY "schema", "table_name";
+      AND n.nspname <> 'pg_catalog'
+    ORDER BY "schema", "table_name"
+"""
+
+
+POSTGRES_VIEW_DEFINITIONS = """
+SELECT 
+	n.nspname schema,
+	c.relname view_name,
+	pg_get_viewdef(c.oid) view_def
+FROM pg_class c 
+JOIN pg_namespace n ON n.oid = c.relnamespace 
+WHERE c.relkind IN ('v', 'm')
+AND n.nspname not in ('pg_catalog','information_schema')
 """

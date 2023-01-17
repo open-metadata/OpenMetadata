@@ -358,23 +358,21 @@ def _get_all_table_comments(self, connection, **kw):
     """
     Method to fetch comment of all available tables
     """
-    all_table_comments: Dict[RelationKey, str] = {}
+    self.all_table_comments: Dict[RelationKey, str] = {}
+    self.current_db: str = connection.engine.url.database
     result = connection.execute(REDSHIFT_TABLE_COMMENTS)
     for table in result:
-        key = RelationKey(
-            name=table.table_name, schema=table.schema, connection=connection
-        )
-        all_table_comments[key] = table.table_comment
-    return all_table_comments
+        self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
 
 
 @reflection.cache
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    all_table_comments = self._get_all_table_comments(connection)
-    key = RelationKey(name=table_name, schema=schema, connection=connection)
-    if key not in all_table_comments.keys():
-        key = key.unquoted()
-    return {"text": all_table_comments.get(key)}
+    if (
+        not hasattr(self, "all_table_comments")
+        or self.current_db != connection.engine.url.database
+    ):
+        self._get_all_table_comments(connection)
+    return {"text": self.all_table_comments.get((table_name, schema))}
 
 
 RedshiftDialect._get_all_table_comments = _get_all_table_comments

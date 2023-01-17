@@ -206,5 +206,6 @@ REDSHIFT_TABLE_COMMENTS = """
         LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
     WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
       AND pgd.description IS NOT NULL
+      AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
 """

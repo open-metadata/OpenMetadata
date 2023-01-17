@@ -42,9 +42,10 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
 
 CLICKHOUSE_TABLE_COMMENTS = textwrap.dedent(
     """
-SELECT database AS schema_name
-     , name AS table_name
-     , comment
+SELECT
+      database AS schema_name, 
+      name AS table_name, 
+      comment
   FROM system.tables
  WHERE name NOT LIKE '.inner%'
  and comment <> ''

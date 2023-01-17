@@ -51,6 +51,7 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
     POSTGRES_TABLE_COMMENTS,
+    POSTGRES_VIEW_DEFINITIONS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -100,21 +101,49 @@ def _get_all_table_comments(self, connection, **kw):
     """
     Method to fetch comment of all available tables
     """
-    all_table_comments: Dict[Tuple[str, str], str] = {}
+    self.all_table_comments: Dict[Tuple[str, str], str] = {}
+    self.current_db: str = connection.engine.url.database
     result = connection.execute(POSTGRES_TABLE_COMMENTS)
     for table in result:
-        all_table_comments[(table.table_name, table.schema)] = table.table_comment
-    return all_table_comments
+        self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
 
 
 @reflection.cache
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    all_table_comments = self._get_all_table_comments(connection)
-    return {"text": all_table_comments.get((table_name, schema))}
+    if (
+        not hasattr(self, "all_table_comments")
+        or self.current_db != connection.engine.url.database
+    ):
+        self._get_all_table_comments(connection)
+    return {"text": self.all_table_comments.get((table_name, schema))}
+
+
+@reflection.cache
+def _get_all_view_definitions(self, connection, **kw):
+    """
+    Method to fetch comment of all available tables
+    """
+    self.all_view_definitions: Dict[Tuple[str, str], str] = {}
+    self.current_db: str = connection.engine.url.database
+    result = connection.execute(POSTGRES_VIEW_DEFINITIONS)
+    for view in result:
+        self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
+
+
+@reflection.cache
+def get_view_definition(self, connection, table_name, schema=None, **kw):
+    if (
+        not hasattr(self, "all_view_definitions")
+        or self.current_db != connection.engine.url.database
+    ):
+        self._get_all_view_definitions(connection)
+    return self.all_view_definitions.get((table_name, schema), "")
 
 
 PGDialect._get_all_table_comments = _get_all_table_comments
 PGDialect.get_table_comment = get_table_comment
+PGDialect.get_view_definition = get_view_definition
+PGDialect._get_all_view_definitions = _get_all_view_definitions
 
 PGDialect.ischema_names = ischema_names
 
