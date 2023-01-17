@@ -39,7 +39,15 @@ RUN apt-get update && \
     cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
     cd librdkafka && git checkout tags/v1.9.0 && \
     ./configure && make && make install && \
-    cd ../ && rm -rf librdkafka
+    cd ../ && rm -rf librdkafka \
+
+# Oracle instant client for thick mode
+# https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#enablingthick
+RUN curl https://download.oracle.com/otn_software/linux/instantclient/191000/oracle-instantclient19.10-basic-19.10.0.0.0-1.aarch64.rpm --output client.rpm; \
+  apt-get update; \
+  apt-get install libaio1 alien -y; \
+  alien client.rpm; \
+  dpkg -i oracle-instantclient19.10-basic_19.10.0.0.0-2_arm64.deb
 
 WORKDIR ingestion/
 

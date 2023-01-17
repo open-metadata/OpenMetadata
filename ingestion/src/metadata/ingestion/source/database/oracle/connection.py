@@ -16,6 +16,7 @@ import sys
 from urllib.parse import quote_plus
 
 import oracledb
+from oracledb.exceptions import DatabaseError
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
@@ -30,8 +31,11 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.utils.logger import ingestion_logger
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
+
+logger = ingestion_logger()
 
 
 def get_connection_url(connection: OracleConnection) -> str:
@@ -79,6 +83,11 @@ def get_connection(connection: OracleConnection) -> Engine:
     """
     Create connection
     """
+    try:
+        oracledb.init_oracle_client()
+    except DatabaseError as err:
+        logger.error(f"Could not initialize Oracle thick client: {err}")
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

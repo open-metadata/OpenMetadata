@@ -121,16 +121,6 @@ publish:  ## Publish the ingestion module to PyPI
 	  twine check dist/*; \
 	  twine upload dist/*
 
-.PHONY: build_docker_connectors
-build_docker_connectors:  ## Build all Ingestion Framework Sources Images to be used as Docker Operators in Airflow
-	@echo "Building Docker connectors. Make sure to run build_docker_base first"
-	python ingestion/connectors/docker-cli.py build
-
-.PHONY: push_docker_connectors
-push_docker_connectors:  ## Push all Sources Docker Images to DockerHub
-	@echo "Pushing Docker connectors. Make sure to run build_docker_connectors first"
-	python ingestion/connectors/docker-cli.py push
-
 ## Yarn
 .PHONY: yarn_install_cache
 yarn_install_cache:  ## Use Yarn to install UI dependencies

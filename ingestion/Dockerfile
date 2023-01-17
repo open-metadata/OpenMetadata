@@ -29,7 +29,15 @@ RUN apt-get update \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+
+# Oracle instant client for thick mode
+# https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#enablingthick
+RUN curl https://download.oracle.com/otn_software/linux/instantclient/191000/oracle-instantclient19.10-basic-19.10.0.0.0-1.aarch64.rpm --output client.rpm; \
+  apt-get update; \
+  apt-get install libaio1 alien -y; \
+  alien client.rpm; \
+  dpkg -i oracle-instantclient19.10-basic_19.10.0.0.0-2_arm64.deb
 
 # Security patches for base image
 # monitor no fixed version for
