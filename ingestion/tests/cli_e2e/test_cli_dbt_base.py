@@ -68,7 +68,7 @@ class CliDBTBase(TestCase):
         def test_entities(self) -> None:
             for table_fqn in self.fqn_dbt_tables():
                 table: Table = self.openmetadata.get_by_name(
-                    entity=Table, fqn=table_fqn
+                    entity=Table, fqn=table_fqn, fields="*"
                 )
                 data_model = table.dataModel
                 self.assertTrue(len(data_model.columns) > 0)
@@ -76,7 +76,11 @@ class CliDBTBase(TestCase):
                 self.assertIsNotNone(data_model.sql)
                 self.assertIsNotNone(data_model.upstream)
                 self.assertIsNotNone(data_model.description)
+                self.assertIsNotNone(table.description)
+                self.assertIsNotNone(data_model.owner)
+                self.assertIsNotNone(table.owner)
                 self.assertTrue(len(data_model.tags) > 0)
+                self.assertTrue(len(table.tags) > 0)
 
         # 4. run tests on dbt test cases and test results
         @pytest.mark.order(4)
@@ -92,6 +96,13 @@ class CliDBTBase(TestCase):
             )
             self.assertTrue(len(test_case_entity_list.entities) == 23)
 
+        # 5. test dbt lineage
+        @pytest.mark.order(5)
+        def test_lineage(self) -> None:
+            for table_fqn in self.fqn_dbt_tables():
+                lineage = self.retrieve_lineage(table_fqn)
+                self.assertTrue(len(lineage["upstreamEdges"]) >= 4)
+
         def run_command(self, file_path: str, command: str = "ingest"):
             args = [
                 command,
@@ -106,6 +117,11 @@ class CliDBTBase(TestCase):
             source_status: SourceStatus = self.extract_source_status(result)
             sink_status: SinkStatus = self.extract_sink_status(result)
             return sink_status, source_status
+
+        def retrieve_lineage(self, table_name_fqn: str) -> dict:
+            return self.openmetadata.client.get(
+                f"/lineage/table/name/{table_name_fqn}?upstreamDepth=3&downstreamDepth=3"
+            )
 
         @staticmethod
         def get_workflow(connector: str) -> Workflow:
