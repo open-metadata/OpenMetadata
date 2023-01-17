@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 
-import AddService from '@components/AddService/AddService.component';
-import { TitleBreadcrumbProps } from '@components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '@components/containers/PageContainerV1';
-import {
-  addIngestionPipeline,
-  checkAirflowStatus,
-  deployIngestionPipelineById,
-  getIngestionPipelineByFqn,
-} from '@rest/ingestionPipelineAPI';
-import { postService } from '@rest/serviceAPI';
 import { AxiosError } from 'axios';
+import AddService from 'components/AddService/AddService.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+  getIngestionPipelineByFqn,
+} from 'rest/ingestionPipelineAPI';
+import { postService } from 'rest/serviceAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -35,6 +34,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -42,6 +42,7 @@ import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
+  const { fetchAirflowStatus } = useAirflowStatus();
   const { serviceCategory } = useParams<{ [key: string]: string }>();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -59,20 +60,6 @@ const AddServicePage = () => {
 
   const handleAddIngestion = (value: boolean) => {
     setAddIngestion(value);
-  };
-
-  const onAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
   };
 
   const onAddServiceSave = (data: DataObj) => {
@@ -198,7 +185,7 @@ const AddServicePage = () => {
           slashedBreadcrumb={slashedBreadcrumb}
           onAddIngestionSave={onAddIngestionSave}
           onAddServiceSave={onAddServiceSave}
-          onAirflowStatusCheck={onAirflowStatusCheck}
+          onAirflowStatusCheck={fetchAirflowStatus}
           onIngestionDeploy={onIngestionDeploy}
         />
       </div>

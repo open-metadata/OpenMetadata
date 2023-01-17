@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-import {
-  getEntityPermissionByFqn,
-  getEntityPermissionById,
-  getLoggedInUserPermissions,
-  getResourcePermission,
-} from '@rest/permissionAPI';
 import { CookieStorage } from 'cookie-storage';
 import { observer } from 'mobx-react';
 import React, {
@@ -29,6 +23,12 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
+import {
+  getEntityPermissionByFqn,
+  getEntityPermissionById,
+  getLoggedInUserPermissions,
+  getResourcePermission,
+} from 'rest/permissionAPI';
 import AppState from '../../AppState';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {

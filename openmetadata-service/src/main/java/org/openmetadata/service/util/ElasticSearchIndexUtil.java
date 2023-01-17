@@ -59,12 +59,17 @@ public class ElasticSearchIndexUtil {
   private final ExecutorService threadScheduler;
   private final RestHighLevelClient client;
   private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
+  private final String lang;
 
   public ElasticSearchIndexUtil(
-      CollectionDAO dao, RestHighLevelClient client, ElasticSearchIndexDefinition elasticSearchIndexDefinition) {
+      CollectionDAO dao,
+      RestHighLevelClient client,
+      ElasticSearchIndexDefinition elasticSearchIndexDefinition,
+      String lang) {
     this.dao = dao;
     this.client = client;
     this.elasticSearchIndexDefinition = elasticSearchIndexDefinition;
+    this.lang = lang;
     this.threadScheduler =
         new ThreadPoolExecutor(
             2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
@@ -228,7 +233,7 @@ public class ElasticSearchIndexUtil {
       // Delete index
       elasticSearchIndexDefinition.deleteIndex(indexType);
       // Create index
-      elasticSearchIndexDefinition.createIndex(indexType);
+      elasticSearchIndexDefinition.createIndex(indexType, lang);
     }
 
     // Start fetching a list of Report Data and pushing them to ES

@@ -76,3 +76,30 @@ To run the tests, you'll to install some packages via `make install_test`.
 
 You can validate the environment by running `make coverage` from the root directory. Note that from some tests, having 
 the OpenMetadata server instance up is required as they interact with the API.
+
+## Troubleshooting
+
+If you try to install the `kafka` plugin `pip install "./ingestion[kafka]"` on mac you might see the following error:
+
+```
+fatal error: 'librdkafka/rdkafka.h' file not found
+      #include <librdkafka/rdkafka.h>
+               ^~~~~~~~~~~~~~~~~~~~~~
+      1 error generated.
+      error: command '/usr/bin/clang' failed with exit code 1
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: legacy-install-failure
+× Encountered error while trying to install package.
+╰─> confluent-kafka
+```
+
+This can be solved by running `brew install librdkafka`. If the error still persists you might need to update the following environment variables:
+
+```
+export C_INCLUDE_PATH=/opt/homebrew/include
+export LIBRARY_PATH=/opt/homebrew/lib
+```
+
+More information on the later in this [thread](https://github.com/confluentinc/confluent-kafka-python/issues/184).

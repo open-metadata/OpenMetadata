@@ -514,8 +514,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table getQueries(UUID tableId) throws IOException {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    Table table = setFieldsInternal(dao.findEntityById(tableId), Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
   }
 
@@ -1119,7 +1118,7 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if (nullOrEmpty(addedColumn.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+          if (nullOrEmpty(addedColumn.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
           if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {

@@ -143,11 +143,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<p>Tag Container</p>);
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 
@@ -208,7 +208,7 @@ describe('Test PipelineDetails component', () => {
     );
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
-    const tasksTab = await findByText(container, 'label.tasks');
+    const tasksTab = await findByText(container, 'label.task-plural');
     const activityFeedTab = await findByText(
       container,
       'label.activity-feed-and-task-plural'
@@ -233,7 +233,7 @@ describe('Test PipelineDetails component', () => {
     render(<PipelineDetails {...PipelineDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const taskDetail = await screen.findByText('label.tasks');
+    const taskDetail = await screen.findByText('label.task-plural');
 
     expect(taskDetail).toBeInTheDocument();
   });

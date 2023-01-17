@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { getSystemProfileList, getTableProfilesList } from '@rest/tableAPI';
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,

@@ -80,7 +80,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   }
 
   @SuppressWarnings("unused") // Method used by reflection
-  static final String FIELDS = "usageCount";
+  static final String FIELDS = "usageCount,termCount";
 
   @GET
   @Operation(

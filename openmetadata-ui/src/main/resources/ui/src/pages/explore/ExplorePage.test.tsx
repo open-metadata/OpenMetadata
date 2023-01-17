@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '@components/Explore/explore.interface';
 import { findByText, render } from '@testing-library/react';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { SearchIndex } from '../../enums/search.enum';
@@ -292,11 +292,11 @@ jest.mock('../../AppState', () => ({
   updateExplorePageTab: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('@components/Explore/Explore.component', () => {
+jest.mock('components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
-jest.mock('@rest/searchAPI', () => ({
+jest.mock('rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(

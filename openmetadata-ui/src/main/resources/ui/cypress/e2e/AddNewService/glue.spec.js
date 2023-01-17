@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import {
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
+} from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Glue';
@@ -47,12 +54,13 @@ describe('Glue Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-      .invoke('show').trigger('mouseover')
-      .check();
+        .invoke('show')
+        .trigger('mouseover')
+        .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .type(filterPattern);
+        .scrollIntoView()
+        .should('be.visible')
+        .type(filterPattern);
     };
 
     testServiceCreationAndIngestion(
@@ -84,6 +92,10 @@ describe('Glue Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 });

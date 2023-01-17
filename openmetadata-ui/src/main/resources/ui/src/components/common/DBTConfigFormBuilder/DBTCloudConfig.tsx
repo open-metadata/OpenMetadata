@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
+import { Button, Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
@@ -20,20 +20,20 @@ import {
   requiredField,
 } from '../../../utils/CommonUtils';
 import { validateDbtCloudConfig } from '../../../utils/DBTConfigFormUtil';
-import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import DBTCommonFields from './DBTCommonFields.component';
 import {
   DbtConfigCloud,
   DBTFormCommonProps,
   ErrorDbtCloud,
 } from './DBTConfigForm.interface';
-import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAccountIdChange: (value: string) => void;
   handleCloudAuthTokenChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleDbtCloudProjectId: (value: string) => void;
+  handleUpdateDBTClassification: (value: string) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -49,6 +49,8 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleCloudAuthTokenChange,
   handleUpdateDescriptions,
   handleDbtCloudProjectId,
+  dbtClassificationName,
+  handleUpdateDBTClassification,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -65,6 +67,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtCloudAuthToken,
       dbtUpdateDescriptions,
       dbtCloudProjectId,
+      dbtClassificationName,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -135,32 +138,31 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <SwitchField
+      <DBTCommonFields
+        dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
+        descriptionId="cloud-update-description"
+        handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
-        id="cloud-update-description"
       />
 
       {getSeparator('')}
 
-      <Field className="tw-flex tw-justify-end">
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>{cancelText}</span>
+          {cancelText}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleSubmit}>
-          <span>{okText}</span>
+          {okText}
         </Button>
       </Field>
     </Fragment>

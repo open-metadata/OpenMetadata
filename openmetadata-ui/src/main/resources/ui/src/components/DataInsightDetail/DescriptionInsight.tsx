@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getAggregateChartData } from '@rest/DataInsightAPI';
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
@@ -28,6 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,

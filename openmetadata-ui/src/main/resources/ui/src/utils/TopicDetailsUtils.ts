@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TopicConfigObjectInterface } from '@components/TopicDetails/TopicDetails.interface';
+import { TopicConfigObjectInterface } from 'components/TopicDetails/TopicDetails.interface';
 import { t } from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
@@ -89,5 +89,6 @@ export const getConfigObject = (
     'Retention Size': topicDetails.retentionSize,
     'CleanUp Policies': topicDetails.cleanupPolicies,
     'Max Message Size': topicDetails.maximumMessageSize,
+    'Schema Type': topicDetails.messageSchema?.schemaType,
   };
 };

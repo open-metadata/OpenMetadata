@@ -247,8 +247,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
       {refreshFeedCount ? (
         <div className="tw-py-px tw-pt-3 tw-pb-3">
           <button className="tw-refreshButton " onClick={onRefreshFeeds}>
-            View {refreshFeedCount} new{' '}
-            {refreshFeedCount > 1 ? 'activities' : 'activity'}
+            {t('label.view-new-count', { count: refreshFeedCount })}{' '}
+            {refreshFeedCount > 1
+              ? t('label.activity-lowercase-plural')
+              : t('label.activity-lowercase')}
           </button>
         </div>
       ) : null}

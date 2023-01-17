@@ -13,6 +13,7 @@
 
 import { Card, Divider, Typography } from 'antd';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
@@ -41,6 +42,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   postFeed,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
     getFeedListWithRelativeDays(threads);
 
@@ -174,7 +176,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
           <Typography.Text
             className="tw-block tw-mt-4 tw-font-medium"
             data-testid="inActive-announcements">
-            Inactive Announcements
+            {t('label.inactive-announcement-plural')}
           </Typography.Text>
           <Divider className="tw-mb-4 tw-mt-2" />
         </>
