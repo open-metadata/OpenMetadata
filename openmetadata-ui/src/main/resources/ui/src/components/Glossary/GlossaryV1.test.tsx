@@ -19,12 +19,21 @@ import {
   queryByTestId,
   queryByText,
   render,
+  screen,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { omit } from 'lodash';
 import { LoadingState } from 'Models';
 import React from 'react';
 import { mockedAssetData, mockedGlossaries } from '../../mocks/Glossary.mock';
 import GlossaryV1 from './GlossaryV1.component';
+
+let params = {
+  glossaryName: 'GlossaryName',
+  action: '',
+};
+
+const mockPush = jest.fn();
 
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -74,18 +83,16 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
-    glossaryName: 'GlossaryName',
-  }),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+  })),
+  useParams: jest.fn().mockImplementation(() => params),
+  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
 }));
 
 jest.mock('components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
-}));
 
 jest.mock('components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
@@ -108,6 +115,20 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () =>
 jest.mock('../../utils/TimeUtils', () => ({
   formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
 }));
+
+jest.mock('./ExportGlossaryModal/ExportGlossaryModal', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="export-glossary">ExportGlossaryModal</div>
+    )
+);
+
+jest.mock('./ImportGlossary/ImportGlossary', () =>
+  jest
+    .fn()
+    .mockReturnValue(<div data-testid="import-glossary">ImportGlossary</div>)
+);
 
 const mockProps = {
   assetData: mockedAssetData,
@@ -220,5 +241,55 @@ describe('Test Glossary component', () => {
 
     expect(updateByContainer).toBeInTheDocument();
     expect(updateByDetails).not.toBeInTheDocument();
+  });
+
+  it('Should render import glossary component', async () => {
+    params = { ...params, action: 'import' };
+
+    await act(async () => {
+      const { container } = render(<GlossaryV1 {...mockProps} />);
+
+      const importGlossary = getByTestId(container, 'import-glossary');
+
+      expect(importGlossary).toBeInTheDocument();
+    });
+  });
+
+  it('Should render export glossary component', async () => {
+    params = { ...params, action: 'export' };
+    await act(async () => {
+      const { container } = render(<GlossaryV1 {...mockProps} />);
+
+      const exportGlossary = getByTestId(container, 'export-glossary');
+
+      expect(exportGlossary).toBeInTheDocument();
+    });
+  });
+
+  it('Should render export and import option', async () => {
+    await act(async () => {
+      const { container } = render(<GlossaryV1 {...mockProps} />);
+
+      const manageButton = getByTestId(container, 'manage-button');
+
+      expect(manageButton).toBeInTheDocument();
+
+      await act(async () => {
+        userEvent.click(manageButton);
+      });
+
+      const exportOption = await screen.getByTestId('export-button');
+
+      const importOption = await screen.getByTestId('import-button');
+
+      expect(exportOption).toBeInTheDocument();
+      expect(importOption).toBeInTheDocument();
+
+      await act(async () => {
+        userEvent.click(importOption);
+      });
+
+      expect(mockPush).toHaveBeenCalled();
+    });
   });
 });
