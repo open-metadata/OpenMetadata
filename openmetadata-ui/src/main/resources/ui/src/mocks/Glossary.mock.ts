@@ -24,7 +24,7 @@ export const mockedGlossaryTerms = [
     id: 'a5a97523-2229-41e5-abbe-65f61a534c34',
     name: 'Clothing',
     displayName: 'Clothing',
-    description: '',
+    description: 'description of Business Glossary.Clothing',
     fullyQualifiedName: 'Business Glossary.Clothing',
     synonyms: [],
     glossary: {

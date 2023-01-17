@@ -119,7 +119,10 @@ const GlossaryTermTab = ({
                     {term.name}
                   </Typography.Text>
                 </Link>
-                <Space className="w-full tw-flex-wrap" size={4}>
+                <Space
+                  className="w-full tw-flex-wrap"
+                  data-testid="tag-container"
+                  size={4}>
                   <Typography.Text className="text-grey-muted m-r-xs">
                     {t('label.tag-plural')}:
                   </Typography.Text>
