@@ -16,18 +16,18 @@ import os
 import re
 from abc import abstractmethod
 from contextlib import redirect_stdout
-from enum import Enum
 from io import StringIO
 from pathlib import Path
 from typing import List
 from unittest import TestCase
 
 import pytest
-import yaml
 
 from metadata.cmd import metadata
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
@@ -40,39 +40,67 @@ class CliDBTBase(TestCase):
     class TestSuite(TestCase):
         catcher = StringIO()
         openmetadata: OpenMetadata
-        test_file_path: str
+        dbt_file_path: str
         config_file_path: str
 
         # 1. deploy vanilla ingestion
         @pytest.mark.order(1)
         def test_connector_ingestion(self) -> None:
-            # build config file for ingest
-            self.build_config_file()
-            # run ingest with new tables
-            self.run_command()
+            # run ingest with dbt tables
+            self.run_command(file_path=self.config_file_path)
             result = self.catcher.getvalue()
             self.catcher.truncate(0)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
-        def run_command(self, command: str = "ingest"):
+        # 2. deploy dbt ingestion
+        @pytest.mark.order(2)
+        def test_dbt_ingestion(self) -> None:
+            # run the dbt ingestion
+            self.run_command(file_path=self.dbt_file_path)
+            result = self.catcher.getvalue()
+            self.catcher.truncate(0)
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_for_dbt_ingestion(source_status, sink_status)
+
+        # 3. run tests on dbt ingestion
+        @pytest.mark.order(3)
+        def test_entities(self) -> None:
+            for table_fqn in self.fqn_dbt_tables():
+                table: Table = self.openmetadata.get_by_name(
+                    entity=Table, fqn=table_fqn
+                )
+                data_model = table.dataModel
+                self.assertTrue(len(data_model.columns) > 0)
+                self.assertIsNotNone(data_model.rawSql)
+                self.assertIsNotNone(data_model.sql)
+                self.assertIsNotNone(data_model.upstream)
+                self.assertIsNotNone(data_model.description)
+                self.assertTrue(len(data_model.tags) > 0)
+
+        # 4. run tests on dbt test cases and test results
+        @pytest.mark.order(4)
+        def test_dbt_test_cases(self) -> None:
+            test_suite: TestSuite = self.openmetadata.get_by_name(
+                entity=TestSuite, fqn="DBT TEST SUITE"
+            )
+
+            test_case_entity_list = self.openmetadata.list_entities(
+                entity=OMTestCase,
+                fields=["testSuite", "entityLink", "testDefinition"],
+                params={"testSuiteId": test_suite.id.__root__},
+            )
+            self.assertTrue(len(test_case_entity_list.entities) == 23)
+
+        def run_command(self, file_path: str, command: str = "ingest"):
             args = [
                 command,
                 "-c",
-                self.test_file_path,
+                file_path,
             ]
             with redirect_stdout(self.catcher):
                 with self.assertRaises(SystemExit):
                     metadata(args)
-
-        def build_config_file(
-            self, extra_args: dict = None
-        ) -> None:
-            with open(self.config_file_path) as f:
-                config_yaml = yaml.safe_load(f)
-                # config_yaml = self.build_yaml(config_yaml, extra_args)
-                with open(self.test_file_path, "w") as w:
-                    yaml.dump(config_yaml, w)
 
         def retrieve_statuses(self, result):
             source_status: SourceStatus = self.extract_source_status(result)
@@ -81,9 +109,7 @@ class CliDBTBase(TestCase):
 
         @staticmethod
         def get_workflow(connector: str) -> Workflow:
-            config_file = Path(
-                PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml"
-            )
+            config_file = Path(PATH_TO_RESOURCES + f"/dbt/{connector}/{connector}.yaml")
             config_dict = load_config_file(config_file)
             return Workflow.create(config_dict)
 
@@ -119,33 +145,29 @@ class CliDBTBase(TestCase):
         def get_connector_name() -> str:
             raise NotImplementedError()
 
+        @staticmethod
+        @abstractmethod
+        def expected_tables() -> int:
+            raise NotImplementedError()
+
+        @staticmethod
+        @abstractmethod
+        def expected_records() -> int:
+            raise NotImplementedError()
+
+        @staticmethod
+        @abstractmethod
+        def fqn_dbt_tables() -> List[str]:
+            raise NotImplementedError()
+
         @abstractmethod
         def assert_for_vanilla_ingestion(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()
 
-        # @staticmethod
-        # def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):
-        #     if test_type == E2EType.PROFILER:
-        #         del config_yaml["source"]["sourceConfig"]["config"]
-        #         config_yaml["source"]["sourceConfig"] = {
-        #             "config": {"type": "Profiler", "generateSampleData": True}
-        #         }
-        #         config_yaml["processor"] = {"type": "orm-profiler", "config": {}}
-        #     if test_type == E2EType.INGEST_FILTER_SCHEMA:
-        #         config_yaml["source"]["sourceConfig"]["config"][
-        #             "schemaFilterPattern"
-        #         ] = extra_args
-        #     if test_type == E2EType.INGEST_FILTER_TABLE:
-        #         config_yaml["source"]["sourceConfig"]["config"][
-        #             "tableFilterPattern"
-        #         ] = extra_args
-        #     if test_type == E2EType.INGEST_FILTER_MIX:
-        #         config_yaml["source"]["sourceConfig"]["config"][
-        #             "schemaFilterPattern"
-        #         ] = extra_args["schema"]
-        #         config_yaml["source"]["sourceConfig"]["config"][
-        #             "tableFilterPattern"
-        #         ] = extra_args["table"]
-        #     return config_yaml
+        @abstractmethod
+        def assert_for_dbt_ingestion(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ) -> None:
+            raise NotImplementedError()

@@ -12,10 +12,16 @@
 """
 Test Redshift connector with CLI
 """
+from pathlib import Path
 from typing import List
 
-from .test_cli_dbt_base import CliDBTBase
+from sqlalchemy.engine import Engine
+
+from metadata.ingestion.api.sink import SinkStatus
+from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
+
+from .test_cli_dbt_base import PATH_TO_RESOURCES, CliDBTBase
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
@@ -29,11 +35,9 @@ class DbtCliTest(CliDBTBase.TestSuite):
         cls.engine = workflow.source.engine
         cls.openmetadata = workflow.source.metadata
         cls.config_file_path = str(
-            Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
+            Path(PATH_TO_RESOURCES + f"/dbt/{connector}/{connector}.yaml")
         )
-        cls.test_file_path = str(
-            Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
-        )
+        cls.dbt_file_path = str(Path(PATH_TO_RESOURCES + f"/dbt/{connector}/dbt.yaml"))
 
     def tearDown(self) -> None:
         self.engine.dispose()
@@ -44,47 +48,37 @@ class DbtCliTest(CliDBTBase.TestSuite):
 
     @staticmethod
     def expected_tables() -> int:
-        return 2
-
-    def inserted_rows_count(self) -> int:
-        return len(self.insert_data_queries)
+        return 9
 
     @staticmethod
-    def fqn_created_table() -> str:
-        return "local_redshift.dev.exclude_me.orders"
+    def expected_records() -> int:
+        return 72
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
-        return ["exclude_me", "dbt_jaffle"]
-    
-    @staticmethod
-    def get_excludes_schemas() -> List[str]:
-        return ["sample_data"]
+    def fqn_dbt_tables() -> List[str]:
+        return [
+            "local_redshift.dev.dbt_jaffle.customers",
+            "local_redshift.dev.dbt_jaffle.orders",
+        ]
 
-    @staticmethod
-    def get_includes_tables() -> List[str]:
-        return ["customers"]
+    def assert_for_vanilla_ingestion(
+        self, source_status: SourceStatus, sink_status: SinkStatus
+    ) -> None:
+        self.assertTrue(len(source_status.failures) == 0)
+        self.assertTrue(len(source_status.warnings) == 0)
+        self.assertTrue(len(source_status.filtered) == 5)
+        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(sink_status.failures) == 0)
+        self.assertTrue(len(sink_status.warnings) == 0)
+        self.assertTrue(len(sink_status.records) > self.expected_tables())
 
-    @staticmethod
-    def get_excludes_tables() -> List[str]:
-        return ["boolean_test"]
-
-    @staticmethod
-    def expected_filtered_schema_includes() -> int:
-        return 1
-
-    @staticmethod
-    def expected_filtered_schema_excludes() -> int:
-        return 1
-
-    @staticmethod
-    def expected_filtered_table_includes() -> int:
-        return 1
-
-    @staticmethod
-    def expected_filtered_table_excludes() -> int:
-        return 1
-
-    @staticmethod
-    def expected_filtered_mix() -> int:
-        return 1
+    def assert_for_dbt_ingestion(
+        self, source_status: SourceStatus, sink_status: SinkStatus
+    ) -> None:
+        self.assertTrue(len(source_status.failures) == 0)
+        self.assertTrue(len(source_status.warnings) == 0)
+        self.assertTrue(len(source_status.filtered) == 0)
+        self.assertTrue(len(source_status.success) >= 0)
+        self.assertTrue(len(sink_status.failures) == 0)
+        self.assertTrue(len(sink_status.warnings) == 0)
+        self.assertTrue(len(sink_status.records) >= self.expected_records())
