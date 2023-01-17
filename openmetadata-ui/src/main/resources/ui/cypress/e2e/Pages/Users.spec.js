@@ -27,17 +27,19 @@ const userEmail = `${userName}@gmail.com`;
 const adminName = `Admincttest${uuid()}`;
 const adminEmail = `${adminName}@gmail.com`;
 
+const searchBotText = 'bot';
+
 const searchBotUser = () => {
-  // Search the created user
+  // Search the bot user
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=**(isBot:false)&from=0&size=*&index=*',
+    `/api/v1/search/query?q=*${searchBotText}***(isBot:false)&from=0&size=15&index=user_search_index`,
     'searchUser'
   );
   cy.get('[data-testid="searchbar"]')
     .should('exist')
     .should('be.visible')
-    .type('bot');
+    .type(searchBotText);
 
   verifyResponseStatusCode('@searchUser', 200);
 
@@ -65,6 +67,10 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+  });
+
+  it('Search bot user', () => {
+    searchBotUser();
   });
 
   it('Add new User', () => {
@@ -96,9 +102,9 @@ describe('Users flow should work properly', () => {
     deleteSoftDeletedUser(userName);
   });
 
-  it('Search bot user', () => {
-    searchBotUser();
-  });
+  //   it('Search bot user', () => {
+  //     searchBotUser();
+  //   });
 });
 
 describe('Admin flow should work properly', () => {
