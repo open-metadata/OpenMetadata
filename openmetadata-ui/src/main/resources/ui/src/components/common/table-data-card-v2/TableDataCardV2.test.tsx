@@ -48,6 +48,7 @@ describe('Test TableDataCard Component', () => {
         id="1"
         searchIndex={SearchIndex.TABLE}
         source={{
+          id: '1',
           name: 'Name1',
         }}
       />,
@@ -65,6 +66,7 @@ describe('Test TableDataCard Component', () => {
         id="1"
         searchIndex={SearchIndex.TABLE}
         source={{
+          id: '2',
           name: 'Name2',
           deleted: true,
         }}
