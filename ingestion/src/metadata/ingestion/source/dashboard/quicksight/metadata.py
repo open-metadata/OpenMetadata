@@ -19,6 +19,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
@@ -38,7 +39,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class QuickSightSource(DashboardServiceSource):
+class QuicksightSource(DashboardServiceSource):
     """
     QuickSight Source Class
     """
@@ -50,6 +51,7 @@ class QuickSightSource(DashboardServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.aws_account_id = self.service_connection.awsAccountId
+        self.dashboard_url = None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -97,15 +99,15 @@ class QuickSightSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        dashboard_url = self.client.get_dashboard_embed_url(
+        self.dashboard_url = self.client.get_dashboard_embed_url(
             AwsAccountId=self.aws_account_id,
             DashboardId=dashboard_details["DashboardId"],
-            IdentityType="ANONYMOUS",
+            IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
         )["EmbedUrl"]
 
         yield CreateDashboardRequest(
             name=dashboard_details["DashboardId"],
-            dashboardUrl=dashboard_url,
+            dashboardUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
             description=dashboard_details["Version"].get("Description", ""),
             charts=[
@@ -127,11 +129,6 @@ class QuickSightSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        dashboard_url = self.client.get_dashboard_embed_url(
-            AwsAccountId=self.aws_account_id,
-            DashboardId=dashboard_details["DashboardId"],
-            IdentityType="ANONYMOUS",
-        )["EmbedUrl"]
         # Each dashboard is guaranteed to have at least one sheet, which represents
         # a chart in the context of QuickSight
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
@@ -149,7 +146,7 @@ class QuickSightSource(DashboardServiceSource):
                     displayName=chart["Name"],
                     description="",
                     chartType=ChartType.Other.value,
-                    chartUrl=f"{dashboard_url}/sheets/{chart['SheetId']}",
+                    chartUrl=f"{self.dashboard_url}/sheets/{chart['SheetId']}",
                     service=EntityReference(
                         id=self.context.dashboard_service.id.__root__,
                         type="dashboardService",
@@ -168,54 +165,54 @@ class QuickSightSource(DashboardServiceSource):
         Get lineage between dashboard and data sources
         """
         try:
-            dataset_arns = dashboard_details["Version"]["DatasetArns"]
+            dataset_arns = dashboard_details["Version"]["DataSetArns"]
             dataset_ids = [
                 dataset["DataSetId"]
                 for dataset in self.client.list_data_sets(
                     AwsAccountId=self.aws_account_id
-                )
-                if dataset["Arn"] in dataset_arns
+                )["DataSetSummaries"]
+                if dataset.get("Arn") in dataset_arns
             ]
-            data_source_arns = set()
             for dataset_id in dataset_ids:
                 for data_source in list(
                     self.client.describe_data_set(
                         AwsAccountId=self.aws_account_id, DataSetId=dataset_id
-                    )["Dataset"]["PhysicalTableMap"].values()
-                )[0]:
-                    data_source_arns.add(data_source["DataSourceArn"])
-            data_sources = [
-                data_source
-                for data_source in self.client.list_data_sources(
-                    AwsAccountId=self.aws_account_id
-                )["DataSources"]
-                if data_source["Arn"] in data_source_arns
-            ]
-            for data_source in data_sources:
-                database_name = data_source["Name"]
-                from_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=db_service_name,
-                    database_name=database_name,
-                )
-                from_entity = self.metadata.get_by_name(
-                    entity=Database,
-                    fqn=from_fqn,
-                )
-                to_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Dashboard,
-                    service_name=self.config.serviceName,
-                    dashboard_name=dashboard_details["DashboardId"],
-                )
-                to_entity = self.metadata.get_by_name(
-                    entity=Dashboard,
-                    fqn=to_fqn,
-                )
-                yield self._get_add_lineage_request(
-                    to_entity=to_entity, from_entity=from_entity
-                )
+                    )["DataSet"]["PhysicalTableMap"].values()
+                ):
+                    if any(
+                        data_source_resp in data_source
+                        for data_source_resp in ["S3Source", "CustomSql"]
+                    ):
+                        logger.warning(
+                            "We currently don't support lineage to S3 Source or Custom Sql Queries"
+                        )
+                        continue
+
+                    # db_name = data_source
+                    schema_name = data_source["RelationalTable"]["Schema"]
+                    table_name = data_source["RelationalTable"]["Name"]
+                    data_sources_list = self.client.list_data_sources(
+                        AwsAccountId=self.aws_account_id,
+                    )["DataSources"]
+                    data_source_arn = [
+                        data_source_arn
+                        for data_source_arn in data_sources_list
+                        if data_source_arn
+                        in data_source["RelationalTable"]["DataSourceArn"]
+                    ]
+                    self.client
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=f"{db_service_name}{fqn.FQN_SEPARATOR}{database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}",
+                    )
+
+                    to_entity = self.metadata.get_by_name(
+                        entity=Dashboard,
+                        fqn=to_fqn,
+                    )
+                    yield self._get_add_lineage_request(
+                        to_entity=to_entity, from_entity=from_entity
+                    )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
