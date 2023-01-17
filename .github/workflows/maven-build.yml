@@ -116,7 +116,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push'  && steps.cache-dependencies.outputs.cache-hit != 'true'}}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
-        
+
       - name: Clean Up
         run: |
           cd ./docker/local-metadata
