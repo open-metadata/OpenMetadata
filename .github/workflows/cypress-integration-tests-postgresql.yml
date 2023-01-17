@@ -65,18 +65,25 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache node_modules and generated data models
-        id: cache-output
+      - name: Cache node_modules
+        id: cache-node-output
         uses: actions/cache@v3
         with:
           path: |
             node_modules
-            generated_data_models
           key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: Set up JDK 11
         if: steps.cache-output.outputs.exit-code == 0
@@ -86,7 +93,7 @@ jobs:
           distribution: 'adopt'
 
       - name: Generating Data Models
-        if: ${{ steps.cache-output.outputs.cache-hit != 'true' && steps.cache-output.outputs.exit-code == 0 }}
+        if: ${{ steps.cache-node-output.outputs.exit-code == 0 }}
         run: |
           sudo make install_antlr_cli
           make install_dev generate
