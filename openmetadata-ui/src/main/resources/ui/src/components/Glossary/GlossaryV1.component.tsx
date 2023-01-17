@@ -166,12 +166,20 @@ const GlossaryV1 = ({
   };
 
   const handleAddGlossaryTermClick = () => {
-    const activeTerm = glossaryFqn.split(FQN_SEPARATOR_CHAR);
-    const glossaryName = activeTerm[0];
-    if (activeTerm.length > 1) {
-      history.push(getAddGlossaryTermsPath(glossaryName, glossaryFqn));
+    if (glossaryFqn) {
+      const activeTerm = glossaryFqn.split(FQN_SEPARATOR_CHAR);
+      const glossaryName = activeTerm[0];
+      if (activeTerm.length > 1) {
+        history.push(getAddGlossaryTermsPath(glossaryName, glossaryFqn));
+      } else {
+        history.push(getAddGlossaryTermsPath(glossaryName));
+      }
     } else {
-      history.push(getAddGlossaryTermsPath(glossaryName));
+      history.push(
+        getAddGlossaryTermsPath(
+          selectedData.fullyQualifiedName || selectedData.name
+        )
+      );
     }
   };
 

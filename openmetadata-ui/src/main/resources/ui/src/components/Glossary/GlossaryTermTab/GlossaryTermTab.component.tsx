@@ -112,7 +112,7 @@ const GlossaryTermTab = ({
       {!isLoading && filterData.length > 0 ? (
         filterData.map((term) => (
           <Col key={term.name} span={24}>
-            <Card key={term.name}>
+            <Card data-testid={`${term.name}-card`}>
               <Space direction="vertical" size={8}>
                 <Link to={getGlossaryPath(term.fullyQualifiedName)}>
                   <Typography.Text className="text-base font-medium">

@@ -480,7 +480,7 @@ const GlossaryTermsV1 = ({
             },
             {
               label: (
-                <div>
+                <div data-testid="assets">
                   {t('label.asset-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(assetData.total, '', activeTab === 'assets')}
