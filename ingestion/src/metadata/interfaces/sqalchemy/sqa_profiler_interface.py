@@ -80,7 +80,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         self.profile_sample_config = profiler_interface_args.profile_sample_config
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = (
-            self.get_partition_details(profiler_interface_args.table_partition_config)
+            profiler_interface_args.table_partition_config
             if not self.profile_query
             else None
         )

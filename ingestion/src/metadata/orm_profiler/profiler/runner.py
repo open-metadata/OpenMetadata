@@ -16,13 +16,11 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-import traceback
-from typing import Dict, Optional, Union, List, Tuple, Any
+from typing import Dict, Optional, Union
 
-from sqlalchemy import Column, or_, text, and_
+from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
-from sqlalchemy.sql.elements import BinaryExpression
 
 from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
 from metadata.utils.logger import query_runner_logger
@@ -56,48 +54,6 @@ class QueryRunner:
         self._partition_details = partition_details
         self._profile_sample_query = profile_sample_query
 
-    def _build_query_filter(
-        self,
-        filters: List[Tuple[Column, str, Any]],
-        or_filter: bool = False
-        ) -> Optional[BinaryExpression]:
-        """Dynamically build query filter
-
-        Args:
-            filters (List[Tuple[Column, str, Any]]): list of tuples representing filters
-            or_filter (bool, optional): whether to perform an OR or AND condition. Defaults to False.
-
-        Returns:
-            BinaryExpression: a filter pattern
-        """
-        list_of_filters = []
-        for filter_ in filters:
-            column, operator, value = filter_
-            try:
-                filter_attr = next(
-                    filter(
-                        lambda x: hasattr(column, x % operator),
-                        ["%s", "%s_", "__%s__"]
-                        ),
-                    None
-                ) % operator  # type: ignore
-            except TypeError as err:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Error when looking for operator {operator} - {err}")
-            else:
-                list_of_filters.append(
-                    getattr(column,filter_attr)(value)
-                )
-
-        if not list_of_filters:
-            logger.debug("No filters found.")
-            return None
-
-        if or_filter:
-            return or_(*list_of_filters)
-        return and_(*list_of_filters)
-
-
     def _build_query(self, *entities, **kwargs) -> Query:
         return self._session.query(*entities, **kwargs)
 
@@ -110,7 +66,6 @@ class QueryRunner:
                 return query.filter(filter_)
 
         return query
-
 
     def _select_from_user_query(self, *entities, **kwargs):
         user_query = self._session.query(self.table).from_statement(

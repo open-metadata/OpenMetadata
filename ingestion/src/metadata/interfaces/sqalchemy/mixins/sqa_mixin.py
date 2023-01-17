@@ -15,12 +15,11 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from typing import Dict, Optional
+from typing import Optional
 
 from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
 
-from metadata.generated.schema.entity.data.table import PartitionProfilerConfig
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
@@ -85,27 +84,6 @@ class SQAInterfaceMixin:
                     query_tag=self.service_connection_config.queryTag
                 )
             )
-
-    def get_partition_details(
-        self, partition_config: Optional[PartitionProfilerConfig]
-    ) -> Optional[Dict]:
-        """From partition config, get the partition table for a table entity
-
-        Args:
-            partition_config: PartitionProfilerConfig object with some partition details
-
-        Returns:
-            dict or None: dictionary with all the elements constituting the a partition
-        """
-        if not partition_config:
-            return None
-
-        return {
-            "partition_field": partition_config.partitionColumnName,
-            "partition_values": partition_config.partitionValues,
-            "partition_interval_unit": partition_config.partitionIntervalUnit.value,
-            "partition_interval": partition_config.partitionInterval,
-        }
 
     def close(self):
         """close session"""

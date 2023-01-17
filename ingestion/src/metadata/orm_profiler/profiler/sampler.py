@@ -12,18 +12,27 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, cast
 
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.generated.schema.entity.data.table import (
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    TableData,
+)
 from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
 from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
+from metadata.utils.sqa_utils import (
+    build_query_filter,
+    dispatch_to_date_or_datetime,
+    get_partition_col_type,
+)
 
 RANDOM_LABEL = "random"
 
@@ -83,7 +92,7 @@ class Sampler:
 
         if not self.profile_sample:
             if self._partition_details:
-                return self._random_sample_for_partitioned_tables()
+                return self._partitioned_table()
 
             return self.table
 
@@ -142,25 +151,56 @@ class Sampler:
             text(f"{self._profile_sample_query}")
         )
 
-    def _random_sample_for_partitioned_tables(self) -> Query:
+    def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
-        partition_field = self._partition_details["partition_field"]
-        if not self._partition_details.get("partition_values"):
+        self._partition_details = cast(
+            PartitionProfilerConfig, self._partition_details
+        )  # satisfying type checker
+        partition_field = self._partition_details.partitionColumnName
+
+        type_ = get_partition_col_type(
+            partition_field,
+            self.table.__table__.c,
+        )
+
+        if not self._partition_details.partitionValues:
             sample = (
                 self.session.query(self.table)
                 .filter(
-                    column(partition_field)
-                    >= self._partition_details["partition_start"].strftime("%Y-%m-%d"),
-                    column(partition_field)
-                    <= self._partition_details["partition_end"].strftime("%Y-%m-%d"),
+                    build_query_filter(
+                        [
+                            (
+                                column(partition_field),
+                                "ge",
+                                dispatch_to_date_or_datetime(
+                                    self._partition_details.partitionInterval,
+                                    text(
+                                        self._partition_details.partitionIntervalUnit.value
+                                    ),
+                                    type_,
+                                ),
+                            )
+                        ],
+                        False,
+                    )
                 )
                 .subquery()
             )
             return aliased(self.table, sample)
+
         sample = (
             self.session.query(self.table)
             .filter(
-                column(partition_field).in_(self._partition_details["partition_values"])
+                build_query_filter(
+                    [
+                        (
+                            column(partition_field),
+                            "in",
+                            self._partition_details.partitionValues,
+                        )
+                    ],
+                    False,
+                )
             )
             .subquery()
         )

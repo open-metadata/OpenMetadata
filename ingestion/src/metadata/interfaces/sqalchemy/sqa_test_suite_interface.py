@@ -21,7 +21,7 @@ from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
@@ -56,7 +56,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         sqa_metadata_obj: Optional[MetaData] = None,
         profile_sample_config: Optional[ProfileSampleConfig] = None,
         table_sample_query: str = None,
-        table_partition_config: dict = None,
+        table_partition_config: Optional[PartitionProfilerConfig] = None,
         table_entity: Table = None,
     ):
         self.ometa_client = ometa_client
@@ -72,9 +72,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         self.profile_sample_config = profile_sample_config
         self.table_sample_query = table_sample_query
         self.table_partition_config = (
-            self.get_partition_details(table_partition_config)
-            if not self.table_sample_query
-            else None
+            table_partition_config if not self.table_sample_query else None
         )
 
         self._sampler = self._create_sampler()
