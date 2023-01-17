@@ -10,6 +10,13 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[\\w'\\- ./]+$"
+    },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
@@ -819,10 +826,7 @@
     },
     "name": {
       "description": "Name of a table. Expected to be unique within a database.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[\\w'\\- .&/]+$"
+      "$ref": "#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this table. It could be title or label from the source services.",

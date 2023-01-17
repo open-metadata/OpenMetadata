@@ -9,7 +9,7 @@
 
   "properties": {
     "name": {
-      "$ref" : "../../entity/data/location.json#/definitions/locationName"
+      "$ref" : "../../entity/data/location.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this location.",
