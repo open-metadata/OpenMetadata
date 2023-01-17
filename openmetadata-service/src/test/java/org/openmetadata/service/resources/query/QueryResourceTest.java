@@ -36,7 +36,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withEntityName(name)
         .withQuery("select * from sales")
         .withDuration(0.0)
-        .withQueryDate("2022-11-12")
+        .withQueryDate(1673857635064L)
         .withVote(1.0);
   }
 
@@ -90,7 +90,11 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   @Test
   public void post_without_entityName_400(TestInfo test) throws IOException {
     CreateQuery create =
-        new CreateQuery().withQuery("select * from sales").withDuration(0.0).withQueryDate("2022-11-12").withVote(1.0);
+        new CreateQuery()
+            .withQuery("select * from sales")
+            .withDuration(0.0)
+            .withQueryDate(1673857635064L)
+            .withVote(1.0);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[entityName must not be null]");
   }
@@ -100,7 +104,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     CreateQuery create =
         new CreateQuery()
             .withDuration(0.0)
-            .withQueryDate("2022-11-12")
+            .withQueryDate(1673857635064L)
             .withVote(1.0)
             .withEntityName(getEntityName(test));
     assertResponse(

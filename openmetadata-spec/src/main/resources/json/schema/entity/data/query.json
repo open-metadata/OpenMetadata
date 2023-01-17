@@ -12,7 +12,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "query": {
-      "description": "query.",
+      "description": "SQL Query definition.",
       "type": "string"
     },
     "duration": {
@@ -38,7 +38,7 @@
     },
     "queryDate": {
       "description": "Date on which the query ran.",
-      "$ref": "../../type/basic.json#/definitions/date"
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "description": {
       "description": "Description of a query.",
@@ -82,7 +82,7 @@
       "default": false
     },
     "entityName": {
-      "description": "Name of a entity to which the query belong",
+      "description": "Name of an entity to which the query belongs, to create fqn for eg: checksum.entityName",
       "type": "string"
     }
   },
