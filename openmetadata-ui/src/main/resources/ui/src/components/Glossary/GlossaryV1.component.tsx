@@ -29,7 +29,7 @@ import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getUserPath } from '../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
@@ -44,7 +44,10 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import { getGlossaryPath } from '../../utils/RouterUtils';
+import {
+  getGlossaryPath,
+  getGlossaryPathWithAction,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -66,8 +69,13 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryV1Skeleton from '../Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { GlossaryV1Props } from './GlossaryV1.interfaces';
+import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
+
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
+import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const { Title } = Typography;
 
@@ -98,6 +106,8 @@ const GlossaryV1 = ({
   onRelatedTermClick,
   currentPage,
 }: GlossaryV1Props) => {
+  const { action } = useParams<{ action: GlossaryAction }>();
+  const history = useHistory();
   const { DirectoryTree } = Tree;
   const { t } = useTranslation();
 
@@ -125,6 +135,28 @@ const GlossaryV1 = ({
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const handleGlossaryExport = () =>
+    history.push(
+      getGlossaryPathWithAction(selectedData.name, GlossaryAction.EXPORT)
+    );
+
+  const handleCancelGlossaryExport = () =>
+    history.push(getGlossaryPath(selectedData.name));
+
+  const handleGlossaryImport = () =>
+    history.push(
+      getGlossaryPathWithAction(selectedData.name, GlossaryAction.IMPORT)
+    );
+
+  const isImportAction = useMemo(
+    () => action === GlossaryAction.IMPORT,
+    [action]
+  );
+  const isExportAction = useMemo(
+    () => action === GlossaryAction.EXPORT,
+    [action]
+  );
 
   const fetchGlossaryPermission = async () => {
     try {
@@ -266,6 +298,76 @@ const GlossaryV1 = ({
   });
 
   const manageButtonContent = [
+    ...(isGlossaryActive
+      ? [
+          {
+            label: (
+              <Row
+                className="tw-cursor-pointer manage-button"
+                data-testid="export-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleGlossaryExport();
+                  setShowActions(false);
+                }}>
+                <Col className="self-center" span={3}>
+                  <ExportIcon width="20px" />
+                </Col>
+                <Col span={21}>
+                  <Row>
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="export-button-title">
+                        {t('label.export')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('label.export-glossary-terms')}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'export-button',
+          },
+          {
+            label: (
+              <Row
+                className="tw-cursor-pointer manage-button"
+                data-testid="import-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleGlossaryImport();
+                  setShowActions(false);
+                }}>
+                <Col className="self-center" span={3}>
+                  <ImportIcon width="20px" />
+                </Col>
+                <Col span={21}>
+                  <Row>
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="import-button-title">
+                        {t('label.import')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('label.import-glossary-terms')}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
     {
       label: (
         <Space
@@ -377,204 +479,226 @@ const GlossaryV1 = ({
 
   return glossaryList.length ? (
     <PageLayoutV1 leftPanel={fetchLeftPanel()}>
-      <div
-        className="tw-flex tw-justify-between tw-items-center"
-        data-testid="header">
-        <div className="tw-text-link tw-text-base" data-testid="category-name">
-          <TitleBreadcrumb
-            titleLinks={breadcrumb}
-            widthDeductions={
-              leftPanelWidth + addTermButtonWidth + manageButtonWidth + 20 // Additional deduction for margin on the right of leftPanel
-            }
-          />
-        </div>
-        <div
-          className="tw-relative tw-flex tw-justify-between tw-items-center"
-          id="add-term-button">
-          <Tooltip
-            title={
-              createGlossaryTermPermission
-                ? 'Add Term'
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <ButtonAntd
-              className="tw-h-8 tw-rounded tw-mr-2"
-              data-testid="add-new-tag-button"
-              disabled={!createGlossaryTermPermission}
-              type="primary"
-              onClick={handleAddGlossaryTermClick}>
-              Add term
-            </ButtonAntd>
-          </Tooltip>
-
-          <Dropdown
-            align={{ targetOffset: [-12, 0] }}
-            disabled={
-              isGlossaryActive
-                ? !glossaryPermission.Delete
-                : !glossaryTermPermission.Delete
-            }
-            menu={{ items: manageButtonContent }}
-            open={showActions}
-            overlayStyle={{ width: '350px' }}
-            placement="bottomRight"
-            trigger={['click']}
-            onOpenChange={setShowActions}>
-            <Tooltip
-              title={
-                glossaryPermission.Delete || glossaryTermPermission.Delete
-                  ? isGlossaryActive
-                    ? 'Manage Glossary'
-                    : 'Manage GlossaryTerm'
-                  : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-flex"
-                data-testid="manage-button"
-                disabled={
-                  !(glossaryPermission.Delete || glossaryTermPermission.Delete)
-                }
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={() => setShowActions(true)}>
-                <span>
-                  <FontAwesomeIcon icon="ellipsis-vertical" />
-                </span>
-              </Button>
-            </Tooltip>
-          </Dropdown>
-        </div>
-      </div>
-      {isChildLoading ? (
-        <Loader />
+      {isImportAction ? (
+        <ImportGlossary glossaryName={selectedData.name} />
       ) : (
         <>
-          <div className="edit-input">
-            {isNameEditing ? (
-              <Row align="middle" gutter={8}>
-                <Col>
-                  <Input
-                    className="input-width"
-                    data-testid="displayName"
-                    name="displayName"
-                    value={displayName}
-                    onChange={(e) => onDisplayNameChange(e.target.value)}
-                  />
-                </Col>
-                <Col>
-                  <Button
-                    className="icon-buttons"
-                    data-testid="cancelAssociatedTag"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsNameEditing(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
-                  </Button>
-                  <Button
-                    className="icon-buttons"
-                    data-testid="saveAssociatedTag"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={onDisplayNameSave}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
-                  </Button>
-                </Col>
-              </Row>
-            ) : (
-              <Space className="display-name">
-                <Title className="tw-text-base" level={5}>
-                  {getEntityName(selectedData)}
-                </Title>
+          <div
+            className="tw-flex tw-justify-between tw-items-center"
+            data-testid="header">
+            <div
+              className="tw-text-link tw-text-base"
+              data-testid="category-name">
+              <TitleBreadcrumb
+                titleLinks={breadcrumb}
+                widthDeductions={
+                  leftPanelWidth + addTermButtonWidth + manageButtonWidth + 20 // Additional deduction for margin on the right of leftPanel
+                }
+              />
+            </div>
+            <div
+              className="tw-relative tw-flex tw-justify-between tw-items-center"
+              id="add-term-button">
+              <Tooltip
+                title={
+                  createGlossaryTermPermission
+                    ? 'Add Term'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <ButtonAntd
+                  className="tw-h-8 tw-rounded tw-mr-2"
+                  data-testid="add-new-tag-button"
+                  disabled={!createGlossaryTermPermission}
+                  type="primary"
+                  onClick={handleAddGlossaryTermClick}>
+                  Add term
+                </ButtonAntd>
+              </Tooltip>
+
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                disabled={
+                  isGlossaryActive
+                    ? !glossaryPermission.Delete
+                    : !glossaryTermPermission.Delete
+                }
+                menu={{ items: manageButtonContent }}
+                open={showActions}
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                onOpenChange={setShowActions}>
                 <Tooltip
                   title={
-                    editDisplayNamePermission
-                      ? 'Edit Displayname'
+                    glossaryPermission.Delete || glossaryTermPermission.Delete
+                      ? isGlossaryActive
+                        ? 'Manage Glossary'
+                        : 'Manage GlossaryTerm'
                       : NO_PERMISSION_FOR_ACTION
                   }>
-                  <ButtonAntd
-                    className="m-b-xss"
-                    disabled={!editDisplayNamePermission}
-                    type="text"
-                    onClick={() => setIsNameEditing(true)}>
-                    <SVGIcons
-                      alt="icon-tag"
-                      className="tw-mx-1"
-                      icon={Icons.EDIT}
-                      width="16"
-                    />
-                  </ButtonAntd>
+                  <Button
+                    className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-flex"
+                    data-testid="manage-button"
+                    disabled={
+                      !(
+                        glossaryPermission.Delete ||
+                        glossaryTermPermission.Delete
+                      )
+                    }
+                    size="small"
+                    theme="primary"
+                    variant="outlined"
+                    onClick={() => setShowActions(true)}>
+                    <span>
+                      <FontAwesomeIcon icon="ellipsis-vertical" />
+                    </span>
+                  </Button>
                 </Tooltip>
-              </Space>
-            )}
+              </Dropdown>
+            </div>
           </div>
-          <Space className="m-b-md" data-testid="updated-by-container" size={8}>
-            <Typography.Text className="text-grey-muted">
-              {t('label.updated-by')} -
-            </Typography.Text>
-            {selectedData.updatedBy && selectedData.updatedAt ? (
-              <>
-                {' '}
-                <ProfilePicture
-                  displayName={selectedData.updatedBy}
-                  // There is no user id present in response
-                  id=""
-                  name={selectedData.updatedBy || ''}
-                  textClass="text-xs"
-                  width="20"
-                />
-                <Typography.Text data-testid="updated-by-details">
-                  <Link to={getUserPath(selectedData.updatedBy ?? '')}>
-                    {selectedData.updatedBy}
-                  </Link>{' '}
-                  {t('label.on-lowercase')}{' '}
-                  {formatDateTime(selectedData.updatedAt || 0)}
+          {isChildLoading ? (
+            <Loader />
+          ) : (
+            <>
+              <div className="edit-input">
+                {isNameEditing ? (
+                  <Row align="middle" gutter={8}>
+                    <Col>
+                      <Input
+                        className="input-width"
+                        data-testid="displayName"
+                        name="displayName"
+                        value={displayName}
+                        onChange={(e) => onDisplayNameChange(e.target.value)}
+                      />
+                    </Col>
+                    <Col>
+                      <Button
+                        className="icon-buttons"
+                        data-testid="cancelAssociatedTag"
+                        size="custom"
+                        theme="primary"
+                        variant="contained"
+                        onMouseDown={() => setIsNameEditing(false)}>
+                        <FontAwesomeIcon
+                          className="tw-w-3.5 tw-h-3.5"
+                          icon="times"
+                        />
+                      </Button>
+                      <Button
+                        className="icon-buttons"
+                        data-testid="saveAssociatedTag"
+                        size="custom"
+                        theme="primary"
+                        variant="contained"
+                        onMouseDown={onDisplayNameSave}>
+                        <FontAwesomeIcon
+                          className="tw-w-3.5 tw-h-3.5"
+                          icon="check"
+                        />
+                      </Button>
+                    </Col>
+                  </Row>
+                ) : (
+                  <Space className="display-name">
+                    <Title className="tw-text-base" level={5}>
+                      {getEntityName(selectedData)}
+                    </Title>
+                    <Tooltip
+                      title={
+                        editDisplayNamePermission
+                          ? 'Edit Displayname'
+                          : NO_PERMISSION_FOR_ACTION
+                      }>
+                      <ButtonAntd
+                        className="m-b-xss"
+                        disabled={!editDisplayNamePermission}
+                        type="text"
+                        onClick={() => setIsNameEditing(true)}>
+                        <SVGIcons
+                          alt="icon-tag"
+                          className="tw-mx-1"
+                          icon={Icons.EDIT}
+                          width="16"
+                        />
+                      </ButtonAntd>
+                    </Tooltip>
+                  </Space>
+                )}
+              </div>
+              <Space
+                className="m-b-md"
+                data-testid="updated-by-container"
+                size={8}>
+                <Typography.Text className="text-grey-muted">
+                  {t('label.updated-by')} -
                 </Typography.Text>
-              </>
-            ) : (
-              '--'
-            )}
-          </Space>
-          {!isEmpty(selectedData) &&
-            (isGlossaryActive ? (
-              <GlossaryDetails
-                glossary={selectedData as Glossary}
-                handleUserRedirection={handleUserRedirection}
-                permissions={glossaryPermission}
-                updateGlossary={updateGlossary}
-              />
-            ) : (
-              <GlossaryTermsV1
-                assetData={assetData}
-                currentPage={currentPage}
-                glossaryTerm={selectedData as GlossaryTerm}
-                handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-                handleUserRedirection={handleUserRedirection}
-                permissions={glossaryTermPermission}
-                onAssetPaginate={onAssetPaginate}
-                onRelatedTermClick={onRelatedTermClick}
-              />
-            ))}
+                {selectedData.updatedBy && selectedData.updatedAt ? (
+                  <>
+                    {' '}
+                    <ProfilePicture
+                      displayName={selectedData.updatedBy}
+                      // There is no user id present in response
+                      id=""
+                      name={selectedData.updatedBy || ''}
+                      textClass="text-xs"
+                      width="20"
+                    />
+                    <Typography.Text data-testid="updated-by-details">
+                      <Link to={getUserPath(selectedData.updatedBy ?? '')}>
+                        {selectedData.updatedBy}
+                      </Link>{' '}
+                      {t('label.on-lowercase')}{' '}
+                      {formatDateTime(selectedData.updatedAt || 0)}
+                    </Typography.Text>
+                  </>
+                ) : (
+                  '--'
+                )}
+              </Space>
+              {!isEmpty(selectedData) &&
+                (isGlossaryActive ? (
+                  <GlossaryDetails
+                    glossary={selectedData as Glossary}
+                    handleUserRedirection={handleUserRedirection}
+                    permissions={glossaryPermission}
+                    updateGlossary={updateGlossary}
+                  />
+                ) : (
+                  <GlossaryTermsV1
+                    assetData={assetData}
+                    currentPage={currentPage}
+                    glossaryTerm={selectedData as GlossaryTerm}
+                    handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+                    handleUserRedirection={handleUserRedirection}
+                    permissions={glossaryTermPermission}
+                    onAssetPaginate={onAssetPaginate}
+                    onRelatedTermClick={onRelatedTermClick}
+                  />
+                ))}
+            </>
+          )}
+          {selectedData && (
+            <EntityDeleteModal
+              bodyText={getEntityDeleteMessage(selectedData.name, '')}
+              entityName={selectedData.name}
+              entityType="Glossary"
+              loadingState={deleteStatus}
+              visible={isDelete}
+              onCancel={() => setIsDelete(false)}
+              onConfirm={handleDelete}
+            />
+          )}
+          {isExportAction && (
+            <ExportGlossaryModal
+              glossaryName={selectedData.name}
+              isModalOpen={isExportAction}
+              onCancel={handleCancelGlossaryExport}
+              onOk={handleCancelGlossaryExport}
+            />
+          )}
         </>
-      )}
-      {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          loadingState={deleteStatus}
-          visible={isDelete}
-          onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
-        />
       )}
     </PageLayoutV1>
   ) : (
