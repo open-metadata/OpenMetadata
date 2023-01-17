@@ -64,6 +64,7 @@ export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const TERM_ALL = 'all';
+export const advanceFieldValueSelectKey = 'advanceFieldValueSelect';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',

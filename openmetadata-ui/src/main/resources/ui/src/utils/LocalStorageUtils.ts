@@ -11,15 +11,38 @@
  *  limitations under the License.
  */
 
-import { oidcTokenKey, refreshTokenKey } from '../constants/constants';
+import { ExploreQuickFilterField } from 'components/Explore/explore.interface';
+import Qs from 'qs';
+import {
+  advanceFieldValueSelectKey,
+  oidcTokenKey,
+  refreshTokenKey,
+} from '../constants/constants';
 
 /* A util that sets and gets the data in/from local storage. 
     @getter
     @setter
 */
+
+export const advanceFieldSelect = {
+  Owner: [] as ExploreQuickFilterField['value'],
+  Tag: [] as ExploreQuickFilterField['value'],
+};
+
+const setOwnerValues = (ownerData: ExploreQuickFilterField['value']) =>
+  (advanceFieldSelect.Owner = ownerData);
+
+const setTagValues = (TagData: ExploreQuickFilterField['value']) =>
+  (advanceFieldSelect.Tag = TagData);
+
 const localState = {
   getRefreshToken: () => localStorage.getItem(refreshTokenKey) as string,
   getOidcToken: () => localStorage.getItem(oidcTokenKey) as string,
+
+  getAdvanceFieldValueSelect: () =>
+    Qs.parse(
+      localStorage.getItem(advanceFieldValueSelectKey) as string
+    ) as typeof advanceFieldSelect,
 
   setRefreshToken: (token: string) => {
     localStorage.setItem(refreshTokenKey, token);
@@ -29,7 +52,26 @@ const localState = {
     localStorage.setItem(oidcTokenKey, _oidcTokenKey);
   },
 
+  setAdvanceFieldValueSelect: (field: ExploreQuickFilterField[]) => {
+    field.forEach((item) => {
+      if (item.label === 'Owner') {
+        setOwnerValues(item.value);
+      }
+      if (item.label === 'Tag') {
+        setTagValues(item.value);
+      }
+    });
+
+    localStorage.setItem(
+      advanceFieldValueSelectKey,
+      Qs.stringify(advanceFieldSelect)
+    );
+  },
+
   removeOidcToken: () => localStorage.removeItem(oidcTokenKey),
+
+  removeAdvanceFieldValueSelect: () =>
+    localStorage.removeItem(advanceFieldValueSelectKey),
 };
 
 export default localState;

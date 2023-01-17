@@ -26,6 +26,7 @@ import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
+import localState from 'utils/LocalStorageUtils';
 import AppState from '../../AppState';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
@@ -97,7 +98,10 @@ const ExplorePage: FunctionComponent = () => {
       pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
       search: Qs.stringify({ page: 1 }),
     });
-    setAdvancedSearchQueryFilter(undefined);
+
+    const existingFilter = localState.getAdvanceFieldValueSelect();
+
+    !existingFilter && setAdvancedSearchQueryFilter(undefined);
   };
 
   const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =

@@ -32,6 +32,7 @@ import {
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import localState from 'utils/LocalStorageUtils';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -180,6 +181,29 @@ const Explore: React.FC<ExploreProps> = ({
     );
   };
 
+  const getSelectedValue = (item: { label: string; key: string }) => {
+    const EMPTY_DATA: ExploreQuickFilterField['value'] = [];
+    const existingFilter = localState.getAdvanceFieldValueSelect();
+
+    if (item.label === 'Owner') {
+      if (!isEmpty(existingFilter.Owner)) {
+        return existingFilter.Owner;
+      }
+
+      return EMPTY_DATA;
+    }
+
+    if (item.label === 'Tag') {
+      if (!isEmpty(existingFilter.Tag)) {
+        return existingFilter.Tag;
+      }
+
+      return EMPTY_DATA;
+    }
+
+    return EMPTY_DATA;
+  };
+
   const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
       const data = pre.map((preField) => {
@@ -190,6 +214,7 @@ const Explore: React.FC<ExploreProps> = ({
         }
       });
 
+      localState.setAdvanceFieldValueSelect(data);
       handleAdvanceSearchFilter(data);
 
       return data;
@@ -213,7 +238,10 @@ const Explore: React.FC<ExploreProps> = ({
     const dropdownItems = getDropDownItems(searchIndex);
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({ ...item, value: [] }))
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValue(item),
+      }))
     );
   }, [searchIndex]);
 
@@ -231,9 +259,18 @@ const Explore: React.FC<ExploreProps> = ({
   }, [tab, searchResults]);
 
   useEffect(() => {
+    handleAdvanceSearchFilter(selectedQuickFilters);
+  }, [selectedQuickFilters]);
+
+  useEffect(() => {
     // reset Applied Filter SQL Format on tab change
     setAppliedFilterSQLFormat('');
   }, [tab]);
+
+  useEffect(() => {
+    // clear advance field from storage, after component unmounts
+    return () => localState.removeAdvanceFieldValueSelect();
+  }, []);
 
   return (
     <PageLayoutV1
