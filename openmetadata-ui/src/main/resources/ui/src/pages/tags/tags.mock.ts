@@ -22,6 +22,7 @@ export const MOCK_ALL_CLASSIFICATIONS = {
       updatedAt: 1672147362401,
       updatedBy: 'admin',
       href: 'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6',
+      termCount: 2,
       changeDescription: {
         fieldsAdded: [],
         fieldsUpdated: [
@@ -57,6 +58,7 @@ export const MOCK_ALL_CLASSIFICATIONS = {
       deleted: false,
       provider: 'system',
       mutuallyExclusive: true,
+      termCount: 3,
     },
     {
       id: '9005388e-5355-412c-8ba9-fc6dbe192a45',
@@ -70,6 +72,7 @@ export const MOCK_ALL_CLASSIFICATIONS = {
       deleted: false,
       provider: 'user',
       mutuallyExclusive: false,
+      termCount: 5,
     },
   ],
   paging: {
