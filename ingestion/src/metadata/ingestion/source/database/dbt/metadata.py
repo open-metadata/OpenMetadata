@@ -89,6 +89,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.report = SQLSourceStatus()
+        self.tag_classification_name = (
+            self.source_config.dbtClassificationName
+            if self.source_config.dbtClassificationName
+            else "dbtTags"
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -148,7 +153,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    classification_name=self.source_config.dbtClassificationName,
+                    classification_name=self.tag_classification_name,
                     tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,
@@ -266,11 +271,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
-                            name=self.source_config.dbtClassificationName,
+                            name=self.tag_classification_name,
                             description="dbt classification",
                         ),
                         tag_request=CreateTagRequest(
-                            classification=self.source_config.dbtClassificationName,
+                            classification=self.tag_classification_name,
                             name=tag_label.tagFQN.__root__.split(".")[1],
                             description="dbt Tags",
                         ),
