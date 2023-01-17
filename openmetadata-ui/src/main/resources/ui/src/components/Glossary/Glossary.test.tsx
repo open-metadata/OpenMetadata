@@ -23,7 +23,10 @@ import {
 import { omit } from 'lodash';
 import { LoadingState } from 'Models';
 import React from 'react';
-import { mockedGlossaries } from '../../mocks/Glossary.mock';
+import {
+  mockedGlossaries,
+  mockedGlossaryTerms,
+} from '../../mocks/Glossary.mock';
 import GlossaryV1 from './GlossaryV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 
@@ -161,7 +164,7 @@ describe('Test Glossary component', () => {
       <GlossaryV1
         {...mockProps}
         isGlossaryActive={false}
-        selectedData={mockedGlossaries[0].children[0]}
+        selectedData={mockedGlossaryTerms[0]}
       />
     );
 
@@ -180,7 +183,7 @@ describe('Test Glossary component', () => {
   });
 
   it('UpdatedBy and updatedAt should not visible if not available', async () => {
-    const updatedData = omit(mockedGlossaries[0].children[0], [
+    const updatedData = omit(mockedGlossaryTerms[0], [
       'updatedAt',
       'updatedBy',
     ]);

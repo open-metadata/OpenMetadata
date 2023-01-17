@@ -64,7 +64,6 @@ export const mockedGlossaryTerms = [
 
 export const mockedGlossaries = [
   {
-    children: mockedGlossaryTerms,
     deleted: false,
     displayName: 'Mocked Glossary',
     description: '',
