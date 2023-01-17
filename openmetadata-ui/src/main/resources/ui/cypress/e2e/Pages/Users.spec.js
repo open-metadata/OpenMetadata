@@ -27,6 +27,26 @@ const userEmail = `${userName}@gmail.com`;
 const adminName = `Admincttest${uuid()}`;
 const adminEmail = `${adminName}@gmail.com`;
 
+const searchBotUser = () => {
+  // Search the created user
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=**(isBot:false)&from=0&size=*&index=*',
+    'searchUser'
+  );
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type('bot');
+
+  verifyResponseStatusCode('@searchUser', 200);
+
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    'bot'
+  );
+};
+
 describe('Users flow should work properly', () => {
   beforeEach(() => {
     cy.login();
@@ -74,6 +94,10 @@ describe('Users flow should work properly', () => {
   it('Permanently Delete Soft Deleted User', () => {
     softDeleteUser(userName);
     deleteSoftDeletedUser(userName);
+  });
+
+  it('Search bot user', () => {
+    searchBotUser();
   });
 });
 

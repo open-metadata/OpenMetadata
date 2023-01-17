@@ -63,28 +63,6 @@ jest.mock('../common/searchbar/Searchbar', () => {
     ));
 });
 
-// jest.mock('components/UserList/UserListV1', () => {
-//   return jest.fn().mockImplementation((prop) => (
-//     <div>
-//       <p>UserList.component</p>
-//       <button onClick={prop.afterDeleteAction}>afterDeleteAction</button>
-//       <button onClick={() => prop.onPagingChange('next', 2)}>
-//         onPagingChange
-//       </button>
-//       <input
-//         data-testid="search-input"
-//         type="text"
-//         onChange={(e) => prop.onSearch(e.target.value)}
-//       />
-//       <input
-//         data-testid="show-deleted-toggle"
-//         type="checkbox"
-//         onChange={(e) => prop.onShowDeletedUserChange(e.target.checked)}
-//       />
-//     </div>
-//   ));
-// });
-
 const mockFunction = jest.fn();
 
 const MOCK_PROPS_DATA = {
