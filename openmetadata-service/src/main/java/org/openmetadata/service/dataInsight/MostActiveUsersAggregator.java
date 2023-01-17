@@ -9,7 +9,7 @@ import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
-public class MostActiveUsersAggregator extends DataInsightAggregatorInterface<MostActiveUsers> {
+public class MostActiveUsersAggregator extends DataInsightAggregatorInterface {
 
   public MostActiveUsersAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
@@ -18,15 +18,14 @@ public class MostActiveUsersAggregator extends DataInsightAggregatorInterface<Mo
 
   @Override
   public DataInsightChartResult process() {
-    List data = this.aggregate();
-    DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
-    return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
+    List<Object> data = this.aggregate();
+    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<MostActiveUsers> aggregate() {
+  List<Object> aggregate() {
     MultiBucketsAggregation userNameBuckets = this.aggregations.get("userName");
-    List<MostActiveUsers> data = new ArrayList();
+    List<Object> data = new ArrayList<>();
     for (MultiBucketsAggregation.Bucket userNameBucket : userNameBuckets.getBuckets()) {
       String userName = userNameBucket.getKeyAsString();
       Sum sumSession = userNameBucket.getAggregations().get("sessions");

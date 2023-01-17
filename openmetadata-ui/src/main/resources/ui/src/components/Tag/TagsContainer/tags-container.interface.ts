@@ -13,7 +13,7 @@
 
 import { EntityTags, TagOption } from 'Models';
 import { ReactNode } from 'react';
-import { TagProps } from '../tags/tags.interface';
+import { TagProps } from '../Tags/tags.interface';
 
 export type TagsContainerProps = {
   children?: ReactNode;

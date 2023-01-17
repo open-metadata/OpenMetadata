@@ -1366,14 +1366,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.get(0).setDescription("updatedDescription");
     columns.get(1).setDescription("updatedDescription");
     String query = "select * from test;";
-    EntityReference reference = new EntityReference().withId(user.getId()).withType("user");
     DataModel dataModel =
         new DataModel()
             .withModelType(ModelType.DBT)
             .withSql(query)
             .withGeneratedAt(new Date())
             .withColumns(columns)
-            .withOwner(reference);
+            .withOwner(reduceEntityReference(user));
     Table putResponse = putTableDataModel(table.getId(), dataModel, ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, putResponse.getDataModel());
 
@@ -1938,12 +1937,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     DatabaseService service =
         databaseServiceResourceTest.createEntity(databaseServiceResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    EntityReference serviceRef =
-        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.DATABASE_SERVICE);
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     Database database =
         databaseResourceTest.createAndCheckEntity(
-            databaseResourceTest.createRequest(test).withService(serviceRef), ADMIN_AUTH_HEADERS);
+            databaseResourceTest.createRequest(test).withService(reduceEntityReference(service)), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }

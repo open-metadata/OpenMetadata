@@ -207,6 +207,7 @@ class AtlasSource(Source):
         for table in entity:
             table_entity = self.atlas_client.get_entity(table)
             tbl_entities = table_entity["entities"]
+            db_entity = None
             for tbl_entity in tbl_entities:
                 try:
 

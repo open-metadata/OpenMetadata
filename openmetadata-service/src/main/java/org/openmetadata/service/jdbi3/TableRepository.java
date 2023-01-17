@@ -514,8 +514,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table getQueries(UUID tableId) throws IOException {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    Table table = setFieldsInternal(dao.findEntityById(tableId), Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
   }
 

@@ -18,11 +18,11 @@ import javax.ws.rs.core.Response;
 public final class BadRequestException extends WebServiceException {
   private static final String DEFAULT_MESSAGE = "Bad request.";
 
-  private BadRequestException(String message) {
-    super(Response.Status.BAD_REQUEST, message);
+  private BadRequestException() {
+    super(Response.Status.BAD_REQUEST, DEFAULT_MESSAGE);
   }
 
   public static BadRequestException of() {
-    return new BadRequestException(DEFAULT_MESSAGE);
+    return new BadRequestException();
   }
 }

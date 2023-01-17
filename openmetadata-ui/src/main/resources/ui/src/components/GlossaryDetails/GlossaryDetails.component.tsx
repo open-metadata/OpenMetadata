@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button as ButtonAntd, Card as AntdCard, Tooltip } from 'antd';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
@@ -43,9 +44,8 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import DropDownList from '../dropdown/DropDownList';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../tags-container/tags-container';
-import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
+import TagsContainer from '../Tag/TagsContainer/tags-container';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import './GlossaryDetails.style.less';
 
 type props = {
@@ -122,10 +122,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     setIsDescriptionEditable(false);
   };
 
-  const handleSelectOwnerDropdown = () => {
-    setListVisible((visible) => !visible);
-  };
-
   const getOwnerSearch = useCallback(
     (searchQuery = WILD_CARD_CHAR, from = 1) => {
       setIsUserLoading(true);
@@ -143,7 +139,17 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     },
     [setListOwners, setIsUserLoading]
   );
+  const handleSelectOwnerDropdown = () => {
+    setListVisible((visible) => {
+      const newState = !visible;
 
+      if (newState) {
+        getOwnerSearch();
+      }
+
+      return newState;
+    });
+  };
   const getOwnerSuggestion = useCallback(
     (qSearchText = '') => {
       setIsUserLoading(true);

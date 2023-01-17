@@ -191,6 +191,8 @@ const AddIngestion = ({
       stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
       resultLimit: sourceConfig?.resultLimit ?? 1000,
       metadataToESConfig: undefined,
+      dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
+      dbtClassificationName: sourceConfig?.dbtClassificationName ?? '',
     }),
     []
   );
@@ -459,10 +461,14 @@ const AddIngestion = ({
       case PipelineType.Dbt: {
         return {
           ...escapeBackwardSlashChar({
-            dbtConfigSource: omit(dbtConfigSource, 'dbtUpdateDescriptions'),
+            dbtConfigSource: omit(dbtConfigSource, [
+              'dbtUpdateDescriptions',
+              'dbtClassificationName',
+            ]),
           } as ConfigClass),
           type: ConfigType.Dbt,
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
+          dbtClassificationName: dbtConfigSource?.dbtClassificationName,
         };
       }
 

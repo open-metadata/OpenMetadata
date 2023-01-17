@@ -229,6 +229,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
       return;
     }
     if (fieldName.equals("customProperties")) {
+      @SuppressWarnings("unchecked")
       List<CustomProperty> expectedProperties = (List<CustomProperty>) expected;
       List<CustomProperty> actualProperties = JsonUtils.readObjects(actual.toString(), CustomProperty.class);
       TestUtils.assertCustomProperties(expectedProperties, actualProperties);
