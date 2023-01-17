@@ -15,7 +15,7 @@ Redshift source ingestion
 import re
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -25,7 +25,11 @@ from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_name
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
-from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
+from sqlalchemy_redshift.dialect import (
+    RedshiftDialect,
+    RedshiftDialectMixin,
+    RelationKey,
+)
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -51,6 +55,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
+    REDSHIFT_TABLE_COMMENTS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -346,6 +351,34 @@ STANDARD_TABLE_TYPES = {
     "e": TableType.External,
     "v": TableType.View,
 }
+
+
+@reflection.cache
+def _get_all_table_comments(self, connection, **kw):
+    """
+    Method to fetch comment of all available tables
+    """
+    all_table_comments: Dict[RelationKey, str] = {}
+    result = connection.execute(REDSHIFT_TABLE_COMMENTS)
+    for table in result:
+        key = RelationKey(
+            name=table.table_name, schema=table.schema, connection=connection
+        )
+        all_table_comments[key] = table.table_comment
+    return all_table_comments
+
+
+@reflection.cache
+def get_table_comment(self, connection, table_name, schema=None, **kw):
+    all_table_comments = self._get_all_table_comments(connection)
+    key = RelationKey(name=table_name, schema=schema, connection=connection)
+    if key not in all_table_comments.keys():
+        key = key.unquoted()
+    return {"text": all_table_comments.get(key)}
+
+
+RedshiftDialect._get_all_table_comments = _get_all_table_comments
+RedshiftDialect.get_table_comment = get_table_comment
 
 
 class RedshiftSource(CommonDbSourceService):
