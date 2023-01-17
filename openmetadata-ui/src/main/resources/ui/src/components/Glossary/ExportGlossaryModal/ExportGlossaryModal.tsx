@@ -33,7 +33,9 @@ const ExportGlossaryModal: FC<Props> = ({
   glossaryName,
 }) => {
   const { t } = useTranslation();
-  const [fileName, setFileName] = useState<string>(glossaryName);
+  const [fileName, setFileName] = useState<string>(
+    `${glossaryName}_${getCurrentLocaleDate()}`
+  );
 
   const handleOnFileNameChange = (e: ChangeEvent<HTMLInputElement>) =>
     setFileName(e.target.value);
@@ -84,7 +86,7 @@ const ExportGlossaryModal: FC<Props> = ({
           <Input
             addonAfter=".csv"
             data-testid="file-name-input"
-            value={`${fileName}_${getCurrentLocaleDate()}`}
+            value={fileName}
             onChange={handleOnFileNameChange}
           />
         </Form.Item>

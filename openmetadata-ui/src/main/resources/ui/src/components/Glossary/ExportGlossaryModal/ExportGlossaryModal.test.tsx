@@ -69,7 +69,7 @@ describe('Export Glossary Modal', () => {
       fireEvent.change(input, { target: { value: 'my_file_name' } });
     });
 
-    expect(input).toHaveValue('my_file_name_data-string');
+    expect(input).toHaveValue('my_file_name');
   });
 
   it('Export should work', async () => {

@@ -63,7 +63,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'details',
         key: 'details',
         render: (details: GlossaryCSVRecord['details']) => {
-          return <Typography.Text>{details}</Typography.Text>;
+          return <Typography.Text>{details ?? '--'}</Typography.Text>;
         },
       },
       {
@@ -71,7 +71,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'parent',
         key: 'parent',
         render: (parent: GlossaryCSVRecord['parent']) => {
-          return <Typography.Text>{parent}</Typography.Text>;
+          return <Typography.Text>{parent ?? '--'}</Typography.Text>;
         },
       },
       {
@@ -87,7 +87,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'displayName',
         key: 'displayName',
         render: (displayName: GlossaryCSVRecord['displayName']) => {
-          return <Typography.Text>{displayName}</Typography.Text>;
+          return <Typography.Text>{displayName ?? '--'}</Typography.Text>;
         },
       },
       {
@@ -95,15 +95,15 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'description*',
         key: 'description',
         render: (description: GlossaryCSVRecord['description*']) => {
-          return <RichTextEditorPreviewer markdown={description} />;
+          return <RichTextEditorPreviewer markdown={description ?? '--'} />;
         },
       },
       {
-        title: t('label.Synonyms'),
+        title: t('label.synonyms'),
         dataIndex: 'synonyms',
         key: 'synonyms',
         render: (synonyms: GlossaryCSVRecord['synonyms']) => {
-          return <Typography.Text>{synonyms}</Typography.Text>;
+          return <Typography.Text>{synonyms ?? '--'}</Typography.Text>;
         },
       },
       {
@@ -111,7 +111,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'tags',
         key: 'tags',
         render: (tags: GlossaryCSVRecord['tags']) => {
-          return <Typography.Text>{tags}</Typography.Text>;
+          return <Typography.Text>{tags ?? '--'}</Typography.Text>;
         },
       },
     ],

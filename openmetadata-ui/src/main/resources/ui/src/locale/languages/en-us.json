@@ -1,6 +1,5 @@
 {
   "label": {
-    "Synonyms": "synonyms",
     "aborted": "Aborted",
     "accept-suggestion": "Accept Suggestion",
     "account": "Account",
@@ -508,6 +507,7 @@
     "success": "Success",
     "suite": "Suite",
     "summary": "Summary",
+    "synonyms": "Synonyms",
     "table": "Table",
     "table-entity-text": "Table {{entityText}}",
     "table-lowercase": "table",
