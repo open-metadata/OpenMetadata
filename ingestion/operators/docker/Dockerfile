@@ -43,11 +43,15 @@ RUN apt-get update && \
 
 # Oracle instant client for thick mode
 # https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#enablingthick
-RUN curl https://download.oracle.com/otn_software/linux/instantclient/191000/oracle-instantclient19.10-basic-19.10.0.0.0-1.aarch64.rpm --output client.rpm; \
-  apt-get update; \
-  apt-get install libaio1 alien -y; \
-  alien client.rpm; \
-  dpkg -i oracle-instantclient19.10-basic_19.10.0.0.0-2_arm64.deb
+RUN apt-get update; \
+  apt-get install libaio1 alien unzip -y;
+
+RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+ then wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip; \
+ else wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip ; fi
+
+RUN unzip -d /instantclient -j /oracle-instantclient.zip
+ENV LD_LIBRARY_PATH=/instantclient
 
 WORKDIR ingestion/
 

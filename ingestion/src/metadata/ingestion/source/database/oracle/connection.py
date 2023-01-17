@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+import os
 import sys
 from urllib.parse import quote_plus
 
@@ -34,6 +35,7 @@ from metadata.ingestion.connections.test_connections import test_connection_db_c
 from metadata.utils.logger import ingestion_logger
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
+LD_LIB_ENV = "LD_LIBRARY_PATH"
 
 logger = ingestion_logger()
 
@@ -84,7 +86,12 @@ def get_connection(connection: OracleConnection) -> Engine:
     Create connection
     """
     try:
-        oracledb.init_oracle_client()
+        if connection.instantClientDirectory:
+            logger.info(
+                f"Initializing Oracle thick client at {connection.instantClientDirectory}"
+            )
+            os.environ[LD_LIB_ENV] = connection.instantClientDirectory
+            oracledb.init_oracle_client()
     except DatabaseError as err:
         logger.error(f"Could not initialize Oracle thick client: {err}")
 
