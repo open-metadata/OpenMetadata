@@ -66,16 +66,22 @@ class SampleTablesSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = DatabaseEntity(id=uuid.uuid4(),
-                            name=self.database['name'],
-                            description=self.database['description'],
-                            service=EntityReference(id=self.service.id, type=self.config.service_type))
-        for table in self.tables['tables']:
-            table_metadata = TableEntity(**table)
-            table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
-            self.status.scanned(table_metadata.name.__root__)
-            yield table_and_db
+    def next_record(self) -> Iterable[Entity]:
+
+        yield from self.yield_create_request_database_service(self.config)
+
+        service_entity: DatabaseService = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=self.config.serviceName
+        )
+        service_id = service_entity.id
+
+        yield CreateDatabaseRequest(
+            name="awesome-database",
+            service=EntityReference(
+                id=service_id,
+                type="databaseService",
+            ),
+        )
 
     def close(self):
         pass
