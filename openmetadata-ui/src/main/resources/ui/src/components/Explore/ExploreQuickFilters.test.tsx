@@ -101,7 +101,7 @@ const mockFields: ExploreQuickFilterField[] = [
   },
   {
     label: 'Owner',
-    key: 'owner.name',
+    key: 'owner.displayName',
     value: undefined,
   },
   {

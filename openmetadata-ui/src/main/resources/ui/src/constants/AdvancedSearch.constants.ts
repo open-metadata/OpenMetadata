@@ -32,7 +32,7 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.name',
+    key: 'owner.displayName',
   },
   {
     label: t('label.tag'),
@@ -103,7 +103,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.name',
+            field: 'owner.displayName',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -194,7 +194,7 @@ const getCommonQueryBuilderFields = (
       defaultValue: true,
     },
 
-    'owner.name': {
+    'owner.displayName': {
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
@@ -452,4 +452,4 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
   }
 };
 
-export const MISC_FIELDS = ['owner.name', 'tags.tagFQN'];
+export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];

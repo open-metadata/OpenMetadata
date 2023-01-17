@@ -32,7 +32,7 @@ const mockProps: SearchDropdownProps = {
   label: 'Owner',
   isSuggestionsLoading: false,
   options: searchOptions,
-  searchKey: 'owner.name',
+  searchKey: 'owner.displayName',
   selectedKeys: [{ key: 'User 1', label: 'User 1' }],
   onChange: mockOnChange,
   onSearch: mockOnSearch,
@@ -180,7 +180,7 @@ describe('Search DropDown Component', () => {
 
     expect(searchInput).toHaveValue('user');
 
-    expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.name');
+    expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.displayName');
   });
 
   it('Update button should work properly', async () => {
@@ -214,7 +214,7 @@ describe('Search DropDown Component', () => {
         { key: 'User 1', label: 'User 1' },
         { key: 'User 2', label: 'User 2' },
       ],
-      'owner.name'
+      'owner.displayName'
     );
   });
 
