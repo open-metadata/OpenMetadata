@@ -233,7 +233,7 @@ class REST:
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unexpected error while returing response in json format - {exc}"
+                    f"Unexpected error while returing response {resp} in json format - {exc}"
                 )
         return None
 
