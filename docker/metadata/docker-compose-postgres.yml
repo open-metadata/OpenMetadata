@@ -15,7 +15,7 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-ervices:
+services:
   postgresql:
     container_name: openmetadata_postgresql
     image: docker.getcollate.io/openmetadata/postgresql:0.13.1
