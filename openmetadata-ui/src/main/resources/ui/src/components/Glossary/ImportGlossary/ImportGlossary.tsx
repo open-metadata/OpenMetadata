@@ -21,6 +21,7 @@ import {
   Upload,
   UploadProps,
 } from 'antd';
+import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as BrowseFileIcon } from 'assets/svg/ic-browse-file.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
@@ -28,7 +29,7 @@ import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from 'components/Loader/Loader';
-import { CSVImportResult } from 'generated/type/csvImportResult';
+import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -74,6 +75,26 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
     ],
     [glossaryName]
   );
+
+  const { isSuccess, isFailure, showAbortedResult, showSuccessResult } =
+    useMemo(() => {
+      const isSuccess =
+        csvImportResult?.status === Status.Success ||
+        csvImportResult?.status === Status.PartialSuccess;
+      const isFailure = csvImportResult?.status === Status.Failure;
+      const showAbortedResult = csvImportResult?.status === Status.Aborted;
+      const showSuccessResult =
+        csvImportResult?.status === Status.Success ||
+        csvImportResult?.status === Status.PartialSuccess ||
+        csvImportResult?.status === Status.Failure;
+
+      return {
+        isSuccess,
+        isFailure,
+        showAbortedResult,
+        showSuccessResult,
+      };
+    }, [csvImportResult]);
 
   const handleUpload: UploadProps['customRequest'] = async (options) => {
     setIsLoading(true);
@@ -128,7 +149,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
           <Title data-testid="title" level={5}>
             {isPreview ? glossaryName : t('label.import-glossary-terms')}
           </Title>
-          {isPreview && !isUndefined(csvImportResult) && (
+          {isPreview && !isUndefined(csvImportResult) && !isFailure && (
             <Button
               data-testid="import-button"
               loading={isLoading}
@@ -194,24 +215,50 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                 className="w-full justify-center p-lg"
                 direction="vertical"
                 size={16}>
-                <SuccessBadgeIcon data-testid="success-badge" width={58} />
-                <Typography.Text>
-                  <strong data-testid="file-name">{fileName}</strong>{' '}
-                  {`${t('label.is-ready-for-preview')}.`}
-                </Typography.Text>
-                <Space size={16}>
-                  <Button
-                    data-testid="cancel-button"
-                    onClick={() => setCsvImportResult(undefined)}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    data-testid="preview-button"
-                    type="primary"
-                    onClick={() => setIsPreview(true)}>
-                    {t('label.preview')}
-                  </Button>
-                </Space>
+                {isSuccess && (
+                  <SuccessBadgeIcon data-testid="success-badge" width={58} />
+                )}
+                {isFailure && (
+                  <FailBadgeIcon data-testid="failure-badge" width={58} />
+                )}
+
+                {showSuccessResult && (
+                  <>
+                    <Typography.Text>
+                      <strong data-testid="file-name">{fileName}</strong>{' '}
+                      {`${t('label.is-ready-for-preview')}.`}
+                    </Typography.Text>
+                    <Space size={16}>
+                      <Button
+                        data-testid="cancel-button"
+                        onClick={() => setCsvImportResult(undefined)}>
+                        {t('label.cancel')}
+                      </Button>
+                      <Button
+                        data-testid="preview-button"
+                        type="primary"
+                        onClick={() => setIsPreview(true)}>
+                        {t('label.preview')}
+                      </Button>
+                    </Space>
+                  </>
+                )}
+
+                {showAbortedResult && (
+                  <>
+                    <Typography.Text
+                      className="text-center"
+                      data-testid="abort-reason">
+                      <strong className="d-block">{t('label.aborted')}</strong>{' '}
+                      {csvImportResult.abortReason}
+                    </Typography.Text>
+                    <Button
+                      data-testid="cancel-button"
+                      onClick={() => setCsvImportResult(undefined)}>
+                      {t('label.cancel')}
+                    </Button>
+                  </>
+                )}
               </Space>
             </Card>
           )}
