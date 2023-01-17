@@ -18,6 +18,7 @@ import {
   findByTestId,
   findByText,
   fireEvent,
+  getByText,
   queryByTitle,
   render,
   screen,
@@ -295,6 +296,27 @@ describe('Test TagsPage page', () => {
     expect(descriptionContainer).toBeInTheDocument();
     expect(table).toBeInTheDocument();
     expect(sidePanelCategories).toHaveLength(3);
+  });
+
+  it('Classification LeftPanel count should render properly', async () => {
+    await act(async () => {
+      render(<TagsPage />);
+    });
+    const leftPanelContent = await screen.findByTestId('left-panel-content');
+    const sidePanelCategories = await screen.findAllByTestId(
+      'side-panel-classification'
+    );
+
+    expect(leftPanelContent).toBeInTheDocument();
+    expect(sidePanelCategories).toHaveLength(3);
+
+    const getAllCounts = await screen.findAllByTestId('filter-count');
+
+    expect(getAllCounts).toHaveLength(3);
+
+    expect(getByText(getAllCounts[0], '2')).toBeInTheDocument();
+    expect(getByText(getAllCounts[1], '3')).toBeInTheDocument();
+    expect(getByText(getAllCounts[2], '5')).toBeInTheDocument();
   });
 
   it('OnClick of add new tag, FormModal should display', async () => {
