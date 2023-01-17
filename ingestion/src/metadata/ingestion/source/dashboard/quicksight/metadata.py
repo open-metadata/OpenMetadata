@@ -194,25 +194,47 @@ class QuicksightSource(DashboardServiceSource):
                     data_sources_list = self.client.list_data_sources(
                         AwsAccountId=self.aws_account_id,
                     )["DataSources"]
-                    data_source_arn = [
-                        data_source_arn
+                    data_source_ids = [
+                        data_source_arn["DataSourceId"]
                         for data_source_arn in data_sources_list
-                        if data_source_arn
+                        if data_source_arn["Arn"]
                         in data_source["RelationalTable"]["DataSourceArn"]
                     ]
-                    self.client
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=f"{db_service_name}{fqn.FQN_SEPARATOR}{database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}",
-                    )
 
-                    to_entity = self.metadata.get_by_name(
-                        entity=Dashboard,
-                        fqn=to_fqn,
-                    )
-                    yield self._get_add_lineage_request(
-                        to_entity=to_entity, from_entity=from_entity
-                    )
+                    for data_source_id in data_source_ids:
+                        data_source_dict = self.client.describe_data_source(
+                            AwsAccountId=self.aws_account_id,
+                            DataSourceId=data_source_id,
+                        )["DataSource"]["DataSourceParameters"]
+                        for db in data_source_dict.keys():
+                            try:
+                                database_name = data_source_dict[db]["Database"]
+                            except Exception as err:
+                                logger.error(err)
+                                logger.debug(traceback.format_exc())
+                                database_name = None
+                                from_fqn = fqn.build(
+                                    self.metadata,
+                                    entity_type=Table,
+                                    service_name=db_service_name,
+                                    table_name=table_name,
+                                    schema_name=schema_name,
+                                    database_name="",
+                                )
+                            from_entity = self.metadata.get_by_name(
+                                entity=Table,
+                                fqn=f"{db_service_name}{fqn.FQN_SEPARATOR}{database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}"
+                                if database_name
+                                else from_fqn,
+                            )
+
+                            to_entity = self.metadata.get_by_name(
+                                entity=Dashboard,
+                                fqn=f"{self.config.serviceName}{fqn.FQN_SEPARATOR}{dashboard_details['Name']}",
+                            )
+                            yield self._get_add_lineage_request(
+                                to_entity=to_entity, from_entity=from_entity
+                            )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
