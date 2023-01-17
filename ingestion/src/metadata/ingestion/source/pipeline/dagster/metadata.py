@@ -158,7 +158,7 @@ class DagsterSource(PipelineServiceSource):
             task_list.append(task)
 
         yield CreatePipelineRequest(
-            name=pipeline_details["id"].replace(":",""),
+            name=pipeline_details["id"].replace(":", ""),
             displayName=pipeline_details["name"],
             description=pipeline_details.get("description", ""),
             tasks=task_list,
