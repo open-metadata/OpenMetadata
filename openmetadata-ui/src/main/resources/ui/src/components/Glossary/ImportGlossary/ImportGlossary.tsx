@@ -125,11 +125,15 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       </Col>
       <Col span={24}>
         <Space className="w-full justify-between">
-          <Title level={5}>
+          <Title data-testid="title" level={5}>
             {isPreview ? glossaryName : t('label.import-glossary-terms')}
           </Title>
           {isPreview && !isUndefined(csvImportResult) && (
-            <Button loading={isLoading} type="primary" onClick={handleImport}>
+            <Button
+              data-testid="import-button"
+              loading={isLoading}
+              type="primary"
+              onClick={handleImport}>
               {t('label.import')}
             </Button>
           )}
@@ -150,6 +154,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
               }}
               className="file-dragger-wrapper p-lg bg-white"
               customRequest={handleUpload}
+              data-testid="upload-file-widget"
               multiple={false}
               showUploadList={false}>
               {isLoading ? (
@@ -171,7 +176,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                       {t('label.or-lowercase')}
                     </Typography.Text>
                   </Divider>
-                  <Button>
+                  <Button data-testid="upload-button">
                     <Space>
                       <BrowseFileIcon width={16} />
                       <Typography.Text className="text-primary">
@@ -189,16 +194,21 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                 className="w-full justify-center p-lg"
                 direction="vertical"
                 size={16}>
-                <SuccessBadgeIcon width={58} />
+                <SuccessBadgeIcon data-testid="success-badge" width={58} />
                 <Typography.Text>
-                  <strong>{fileName}</strong>{' '}
+                  <strong data-testid="file-name">{fileName}</strong>{' '}
                   {`${t('label.is-ready-for-preview')}.`}
                 </Typography.Text>
                 <Space size={16}>
-                  <Button onClick={() => setCsvImportResult(undefined)}>
+                  <Button
+                    data-testid="cancel-button"
+                    onClick={() => setCsvImportResult(undefined)}>
                     {t('label.cancel')}
                   </Button>
-                  <Button type="primary" onClick={() => setIsPreview(true)}>
+                  <Button
+                    data-testid="preview-button"
+                    type="primary"
+                    onClick={() => setIsPreview(true)}>
                     {t('label.preview')}
                   </Button>
                 </Space>
