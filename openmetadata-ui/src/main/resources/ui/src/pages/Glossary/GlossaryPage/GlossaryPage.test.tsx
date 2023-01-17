@@ -12,13 +12,13 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MOCK_GLOSSARY } from 'mocks/Glossary.mock';
 import React from 'react';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
-import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPage from './GlossaryPage.component';
 
 jest.useRealTimers();
