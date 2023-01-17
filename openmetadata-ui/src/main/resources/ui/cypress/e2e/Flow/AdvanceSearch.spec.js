@@ -34,7 +34,6 @@ import {
 
 import { API_SERVICE } from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
-
 const service_name = MYSQL.serviceName;
 
 describe('Advance search should work properly for all fields', () => {
@@ -46,6 +45,108 @@ describe('Advance search should work properly for all fields', () => {
     addOwner(FIELDS.Owner.searchCriteriaFirstGroup);
     addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
     addTag(FIELDS.Tags.searchCriteriaFirstGroup);
+  });
+
+  it('While navigating through services, if a filter for owner and tag is applied, it should persist across tabs', () => {
+    let ownerDropDownKey = FIELDS.Owner.searchCriteriaFirstGroup;
+    let tagDropDownKey = FIELDS.Tags.searchCriteriaFirstGroup;
+
+    interceptURL(
+      'GET',
+      '/api/v1/search/aggregate?index=table_search_index&field=owner.name',
+      'getOwnerAggregations'
+    );
+
+    interceptURL(
+      'GET',
+      '/api/v1/search/aggregate?index=table_search_index&field=tags.tagFQN',
+      'getTagsAggregations'
+    );
+
+    interceptURL('GET', '/api/v1/search/query?q=*', 'searchQuery');
+
+    cy.get('[data-testid="appbar-item-explore"]')
+      .should('exist')
+      .and('be.visible')
+      .click();
+
+    cy.get('[data-testid="tables-tab"]').should('exist').click();
+
+    cy.get('[data-testid="search-dropdown"]')
+      .should('exist')
+      .within(() => {
+        cy.contains('Owner').should('be.visible').click();
+      });
+
+    cy.wait('@getOwnerAggregations').then(() => {
+      cy.get('.ant-dropdown-menu-item').contains(ownerDropDownKey).click();
+
+      cy.get('[data-testid="update-btn"]').click();
+    });
+
+    cy.get('[data-testid="search-dropdown"]')
+      .should('exist')
+      .within(() => {
+        cy.contains('Tag').should('be.visible').click();
+      });
+
+    cy.wait('@getTagsAggregations').then(() => {
+      cy.get('.ant-dropdown-menu-item').contains(tagDropDownKey).click();
+
+      cy.get('[data-testid="update-btn"]').click();
+    });
+
+    // traverse to new tab
+    cy.wait('@searchQuery').then(() => {
+      cy.get('[data-testid="search-dropdown"]')
+        .should('exist')
+        .within(() => {
+          cy.contains('Owner').should('be.visible').click();
+        });
+
+      cy.get(`[data-testid="${ownerDropDownKey}"]`).should('exist');
+
+      cy.get(`[data-testid="${ownerDropDownKey}-checkbox"]`).should(
+        'be.checked'
+      );
+
+      // For Tags
+      cy.get('[data-testid="search-dropdown"]')
+        .should('exist')
+        .within(() => {
+          cy.contains('Tag').should('be.visible').click();
+        });
+
+      cy.get(`[data-testid="${tagDropDownKey}"]`).should('exist');
+
+      cy.get(`[data-testid="${tagDropDownKey}-checkbox"]`).should('be.checked');
+
+      // Traversing to topics tab
+      cy.get('[data-testid="topics-tab"]').should('exist').click();
+
+      cy.get('[data-testid="search-dropdown"]')
+        .should('exist')
+        .within(() => {
+          cy.contains('Owner').should('be.visible').click();
+        });
+
+      cy.get(`[data-testid="${ownerDropDownKey}"]`).should('exist');
+
+      cy.get(`[data-testid="${ownerDropDownKey}-checkbox"]`).should(
+        'be.checked'
+      );
+
+      // For Tags
+      cy.get('[data-testid="search-dropdown"]')
+        .should('exist')
+        .within(() => {
+          cy.contains('Tag').should('be.visible').click();
+        });
+
+      cy.get(`[data-testid="${tagDropDownKey}"]`).should('exist');
+
+      cy.get(`[data-testid="${tagDropDownKey}-checkbox"]`).should('be.checked');
+    });
   });
 
   it('Mysql ingestion', () => {
@@ -102,6 +203,7 @@ describe('Advance search should work properly for all fields', () => {
           field.responseValueFirstGroup
         );
       });
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
       cy.wait(1000);
       Object.values(CONDITIONS_MUST_NOT).forEach((condition) => {
         checkmust_notPaths(
