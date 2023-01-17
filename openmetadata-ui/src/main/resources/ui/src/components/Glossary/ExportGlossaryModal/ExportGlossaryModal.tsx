@@ -49,7 +49,7 @@ const ExportGlossaryModal: FC<Props> = ({
 
     element.textContent = 'download-file';
     element.href = URL.createObjectURL(file);
-    element.download = `${fileName}_${getCurrentLocaleDate()}.csv`;
+    element.download = `${fileName}.csv`;
     document.body.appendChild(element);
     element.click();
 
@@ -84,7 +84,7 @@ const ExportGlossaryModal: FC<Props> = ({
           <Input
             addonAfter=".csv"
             data-testid="file-name-input"
-            value={fileName}
+            value={`${fileName}_${getCurrentLocaleDate()}`}
             onChange={handleOnFileNameChange}
           />
         </Form.Item>

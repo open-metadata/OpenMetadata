@@ -256,7 +256,7 @@ describe('Test Glossary component', () => {
   });
 
   it('Should render export glossary component', async () => {
-    params = { ...params, action: '' };
+    params = { ...params, action: 'export' };
     await act(async () => {
       const { container } = render(<GlossaryV1 {...mockProps} />);
 

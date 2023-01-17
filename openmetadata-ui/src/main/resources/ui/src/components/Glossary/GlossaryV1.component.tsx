@@ -136,11 +136,13 @@ const GlossaryV1 = ({
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const handleGlossaryExport = () =>
+    history.push(
+      getGlossaryPathWithAction(selectedData.name, GlossaryAction.EXPORT)
+    );
 
-  const handleGlossaryExport = () => setIsExporting(true);
-
-  const handleCancelGlossaryExport = () => setIsExporting(false);
+  const handleCancelGlossaryExport = () =>
+    history.push(getGlossaryPath(selectedData.name));
 
   const handleGlossaryImport = () =>
     history.push(
@@ -149,6 +151,10 @@ const GlossaryV1 = ({
 
   const isImportAction = useMemo(
     () => action === GlossaryAction.IMPORT,
+    [action]
+  );
+  const isExportAction = useMemo(
+    () => action === GlossaryAction.EXPORT,
     [action]
   );
 
@@ -684,12 +690,14 @@ const GlossaryV1 = ({
               onConfirm={handleDelete}
             />
           )}
-          <ExportGlossaryModal
-            glossaryName={selectedData.name}
-            isModalOpen={isExporting}
-            onCancel={handleCancelGlossaryExport}
-            onOk={handleCancelGlossaryExport}
-          />
+          {isExportAction && (
+            <ExportGlossaryModal
+              glossaryName={selectedData.name}
+              isModalOpen={isExportAction}
+              onCancel={handleCancelGlossaryExport}
+              onOk={handleCancelGlossaryExport}
+            />
+          )}
         </>
       )}
     </PageLayoutV1>
