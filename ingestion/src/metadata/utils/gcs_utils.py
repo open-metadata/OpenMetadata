@@ -23,6 +23,7 @@ import pandas as pd
 from pandas import DataFrame
 from pyarrow.parquet import ParquetFile
 
+from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -44,7 +45,7 @@ def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
     try:
         chunk_list = []
         with pd.read_csv(
-            f"gs://{bucket_name}/{key}", sep=",", chunksize=200000
+            f"gs://{bucket_name}/{key}", sep=",", chunksize=CHUNKSIZE
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
@@ -63,7 +64,7 @@ def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
     try:
         chunk_list = []
         with pd.read_csv(
-            f"gs://{bucket_name}/{key}", sep="\t", chunksize=200000
+            f"gs://{bucket_name}/{key}", sep="\t", chunksize=CHUNKSIZE
         ) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
