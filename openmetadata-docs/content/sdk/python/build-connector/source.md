@@ -84,7 +84,12 @@ class SampleTablesSource(Source):
         )
 
         database_entity: Database = self.metadata.get_by_name(
-            entity=Database, fqn=self.config.serviceName + "." + "awesome-database"
+            entity=Database, fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name="awesome-database",
+                )
         )
         database_id = database_entity.id
 
@@ -95,7 +100,13 @@ class SampleTablesSource(Source):
         )
 
         database_schema_entity: DatabaseSchema = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=self.config.serviceName + "." + "awesome-database" + "." + "awesome-schema"
+            entity=DatabaseSchema, fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name="awesome-database",
+                    schema_name="awesome-schema"
+                )
         )
         database_schema_id = database_schema_entity.id
 
