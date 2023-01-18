@@ -134,7 +134,8 @@ class QuicksightSource(DashboardServiceSource):
             AwsAccountId=self.aws_account_id,
             DashboardId=dashboard_details["DashboardId"],
             IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
-            Namespace=self.config.serviceConnection.__root__.config.namespace or "",
+            Namespace=self.config.serviceConnection.__root__.config.namespace
+            or "default",
         )["EmbedUrl"]
 
         yield CreateDashboardRequest(

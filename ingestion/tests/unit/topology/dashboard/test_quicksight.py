@@ -7,6 +7,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -59,7 +61,6 @@ mock_quicksight_config = {
                     "endPointURL": "https://endpoint.com/",
                 },
                 "awsAccountId": "6733-5329-5256",
-                "IdentityType": "IAM",
             }
         },
         "sourceConfig": {
@@ -170,7 +171,7 @@ EXPECTED_DASHBOARDS = [
 ]
 
 
-def mock_get_dashboard_embed_url(AwsAccountId, DashboardId, IdentityType):
+def mock_get_dashboard_embed_url(AwsAccountId, DashboardId, IdentityType, Namespace):
     return {"EmbedUrl": "https://dashboards.example.com/embed/1234"}
 
 
@@ -191,10 +192,12 @@ class QuickSightUnitTest(TestCase):
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        self.quicksight.dashboard_url = "https://dashboards.example.com/embed/1234"
         self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
         self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
         self.quicksight.client.get_dashboard_embed_url = mock_get_dashboard_embed_url
 
+    @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
         results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
@@ -203,12 +206,14 @@ class QuickSightUnitTest(TestCase):
                 dashboard_list.append(result)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
+    @pytest.mark.order(2)
     def test_dashboard_name(self):
         assert (
             self.quicksight.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
             == mock_data["Name"]
         )
 
+    @pytest.mark.order(3)
     def test_chart(self):
         dashboard_details = MOCK_DASHBOARD_DETAILS
         dashboard_details["Version"]["Sheets"] = mock_data["Version"]["Sheets"]
