@@ -12,7 +12,6 @@
 Superset source module
 """
 
-import json
 import traceback
 from typing import Iterable, List, Optional
 
@@ -24,21 +23,8 @@ from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -46,30 +32,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SupersetAPISource(DashboardServiceSource):
+class SupersetAPISource(SupersetSourceMixin):
     """
     Superset API Source Class
     """
-
-    config: WorkflowSource
-    metadata_config: OpenMetadataConnection
-    status: SourceStatus
-    platform = "superset"
-    service_type = DashboardServiceType.Superset.value
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        self.all_charts = {}
-        super().__init__(config, metadata_config)
-
-    @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: SupersetConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, SupersetConnection):
-            raise InvalidSourceException(
-                f"Expected SupersetConnection, but got {connection}"
-            )
-        return cls(config, metadata_config)
 
     def prepare(self):
         """
@@ -99,26 +65,6 @@ class SupersetAPISource(DashboardServiceSource):
             for dashboard in dashboards["result"]:
                 yield dashboard
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
-        """
-        Get Dashboard Name
-        """
-        return dashboard["dashboard_title"]
-
-    def get_dashboard_details(self, dashboard: dict) -> dict:
-        """
-        Get Dashboard Details
-        """
-        return dashboard
-
-    def get_owner_details(self, dashboard_details: dict) -> EntityReference:
-        if dashboard_details.get("owners"):
-            owner = dashboard_details["owners"][0]
-            user = self.metadata.get_user_by_email(owner.get("email"))
-            if user:
-                return EntityReference(id=user.id.__root__, type="user")
-        return None
-
     def yield_dashboard(
         self, dashboard_details: dict
     ) -> Iterable[CreateDashboardRequest]:
@@ -139,20 +85,6 @@ class SupersetAPISource(DashboardServiceSource):
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
         )
-
-    def _get_charts_of_dashboard(self, dashboard_details: dict) -> List[str]:
-        """
-        Method to fetch chart ids linked to dashboard
-        """
-        raw_position_data = dashboard_details.get("position_json", {})
-        if raw_position_data:
-            position_data = json.loads(raw_position_data)
-            return [
-                value.get("meta", {}).get("chartId")
-                for key, value in position_data.items()
-                if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
-            ]
-        return []
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str

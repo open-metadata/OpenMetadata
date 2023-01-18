@@ -100,7 +100,7 @@ public final class TestUtils {
   public static PipelineConnection GLUE_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
-  public static DashboardConnection SUPERSET_CONNECTION;
+  public static DashboardConnection METABASE_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
   public static MetadataConnection AMUNDSEN_CONNECTION;
@@ -163,7 +163,7 @@ public final class TestUtils {
 
   static {
     try {
-      SUPERSET_CONNECTION =
+      METABASE_CONNECTION =
           new DashboardConnection()
               .withConfig(
                   new MetabaseConnection()
@@ -171,7 +171,7 @@ public final class TestUtils {
                       .withUsername("admin")
                       .withPassword("admin"));
     } catch (URISyntaxException e) {
-      SUPERSET_CONNECTION = null;
+      METABASE_CONNECTION = null;
       e.printStackTrace();
     }
   }

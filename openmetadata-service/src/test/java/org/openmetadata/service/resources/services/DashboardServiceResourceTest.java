@@ -85,7 +85,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   void post_validService_as_admin_200_ok(TestInfo test) throws IOException, URISyntaxException {
     // Create dashboard service with different optional fields
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
-    MetabaseConnection supersetConnection =
+    MetabaseConnection metabaseConnection =
         new MetabaseConnection()
             .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
@@ -93,7 +93,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     createAndCheckEntity(
-        createRequest(test, 3).withConnection(new DashboardConnection().withConfig(supersetConnection)), authHeaders);
+        createRequest(test, 3).withConnection(new DashboardConnection().withConfig(metabaseConnection)), authHeaders);
   }
 
   @Test
@@ -138,12 +138,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     assertNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
             .getUsername());
-    MetabaseConnection supersetConnection =
+    MetabaseConnection metabaseConnection =
         new MetabaseConnection()
             .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
             .withPassword(secretPassword);
-    DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(supersetConnection);
+    DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(metabaseConnection);
     update = createPutRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
     fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
@@ -241,22 +241,22 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
       Map<String, String> authHeaders) {
     if (expectedDashboardConnection != null && actualDashboardConnection != null) {
       if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Metabase) {
-        MetabaseConnection expectedSupersetConnection = (MetabaseConnection) expectedDashboardConnection.getConfig();
-        MetabaseConnection actualSupersetConnection;
+        MetabaseConnection expectedmetabaseConnection = (MetabaseConnection) expectedDashboardConnection.getConfig();
+        MetabaseConnection actualMetabaseConnection;
         if (actualDashboardConnection.getConfig() instanceof MetabaseConnection) {
-          actualSupersetConnection = (MetabaseConnection) actualDashboardConnection.getConfig();
+          actualMetabaseConnection = (MetabaseConnection) actualDashboardConnection.getConfig();
         } else {
-          actualSupersetConnection =
+          actualMetabaseConnection =
               JsonUtils.convertValue(actualDashboardConnection.getConfig(), MetabaseConnection.class);
         }
-        assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
+        assertEquals(expectedmetabaseConnection.getHostPort(), actualMetabaseConnection.getHostPort());
         if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-          assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
-          assertTrue(actualSupersetConnection.getPassword().startsWith("secret:/openmetadata/dashboard/"));
-          assertTrue(actualSupersetConnection.getPassword().endsWith("/password"));
+          assertEquals(expectedmetabaseConnection.getUsername(), actualMetabaseConnection.getUsername());
+          assertTrue(actualMetabaseConnection.getPassword().startsWith("secret:/openmetadata/dashboard/"));
+          assertTrue(actualMetabaseConnection.getPassword().endsWith("/password"));
         } else {
-          assertNull(actualSupersetConnection.getUsername());
-          assertNull(actualSupersetConnection.getPassword());
+          assertNull(actualMetabaseConnection.getUsername());
+          assertNull(actualMetabaseConnection.getPassword());
         }
       }
     }
@@ -276,7 +276,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     createDashboardService.withConnection(dashboardConnection);
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    SUPERSET_REFERENCE = dashboardService.getEntityReference();
+    METABASE_REFERENCE = dashboardService.getEntityReference();
 
     CreateDashboardService lookerDashboardService =
         dashboardResourceTest.createRequest("looker", "", "", null).withServiceType(DashboardServiceType.Looker);
@@ -293,7 +293,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     CHART_REFERENCES = new ArrayList<>();
     ChartResourceTest chartResourceTest = new ChartResourceTest();
     for (int i = 0; i < 3; i++) {
-      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(SUPERSET_REFERENCE);
+      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(METABASE_REFERENCE);
       Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
       CHART_REFERENCES.add(chart.getEntityReference());
     }

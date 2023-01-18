@@ -58,7 +58,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
             "username": self.service_connection.connection.username,
             "password": self.service_connection.connection.password.get_secret_value(),
             "refresh": True,
-            "provider": self.service_connection.connection.provider,
+            "provider": self.service_connection.connection.provider.value,
         }
         return json.dumps(auth_request)
 

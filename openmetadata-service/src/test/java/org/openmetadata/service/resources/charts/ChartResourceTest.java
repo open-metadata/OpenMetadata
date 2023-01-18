@@ -55,7 +55,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Test
   void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
+    EntityReference[] differentServices = {METABASE_REFERENCE, LOOKER_REFERENCE};
 
     // Create chart for each service and test APIs
     for (EntityReference service : differentServices) {
@@ -99,7 +99,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Override
   public EntityReference getContainer() {
-    return SUPERSET_REFERENCE;
+    return METABASE_REFERENCE;
   }
 
   @Override
