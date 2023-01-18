@@ -368,6 +368,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
         hasPermission={glossaryTermPermission}
         path={ROUTES.GLOSSARY_TERMS}
       />

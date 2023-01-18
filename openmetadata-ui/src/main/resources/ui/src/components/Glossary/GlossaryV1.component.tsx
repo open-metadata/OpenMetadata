@@ -42,6 +42,7 @@ import {
 import {
   getAddGlossaryTermsPath,
   getGlossaryPath,
+  getGlossaryPathWithAction,
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
@@ -59,8 +60,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import { GlossaryV1Props } from './GlossaryV1.interfaces';
+import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
+
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const { Title } = Typography;
 
@@ -74,7 +79,8 @@ const GlossaryV1 = ({
   onGlossaryDelete,
   onGlossaryTermDelete,
 }: GlossaryV1Props) => {
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const { action, glossaryName: glossaryFqn } =
+    useParams<{ action: GlossaryAction; glossaryName: string }>();
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -101,6 +107,28 @@ const GlossaryV1 = ({
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const handleGlossaryExport = () =>
+    history.push(
+      getGlossaryPathWithAction(selectedData.name, GlossaryAction.EXPORT)
+    );
+
+  const handleCancelGlossaryExport = () =>
+    history.push(getGlossaryPath(selectedData.name));
+
+  const handleGlossaryImport = () =>
+    history.push(
+      getGlossaryPathWithAction(selectedData.name, GlossaryAction.IMPORT)
+    );
+
+  const isImportAction = useMemo(
+    () => action === GlossaryAction.IMPORT,
+    [action]
+  );
+  const isExportAction = useMemo(
+    () => action === GlossaryAction.EXPORT,
+    [action]
+  );
 
   const fetchGlossaryPermission = async () => {
     try {
@@ -237,6 +265,76 @@ const GlossaryV1 = ({
   });
 
   const manageButtonContent = [
+    ...(isGlossaryActive
+      ? [
+          {
+            label: (
+              <Row
+                className="tw-cursor-pointer manage-button"
+                data-testid="export-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleGlossaryExport();
+                  setShowActions(false);
+                }}>
+                <Col className="self-center" span={3}>
+                  <ExportIcon width="20px" />
+                </Col>
+                <Col span={21}>
+                  <Row>
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="export-button-title">
+                        {t('label.export')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('label.export-glossary-terms')}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'export-button',
+          },
+          {
+            label: (
+              <Row
+                className="tw-cursor-pointer manage-button"
+                data-testid="import-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleGlossaryImport();
+                  setShowActions(false);
+                }}>
+                <Col className="self-center" span={3}>
+                  <ImportIcon width="20px" />
+                </Col>
+                <Col span={21}>
+                  <Row>
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="import-button-title">
+                        {t('label.import')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('label.import-glossary-terms')}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
     {
       label: (
         <Space
@@ -274,7 +372,9 @@ const GlossaryV1 = ({
     }
   }, [selectedData, isGlossaryActive]);
 
-  return (
+  return isImportAction ? (
+    <ImportGlossary glossaryName={selectedData.name} />
+  ) : (
     <div>
       <div
         className="tw-flex tw-justify-between tw-items-center"

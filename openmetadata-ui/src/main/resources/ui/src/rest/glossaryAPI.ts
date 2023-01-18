@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { CSVImportResult } from 'generated/type/csvImportResult';
 import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -159,4 +160,29 @@ export const deleteGlossaryTerm = (id: string) => {
   return APIClient.delete(
     `/glossaryTerms/${id}?recursive=true&hardDelete=true`
   );
+};
+
+export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
+  const response = await APIClient.get<string>(
+    `/glossaries/name/${glossaryName}/export`
+  );
+
+  return response.data;
+};
+
+export const importGlossaryInCSVFormat = async (
+  glossaryName: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
+    `/glossaries/name/${glossaryName}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

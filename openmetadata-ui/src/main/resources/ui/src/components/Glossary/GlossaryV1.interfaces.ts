@@ -25,3 +25,8 @@ export type GlossaryV1Props = {
   onGlossaryTermDelete: (id: string) => void;
   isChildLoading: boolean;
 };
+
+export enum GlossaryAction {
+  EXPORT = 'export',
+  IMPORT = 'import',
+}

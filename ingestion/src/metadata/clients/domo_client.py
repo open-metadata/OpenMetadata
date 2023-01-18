@@ -13,6 +13,7 @@
 DomoClient source to extract data from DOMO
 """
 
+import traceback
 from typing import Union
 
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
@@ -25,11 +26,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
     DomoPipelineConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.logger import ingestion_logger
 
-CARDS_URL = (
-    "cards?includeV4PageLayouts=true&parts=metadata"
-    ",datasources,library,drillPathURNs,owners,certification,dateInfo,subscriptions,slicers"
-)
+logger = ingestion_logger()
 
 HEADERS = {"Content-Type": "application/json"}
 WORKFLOW_URL = "dataprocessing/v1/dataflows"
@@ -59,14 +58,20 @@ class DomoClient:
 
     def get_chart_details(self, page_id) -> dict:
         url = (
-            f"content/v3/stacks/{page_id}/"
-            f"{CARDS_URL}"
-            f"&stackLoadContext=Page&stackLoadContextId={page_id}&stackLoadTrigger=page-view"
+            f"content/v1/cards?urns={page_id}&parts=datasources,dateInfo,library,masonData,metadata,"
+            f"metadataOverrides,owners,problems,properties,slicers,subscriptions&includeFiltered=true"
         )
-        response = self.client._request(  # pylint: disable=protected-access
-            method="GET", path=url, headers=HEADERS
-        )
-        return response
+        try:
+            response = self.client._request(  # pylint: disable=protected-access
+                method="GET", path=url, headers=HEADERS
+            )
+            return response[0] if len(response) > 0 else None
+
+        except Exception as exc:
+            logger.info(f"Error while getting details for Card {page_id} - {exc}")
+            logger.debug(traceback.format_exc())
+
+        return None
 
     def get_pipelines(self):
         response = self.client._request(  # pylint: disable=protected-access
