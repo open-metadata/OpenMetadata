@@ -65,6 +65,7 @@ mock_atlas_config = {
                 "password": "password",
                 "databaseServiceName": ["hive"],
                 "messagingServiceName": [],
+                "entity_type": "NotTable",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
