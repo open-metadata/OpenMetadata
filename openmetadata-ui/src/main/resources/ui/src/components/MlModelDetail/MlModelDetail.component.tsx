@@ -651,6 +651,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                       deletePostHandler={deletePostHandler}
                       entityName={mlModelDetail.name}
                       feedList={entityThread}
+                      isFeedLoading={isEntityThreadLoading}
                       postFeedHandler={postFeedHandler}
                       updateThreadHandler={updateThreadHandler}
                       onFeedFiltersUpdate={handleFeedFilterChange}
