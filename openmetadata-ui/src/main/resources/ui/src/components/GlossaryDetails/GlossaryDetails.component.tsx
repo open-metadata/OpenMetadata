@@ -12,14 +12,15 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button as ButtonAntd, Card as AntdCard, Tooltip } from 'antd';
+import { Button as ButtonAntd, Card as AntdCard, Tabs, Tooltip } from 'antd';
 import classNames from 'classnames';
+import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { getUserPath } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -52,10 +53,11 @@ type props = {
   permissions: OperationPermission;
   glossary: Glossary;
   updateGlossary: (value: Glossary) => Promise<void>;
-  handleUserRedirection?: (name: string) => void;
 };
 
 const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
+  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -64,6 +66,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [listVisible, setListVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary');
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
@@ -274,6 +277,10 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     }
   }, [glossary.reviewers]);
 
+  useEffect(() => {
+    setActiveTab('summary');
+  }, [glossaryFqn]);
+
   const AddReviewerButton = () => {
     return (
       <Tooltip
@@ -406,7 +413,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
       <div
-        className="tw-flex tw-items-center tw-flex-wrap tw-group tw-mb-5"
+        className="tw-flex tw-items-center tw-flex-wrap tw-group m-b-xss"
         data-testid="tags">
         {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
           <>
@@ -465,59 +472,82 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           </TagsContainer>
         </div>
       </div>
-      <div className="tw-flex tw-gap-3">
-        <div className="tw-w-9/12">
-          <div className="tw-mb-4" data-testid="description-container">
-            <AntdCard className="glossary-card">
-              <DescriptionV1
-                removeBlur
-                description={glossary?.description}
-                entityName={glossary?.displayName ?? glossary?.name}
-                hasEditAccess={
-                  permissions.EditDescription || permissions.EditAll
-                }
-                isEdit={isDescriptionEditable}
-                onCancel={onCancel}
-                onDescriptionEdit={onDescriptionEdit}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </AntdCard>
-          </div>
-        </div>
-        <div className="tw-w-3/12 tw-px-2">
-          <Card
-            action={ownerAction()}
-            className="shadow-custom"
-            heading="Owner">
-            <div className="tw-flex tw-items-center">
-              {glossary.owner && getEntityName(glossary.owner) && (
-                <div className="tw-inline-block tw-mr-2">
-                  <ProfilePicture
-                    displayName={getEntityName(glossary.owner)}
-                    id={glossary.owner?.id || ''}
-                    name={glossary.owner?.name || ''}
-                    textClass="tw-text-xs"
-                    width="25"
-                  />
+
+      <Tabs
+        destroyInactiveTabPane
+        activeKey={activeTab}
+        items={[
+          {
+            label: t('label.summary'),
+            key: 'summary',
+            children: (
+              <div className="tw-flex tw-gap-3">
+                <div className="tw-w-9/12">
+                  <div className="tw-mb-4" data-testid="description-container">
+                    <AntdCard className="glossary-card">
+                      <DescriptionV1
+                        removeBlur
+                        description={glossary?.description}
+                        entityName={glossary?.displayName ?? glossary?.name}
+                        hasEditAccess={
+                          permissions.EditDescription || permissions.EditAll
+                        }
+                        isEdit={isDescriptionEditable}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                      />
+                    </AntdCard>
+                  </div>
                 </div>
-              )}
-              {glossary.owner && getEntityName(glossary.owner) ? (
-                <Link to={getUserPath(glossary.owner.name ?? '')}>
-                  {getEntityName(glossary.owner)}
-                </Link>
-              ) : (
-                <span className="tw-text-grey-muted">No owner</span>
-              )}
-            </div>
-          </Card>
-          <Card
-            action={AddReviewerButton()}
-            className="tw-mt-4 shadow-custom"
-            heading="Reviewer">
-            <div>{getReviewerTabData()}</div>
-          </Card>
-        </div>
-      </div>
+                <div className="tw-w-3/12 tw-px-2">
+                  <Card
+                    action={ownerAction()}
+                    className="shadow-custom"
+                    heading="Owner">
+                    <div className="tw-flex tw-items-center">
+                      {glossary.owner && getEntityName(glossary.owner) && (
+                        <div className="tw-inline-block tw-mr-2">
+                          <ProfilePicture
+                            displayName={getEntityName(glossary.owner)}
+                            id={glossary.owner?.id || ''}
+                            name={glossary.owner?.name || ''}
+                            textClass="tw-text-xs"
+                            width="25"
+                          />
+                        </div>
+                      )}
+                      {glossary.owner && getEntityName(glossary.owner) ? (
+                        <Link to={getUserPath(glossary.owner.name ?? '')}>
+                          {getEntityName(glossary.owner)}
+                        </Link>
+                      ) : (
+                        <span className="tw-text-grey-muted">
+                          {t('label.no-entity', {
+                            entity: t('label.owner-lowercase'),
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  </Card>
+                  <Card
+                    action={AddReviewerButton()}
+                    className="tw-mt-4 shadow-custom"
+                    heading="Reviewer">
+                    <div>{getReviewerTabData()}</div>
+                  </Card>
+                </div>
+              </div>
+            ),
+          },
+          {
+            label: t('label.glossary-term-plural'),
+            key: 'glossaryTerms',
+            children: <GlossaryTermTab glossaryId={glossary.id} />,
+          },
+        ]}
+        onChange={(key) => setActiveTab(key)}
+      />
 
       <ReviewerModal
         header={t('label.add-entity', {

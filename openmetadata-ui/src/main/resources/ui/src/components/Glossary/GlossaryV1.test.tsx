@@ -25,8 +25,12 @@ import userEvent from '@testing-library/user-event';
 import { omit } from 'lodash';
 import { LoadingState } from 'Models';
 import React from 'react';
-import { mockedAssetData, mockedGlossaries } from '../../mocks/Glossary.mock';
+import {
+  mockedGlossaries,
+  mockedGlossaryTerms,
+} from '../../mocks/Glossary.mock';
 import GlossaryV1 from './GlossaryV1.component';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 
 let params = {
   glossaryName: 'GlossaryName',
@@ -130,33 +134,15 @@ jest.mock('./ImportGlossary/ImportGlossary', () =>
     .mockReturnValue(<div data-testid="import-glossary">ImportGlossary</div>)
 );
 
-const mockProps = {
-  assetData: mockedAssetData,
-  currentPage: 1,
+const mockProps: GlossaryV1Props = {
   deleteStatus: 'initial' as LoadingState,
-  isSearchResultEmpty: false,
-  isHasAccess: true,
-  glossaryList: mockedGlossaries,
-  selectedKey: 'Mock Glossary',
-  expandedKey: ['Mock Glossary'],
-  loadingKey: [],
-  handleExpandedKey: jest.fn(),
-  searchText: '',
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
   isChildLoading: false,
-  handleSelectedData: jest.fn(),
-  handleAddGlossaryClick: jest.fn(),
-  handleAddGlossaryTermClick: jest.fn(),
   handleGlossaryTermUpdate: jest.fn(),
   updateGlossary: jest.fn(),
-  handleChildLoading: jest.fn(),
-  handleSearchText: jest.fn(),
   onGlossaryDelete: jest.fn(),
   onGlossaryTermDelete: jest.fn(),
-  onAssetPaginate: jest.fn(),
-  onRelatedTermClick: jest.fn(),
-  handleUserRedirection: jest.fn(),
 };
 
 describe('Test Glossary component', () => {
@@ -202,7 +188,7 @@ describe('Test Glossary component', () => {
       <GlossaryV1
         {...mockProps}
         isGlossaryActive={false}
-        selectedData={mockedGlossaries[0].children[0]}
+        selectedData={mockedGlossaryTerms[0]}
       />
     );
 
@@ -221,7 +207,7 @@ describe('Test Glossary component', () => {
   });
 
   it('UpdatedBy and updatedAt should not visible if not available', async () => {
-    const updatedData = omit(mockedGlossaries[0].children[0], [
+    const updatedData = omit(mockedGlossaryTerms[0], [
       'updatedAt',
       'updatedBy',
     ]);
