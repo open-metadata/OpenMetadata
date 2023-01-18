@@ -13,7 +13,7 @@
 OpenMetadata Airflow Provider utilities
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List
 
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,

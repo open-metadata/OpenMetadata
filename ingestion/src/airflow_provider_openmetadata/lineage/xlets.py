@@ -12,7 +12,7 @@
 """
 Handle Airflow inlets and outlets
 """
-from typing import Set, List, Optional
+from typing import List, Optional, Set
 
 from pydantic import BaseModel
 
@@ -75,7 +75,11 @@ def get_xlets_from_dag(dag: "DAG") -> XLets:
     _outlets = set()
 
     for task in dag.tasks:
-        _inlets.update(get_xlets_from_operator(operator=task, xlet_mode="_inlets") or [])
-        _outlets.update(get_xlets_from_operator(operator=task, xlet_mode="_outlets") or [])
+        _inlets.update(
+            get_xlets_from_operator(operator=task, xlet_mode="_inlets") or []
+        )
+        _outlets.update(
+            get_xlets_from_operator(operator=task, xlet_mode="_outlets") or []
+        )
 
     return XLets(inlets=_inlets, outlets=_outlets)
