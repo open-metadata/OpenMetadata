@@ -38,6 +38,9 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# BoundLimit for MaxResults = MaxResults >= 0 and MaxResults <= 100
+QUICKSIGHT_MAXRESULTS = 100
+
 
 class QuicksightSource(DashboardServiceSource):
     """
@@ -63,21 +66,58 @@ class QuicksightSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
+    def _check_pagination(
+        self, listing_method, entity_response, entity_key, response_key
+    ):
+        entity_set = set()
+        while entity_response.get("NextToken"):
+            try:
+                entity_response = listing_method(
+                    {
+                        "AwsAccountId": self.aws_account_id,
+                        "MaxResults": QUICKSIGHT_MAXRESULTS,
+                        "NextToken": entity_response.get("NextToken"),
+                    }
+                )
+                entity_set = entity_set.union(
+                    {entity[entity_key] for entity in entity_response[response_key]}
+                )
+            except Exception as err:
+                logger.error(err)
+                logger.debug(traceback.format_exc())
+                break
+        return entity_set
+
     def get_dashboards_list(self) -> Optional[List[dict]]:
         """
         Get List of all dashboards
         """
-        dashboard_ids = [
+        list_dashboards_func = lambda kwargs: self.client.list_dashboards(**kwargs)
+
+        list_dashboard_resp = list_dashboards_func(
+            {
+                "AwsAccountId": self.aws_account_id,
+                "MaxResults": QUICKSIGHT_MAXRESULTS,
+            }
+        )
+        dashboard_set = {
             dashboard["DashboardId"]
-            for dashboard in self.client.list_dashboards(
-                AwsAccountId=self.aws_account_id
-            )["DashboardSummaryList"]
-        ]
+            for dashboard in list_dashboard_resp["DashboardSummaryList"]
+        }
+
+        dashboard_set = dashboard_set.union(
+            self._check_pagination(
+                listing_method=list_dashboards_func,
+                entity_response=list_dashboard_resp,
+                entity_key="DashboardId",
+                response_key="DashboardSummaryList",
+            )
+        )
         dashboards = [
             self.client.describe_dashboard(
                 AwsAccountId=self.aws_account_id, DashboardId=dashboard_id
             )["Dashboard"]
-            for dashboard_id in dashboard_ids
+            for dashboard_id in dashboard_set
         ]
         return dashboards
 
@@ -103,6 +143,7 @@ class QuicksightSource(DashboardServiceSource):
             AwsAccountId=self.aws_account_id,
             DashboardId=dashboard_details["DashboardId"],
             IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
+            Namespace=self.config.serviceConnection.__root__.config.namespace or "",
         )["EmbedUrl"]
 
         yield CreateDashboardRequest(
@@ -166,13 +207,36 @@ class QuicksightSource(DashboardServiceSource):
         """
         try:
             dataset_arns = dashboard_details["Version"]["DataSetArns"]
-            dataset_ids = [
+            data_set_response = self.client.list_data_sets(
+                AwsAccountId=self.aws_account_id,
+                MaxResults=QUICKSIGHT_MAXRESULTS,
+            )
+            dataset_ids = {
                 dataset["DataSetId"]
-                for dataset in self.client.list_data_sets(
-                    AwsAccountId=self.aws_account_id
-                )["DataSetSummaries"]
+                for dataset in data_set_response["DataSetSummaries"]
                 if dataset.get("Arn") in dataset_arns
-            ]
+            }
+            while data_set_response.get("NextToken"):
+                try:
+                    data_set_response = self.client.list_data_sets(
+                        **{
+                            "AwsAccountId": self.aws_account_id,
+                            "MaxResults": QUICKSIGHT_MAXRESULTS,
+                            "NextToken": data_set_response.get("NextToken"),
+                        }
+                    )
+                    dataset_ids = dataset_ids.union(
+                        {
+                            entity["DataSetId"]
+                            for entity in data_set_response["DataSetSummaries"]
+                            if entity.get("Arn") in dataset_arns
+                        }
+                    )
+                except Exception as err:
+                    logger.error(err)
+                    logger.debug(traceback.format_exc())
+                    break
+
             for dataset_id in dataset_ids:
                 for data_source in list(
                     self.client.describe_data_set(
@@ -230,7 +294,7 @@ class QuicksightSource(DashboardServiceSource):
 
                             to_entity = self.metadata.get_by_name(
                                 entity=Dashboard,
-                                fqn=f"{self.config.serviceName}{fqn.FQN_SEPARATOR}{dashboard_details['Name']}",
+                                fqn=f"{self.config.serviceName}{fqn.FQN_SEPARATOR}{dashboard_details['DashboardId']}",
                             )
                             yield self._get_add_lineage_request(
                                 to_entity=to_entity, from_entity=from_entity
