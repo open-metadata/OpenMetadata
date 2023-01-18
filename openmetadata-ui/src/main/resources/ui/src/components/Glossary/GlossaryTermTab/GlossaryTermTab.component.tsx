@@ -87,7 +87,7 @@ const GlossaryTermTab = ({
     return <Loader />;
   }
 
-  if (!isLoading && glossaryTerms.length === 0) {
+  if (glossaryTerms.length === 0) {
     return (
       <ErrorPlaceHolder>
         {t('message.no-entity-data-available', {
@@ -103,13 +103,15 @@ const GlossaryTermTab = ({
         <Searchbar
           removeMargin
           showLoadingStatus
-          placeholder="Search glossary term..."
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.glossary-term'),
+          })}...`}
           searchValue={searchTerm}
           typingInterval={500}
           onSearch={handleSearch}
         />
       </Col>
-      {!isLoading && filterData.length > 0 ? (
+      {filterData.length > 0 ? (
         filterData.map((term) => (
           <Col key={term.name} span={24}>
             <Card data-testid={`${term.name}-card`}>

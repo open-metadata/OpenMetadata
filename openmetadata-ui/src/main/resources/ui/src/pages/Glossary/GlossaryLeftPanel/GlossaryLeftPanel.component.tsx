@@ -97,7 +97,9 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
             <Searchbar
               removeMargin
               showLoadingStatus
-              placeholder="Search glossary..."
+              placeholder={`${t('label.search-for-type', {
+                type: t('label.glossary'),
+              })}...`}
               searchValue={searchTerm}
               typingInterval={500}
               onSearch={handleSearch}

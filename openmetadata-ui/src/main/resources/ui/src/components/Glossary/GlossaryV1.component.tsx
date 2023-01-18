@@ -376,7 +376,7 @@ const GlossaryV1 = ({
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.name} />
   ) : (
-    <div>
+    <>
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
@@ -578,7 +578,7 @@ const GlossaryV1 = ({
           onOk={handleCancelGlossaryExport}
         />
       )}
-    </div>
+    </>
   );
 };
 

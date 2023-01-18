@@ -28,34 +28,34 @@ interface Props {
 }
 
 const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
+  if (assetData.isLoading) {
+    return <Loader />;
+  }
+
   return (
     <div data-testid="table-container">
       {assetData.data.length ? (
         <>
-          {assetData.isLoading ? (
-            <Loader />
-          ) : (
-            assetData.data.map((entity, index) => (
-              <div className="m-b-sm" key={index}>
-                <TableDataCard
-                  database={entity.database}
-                  databaseSchema={entity.databaseSchema}
-                  deleted={entity.deleted}
-                  description={entity.description}
-                  fullyQualifiedName={entity.fullyQualifiedName}
-                  id={`tabledatacard${index}`}
-                  indexType={entity.index}
-                  name={entity.name}
-                  owner={entity.owner}
-                  service={entity.service}
-                  serviceType={entity.serviceType || '--'}
-                  tags={entity.tags}
-                  tier={getTierFromEntityInfo(entity)}
-                  usage={entity.weeklyPercentileRank}
-                />
-              </div>
-            ))
-          )}
+          {assetData.data.map((entity, index) => (
+            <div className="m-b-sm" key={index}>
+              <TableDataCard
+                database={entity.database}
+                databaseSchema={entity.databaseSchema}
+                deleted={entity.deleted}
+                description={entity.description}
+                fullyQualifiedName={entity.fullyQualifiedName}
+                id={`tabledatacard${index}`}
+                indexType={entity.index}
+                name={entity.name}
+                owner={entity.owner}
+                service={entity.service}
+                serviceType={entity.serviceType || '--'}
+                tags={entity.tags}
+                tier={getTierFromEntityInfo(entity)}
+                usage={entity.weeklyPercentileRank}
+              />
+            </div>
+          ))}
           {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
             <NextPrevious
               isNumberBased

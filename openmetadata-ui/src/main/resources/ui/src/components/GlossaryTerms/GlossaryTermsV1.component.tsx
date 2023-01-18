@@ -206,42 +206,42 @@ const GlossaryTermsV1 = ({
     }
   };
 
-  const fetchGlossaryTermAssets = (fqn: string, currentPage = 1) => {
+  const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
     setAssetData((pre) => ({
       ...pre,
       isLoading: true,
     }));
     if (fqn) {
-      searchData(
-        '',
-        currentPage,
-        PAGE_SIZE,
-        `(tags.tagFQN:"${fqn}")`,
-        '',
-        '',
-        myDataSearchIndex
-      )
-        .then((res) => {
-          const hits = res?.data?.hits?.hits as SearchEntityHits;
-          const isData = hits?.length > 0;
-          setAssetData(() => {
-            const data = isData ? formatDataResponse(hits) : [];
-            const total = isData ? res.data.hits.total.value : 0;
+      try {
+        const res = await searchData(
+          '',
+          currentPage,
+          PAGE_SIZE,
+          `(tags.tagFQN:"${fqn}")`,
+          '',
+          '',
+          myDataSearchIndex
+        );
 
-            return {
-              isLoading: false,
-              data,
-              total,
-              currPage: currentPage,
-            };
-          });
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['elastic-search-error']
-          );
+        const hits = res?.data?.hits?.hits as SearchEntityHits;
+        const isData = hits?.length > 0;
+        setAssetData(() => {
+          const data = isData ? formatDataResponse(hits) : [];
+          const total = isData ? res.data.hits.total.value : 0;
+
+          return {
+            isLoading: false,
+            data,
+            total,
+            currPage: currentPage,
+          };
         });
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['elastic-search-error']
+        );
+      }
     } else {
       setAssetData({ data: [], total: 0, currPage: 1, isLoading: false });
     }

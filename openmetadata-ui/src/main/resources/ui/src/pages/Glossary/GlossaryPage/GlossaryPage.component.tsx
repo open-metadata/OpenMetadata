@@ -31,6 +31,7 @@ import { Operation } from 'generated/entity/policies/policy';
 import jsonData from 'jsons/en';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   deleteGlossary,
@@ -46,6 +47,7 @@ import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
   const history = useHistory();
@@ -230,11 +232,11 @@ const GlossaryPage = () => {
             disabled={!createGlossaryPermission}
             type="primary"
             onClick={handleAddGlossaryClick}>
-            Add New Glossary
+            {t('label.add-new-entity', { entity: t('label.glossary') })}
           </Button>
         }
         doc={GLOSSARIES_DOCS}
-        heading="Glossary"
+        heading={t('label.glossary')}
         type="ADD_DATA"
       />
     );
