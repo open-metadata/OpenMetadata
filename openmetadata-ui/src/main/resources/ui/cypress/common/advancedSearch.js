@@ -47,11 +47,11 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchCriteriaFirstGroup: 'admin',
-    responseValueFirstGroup: `"name":"admin"`,
+    searchCriteriaFirstGroup: 'Aaron Johnson',
+    responseValueFirstGroup: `"displayName":"Aaron Johnson"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
-    responseValueSecondGroup: 'aaron_singh2',
+    responseValueSecondGroup: 'Aaron Singh',
   },
   Tags: {
     name: 'Tags',
@@ -199,7 +199,9 @@ export const checkmustPaths = (
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must*${searchCriteria}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must*${encodeURI(
+      searchCriteria
+    )}*&sort_field=_score&sort_order=desc`,
     'search'
   );
   // //Click on apply filter
@@ -208,7 +210,7 @@ export const checkmustPaths = (
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
-    expect(request.url).to.contain(searchCriteria);
+    expect(request.url).to.contain(encodeURI(searchCriteria));
     expect(resBody).to.include(`${responseSearch}`);
   });
 };
@@ -226,7 +228,9 @@ export const checkmust_notPaths = (
   searchForField(condition, field, searchCriteria, index);
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${searchCriteria}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${encodeURI(
+      searchCriteria
+    )}*&sort_field=_score&sort_order=desc`,
     'search_must_not'
   );
   // Click on apply filter
@@ -235,7 +239,7 @@ export const checkmust_notPaths = (
   cy.wait('@search_must_not').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
-    expect(request.url).to.contain(searchCriteria);
+    expect(request.url).to.contain(encodeURI(searchCriteria));
     expect(resBody).to.not.include(`${responseSearch}`);
   });
 };
