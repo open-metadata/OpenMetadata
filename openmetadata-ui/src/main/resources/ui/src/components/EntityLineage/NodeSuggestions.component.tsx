@@ -22,9 +22,8 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { searchData } from 'rest/miscAPI';
+import { getSuggestions } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -63,18 +62,15 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   const getSearchResults = async (value: string) => {
     try {
-      const data = await searchData<ExploreSearchIndex>(
+      const data = await getSuggestions(
         value,
-        1,
-        PAGE_SIZE,
-        '',
-        '',
-        '',
         SearchIndex[
           entityType as keyof typeof SearchIndex
         ] as ExploreSearchIndex
       );
-      setData(formatDataResponse(data.data.hits.hits));
+      setData(
+        formatDataResponse(data.data.suggest['metadata-suggest'][0].options)
+      );
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -96,10 +92,6 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     setSearchValue(searchText);
     debounceOnSearch(searchText);
   };
-
-  useEffect(() => {
-    getSearchResults(searchValue);
-  }, []);
 
   useEffect(() => {
     setIsOpen(data.length > 0);

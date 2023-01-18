@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { searchData } from 'rest/miscAPI';
+import { getSuggestions } from 'rest/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import NodeSuggestions from './NodeSuggestions.component';
 
@@ -25,7 +25,7 @@ const mockProps = {
 const entityType = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
 
 jest.mock('rest/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+  getSuggestions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 describe('Test NodeSuggestions Component', () => {
@@ -40,19 +40,13 @@ describe('Test NodeSuggestions Component', () => {
   });
 
   entityType.forEach((value) => {
-    it(`Search API for ${value} should work properly`, async () => {
+    it(`Suggest API for ${value} should work properly`, async () => {
       jest.useFakeTimers('modern');
-      const mockSearchData = searchData as jest.Mock;
+      const mockSearchData = getSuggestions as jest.Mock;
       const searchValue = 'sale';
       await act(async () => {
         render(<NodeSuggestions {...mockProps} entityType={value} />);
       });
-
-      // 1st call on page load with empty search string and respective searchIndex
-      expect(mockSearchData.mock.calls[0][0]).toBe('');
-      expect(mockSearchData.mock.calls[0][6]).toEqual(
-        SearchIndex[value as keyof typeof SearchIndex]
-      );
 
       const suggestionNode = await screen.findByTestId('suggestion-node');
       const searchBox = await screen.findByTestId('node-search-box');
@@ -69,14 +63,12 @@ describe('Test NodeSuggestions Component', () => {
         jest.runAllTimers();
       });
 
-      // This function was instantiated exactly twice
-      expect(mockSearchData.mock.instances).toHaveLength(2);
+      expect(mockSearchData.mock.instances).toHaveLength(1);
 
-      // 2nd call with value search and respective searchIndex
-      expect(mockSearchData.mock.calls[1][6]).toEqual(
+      expect(mockSearchData.mock.calls[0][1]).toEqual(
         SearchIndex[value as keyof typeof SearchIndex]
       );
-      expect(mockSearchData.mock.calls[1][0]).toEqual(searchValue);
+      expect(mockSearchData.mock.calls[0][0]).toEqual(searchValue);
     });
   });
 });
