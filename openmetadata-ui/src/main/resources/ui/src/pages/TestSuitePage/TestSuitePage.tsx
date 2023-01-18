@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Typography } from 'antd';
+import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
@@ -25,6 +26,7 @@ import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
 import {
   INITIAL_PAGING_VALUE,
+  MAX_CHAR_LIMIT_TEST_SUITE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
   ROUTES,
@@ -76,13 +78,22 @@ const TestSuitePage = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 300,
-        render: (_, record) => (
-          <Typography.Paragraph
-            className="ant-typography-ellipsis-custom w-11-12"
-            ellipsis={{ tooltip: true }}>
-            {record.description}
-          </Typography.Paragraph>
+        width: 500,
+        render: (description) => (
+          <Tooltip
+            overlayStyle={{ maxWidth: '400px' }}
+            placement="topLeft"
+            title={
+              description.length > MAX_CHAR_LIMIT_TEST_SUITE && description
+            }>
+            <Typography.Paragraph className="ant-typography-ellipsis-custom">
+              <RichTextEditorPreviewer
+                enableSeeMoreVariant={false}
+                markdown={description}
+                maxLength={MAX_CHAR_LIMIT_TEST_SUITE}
+              />
+            </Typography.Paragraph>
+          </Tooltip>
         ),
       },
       {
