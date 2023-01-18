@@ -1094,6 +1094,10 @@ const ServicePage: FunctionComponent = () => {
                           }}
                           data-testid="service-children-table"
                           dataSource={data}
+                          loading={{
+                            spinning: isLoading,
+                            indicator: <Loader size="small" />,
+                          }}
                           pagination={false}
                           rowKey="id"
                           size="small"
