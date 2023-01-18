@@ -122,6 +122,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
+    supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -927,7 +928,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(
         () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
+        CatalogExceptionMessage.userAlreadyBot(botUser.getName(), create.getName()));
   }
 
   @Test
@@ -999,7 +1000,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
+    EntityReference userRef = reduceEntityReference(user);
     locationResourceTest.createEntity(
         locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
     locationResourceTest.createEntity(
@@ -1015,7 +1016,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     List<EntityReference> expectedOwnedEntities = new ArrayList<>();
     for (EntityReference ref : listOrEmpty(userBeforeDeletion.getOwns())) {
-      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+      expectedOwnedEntities.add(reduceEntityReference(ref));
     }
 
     TestUtils.assertEntityReferences(expectedOwnedEntities, userAfterDeletion.getOwns());
@@ -1089,7 +1090,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  protected String getAllowedFields() {
+  public String getAllowedFields() {
     List<String> allowedFields = Entity.getAllowedFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);

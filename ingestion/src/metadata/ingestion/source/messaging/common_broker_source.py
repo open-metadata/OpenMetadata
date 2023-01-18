@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import SchemaType, Topic
+from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -126,11 +127,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     ),
                     schemaFields=schema_fields,
                 )
-                if (
-                    topic_schema.schema_type.lower() == SchemaType.Avro.value.lower()
-                    and self.generate_sample_data
-                ):
-                    topic.sampleData = self._get_sample_data(topic.name)
 
             self.status.topic_scanned(topic.name.__root__)
             yield topic
@@ -199,37 +195,56 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             )
         return None
 
-    def _get_sample_data(self, topic_name):
-        sample_data = []
-        try:
-            self.consumer_client.subscribe([topic_name.__root__])
-            logger.info(
-                f"Broker consumer polling for sample messages in topic {topic_name.__root__}"
-            )
-            messages = self.consumer_client.consume(num_messages=10, timeout=10)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch sample data from topic {topic_name.__root__}: {exc}"
-            )
-        else:
-            if messages:
-                for message in messages:
-                    try:
-                        sample_data.append(
-                            str(
-                                self.consumer_client._serializer.decode_message(  # pylint: disable=protected-access
-                                    message.value()
+    def yield_topic_sample_data(
+        self, topic_details: BrokerTopicDetails
+    ) -> TopicSampleData:
+        """
+        Method to Get Sample Data of Messaging Entity
+        """
+        if (
+            self.context.topic
+            and self.context.topic.messageSchema
+            and self.context.topic.messageSchema.schemaType.value
+            == SchemaType.Avro.value
+            and self.generate_sample_data
+        ):
+            topic_name = topic_details.topic_name
+            sample_data = []
+            try:
+                self.consumer_client.subscribe([topic_name])
+                logger.info(
+                    f"Broker consumer polling for sample messages in topic {topic_name}"
+                )
+                messages = self.consumer_client.consume(num_messages=10, timeout=10)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to fetch sample data from topic {topic_name}: {exc}"
+                )
+            else:
+                if messages:
+                    for message in messages:
+                        try:
+                            value = message.value()
+                            sample_data.append(
+                                value.decode()
+                                if isinstance(value, bytes)
+                                else str(
+                                    self.consumer_client._serializer.decode_message(  # pylint: disable=protected-access
+                                        value
+                                    )
                                 )
                             )
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            f"Failed to decode sample data from topic {topic_name.__root__}: {exc}"
-                        )
+                        except Exception as exc:
+                            logger.warning(
+                                f"Failed to decode sample data from topic {topic_name}: {exc}"
+                            )
 
-        self.consumer_client.unsubscribe()
-        return TopicSampleData(messages=sample_data)
+            self.consumer_client.unsubscribe()
+            yield OMetaTopicSampleData(
+                topic=self.context.topic,
+                sample_data=TopicSampleData(messages=sample_data),
+            )
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:

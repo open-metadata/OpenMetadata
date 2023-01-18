@@ -24,6 +24,7 @@ import {
 import { getListTestCase } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Table, TableType } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
@@ -32,6 +33,7 @@ import {
   formTwoDigitNmber,
 } from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
@@ -40,6 +42,7 @@ import {
   TableTestsType,
 } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({ entityDetails }: TableSummaryProps) {
@@ -162,6 +165,11 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     [tableType, columns, tableQueries]
   );
 
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(
+    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns),
+    [columns]
+  );
+
   useEffect(() => {
     if (!isEmpty(entityDetails)) {
       setTableDetails(entityDetails);
@@ -185,10 +193,13 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
             {Object.keys(basicTableInfo).map((fieldName) => (
               <Col key={fieldName} span={24}>
                 <Row gutter={16}>
-                  <Col className="text-gray" span={10}>
+                  <Col
+                    className="text-gray"
+                    data-testid={`${fieldName}-label`}
+                    span={10}>
                     {fieldName}
                   </Col>
-                  <Col span={12}>
+                  <Col data-testid={`${fieldName}-value`} span={12}>
                     {basicTableInfo[fieldName as keyof BasicTableInfo]}
                   </Col>
                 </Row>
@@ -201,13 +212,15 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="profiler-header">
             {t('label.profiler-amp-data-quality')}
           </Typography.Text>
         </Col>
         <Col span={24}>
           {isUndefined(overallSummary) ? (
-            <Typography.Text>
+            <Typography.Text data-testid="no-profiler-enabled-message">
               {t('message.no-profiler-enabled-summary-message')}
             </Typography.Text>
           ) : (
@@ -216,7 +229,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
                 <Col key={field.title} span={10}>
                   <Row>
                     <Col span={24}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text
+                        className="text-gray"
+                        data-testid={`${field.title}-label`}>
                         {field.title}
                       </Typography.Text>
                     </Col>
@@ -225,7 +240,8 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
                         className={classNames(
                           'summary-panel-statistics-count',
                           field.className
-                        )}>
+                        )}
+                        data-testid={`${field.title}-value`}>
                         {field.value}
                       </Typography.Text>
                     </Col>
@@ -239,12 +255,17 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
       <Divider className="m-0" />
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <SummaryList columns={columns} />
+          <SummaryList
+            entityType={SummaryEntityType.COLUMN}
+            formattedEntityData={formattedColumnsData}
+          />
         </Col>
       </Row>
     </>

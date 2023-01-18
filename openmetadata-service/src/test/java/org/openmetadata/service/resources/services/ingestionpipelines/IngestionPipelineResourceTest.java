@@ -31,6 +31,7 @@ import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
 import javax.ws.rs.core.Response.Status;
@@ -204,7 +205,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     CreateIngestionPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
-            .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
+            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("5 * * * *"));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -221,7 +222,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSourceConfig(), ingestion);
@@ -239,7 +239,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     CreateIngestionPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
-            .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
+            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -260,7 +260,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(queryUsageConfig, ingestion.getSourceConfig(), ingestion);
@@ -276,7 +275,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineUrlUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
+            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -294,7 +293,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
@@ -321,7 +319,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -337,7 +334,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineForDashboardSourceUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(new EntityReference().withId(SUPERSET_REFERENCE.getId()).withType("dashboardService"))
+            .withService(reduceEntityReference(SUPERSET_REFERENCE))
             .withDescription("description")
             .withSourceConfig(DASHBOARD_METADATA_CONFIG)
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
@@ -355,7 +352,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.build(SUPERSET_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
@@ -378,7 +374,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -391,7 +386,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineForMessagingSourceUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(new EntityReference().withId(KAFKA_REFERENCE.getId()).withType("messagingService"))
+            .withService(reduceEntityReference(KAFKA_REFERENCE))
             .withDescription("description")
             .withSourceConfig(MESSAGING_METADATA_CONFIG)
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
@@ -409,7 +404,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.build(KAFKA_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
@@ -431,7 +425,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -446,7 +439,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     CreateIngestionPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
-            .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
+            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE))
             .withOwner(USER1_REF);
@@ -466,7 +459,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withConcurrency(pipelineConcurrency)
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
-            OK,
             ADMIN_AUTH_HEADERS);
 
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
@@ -615,13 +607,15 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId(), awsCredentials.getAwsAccessKeyId());
     assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsRegion(), awsCredentials.getAwsRegion());
     assertEquals(
-        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey(),
-        "secret:/openmetadata/pipeline/ingestionpipeline_post_dbtpipeline_configisencrypted/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
+        "secret:/openmetadata/pipeline/"
+            + request.getName().toLowerCase(Locale.ROOT)
+            + "/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey",
+        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
   }
 
-  private IngestionPipeline updateIngestionPipeline(
-      CreateIngestionPipeline create, Status status, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getCollection(), create, IngestionPipeline.class, status, authHeaders);
+  private IngestionPipeline updateIngestionPipeline(CreateIngestionPipeline create, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.put(getCollection(), create, IngestionPipeline.class, Status.OK, authHeaders);
   }
 
   @Override

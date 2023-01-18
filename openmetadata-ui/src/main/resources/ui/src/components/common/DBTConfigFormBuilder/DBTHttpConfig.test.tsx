@@ -21,6 +21,11 @@ const mockCatalogChange = jest.fn();
 const mockManifestChange = jest.fn();
 const mockRunResultsHttpPathChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
+
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
+);
 
 const mockProps = {
   dbtCatalogHttpPath: '',
@@ -35,11 +40,8 @@ const mockProps = {
   handleManifestHttpPathChange: mockManifestChange,
   handleRunResultsHttpPathChange: mockRunResultsHttpPathChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
-
-jest.mock('./SwitchField.component', () =>
-  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
-);
 
 describe('Test DBT Http Config Form', () => {
   it('Fields should render', async () => {

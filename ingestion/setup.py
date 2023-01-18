@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Python Dependencies
+"""
+
 import os
 from typing import Dict, Set
 
@@ -17,8 +21,8 @@ from setuptools import find_namespace_packages, setup
 
 def get_long_description():
     root = os.path.dirname(__file__)
-    with open(os.path.join(root, "README.md")) as f:
-        description = f.read()
+    with open(os.path.join(root, "README.md"), encoding="UTF-8") as file:
+        description = file.read()
     return description
 
 
@@ -32,7 +36,7 @@ VERSIONS = {
     "great-expectations": "great-expectations~=0.15.0",
     "grpc-tools": "grpcio-tools==1.47.2",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=4.4.0",
+    "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas==1.3.5",
     "pyarrow": "pyarrow~=8.0",
     "pydomo": "pydomo~=0.3",
@@ -149,7 +153,7 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch>=7.17,<8"
+        "elasticsearch==7.13.1"
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},

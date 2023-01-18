@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -72,6 +73,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public Glossary setFields(Glossary glossary, Fields fields) throws IOException {
+    glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
     return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : null);
   }
@@ -108,6 +110,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   private Integer getUsageCount(Glossary glossary) {
     return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+  }
+
+  private Integer getTermCount(Glossary glossary) {
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
+    return daoCollection.glossaryTermDAO().listCount(filter);
   }
 
   @Override

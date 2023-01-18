@@ -11,6 +11,13 @@
       "type": "string",
       "enum": ["OpenMetadata"],
       "default": "OpenMetadata"
+    },
+    "extraHeaders": {
+      "description": "Additional headers to be sent to the API endpoint.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "properties": {
@@ -191,6 +198,10 @@
     },
     "supportsElasticSearchReindexingExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsElasticSearchReindexingExtraction"
+    },
+    "extraHeaders": {
+      "title": "Extra Headers",
+      "$ref": "#/definitions/extraHeaders"
     }
   },
   "additionalProperties": false,

@@ -56,7 +56,7 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
 
   @Override
   public EntityUpdater getUpdater(AlertAction original, AlertAction updated, EntityRepository.Operation operation) {
-    return new AlertActionRepository.AlertActionUpdater(original, updated, operation);
+    return new AlertActionUpdater(original, updated, operation);
   }
 
   public class AlertActionUpdater extends EntityUpdater {

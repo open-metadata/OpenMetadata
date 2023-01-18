@@ -14,9 +14,12 @@
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import {
   getSearchDropdownLabels,
+  getSearchLabel,
   getSelectedOptionLabelString,
 } from './AdvancedSearchUtils';
 import {
+  highlightedItemLabel,
+  mockItemLabel,
   mockLongOptionsArray,
   mockOptionsArray,
   mockShortOptionsArray,
@@ -69,5 +72,23 @@ describe('AdvancedSearchUtils tests', () => {
     );
 
     expect(resultOptionsString).toBe('');
+  });
+
+  it('Function getSearchLabel should return string with highlighted substring for matched searchKey', () => {
+    const resultSearchLabel = getSearchLabel(mockItemLabel, 'wa');
+
+    expect(resultSearchLabel).toBe(highlightedItemLabel);
+  });
+
+  it('Function getSearchLabel should return original string if searchKey is not matched', () => {
+    const resultSearchLabel = getSearchLabel(mockItemLabel, 'wo');
+
+    expect(resultSearchLabel).toBe(mockItemLabel);
+  });
+
+  it('Function getSearchLabel should return original string if searchKey is passed as an empty string', () => {
+    const resultSearchLabel = getSearchLabel(mockItemLabel, '');
+
+    expect(resultSearchLabel).toBe(mockItemLabel);
   });
 });

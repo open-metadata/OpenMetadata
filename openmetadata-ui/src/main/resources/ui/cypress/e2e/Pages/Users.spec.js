@@ -12,12 +12,13 @@
  */
 
 import {
-    addUser,
-    deleteSoftDeletedUser,
-    interceptURL, restoreUser,
-    softDeleteUser,
-    uuid,
-    verifyResponseStatusCode
+  addUser,
+  deleteSoftDeletedUser,
+  interceptURL,
+  restoreUser,
+  softDeleteUser,
+  uuid,
+  verifyResponseStatusCode,
 } from '../../common/common';
 
 const userName = `Usercttest${uuid()}`;
@@ -25,6 +26,28 @@ const userEmail = `${userName}@gmail.com`;
 
 const adminName = `Admincttest${uuid()}`;
 const adminEmail = `${adminName}@gmail.com`;
+
+const searchBotText = 'bot';
+
+const searchBotUser = () => {
+  // Search the bot user
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*${searchBotText}***(isBot:false)&from=0&size=15&index=user_search_index`,
+    'searchUser'
+  );
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(searchBotText);
+
+  verifyResponseStatusCode('@searchUser', 200);
+
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    searchBotText
+  );
+};
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
@@ -47,13 +70,13 @@ describe('Users flow should work properly', () => {
   });
 
   it('Add new User', () => {
-    //Clicking on Add user button
+    // Clicking on Add user button
     cy.get('[data-testid="add-user"]').click();
 
     addUser(userName, userEmail);
     verifyResponseStatusCode('@getUsers', 200);
 
-    //Validate if user is added in the User tab
+    // Validate if user is added in the User tab
 
     cy.get('[data-testid="searchbar"]')
       .should('exist')
@@ -73,6 +96,10 @@ describe('Users flow should work properly', () => {
   it('Permanently Delete Soft Deleted User', () => {
     softDeleteUser(userName);
     deleteSoftDeletedUser(userName);
+  });
+
+  it('Search bot user', () => {
+    searchBotUser();
   });
 });
 
@@ -97,10 +124,10 @@ describe('Admin flow should work properly', () => {
   });
 
   it('Add admin user', () => {
-    //Clicking on add user button
+    // Clicking on add user button
     cy.get('[data-testid="add-user"]').click();
 
-    //Setting the user to admin before adding user
+    // Setting the user to admin before adding user
     cy.get('[data-testid="admin"]')
       .scrollIntoView()
       .should('exist')
@@ -110,7 +137,7 @@ describe('Admin flow should work properly', () => {
     addUser(adminName, adminEmail);
     verifyResponseStatusCode('@getAdmins', 200);
 
-    //Validate if user is added in the User tab
+    // Validate if user is added in the User tab
 
     cy.get('[data-testid="searchbar"]')
       .should('exist')

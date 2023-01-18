@@ -56,7 +56,7 @@ public class EntityCsvTest {
   @Test
   void test_validateCsvInvalidHeader() throws IOException {
     String csv = ",h2,h3" + LINE_SEPARATOR; // Header h1 is missing in the CSV file
-    TestCsv testCsv = new TestCsv(CSV_HEADERS);
+    TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true);
     assertSummary(importResult, Status.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
@@ -70,7 +70,7 @@ public class EntityCsvTest {
     List<String> records = listOf(",2,3", "1,2", "1,2,3");
     String csv = createCsv(CSV_HEADERS, records);
 
-    TestCsv testCsv = new TestCsv(CSV_HEADERS);
+    TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true);
     assertSummary(importResult, Status.PARTIAL_SUCCESS, 4, 2, 2);
 
@@ -156,8 +156,8 @@ public class EntityCsvTest {
   }
 
   private static class TestCsv extends EntityCsv<EntityInterface> {
-    protected TestCsv(List<CsvHeader> csvHeaders) {
-      super(Entity.TABLE, csvHeaders, "admin");
+    protected TestCsv() {
+      super(Entity.TABLE, CSV_HEADERS, "admin");
     }
 
     @Override

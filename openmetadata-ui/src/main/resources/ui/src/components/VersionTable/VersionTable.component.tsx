@@ -22,7 +22,7 @@ import {
 import { getTableExpandableConfig, makeData } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
-import TagsViewer from '../tags-viewer/tags-viewer';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
 const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {

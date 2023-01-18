@@ -141,7 +141,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final String entityType;
   public final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
-  protected final List<String> allowedFields;
+  @Getter protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
@@ -1084,10 +1084,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityReference getOwner(T entity) throws IOException {
-    if (!supportsOwner) {
-      return null;
-    }
-    return getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
+    return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
   public EntityReference getOwner(EntityReference ref) throws IOException {
@@ -1129,10 +1126,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return new Fields(allowedFields, String.join(",", allowedFields));
     }
     return new Fields(allowedFields, fields);
-  }
-
-  public final List<String> getAllowedFields() {
-    return allowedFields;
   }
 
   public final List<String> getAllowedFieldsCopy() {

@@ -309,7 +309,7 @@ export const Icons = {
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
-  ICON_PLUS_PRIMERY: 'icon-plus-primary',
+  ICON_PLUS_PRIMARY: 'icon-plus-primary',
   ICON_PLUS_PRIMARY_OUTLINED: 'icon-plus-primary-outlined',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
@@ -402,6 +402,11 @@ export const Icons = {
   ARROW_DOWN_LIGHT: 'arrow-down-light',
   DRAG: 'drag',
 };
+
+/**
+ * @deprecated SVGIcons is deprecated, Please use SVG image as ReactComponent wherever it is required
+ * e.g import { ReactComponent as Icon } from '<PATH_NAME>';
+ */
 
 const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
   let IconComponent;
@@ -771,7 +776,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconPlus;
 
       break;
-    case Icons.ICON_PLUS_PRIMERY:
+    case Icons.ICON_PLUS_PRIMARY:
       IconComponent = IconPlusPrimery;
 
       break;

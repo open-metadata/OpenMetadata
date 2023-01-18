@@ -23,3 +23,28 @@ WHERE serviceType = 'Vertica';
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtUpdateDescriptions}'
 WHERE json#>>'{sourceConfig,config,type}' = 'DBT';
+
+UPDATE test_definition
+SET json = jsonb_set(
+  json,
+  '{supportedDataTypes}',
+  '["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "TIMESTAMP", "TIMESTAMPZ","DATETIME", "DATE"]',
+  false
+)
+WHERE json->>'name' = 'columnValuesToBeBetween';
+
+UPDATE pipeline_entity
+SET json = jsonb_set(
+        json,
+        '{name}',
+        to_jsonb(replace(json ->> 'name',':',''))
+    )
+WHERE json ->> 'serviceType' = 'Dagster';
+
+UPDATE pipeline_entity
+SET json = jsonb_set(
+        json,
+        '{fullyQualifiedName}',
+        to_jsonb(replace(json ->> 'fullyQualifiedName',':',''))
+    )
+WHERE json ->> 'serviceType' = 'Dagster';

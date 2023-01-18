@@ -43,8 +43,6 @@ public class BuildSearchIndexResource {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_BATCH = "eventPublisher:ElasticSearch:BATCH";
-  private RestHighLevelClient client;
-
   private ElasticSearchIndexResolver indexResolver;
   private final CollectionDAO dao;
   private final Authorizer authorizer;
@@ -61,7 +59,8 @@ public class BuildSearchIndexResource {
     if (config.getElasticSearchConfiguration() != null) {
       String indexResolverClassName = config.getElasticSearchConfiguration().getIndexResolverClassName();
       this.indexResolver = ElasticSearchIndexResolver.fromClassName(indexResolverClassName);
-      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      RestHighLevelClient client =
+              ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
       ElasticSearchIndexDefinition elasticSearchIndexDefinition =
           new ElasticSearchIndexDefinition(client, dao, indexResolver);
       this.elasticSearchIndexUtil =

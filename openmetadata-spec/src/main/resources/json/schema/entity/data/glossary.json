@@ -73,6 +73,11 @@
       },
       "default": null
     },
+    "termCount" : {
+      "description": "Total number of terms in the glossary. This includes all the children in the hierarchy.",
+      "type" : "integer",
+      "minimum": 0
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
