@@ -38,7 +38,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # BoundLimit for MaxResults = MaxResults >= 0 and MaxResults <= 100
-QUICKSIGHT_MAXRESULTS = 2
+QUICKSIGHT_MAXRESULTS = 100
 
 
 class QuicksightSource(DashboardServiceSource):
