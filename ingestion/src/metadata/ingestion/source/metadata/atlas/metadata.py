@@ -136,7 +136,7 @@ class AtlasSource(Source):
             if check_service:
                 for key in self.entity_types["Table"]:
                     self.service = check_service
-                    self.tables[key] = self.atlas_client.list_entities(entity_type=key)
+                    self.tables[key] = self.atlas_client.list_entities()
                     if self.tables.get(key, None):
                         for key in self.tables:
                             yield from self._parse_table_entity(key, self.tables[key])
@@ -152,7 +152,7 @@ class AtlasSource(Source):
             if check_service:
                 for key in self.entity_types["Topic"]:
                     self.message_service = check_service
-                    self.topics[key] = self.atlas_client.list_entities(entity_type=key)
+                    self.topics[key] = self.atlas_client.list_entities()
                     if self.topics.get(key, None):
                         for topic in self.topics:
                             yield from self._parse_topic_entity(topic)
