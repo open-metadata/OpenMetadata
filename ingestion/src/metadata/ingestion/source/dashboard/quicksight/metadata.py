@@ -18,7 +18,6 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
@@ -39,7 +38,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # BoundLimit for MaxResults = MaxResults >= 0 and MaxResults <= 100
-QUICKSIGHT_MAXRESULTS = 100
+QUICKSIGHT_MAXRESULTS = 2
 
 
 class QuicksightSource(DashboardServiceSource):
@@ -55,6 +54,10 @@ class QuicksightSource(DashboardServiceSource):
         super().__init__(config, metadata_config)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
+        self.default_args = {
+            "AwsAccountId": self.aws_account_id,
+            "MaxResults": QUICKSIGHT_MAXRESULTS,
+        }
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -67,26 +70,21 @@ class QuicksightSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     def _check_pagination(
-        self, listing_method, entity_response, entity_key, response_key
-    ):
-        entity_set = set()
+        self, listing_method, entity_response, entity_key
+    ) -> Optional[List]:
+        entity_summary_list = []
+        entity_summary_list.extend(entity_response[entity_key])
         while entity_response.get("NextToken"):
             try:
-                entity_response = listing_method(
-                    {
-                        "AwsAccountId": self.aws_account_id,
-                        "MaxResults": QUICKSIGHT_MAXRESULTS,
-                        "NextToken": entity_response.get("NextToken"),
-                    }
-                )
-                entity_set = entity_set.union(
-                    {entity[entity_key] for entity in entity_response[response_key]}
-                )
+                copied_def_args = self.default_args.copy()
+                copied_def_args.update({"NextToken": entity_response.get("NextToken")})
+                entity_response = listing_method(copied_def_args)
+                entity_summary_list.extend(entity_response[entity_key])
             except Exception as err:
                 logger.error(err)
                 logger.debug(traceback.format_exc())
                 break
-        return entity_set
+        return entity_summary_list
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
         """
@@ -94,25 +92,14 @@ class QuicksightSource(DashboardServiceSource):
         """
         list_dashboards_func = lambda kwargs: self.client.list_dashboards(**kwargs)
 
-        list_dashboard_resp = list_dashboards_func(
-            {
-                "AwsAccountId": self.aws_account_id,
-                "MaxResults": QUICKSIGHT_MAXRESULTS,
-            }
+        dashboard_summary_list = self._check_pagination(
+            listing_method=list_dashboards_func,
+            entity_response=list_dashboards_func(self.default_args),
+            entity_key="DashboardSummaryList",
         )
         dashboard_set = {
-            dashboard["DashboardId"]
-            for dashboard in list_dashboard_resp["DashboardSummaryList"]
+            dashboard["DashboardId"] for dashboard in dashboard_summary_list
         }
-
-        dashboard_set = dashboard_set.union(
-            self._check_pagination(
-                listing_method=list_dashboards_func,
-                entity_response=list_dashboard_resp,
-                entity_key="DashboardId",
-                response_key="DashboardSummaryList",
-            )
-        )
         dashboards = [
             self.client.describe_dashboard(
                 AwsAccountId=self.aws_account_id, DashboardId=dashboard_id
@@ -206,36 +193,17 @@ class QuicksightSource(DashboardServiceSource):
         Get lineage between dashboard and data sources
         """
         try:
-            dataset_arns = dashboard_details["Version"]["DataSetArns"]
-            data_set_response = self.client.list_data_sets(
-                AwsAccountId=self.aws_account_id,
-                MaxResults=QUICKSIGHT_MAXRESULTS,
+            list_data_set_func = lambda kwargs: self.client.list_data_sets(**kwargs)
+            data_set_summary_list = self._check_pagination(
+                listing_method=list_data_set_func,
+                entity_response=list_data_set_func(self.default_args),
+                entity_key="DataSetSummaries",
             )
             dataset_ids = {
                 dataset["DataSetId"]
-                for dataset in data_set_response["DataSetSummaries"]
-                if dataset.get("Arn") in dataset_arns
+                for dataset in data_set_summary_list
+                if dataset.get("Arn") in dashboard_details["Version"]["DataSetArns"]
             }
-            while data_set_response.get("NextToken"):
-                try:
-                    data_set_response = self.client.list_data_sets(
-                        **{
-                            "AwsAccountId": self.aws_account_id,
-                            "MaxResults": QUICKSIGHT_MAXRESULTS,
-                            "NextToken": data_set_response.get("NextToken"),
-                        }
-                    )
-                    dataset_ids = dataset_ids.union(
-                        {
-                            entity["DataSetId"]
-                            for entity in data_set_response["DataSetSummaries"]
-                            if entity.get("Arn") in dataset_arns
-                        }
-                    )
-                except Exception as err:
-                    logger.error(err)
-                    logger.debug(traceback.format_exc())
-                    break
 
             for dataset_id in dataset_ids:
                 for data_source in list(
@@ -255,12 +223,20 @@ class QuicksightSource(DashboardServiceSource):
                     # db_name = data_source
                     schema_name = data_source["RelationalTable"]["Schema"]
                     table_name = data_source["RelationalTable"]["Name"]
-                    data_sources_list = self.client.list_data_sources(
-                        AwsAccountId=self.aws_account_id,
-                    )["DataSources"]
+
+                    list_data_source_func = (
+                        lambda kwargs: self.client.list_data_sources(**kwargs)
+                    )
+
+                    data_source_summary_list = self._check_pagination(
+                        listing_method=list_data_source_func,
+                        entity_response=list_data_source_func(self.default_args),
+                        entity_key="DataSources",
+                    )
+
                     data_source_ids = [
                         data_source_arn["DataSourceId"]
-                        for data_source_arn in data_sources_list
+                        for data_source_arn in data_source_summary_list
                         if data_source_arn["Arn"]
                         in data_source["RelationalTable"]["DataSourceArn"]
                     ]
@@ -287,7 +263,8 @@ class QuicksightSource(DashboardServiceSource):
                                 )
                             from_entity = self.metadata.get_by_name(
                                 entity=Table,
-                                fqn=f"{db_service_name}{fqn.FQN_SEPARATOR}{database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}"
+                                fqn=f"""{db_service_name}{fqn.FQN_SEPARATOR}
+                                {database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}"""
                                 if database_name
                                 else from_fqn,
                             )
