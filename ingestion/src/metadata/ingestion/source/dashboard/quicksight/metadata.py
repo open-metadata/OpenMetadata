@@ -32,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
 from metadata.utils import fqn
@@ -50,7 +51,7 @@ class QuicksightSource(DashboardServiceSource):
     """
 
     config: WorkflowSource
-    metadata: OpenMetadataConnection
+    metadata: OpenMetadata
     status: SourceStatus
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
@@ -263,32 +264,28 @@ class QuicksightSource(DashboardServiceSource):
                             DataSourceId=data_source_id,
                         )["DataSource"]["DataSourceParameters"]
                         for db in data_source_dict.keys():
-                            from_fqn = None
-                            try:
-                                database_name = data_source_dict[db]["Database"]
-                            except Exception as err:
-                                logger.error(err)
-                                logger.debug(traceback.format_exc())
-                                database_name = None
-                                from_fqn = fqn.build(
-                                    self.metadata,
-                                    entity_type=Table,
-                                    service_name=db_service_name,
-                                    table_name=table_name,
-                                    schema_name=schema_name,
-                                    database_name="",
-                                )
+                            from_fqn = fqn.build(
+                                self.metadata,
+                                entity_type=Table,
+                                service_name=db_service_name,
+                                database_name=data_source_dict[db]["Database"],
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                skip_es_search=True,
+                            )
                             from_entity = self.metadata.get_by_name(
                                 entity=Table,
-                                fqn=f"{db_service_name}{fqn.FQN_SEPARATOR}"
-                                f"{database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}"
-                                if database_name
-                                else from_fqn,
+                                fqn=from_fqn,
                             )
-
+                            to_fqn = fqn.build(
+                                self.metadata,
+                                entity_type=Dashboard,
+                                service_name=self.config.serviceName,
+                                dashboard_name=dashboard_details["DashboardId"],
+                            )
                             to_entity = self.metadata.get_by_name(
                                 entity=Dashboard,
-                                fqn=f"{self.config.serviceName}{fqn.FQN_SEPARATOR}{dashboard_details['DashboardId']}",
+                                fqn=to_fqn,
                             )
                             yield self._get_add_lineage_request(
                                 to_entity=to_entity, from_entity=from_entity
