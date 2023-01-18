@@ -86,6 +86,10 @@ describe('Tags page should work', () => {
     cy.get(descriptionBox)
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.description);
+    cy.get('[data-testid="mutually-exclusive-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="saveButton"]')
       .scrollIntoView()

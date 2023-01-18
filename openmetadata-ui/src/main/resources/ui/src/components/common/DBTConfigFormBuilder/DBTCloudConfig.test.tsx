@@ -21,6 +21,7 @@ const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockDbtCloudProjectId = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
@@ -34,10 +35,11 @@ const mockProps = {
   handleCloudAuthTokenChange: mockAuthTokenChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
   handleDbtCloudProjectId: mockDbtCloudProjectId,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
 
-jest.mock('./SwitchField.component', () =>
-  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
 );
 
 describe('Test DBT Cloud Config Form', () => {

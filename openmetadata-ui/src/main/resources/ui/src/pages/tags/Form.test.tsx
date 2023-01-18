@@ -20,6 +20,7 @@ const mockFunction = jest.fn();
 const mockInitialData = {
   description: '',
   name: '',
+  mutuallyExclusive: false,
 };
 
 jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
@@ -33,7 +34,11 @@ jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
 describe('Test TagsPage form component', () => {
   it('Form component should render properly', async () => {
     const { container } = render(
-      <Form initialData={mockInitialData} saveData={mockFunction} />,
+      <Form
+        initialData={mockInitialData}
+        saveData={mockFunction}
+        showHiddenFields={false}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -45,5 +50,31 @@ describe('Test TagsPage form component', () => {
     expect(
       await findByText(container, /MarkdownWithPreview component/i)
     ).toBeInTheDocument();
+  });
+
+  it('Form component should render Mutually Exclusive field', async () => {
+    const { container } = render(
+      <Form
+        showHiddenFields
+        initialData={mockInitialData}
+        saveData={mockFunction}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const mutuallyExclusiveLabel = await findByTestId(
+      container,
+      'mutually-exclusive-label'
+    );
+
+    const mutuallyExclusiveButton = await findByTestId(
+      container,
+      'mutually-exclusive-button'
+    );
+
+    expect(mutuallyExclusiveLabel).toBeInTheDocument();
+    expect(mutuallyExclusiveButton).toBeInTheDocument();
   });
 });

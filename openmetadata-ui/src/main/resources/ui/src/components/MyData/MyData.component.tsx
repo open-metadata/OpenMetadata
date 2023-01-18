@@ -235,6 +235,7 @@ const MyData: React.FC<MyDataProps> = ({
                 withSidePanel
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
+                isFeedLoading={isFeedLoading}
                 postFeedHandler={postFeedHandler}
                 refreshFeedCount={newFeedsLength}
                 updateThreadHandler={updateThreadHandler}
