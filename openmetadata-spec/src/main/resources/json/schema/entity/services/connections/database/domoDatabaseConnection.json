@@ -50,6 +50,11 @@
         "type": "string",
         "format": "uri"
       },
+      "databaseName": {
+        "title": "Database Name",
+        "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+        "type": "string"
+      },
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

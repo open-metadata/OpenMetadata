@@ -59,6 +59,11 @@
       "description": "Salesforce Object Name.",
       "type": "string"
     },
+    "databaseName": {
+      "title": "Database",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

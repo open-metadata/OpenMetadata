@@ -32,6 +32,7 @@
       "$ref": "#/definitions/athenaScheme",
       "default": "awsathena+rest"
     },
+    
     "awsConfig": {
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
@@ -45,6 +46,11 @@
     "workgroup": {
       "title": "Athena Workgroup",
       "description": "Athena workgroup.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
     "connectionOptions": {
