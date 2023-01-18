@@ -55,7 +55,7 @@ select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and T
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
-  select 
+  select
     TABLE_SCHEMA "schema",
     TABLE_NAME "table_name",
     COMMENT "table_comment"

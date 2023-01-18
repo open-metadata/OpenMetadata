@@ -74,15 +74,15 @@ WHERE ep.name = 'MS_Description'
 
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
-select 
+select
 	definition view_def,
 	views.name view_name,
 	sch.name "schema"
-from sys.sql_modules as mod, 
-sys.views as views, 
+from sys.sql_modules as mod,
+sys.views as views,
 sys.schemas as sch
- where 
-mod.object_id=views.object_id and 
-views.schema_id=sch.schema_id  
+ where
+mod.object_id=views.object_id and
+views.schema_id=sch.schema_id
 """
 )
