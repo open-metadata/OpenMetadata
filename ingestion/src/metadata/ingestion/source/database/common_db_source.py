@@ -127,11 +127,10 @@ class CommonDbSourceService(
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        custom_database_name = self.service_connection.__dict__.get(
-            "databaseName", "default"
-        )
+        custom_database_name = self.service_connection.__dict__.get("databaseName")
+
         database_name = self.service_connection.__dict__.get(
-            "database", custom_database_name
+            "database", custom_database_name or "default"
         )
         # By default, set the inspector on the created engine
         self.inspector = inspect(self.engine)
