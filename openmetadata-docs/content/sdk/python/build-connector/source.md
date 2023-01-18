@@ -66,16 +66,60 @@ class SampleTablesSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = DatabaseEntity(id=uuid.uuid4(),
-                            name=self.database['name'],
-                            description=self.database['description'],
-                            service=EntityReference(id=self.service.id, type=self.config.service_type))
-        for table in self.tables['tables']:
-            table_metadata = TableEntity(**table)
-            table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
-            self.status.scanned(table_metadata.name.__root__)
-            yield table_and_db
+    def next_record(self) -> Iterable[Entity]:
+
+        yield from self.yield_create_request_database_service(self.config)
+
+        service_entity: DatabaseService = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=self.config.serviceName
+        )
+        service_id = service_entity.id
+
+        yield CreateDatabaseRequest(
+            name="awesome-database",
+            service=EntityReference(
+                id=service_id,
+                type="databaseService",
+            ),
+        )
+
+        database_entity: Database = self.metadata.get_by_name(
+            entity=Database, fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name="awesome-database",
+                )
+        )
+        database_id = database_entity.id
+
+        yield CreateDatabaseSchemaRequest(
+            name="awesome-schema",
+            description="description",
+            database=EntityReference(id=database_id, type="database"),
+        )
+
+        database_schema_entity: DatabaseSchema = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name="awesome-database",
+                    schema_name="awesome-schema"
+                )
+        )
+        database_schema_id = database_schema_entity.id
+
+        yield CreateTableRequest(
+            name="awesome-table",
+            description="description",
+            columns="columns",
+            databaseSchema=EntityReference(
+                id=database_schema_id, type="databaseSchema"
+            ),
+            tableConstraints=table.get("tableConstraints"),
+            tableType=table["tableType"],
+        )
 
     def close(self):
         pass
