@@ -20,6 +20,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.lineage.models import MAP_CONNECTION_TYPE_DIALECT, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
@@ -127,6 +128,8 @@ class LineageSource(QueryParserSource, ABC):
         service database
         """
         logger.info("Processing query history lineage...")
+        connection_type = str(self.service_connection.type.value)
+        dialect = MAP_CONNECTION_TYPE_DIALECT.get(connection_type, default=Dialect.ANSI)
         for table_query in self.get_table_query():
 
             lineages = get_lineage_by_query(
@@ -135,6 +138,7 @@ class LineageSource(QueryParserSource, ABC):
                 service_name=table_query.serviceName,
                 database_name=table_query.databaseName,
                 schema_name=table_query.databaseSchema,
+                dialect=dialect,
             )
 
             for lineage_request in lineages or []:
@@ -155,8 +159,13 @@ class LineageSource(QueryParserSource, ABC):
             ):
 
                 try:
-
-                    lineage_parser = LineageParser(table_entity.viewDefinition.__root__)
+                    connection_type = str(self.service_connection.type.value)
+                    dialect = MAP_CONNECTION_TYPE_DIALECT.get(
+                        connection_type, default=Dialect.ANSI
+                    )
+                    lineage_parser = LineageParser(
+                        table_entity.viewDefinition.__root__, dialect=dialect
+                    )
                     if lineage_parser.source_tables and lineage_parser.target_tables:
                         yield from get_lineage_by_query(
                             self.metadata,
@@ -164,6 +173,7 @@ class LineageSource(QueryParserSource, ABC):
                             service_name=self.config.serviceName,
                             database_name=table_entity.database.name,
                             schema_name=table_entity.databaseSchema.name,
+                            dialect=dialect,
                         ) or []
 
                     else:
@@ -174,6 +184,7 @@ class LineageSource(QueryParserSource, ABC):
                             database_name=table_entity.database.name,
                             schema_name=table_entity.databaseSchema.name,
                             query=table_entity.viewDefinition.__root__,
+                            dialect=dialect,
                         ) or []
 
                 except Exception as exc:
