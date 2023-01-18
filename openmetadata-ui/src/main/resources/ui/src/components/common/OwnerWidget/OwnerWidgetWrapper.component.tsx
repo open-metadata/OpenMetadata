@@ -204,9 +204,9 @@ const OwnerWidgetWrapper = ({
     }
   }, [searchText]);
 
-  const getOwnerGroup = () => {
+  const ownerGroupList = useMemo(() => {
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
-  };
+  }, [allowTeamOwner]);
 
   const handleSearchOwnerDropdown = (text: string) => {
     setSearchText(text);
@@ -237,9 +237,9 @@ const OwnerWidgetWrapper = ({
       controlledSearchStr={searchText}
       dropDownList={listOwners}
       getTotalCountForGroup={handleTotalCountForGroup}
-      groupType="tab"
+      groupType={ownerGroupList.length > 1 ? 'tab' : 'label'}
       isLoading={isUserLoading}
-      listGroups={getOwnerGroup()}
+      listGroups={ownerGroupList}
       removeOwner={handleRemoveOwner}
       showSearchBar={isCurrentUserAdmin()}
       value={owner?.id || ''}
