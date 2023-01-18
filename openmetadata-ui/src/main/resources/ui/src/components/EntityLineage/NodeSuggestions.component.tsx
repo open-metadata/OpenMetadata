@@ -13,6 +13,7 @@
 
 import { Empty } from 'antd';
 import { AxiosError } from 'axios';
+import { PAGE_SIZE } from 'constants/constants';
 import { capitalize, debounce } from 'lodash';
 import { FormattedTableData } from 'Models';
 import React, {
@@ -22,7 +23,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getSuggestions } from 'rest/miscAPI';
+import { getSuggestions, searchData } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -60,7 +61,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
-  const getSearchResults = async (value: string) => {
+  const getSuggestResults = async (value: string) => {
     try {
       const data = await getSuggestions(
         value,
@@ -79,8 +80,34 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
+  const getSearchResults = async (value: string) => {
+    try {
+      const data = await searchData<ExploreSearchIndex>(
+        value,
+        1,
+        PAGE_SIZE,
+        '',
+        '',
+        '',
+        SearchIndex[
+          entityType as keyof typeof SearchIndex
+        ] as ExploreSearchIndex
+      );
+      setData(formatDataResponse(data.data.hits.hits));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-suggestions-error']
+      );
+    }
+  };
+
   const debouncedOnSearch = useCallback((searchText: string): void => {
-    getSearchResults(searchText);
+    if (searchText) {
+      getSuggestResults(searchText);
+    } else {
+      getSearchResults(searchText);
+    }
   }, []);
 
   const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [
@@ -96,6 +123,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   useEffect(() => {
     setIsOpen(data.length > 0);
   }, [data]);
+
+  useEffect(() => {
+    getSearchResults(searchValue);
+  }, []);
 
   return (
     <div data-testid="suggestion-node">
