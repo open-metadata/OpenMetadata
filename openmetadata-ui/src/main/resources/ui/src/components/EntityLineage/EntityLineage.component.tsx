@@ -257,10 +257,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       };
       removeLineageHandler(edgeData);
       setEdges((prevEdges) => {
-        return prevEdges.filter(
-          (edge) =>
-            edge.source !== data.source.id && edge.target !== data.target.id
-        );
+        return prevEdges.filter((edge) => {
+          const isRemovedEdge =
+            edge.source === data.source.id && edge.target === data.target.id;
+
+          return !isRemovedEdge;
+        });
       });
       const newDownStreamEdges = getSelectedEdgeArr(
         updatedLineageData.downstreamEdges || [],
