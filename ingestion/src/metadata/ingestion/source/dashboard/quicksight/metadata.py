@@ -13,6 +13,8 @@
 import traceback
 from typing import Any, Iterable, List, Optional
 
+from pydantic import ValidationError
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -31,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
@@ -80,7 +83,7 @@ class QuicksightSource(DashboardServiceSource):
                 entity_response = listing_method(copied_def_args)
                 entity_summary_list.extend(entity_response[entity_key])
             except Exception as err:
-                logger.error(err)
+                logger.error(f"Pagination Failed with error: {err}")
                 logger.debug(traceback.format_exc())
                 break
         return entity_summary_list
@@ -212,18 +215,32 @@ class QuicksightSource(DashboardServiceSource):
                         AwsAccountId=self.aws_account_id, DataSetId=dataset_id
                     )["DataSet"]["PhysicalTableMap"].values()
                 ):
-                    if any(
-                        data_source_resp in data_source
-                        for data_source_resp in ["S3Source", "CustomSql"]
-                    ):
-                        logger.warning(
-                            "We currently don't support lineage to S3 Source or Custom Sql Queries"
+                    try:
+                        if not data_source.get("RelationalTable"):
+                            raise KeyError(
+                                f"We currently don't support lineage to {list(data_source.keys())}"
+                            )
+                        data_source_relational_table = data_source["RelationalTable"]
+                        data_source_resp = DataSourceResp(
+                            datasource_arn=data_source_relational_table[
+                                "DataSourceArn"
+                            ],
+                            schema_name=data_source_relational_table["Schema"],
+                            table_name=data_source_relational_table["Name"],
                         )
+                    except KeyError as err:
+                        logger.error(err)
+                        continue
+                    except ValidationError as err:
+                        logger.error(
+                            f"{err} - error while trying to fetch lineage data source"
+                        )
+                        logger.debug(traceback.format_exc())
                         continue
 
                     # db_name = data_source
-                    schema_name = data_source["RelationalTable"]["Schema"]
-                    table_name = data_source["RelationalTable"]["Name"]
+                    schema_name = data_source_resp.schema_name
+                    table_name = data_source_resp.table_name
 
                     list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
                         **kwargs
@@ -237,8 +254,7 @@ class QuicksightSource(DashboardServiceSource):
                     data_source_ids = [
                         data_source_arn["DataSourceId"]
                         for data_source_arn in data_source_summary_list
-                        if data_source_arn["Arn"]
-                        in data_source["RelationalTable"]["DataSourceArn"]
+                        if data_source_arn["Arn"] in data_source_resp.datasource_arn
                     ]
 
                     for data_source_id in data_source_ids:

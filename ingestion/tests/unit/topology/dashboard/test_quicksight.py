@@ -59,6 +59,7 @@ mock_quicksight_config = {
                     "endPointURL": "https://endpoint.com/",
                 },
                 "awsAccountId": "6733-5329-5256",
+                "IdentityType": "IAM",
             }
         },
         "sourceConfig": {

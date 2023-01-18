@@ -54,7 +54,6 @@
   "additionalProperties": false,
   "required": [
     "awsConfig",
-    "awsAccountId",
-    "identityType"
+    "awsAccountId"
   ]
 }
