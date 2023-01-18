@@ -21,6 +21,9 @@ public class TeamIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(team.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
+    if (team.getDisplayName() == null) {
+      doc.put("displayName", team.getName());
+    }
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
     return doc;
