@@ -19,7 +19,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.dashboard.quicksight.metadata import QuickSightSource
+from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
@@ -186,7 +186,7 @@ class QuickSightUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_quicksight_config)
-        self.quicksight = QuickSightSource.create(
+        self.quicksight = QuicksightSource.create(
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
