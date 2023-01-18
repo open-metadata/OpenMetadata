@@ -68,7 +68,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     CreateDatabase create = createRequest(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(SNOWFLAKE_REFERENCE.getFullyQualifiedName(), create.getName());
+    String expectedFQN = FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
@@ -152,14 +152,15 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.add(database.getService().getName(), database.getName()), database.getFullyQualifiedName());
+        FullyQualifiedName.build(database.getService().getName(), database.getName()),
+        database.getFullyQualifiedName());
   }
 
   @Override
   public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.add(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
+        FullyQualifiedName.build(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
   }
 
   @Override
