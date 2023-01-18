@@ -202,7 +202,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                       showEndValueAsLabel
                       progress={latestData[tiers]}
                       showLabel={false}
-                      startValue={Number(latestData[tiers]).toFixed(2)}
+                      startValue={Number(latestData[tiers] || 0).toFixed(2)}
                       successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
                     />
                   </Col>

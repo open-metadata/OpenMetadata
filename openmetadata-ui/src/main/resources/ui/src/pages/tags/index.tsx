@@ -44,7 +44,7 @@ import {
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
-import { FormErrorData, LoadingState } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -91,19 +91,8 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
-
-type DeleteTagDetailsType = {
-  id: string;
-  name: string;
-  categoryName?: string;
-  isCategory: boolean;
-  status?: LoadingState;
-};
-
-type DeleteTagsType = {
-  data: DeleteTagDetailsType | undefined;
-  state: boolean;
-};
+import { DeleteTagsType } from './TagsPage.interface';
+import { getDeleteIcon } from './TagsPageUtils';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -205,7 +194,7 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications('', 1000);
+      const response = await getAllClassifications('termCount', 1000);
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
@@ -229,11 +218,23 @@ const TagsPage = () => {
     if (currentClassification?.name !== name || update) {
       setIsLoading(true);
       try {
-        const currentClassification = await getClassificationByName(
-          name,
-          'usageCount'
-        );
+        const currentClassification = await getClassificationByName(name, [
+          'usageCount',
+          'termCount',
+        ]);
         if (currentClassification) {
+          setClassifications((prevClassifications) =>
+            prevClassifications.map((data) => {
+              if (data.name === name) {
+                return {
+                  ...data,
+                  termCount: currentClassification.termCount,
+                };
+              }
+
+              return data;
+            })
+          );
           setCurrentClassification(currentClassification);
           setCurrentClassificationName(currentClassification.name);
           setIsLoading(false);
@@ -587,6 +588,8 @@ const TagsPage = () => {
     }
   };
 
+  // Use the component in the render method
+
   const fetchLeftPanel = () => {
     return (
       <LeftPanelCard id="tags">
@@ -613,7 +616,7 @@ const TagsPage = () => {
                       setIsAddingClassification((prevState) => !prevState);
                       setErrorDataClassification(undefined);
                     }}>
-                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMARY} />{' '}
                     <span>
                       {t('label.add-entity', {
                         entity: t('label.classification'),
@@ -641,7 +644,7 @@ const TagsPage = () => {
                     {getEntityName(category as unknown as EntityReference)}
                   </Typography.Paragraph>
                   {getCountBadge(
-                    0,
+                    category.termCount,
                     'tw-self-center',
                     currentClassification?.name === category.name
                   )}
@@ -731,20 +734,7 @@ const TagsPage = () => {
               !classificationPermissions.EditAll
             }
             onClick={() => handleActionDeleteTag(record)}>
-            {deleteTags.data?.id === record.id ? (
-              deleteTags.data?.status === 'success' ? (
-                <FontAwesomeIcon icon="check" />
-              ) : (
-                <Loader size="small" type="default" />
-              )
-            ) : (
-              <SVGIcons
-                alt="delete"
-                icon="icon-delete"
-                title="Delete"
-                width="16px"
-              />
-            )}
+            {getDeleteIcon(deleteTags, record.id)}
           </button>
         ),
       },
@@ -954,6 +944,7 @@ const TagsPage = () => {
               onSave={updatePrimaryTag}
             />
             <FormModal
+              showHiddenFields
               errorData={errorDataClassification}
               form={Form}
               header={t('label.adding-new-classification')}

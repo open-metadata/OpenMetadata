@@ -225,7 +225,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   <SVGIcons
                     alt="plus"
                     className="w-4 m-r-xss"
-                    icon={Icons.ICON_PLUS_PRIMERY}
+                    icon={Icons.ICON_PLUS_PRIMARY}
                   />
                 }
                 onClick={() => setIsNewTestSuite(true)}>

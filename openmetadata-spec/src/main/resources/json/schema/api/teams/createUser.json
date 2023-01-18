@@ -8,7 +8,7 @@
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../entity/teams/user.json#/definitions/entityName"
     },
     "description": {
       "description": "Used for user biography.",

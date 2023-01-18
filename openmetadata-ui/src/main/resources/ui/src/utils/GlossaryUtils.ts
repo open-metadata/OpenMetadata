@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
 import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
@@ -401,4 +402,27 @@ export const getEntityReferenceFromGlossary = (
     displayName: glossary.displayName,
     name: glossary.name,
   };
+};
+
+export const parseCSV = (csvData: string) => {
+  const recordList: GlossaryCSVRecord[] = [];
+
+  const lines = csvData.trim().split('\n').filter(Boolean);
+
+  if (!isEmpty(lines)) {
+    const headers = lines[0].split(',').map((header) => header.trim());
+
+    lines.slice(1).forEach((line) => {
+      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
+      const lineData = line.split(',');
+
+      headers.forEach((header, index) => {
+        record[header as keyof GlossaryCSVRecord] = lineData[index];
+      });
+
+      recordList.push(record);
+    });
+  }
+
+  return recordList;
 };

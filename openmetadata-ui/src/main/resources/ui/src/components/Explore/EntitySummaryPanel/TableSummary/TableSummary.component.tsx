@@ -53,6 +53,8 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
 
+  const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
+
   const fetchAllTests = async () => {
     try {
       const { data } = await getListTestCase({
@@ -174,7 +176,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     if (!isEmpty(entityDetails)) {
       setTableDetails(entityDetails);
       fetchAllTests();
-      fetchProfilerData();
+      !isTableDeleted && fetchProfilerData();
     }
   }, [entityDetails]);
 

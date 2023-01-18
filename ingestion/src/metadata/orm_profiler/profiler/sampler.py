@@ -76,8 +76,13 @@ class Sampler:
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
+        table_query = self.session.query(self.table)
         return (
-            self.session.query(self.table)
+            self.session.query(
+                self.table,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+            )
+            .order_by(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )
@@ -101,11 +106,9 @@ class Sampler:
         session_query = self.session.query(rnd)
 
         # Prepare sampled CTE
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            sampled = session_query.where(rnd.c.random <= self.profile_sample)
-        else:
-            sampled = session_query
-        sampled = sampled.cte(f"{self.table.__tablename__}_sample")
+        sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
+            f"{self.table.__tablename__}_sample"
+        )
         # Assign as an alias
         return aliased(self.table, sampled)
 
@@ -127,7 +130,6 @@ class Sampler:
             .limit(self.sample_limit)
             .all()
         )
-
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
