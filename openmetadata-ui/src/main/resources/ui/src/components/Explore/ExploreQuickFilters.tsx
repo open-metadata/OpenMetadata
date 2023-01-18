@@ -109,7 +109,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             const uniqueOptions = [
               ...new Set(
                 suggestOptions.map((op) => ({
-                  key: op._source.name,
+                  key: op._source.displayName ?? op._source.name,
                   label: op._source.displayName ?? op._source.name,
                 }))
               ),

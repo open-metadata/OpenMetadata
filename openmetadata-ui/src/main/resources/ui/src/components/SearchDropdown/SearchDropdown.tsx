@@ -222,7 +222,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         title={getSelectedOptionLabelString(selectedKeys, true)}
         trigger="hover">
         <Button className="quick-filter-dropdown-trigger-btn">
-          <Space data-testid="search-dropdown" size={4}>
+          <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space size={0}>
               <Typography.Text>{label}</Typography.Text>
               {selectedKeys.length > 0 && (
