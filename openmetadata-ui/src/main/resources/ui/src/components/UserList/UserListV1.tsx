@@ -220,10 +220,7 @@ const UserListV1: FC<UserListV1Props> = ({
   }
 
   return (
-    <Row
-      className="user-listing"
-      data-testid="user-list-v1-component"
-      gutter={[16, 16]}>
+    <Row className="user-listing" gutter={[16, 16]}>
       <Col span={12}>
         <PageHeader
           data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
@@ -269,7 +266,6 @@ const UserListV1: FC<UserListV1Props> = ({
           bordered
           className="user-list-table"
           columns={columns}
-          data-testid="user-list-table"
           dataSource={data}
           loading={{
             spinning: isDataLoading,
