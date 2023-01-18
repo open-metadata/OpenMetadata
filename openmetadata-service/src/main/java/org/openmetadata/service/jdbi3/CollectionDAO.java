@@ -14,6 +14,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
+import static org.openmetadata.service.jdbi3.ListFilter.escape;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -2005,8 +2007,8 @@ public interface CollectionDAO {
     default void updateTagPrefix(String oldPrefix, String newPrefix) {
       String update =
           String.format(
-              "UPDATE tag_usage set tagFQN = " + "REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%'",
-              oldPrefix, newPrefix, oldPrefix);
+              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%'",
+              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
       updateTagPrefixInternal(update);
     }
 
@@ -2952,88 +2954,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default List<String> listBefore(ListFilter filter, int limit, String before) {
-      String entityFQN = filter.getQueryParam("entityFQN");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
-      boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
-      String condition = filter.getCondition();
-
-      if (entityFQN == null && testSuiteId == null) {
-        return EntityDAO.super.listBefore(filter, limit, before);
-      }
-      if (entityFQN != null) {
-        if (includeAllTests) {
-          condition =
-              String.format("%s AND entityFQN LIKE %s OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
-        } else {
-          condition = String.format("%s AND entityFQN = '%s') ", condition, entityFQN);
-        }
-      }
-      if (testSuiteId != null) {
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
-      }
-
-      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
-    }
-
-    @Override
-    default List<String> listAfter(ListFilter filter, int limit, String after) {
-      String entityFQN = filter.getQueryParam("entityFQN");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
-      boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
-      String condition = filter.getCondition();
-      if (entityFQN == null && testSuiteId == null) {
-        return EntityDAO.super.listAfter(filter, limit, after);
-      }
-      if (entityFQN != null) {
-        if (includeAllTests) {
-          condition =
-              String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
-        } else {
-          condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
-        }
-      }
-      if (testSuiteId != null) {
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
-      }
-
-      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
-    }
-
-    @Override
-    default int listCount(ListFilter filter) {
-      String entityFQN = filter.getQueryParam("entityFQN");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
-      boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
-      String condition = filter.getCondition();
-      if (entityFQN == null && testSuiteId == null) {
-        return EntityDAO.super.listCount(filter);
-      }
-      if (entityFQN != null) {
-        if (includeAllTests) {
-          condition =
-              String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
-        } else {
-          condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
-        }
-      }
-      if (testSuiteId != null) {
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
-      }
-
-      return listCount(getTableName(), getNameColumn(), condition);
     }
   }
 

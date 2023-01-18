@@ -83,7 +83,12 @@ mock_domopipeline_config = {
     },
 }
 
-MOCK_DASHBOARD = {"id": 552315335, "name": "New Dashboard", "children": []}
+MOCK_DASHBOARD = {
+    "id": 552315335,
+    "name": "New Dashboard",
+    "children": [],
+    "cardIds": ["1982511286", "781210736"],
+}
 EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="New Dashboard",
     displayName="New Dashboard",

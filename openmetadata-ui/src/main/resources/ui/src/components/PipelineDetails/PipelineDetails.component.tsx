@@ -415,6 +415,7 @@ const PipelineDetails = ({
     threadType?: ThreadType
   ) => {
     setEntityThreadLoading(true);
+    !after && setEntityThreads([]);
     getAllFeeds(
       getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
       after,
@@ -931,6 +932,7 @@ const PipelineDetails = ({
                       deletePostHandler={deletePostHandler}
                       entityName={entityName}
                       feedList={entityThreads}
+                      isFeedLoading={entityThreadLoading}
                       postFeedHandler={postFeedHandler}
                       updateThreadHandler={updateThreadHandler}
                       onFeedFiltersUpdate={handleFeedFilterChange}

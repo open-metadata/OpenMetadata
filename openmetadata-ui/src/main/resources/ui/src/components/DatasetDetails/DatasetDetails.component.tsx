@@ -738,6 +738,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
+                    isFeedLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
                     onFeedFiltersUpdate={handleFeedFilterChange}

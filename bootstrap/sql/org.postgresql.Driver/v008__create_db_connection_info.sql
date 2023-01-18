@@ -32,3 +32,19 @@ SET json = jsonb_set(
   false
 )
 WHERE json->>'name' = 'columnValuesToBeBetween';
+
+UPDATE pipeline_entity
+SET json = jsonb_set(
+        json,
+        '{name}',
+        to_jsonb(replace(json ->> 'name',':',''))
+    )
+WHERE json ->> 'serviceType' = 'Dagster';
+
+UPDATE pipeline_entity
+SET json = jsonb_set(
+        json,
+        '{fullyQualifiedName}',
+        to_jsonb(replace(json ->> 'fullyQualifiedName',':',''))
+    )
+WHERE json ->> 'serviceType' = 'Dagster';

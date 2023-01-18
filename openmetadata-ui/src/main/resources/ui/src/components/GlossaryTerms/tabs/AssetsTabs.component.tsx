@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Loader from 'components/Loader/Loader';
 import { AssetsDataType } from 'Models';
 import React from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
@@ -27,6 +28,10 @@ interface Props {
 }
 
 const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
+  if (assetData.isLoading) {
+    return <Loader />;
+  }
+
   return (
     <div data-testid="table-container">
       {assetData.data.length ? (
