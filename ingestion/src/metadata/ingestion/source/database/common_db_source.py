@@ -65,7 +65,6 @@ class TableNameAndType(BaseModel):
     type_: TableType = TableType.Regular
 
 
-# pylint: disable=too-many-public-methods
 class CommonDbSourceService(
     DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
 ):
@@ -364,14 +363,6 @@ class CommonDbSourceService(
             if is_partitioned:
                 table_request.tableType = TableType.Partitioned.value
                 table_request.tablePartition = partition_details
-
-            if table_type == TableType.View or view_definition:
-                table_view = {
-                    "table_name": table_name,
-                    "table_type": table_type,
-                    "schema_name": schema_name,
-                    "db_name": db_name,
-                }
 
             yield table_request
             self.register_record(table_request=table_request)
