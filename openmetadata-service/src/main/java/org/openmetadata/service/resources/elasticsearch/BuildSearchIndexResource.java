@@ -60,7 +60,7 @@ public class BuildSearchIndexResource {
       String indexResolverClassName = config.getElasticSearchConfiguration().getIndexResolverClassName();
       this.indexResolver = ElasticSearchIndexResolver.fromClassName(indexResolverClassName);
       RestHighLevelClient client =
-              ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+          ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
       ElasticSearchIndexDefinition elasticSearchIndexDefinition =
           new ElasticSearchIndexDefinition(client, dao, indexResolver);
       this.elasticSearchIndexUtil =
