@@ -297,7 +297,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         </>
       ) : (
         !isFeedLoading && (
-          <div className="h-min-50">
+          <div className="h-min-50" data-testid="no-data-placeholder-container">
             {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
               <NoFeedPlaceholder entityName={entityName} />
             ) : !refreshFeedCount ? (
