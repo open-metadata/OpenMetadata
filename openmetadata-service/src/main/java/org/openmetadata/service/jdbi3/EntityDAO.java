@@ -14,6 +14,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.jdbi3.ListFilter.escape;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -71,7 +73,7 @@ public interface EntityDAO<T extends EntityInterface> {
             "UPDATE %s SET json = "
                 + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(fullyQualifiedName, '^%s\\.', '%s.')) "
                 + "WHERE fullyQualifiedName LIKE '%s.%%'",
-            getTableName(), oldPrefix, newPrefix, oldPrefix);
+            getTableName(), escape(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
 
     String postgresUpdate =
         String.format(
@@ -79,7 +81,7 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
                 + "'\"fullyQualifiedName\": \"%s.')::jsonb "
                 + "WHERE fullyQualifiedName LIKE '%s.%%'",
-            getTableName(), oldPrefix, newPrefix, oldPrefix);
+            getTableName(), escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
     updateFqnInternal(mySqlUpdate, postgresUpdate);
   }
 
