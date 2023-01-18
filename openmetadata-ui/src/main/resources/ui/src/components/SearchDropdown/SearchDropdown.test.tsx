@@ -42,7 +42,7 @@ describe('Search DropDown Component', () => {
   it('Should render Dropdown components', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -86,7 +86,7 @@ describe('Search DropDown Component', () => {
   it('Selected keys option should be checked', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -103,7 +103,7 @@ describe('Search DropDown Component', () => {
   it('UnSelected keys option should not be checked', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -122,7 +122,7 @@ describe('Search DropDown Component', () => {
   it('Should render the clear all button after more than one options are selected and click should work', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -162,7 +162,7 @@ describe('Search DropDown Component', () => {
   it('Search should work', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -186,7 +186,7 @@ describe('Search DropDown Component', () => {
   it('Update button should work properly', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -221,7 +221,7 @@ describe('Search DropDown Component', () => {
   it('Selected option should unselect on next click', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -249,7 +249,7 @@ describe('Search DropDown Component', () => {
   it('Close button should work properly', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -281,7 +281,7 @@ describe('Search DropDown Component', () => {
   it('The selected options should be checked correctly each time popover renders', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const dropdownButton = await screen.findByTestId('search-dropdown');
+    const dropdownButton = await screen.findByTestId('search-dropdown-Owner');
 
     // Dropdown menu should not be present
 
