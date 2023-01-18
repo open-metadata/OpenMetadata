@@ -42,7 +42,9 @@ class AtlasClient:
         self._use_raw_data = raw_data
 
     def list_entities(self, entity_type="Table") -> List[str]:
-        response = self.client.get(f"/atlas/entities?type={entity_type}")
+        response = self.client.get(
+            f"/atlas/entities?type={self.config.entity_type if self.config.entity_type else entity_type}"
+        )
 
         if "error" in response.keys():
             raise APIError(response["error"])
