@@ -64,7 +64,7 @@ status: SinkStatus
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def write_create_request(self, entity_request) -> None:
+    def write_record(self, entity_request) -> None:
         log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
         try:
             created = self.metadata.create_or_update(entity_request)

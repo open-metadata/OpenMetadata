@@ -83,6 +83,33 @@ class SampleTablesSource(Source):
             ),
         )
 
+        database_entity: Database = self.metadata.get_by_name(
+            entity=Database, fqn=self.config.serviceName + "." + "awesome-database"
+        )
+        database_id = database_entity.id
+
+        yield CreateDatabaseSchemaRequest(
+            name="awesome-schema",
+            description="description",
+            database=EntityReference(id=database_id, type="database"),
+        )
+
+        database_schema_entity: DatabaseSchema = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=self.config.serviceName + "." + "awesome-database" + "." + "awesome-schema"
+        )
+        database_schema_id = database_schema_entity.id
+
+        yield CreateTableRequest(
+            name="awesome-table",
+            description="description",
+            columns="columns",
+            databaseSchema=EntityReference(
+                id=database_schema_id, type="databaseSchema"
+            ),
+            tableConstraints=table.get("tableConstraints"),
+            tableType=table["tableType"],
+        )
+
     def close(self):
         pass
 
