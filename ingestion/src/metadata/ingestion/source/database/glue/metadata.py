@@ -20,7 +20,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
@@ -372,9 +371,6 @@ class GlueSource(DatabaseServiceSource):
 
     def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
-
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass

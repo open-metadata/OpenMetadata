@@ -22,7 +22,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
@@ -189,9 +188,6 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
-
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
 
     def standardize_table_name(  # pylint: disable=unused-argument
         self, schema: str, table: str
