@@ -45,7 +45,7 @@ const searchBotUser = () => {
 
   cy.get('.ant-table-placeholder > .ant-table-cell').should(
     'not.contain',
-    'bot'
+    searchBotText
   );
 };
 
@@ -67,10 +67,6 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-  });
-
-  it('Search bot user', () => {
-    searchBotUser();
   });
 
   it('Add new User', () => {
@@ -102,9 +98,9 @@ describe('Users flow should work properly', () => {
     deleteSoftDeletedUser(userName);
   });
 
-  //   it('Search bot user', () => {
-  //     searchBotUser();
-  //   });
+  it('Search bot user', () => {
+    searchBotUser();
+  });
 });
 
 describe('Admin flow should work properly', () => {
