@@ -13,7 +13,7 @@ Snowflake source module
 """
 import json
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
@@ -52,6 +52,10 @@ from metadata.ingestion.source.database.snowflake.queries import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_table_comment_wrapper,
+)
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -103,30 +107,16 @@ def get_view_definition(  # pylint: disable=unused-argument
 
 
 @reflection.cache
-def _get_all_table_comments(self, connection, **kw):
-    """
-    Method to fetch comment of all available tables
-    """
-    self.all_table_comments: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = connection.engine.url.database
-    result = connection.execute(SNOWFLAKE_GET_COMMENTS)
-    for table in result:
-        self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
-
-
-@reflection.cache
-def get_table_comment(  # pylint: disable=unused-argument
-    self, connection, table_name, schema_name, **kw
-):
-    """
-    Returns comment of table.
-    """
-    if (
-        not hasattr(self, "all_table_comments")
-        or self.current_db != connection.engine.url.database
-    ):
-        self._get_all_table_comments(connection)
-    return {"text": self.all_table_comments.get((table_name, schema_name))}
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=SNOWFLAKE_GET_COMMENTS,
+    )
 
 
 @reflection.cache
@@ -142,7 +132,7 @@ def normalize_names(self, name):  # pylint: disable=unused-argument
 
 SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
-SnowflakeDialect._get_all_table_comments = _get_all_table_comments
+SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_view_definition = get_view_definition

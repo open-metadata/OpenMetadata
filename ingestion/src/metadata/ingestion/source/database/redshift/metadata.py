@@ -15,7 +15,7 @@ Redshift source ingestion
 import re
 import traceback
 from collections import defaultdict
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -60,6 +60,10 @@ from metadata.ingestion.source.database.redshift.queries import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_table_comment_wrapper,
+)
 
 sa_version = Version(sa.__version__)
 
@@ -354,28 +358,19 @@ STANDARD_TABLE_TYPES = {
 
 
 @reflection.cache
-def _get_all_table_comments(self, connection, **kw):
-    """
-    Method to fetch comment of all available tables
-    """
-    self.all_table_comments: Dict[RelationKey, str] = {}
-    self.current_db: str = connection.engine.url.database
-    result = connection.execute(REDSHIFT_TABLE_COMMENTS)
-    for table in result:
-        self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=REDSHIFT_TABLE_COMMENTS,
+    )
 
 
-@reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):
-    if (
-        not hasattr(self, "all_table_comments")
-        or self.current_db != connection.engine.url.database
-    ):
-        self._get_all_table_comments(connection)
-    return {"text": self.all_table_comments.get((table_name, schema))}
-
-
-RedshiftDialect._get_all_table_comments = _get_all_table_comments
+RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
 
 

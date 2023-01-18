@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Dict, Iterable, Tuple
+from typing import Iterable, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
@@ -56,6 +56,12 @@ from metadata.ingestion.source.database.postgres.queries import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_view_definitions,
+    get_table_comment_wrapper,
+    get_view_definition_wrapper,
+)
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -97,53 +103,37 @@ ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
 
 
 @reflection.cache
-def _get_all_table_comments(self, connection, **kw):
-    """
-    Method to fetch comment of all available tables
-    """
-    self.all_table_comments: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = connection.engine.url.database
-    result = connection.execute(POSTGRES_TABLE_COMMENTS)
-    for table in result:
-        self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=POSTGRES_TABLE_COMMENTS,
+    )
 
 
-@reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):
-    if (
-        not hasattr(self, "all_table_comments")
-        or self.current_db != connection.engine.url.database
-    ):
-        self._get_all_table_comments(connection)
-    return {"text": self.all_table_comments.get((table_name, schema))}
-
-
-@reflection.cache
-def _get_all_view_definitions(self, connection, **kw):
-    """
-    Method to fetch comment of all available tables
-    """
-    self.all_view_definitions: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = connection.engine.url.database
-    result = connection.execute(POSTGRES_VIEW_DEFINITIONS)
-    for view in result:
-        self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
-
-
-@reflection.cache
-def get_view_definition(self, connection, table_name, schema=None, **kw):
-    if (
-        not hasattr(self, "all_view_definitions")
-        or self.current_db != connection.engine.url.database
-    ):
-        self._get_all_view_definitions(connection)
-    return self.all_view_definitions.get((table_name, schema), "")
-
-
-PGDialect._get_all_table_comments = _get_all_table_comments
+PGDialect.get_all_table_comments = get_all_table_comments
 PGDialect.get_table_comment = get_table_comment
+
+
+@reflection.cache
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=POSTGRES_VIEW_DEFINITIONS,
+    )
+
+
 PGDialect.get_view_definition = get_view_definition
-PGDialect._get_all_view_definitions = _get_all_view_definitions
+PGDialect.get_all_view_definitions = get_all_view_definitions
 
 PGDialect.ischema_names = ischema_names
 

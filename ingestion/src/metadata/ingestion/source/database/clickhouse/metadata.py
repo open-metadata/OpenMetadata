@@ -10,12 +10,10 @@
 #  limitations under the License.
 """Clickhouse source module"""
 import enum
-from typing import Any, Dict, Tuple
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
-from sqlalchemy import text
 from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql.sqltypes import String
@@ -37,6 +35,12 @@ from metadata.ingestion.source.database.clickhouse.queries import (
 )
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_view_definitions,
+    get_table_comment_wrapper,
+    get_view_definition_wrapper,
+)
 
 logger = ingestion_logger()
 
@@ -160,35 +164,29 @@ def get_pk_constraint(
 
 
 @reflection.cache
-def _get_all_view_definitions(self, connection, **kw):
-    all_view_definitions: Dict[Tuple[str, str], str] = {}
-    result = connection.execute(text(CLICKHOUSE_VIEW_DEFINITIONS))
-    for view in result:
-        all_view_definitions[(view.schema_name, view.view_name)] = view.query
-    return all_view_definitions
-
-
-@reflection.cache
 def get_view_definition(
-    self, connection, view_name, schema=None, **kw  # pylint: disable=unused-argument
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
-    all_view_definitions = self._get_all_view_definitions(connection, **kw)
-    return all_view_definitions.get((schema, view_name), "")
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=CLICKHOUSE_VIEW_DEFINITIONS,
+    )
 
 
 @reflection.cache
-def _get_all_table_comments(self, connection, **kw):
-    all_table_comments: Dict[Tuple[str, str], Dict[str, Any]] = {}
-    result = connection.execute(text(CLICKHOUSE_TABLE_COMMENTS))
-    for table in result:
-        all_table_comments[(table.schema_name, table.table_name)] = table.comment
-    return all_table_comments
-
-
-@reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):
-    all_table_comments = self._get_all_table_comments(connection, **kw)
-    return {"text": all_table_comments.get((schema, table_name))}
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=CLICKHOUSE_TABLE_COMMENTS,
+    )
 
 
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
@@ -199,8 +197,8 @@ ClickHouseDialect._get_column_type = (  # pylint: disable=protected-access
 RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
 ClickHouseDialect.get_table_comment = get_table_comment
-ClickHouseDialect._get_all_view_definitions = _get_all_view_definitions
-ClickHouseDialect._get_all_table_comments = _get_all_table_comments
+ClickHouseDialect.get_all_view_definitions = get_all_view_definitions
+ClickHouseDialect.get_all_table_comments = get_all_table_comments
 
 
 class ClickhouseSource(CommonDbSourceService):
