@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table } from 'antd';
+import { Col, Row, Skeleton, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -120,10 +120,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
   const [schemaData, setSchemaData] = useState<Array<DatabaseSchema>>([]);
+  const [schemaDataLoading, setSchemaDataLoading] = useState<boolean>(true);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
   );
+  const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
+    useState<boolean>(true);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
@@ -220,6 +223,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const fetchDatabaseSchemas = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
+      setSchemaDataLoading(true);
       getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
         .then((res) => {
           if (res.data) {
@@ -241,6 +245,9 @@ const DatabaseDetails: FunctionComponent = () => {
           );
 
           reject();
+        })
+        .finally(() => {
+          setSchemaDataLoading(false);
         });
     });
   };
@@ -279,6 +286,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
+    setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(databaseFQN, ['owner'])
       .then((res) => {
         if (res) {
@@ -331,6 +339,7 @@ const DatabaseDetails: FunctionComponent = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsDatabaseDetailsLoading(false);
       });
   };
 
@@ -672,58 +681,70 @@ const DatabaseDetails: FunctionComponent = () => {
                 className=" p-x-md p-t-lg"
                 data-testid="page-container"
                 gutter={[0, 12]}>
-                <Col span={24}>
-                  <Space align="center" className="justify-between w-full">
-                    <TitleBreadcrumb titleLinks={slashedDatabaseName} />
-                    <ManageButton
-                      isRecursiveDelete
-                      allowSoftDelete={false}
-                      canDelete={databasePermission.Delete}
-                      entityFQN={databaseFQN}
-                      entityId={databaseId}
-                      entityName={databaseName}
-                      entityType={EntityType.DATABASE}
-                    />
-                  </Space>
-                </Col>
-                <Col span={24}>
-                  {extraInfo.map((info, index) => (
-                    <Space key={index}>
-                      <EntitySummaryDetails
-                        currentOwner={database?.owner}
-                        data={info}
-                        removeOwner={handleRemoveOwner}
-                        updateOwner={
-                          databasePermission.EditOwner ||
-                          databasePermission.EditAll
-                            ? handleUpdateOwner
-                            : undefined
-                        }
-                      />
-                    </Space>
-                  ))}
-                </Col>
-                <Col data-testid="description-container" span={24}>
-                  <Description
-                    description={description}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={databaseFQN}
-                    entityName={databaseName}
-                    entityType={EntityType.DATABASE}
-                    hasEditAccess={
-                      databasePermission.EditDescription ||
-                      databasePermission.EditAll
-                    }
-                    isEdit={isEdit}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
+                {isDatabaseDetailsLoading ? (
+                  <Skeleton
+                    active
+                    paragraph={{
+                      rows: 3,
+                      width: ['20%', '80%', '60%'],
+                    }}
                   />
-                </Col>
+                ) : (
+                  <>
+                    <Col span={24}>
+                      <Space align="center" className="justify-between w-full">
+                        <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+                        <ManageButton
+                          isRecursiveDelete
+                          allowSoftDelete={false}
+                          canDelete={databasePermission.Delete}
+                          entityFQN={databaseFQN}
+                          entityId={databaseId}
+                          entityName={databaseName}
+                          entityType={EntityType.DATABASE}
+                        />
+                      </Space>
+                    </Col>
+                    <Col span={24}>
+                      {extraInfo.map((info, index) => (
+                        <Space key={index}>
+                          <EntitySummaryDetails
+                            currentOwner={database?.owner}
+                            data={info}
+                            removeOwner={handleRemoveOwner}
+                            updateOwner={
+                              databasePermission.EditOwner ||
+                              databasePermission.EditAll
+                                ? handleUpdateOwner
+                                : undefined
+                            }
+                          />
+                        </Space>
+                      ))}
+                    </Col>
+                    <Col data-testid="description-container" span={24}>
+                      <Description
+                        description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldThreadCount
+                        )}
+                        entityFqn={databaseFQN}
+                        entityName={databaseName}
+                        entityType={EntityType.DATABASE}
+                        hasEditAccess={
+                          databasePermission.EditDescription ||
+                          databasePermission.EditAll
+                        }
+                        isEdit={isEdit}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </Col>
+                  </>
+                )}
                 <Col span={24}>
                   <Row className="m-t-md">
                     <Col span={24}>
@@ -743,6 +764,10 @@ const DatabaseDetails: FunctionComponent = () => {
                             columns={tableColumn}
                             data-testid="database-databaseSchemas"
                             dataSource={schemaData}
+                            loading={{
+                              spinning: schemaDataLoading,
+                              indicator: <Loader size="small" />,
+                            }}
                             pagination={false}
                             rowKey="id"
                             size="small"
@@ -763,7 +788,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       )}
                       {activeTab === 2 && (
                         <Row
-                          className="p-t-xss entity-feed-list bg-white border-1 rounded-4 shadow-base h-full"
+                          className="p-t-xss p-b-md entity-feed-list bg-white border-1 rounded-4 shadow-base h-full"
                           id="activityfeed">
                           <Col offset={4} span={16}>
                             <ActivityFeedList

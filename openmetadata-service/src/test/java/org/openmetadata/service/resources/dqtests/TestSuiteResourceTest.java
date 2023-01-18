@@ -64,7 +64,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     List<EntityReference> testCases2 = new ArrayList<>();
     CreateTestSuite createTestSuite1 = createRequest(test);
     TestSuite testSuite1 = createAndCheckEntity(createTestSuite1, ADMIN_AUTH_HEADERS);
-    CreateTestSuite createTestSuite2 = createRequest(test.getDisplayName() + UUID.randomUUID());
+    CreateTestSuite createTestSuite2 = createRequest(test, 1);
     TestSuite testSuite2 = createAndCheckEntity(createTestSuite2, ADMIN_AUTH_HEADERS);
 
     for (int i = 0; i < 5; i++) {

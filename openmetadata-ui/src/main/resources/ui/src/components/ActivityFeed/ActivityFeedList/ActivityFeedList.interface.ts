@@ -23,6 +23,7 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: Thread[];
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
+  isFeedLoading?: boolean;
   entityName?: string;
   hideFeedFilter?: boolean;
   hideThreadFilter?: boolean;
