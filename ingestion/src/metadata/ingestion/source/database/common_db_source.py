@@ -96,7 +96,6 @@ class CommonDbSourceService(
         self._connection = None  # Lazy init as well
         self.table_constraints = None
         self.database_source_state = set()
-        self.context.table_views = []
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -373,7 +372,6 @@ class CommonDbSourceService(
                     "schema_name": schema_name,
                     "db_name": db_name,
                 }
-                self.context.table_views.append(table_view)
 
             yield table_request
             self.register_record(table_request=table_request)
