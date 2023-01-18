@@ -149,10 +149,7 @@ class LineageSource(QueryParserSource, ABC):
         for table_entity in self.get_all_tables_from_api():
             # We only pick up views whose viewDefinition is informed
             if (
-                (
-                    table_entity.tableType == TableType.View
-                    or table_entity.tableType == TableType.MaterializedView
-                )
+                table_entity.tableType in {TableType.View, TableType.MaterializedView}
                 and table_entity.viewDefinition
                 and table_entity.viewDefinition.__root__
             ):

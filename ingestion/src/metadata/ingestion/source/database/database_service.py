@@ -23,7 +23,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
