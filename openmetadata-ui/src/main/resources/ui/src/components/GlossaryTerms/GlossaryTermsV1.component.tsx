@@ -12,20 +12,35 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Col, Divider, Row, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import Tags from 'components/Tag/Tags/tags';
+import { PAGE_SIZE } from 'constants/constants';
+import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { AssetsDataType, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { searchData } from 'rest/miscAPI';
+import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
+import { getCountBadge, getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getClassifications,
@@ -35,7 +50,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import DescriptionV1 from '../common/description/DescriptionV1';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import TabsPane from '../common/TabsPane/TabsPane';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../Tag/TagsContainer/tags-container';
@@ -48,47 +62,31 @@ import RelatedTerms from './tabs/RelatedTerms';
 const { Text } = Typography;
 
 type Props = {
-  assetData: AssetsDataType;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
-  currentPage: number;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-  onAssetPaginate: (num: string | number, activePage?: number) => void;
-  onRelatedTermClick?: (fqn: string) => void;
-  handleUserRedirection?: (name: string) => void;
 };
 
 const GlossaryTermsV1 = ({
-  assetData,
   glossaryTerm,
   handleGlossaryTermUpdate,
-  onAssetPaginate,
-  onRelatedTermClick,
-  currentPage,
   permissions,
 }: Props) => {
+  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<string>('summary');
   const [showRevieweModal, setShowRevieweModal] = useState<boolean>(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
-
-  const tabs = [
-    {
-      name: 'Summary',
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: 'Assets',
-      isProtected: false,
-      position: 2,
-      count: assetData.total,
-    },
-  ];
+  const [assetData, setAssetData] = useState<AssetsDataType>({
+    isLoading: true,
+    data: [],
+    total: 0,
+    currPage: 1,
+  });
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
@@ -116,7 +114,7 @@ const GlossaryTermsV1 = ({
     onReviewerModalCancel();
   };
 
-  const activeTabHandler = (tab: number) => {
+  const activeTabHandler = (tab: string) => {
     setActiveTab(tab);
   };
 
@@ -208,6 +206,54 @@ const GlossaryTermsV1 = ({
     }
   };
 
+  const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
+    setAssetData((pre) => ({
+      ...pre,
+      isLoading: true,
+    }));
+    if (fqn) {
+      try {
+        const res = await searchData(
+          '',
+          currentPage,
+          PAGE_SIZE,
+          `(tags.tagFQN:"${fqn}")`,
+          '',
+          '',
+          myDataSearchIndex
+        );
+
+        const hits = res?.data?.hits?.hits as SearchEntityHits;
+        const isData = hits?.length > 0;
+        setAssetData(() => {
+          const data = isData ? formatDataResponse(hits) : [];
+          const total = isData ? res.data.hits.total.value : 0;
+
+          return {
+            isLoading: false,
+            data,
+            total,
+            currPage: currentPage,
+          };
+        });
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['elastic-search-error']
+        );
+      }
+    } else {
+      setAssetData({ data: [], total: 0, currPage: 1, isLoading: false });
+    }
+  };
+
+  const handleAssetPagination = (page: number | string) => {
+    fetchGlossaryTermAssets(
+      glossaryTerm.fullyQualifiedName || glossaryTerm.name,
+      page as number
+    );
+  };
+
   useEffect(() => {
     if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
       setReviewer(
@@ -220,12 +266,24 @@ const GlossaryTermsV1 = ({
       setReviewer([]);
     }
   }, [glossaryTerm.reviewers]);
+  useEffect(() => {
+    fetchGlossaryTermAssets(
+      glossaryTerm.fullyQualifiedName || glossaryTerm.name
+    );
+  }, [glossaryTerm.fullyQualifiedName]);
+  useEffect(() => {
+    setActiveTab('summary');
+  }, [glossaryFqn]);
 
   const addReviewerButton = () => {
     return (
       <Tooltip
         placement="topRight"
-        title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
+        title={
+          permissions.EditAll
+            ? t('label.add-entity', { entity: t('label.reviewer') })
+            : NO_PERMISSION_FOR_ACTION
+        }>
         <Button
           className="tw-p-0 flex-center"
           data-testid="add-new-reviewer"
@@ -316,7 +374,6 @@ const GlossaryTermsV1 = ({
               glossaryTerm={glossaryTerm || ({} as GlossaryTerm)}
               permissions={permissions}
               onGlossaryTermUpdate={handleGlossaryTermUpdate}
-              onRelatedTermClick={onRelatedTermClick}
             />
             <Divider className="m-r-1 m-y-sm" />
 
@@ -412,24 +469,41 @@ const GlossaryTermsV1 = ({
       </div>
 
       <div className="tw-flex tw-flex-col tw-flex-grow">
-        <TabsPane
-          activeTab={activeTab}
-          className="tw-flex-initial"
-          setActiveTab={activeTabHandler}
-          tabs={tabs}
+        <Tabs
+          destroyInactiveTabPane
+          activeKey={activeTab}
+          items={[
+            {
+              label: t('label.summary'),
+              key: 'summary',
+              children: <SummaryTab />,
+            },
+            {
+              label: (
+                <div data-testid="assets">
+                  {t('label.asset-plural')}
+                  <span className="p-l-xs ">
+                    {getCountBadge(assetData.total, '', activeTab === 'assets')}
+                  </span>
+                </div>
+              ),
+              key: 'assets',
+              children: (
+                <AssetsTabs
+                  assetData={assetData}
+                  currentPage={assetData.currPage}
+                  onAssetPaginate={handleAssetPagination}
+                />
+              ),
+            },
+            {
+              label: t('label.glossary-term-plural'),
+              key: 'glossaryTerms',
+              children: <GlossaryTermTab glossaryTermId={glossaryTerm.id} />,
+            },
+          ]}
+          onChange={activeTabHandler}
         />
-
-        <div className="tw-flex-grow tw-py-4">
-          {activeTab === 1 && <SummaryTab />}
-
-          {activeTab === 2 && (
-            <AssetsTabs
-              assetData={assetData}
-              currentPage={currentPage}
-              onAssetPaginate={onAssetPaginate}
-            />
-          )}
-        </div>
 
         <ReviewerModal
           header={t('label.add-entity', {
