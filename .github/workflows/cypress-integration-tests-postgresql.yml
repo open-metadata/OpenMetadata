@@ -64,15 +64,18 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache node_modules
-        id: cache-node-output
-        uses: actions/cache@v3
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: pwsh
+        run: echo "dir=$(npm config get cache)" >> ${env:GITHUB_OUTPUT}
+
+      - uses: actions/cache@v3
+        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
-          path: node_modules
-          key: ${{ runner.os }}-build-${{ hashFiles('**/package.json') }}
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
           restore-keys: |
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+            ${{ runner.os }}-node-
 
       - name: Cache Maven Dependencies
         id: cache-output
@@ -90,10 +93,10 @@ jobs:
           distribution: 'adopt'
 
       - name: Generating Data Models
-        if: ${{ steps.cache-node-output.outputs.exit-code == 0 }}
+        if: ${{ steps.npm-cache.outputs.cache-hit != 'true'}}
         run: |
           sudo make install_antlr_cli
-          make install_dev generate
+          make install_dev generatex
 
       - name: Start Server and Ingest Sample Data
         env:
