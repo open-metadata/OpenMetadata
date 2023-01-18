@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name of the bot.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../entity/teams/user.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",

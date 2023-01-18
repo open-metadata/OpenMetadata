@@ -54,7 +54,7 @@ const Tags: FunctionComponent<TagProps> = ({
         <SVGIcons
           alt="plus"
           className="tw-w-3.5 tw-mr-1"
-          icon={Icons.ICON_PLUS_PRIMERY}
+          icon={Icons.ICON_PLUS_PRIMARY}
         />
       ) : (
         startWith

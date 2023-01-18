@@ -358,9 +358,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     verifyPipelineStatuses(pipelineStatues, pipelineStatusList, 10);
 
     // create another table and add profiles
-    Pipeline pipeline1 =
-        createAndCheckEntity(
-            createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
+    Pipeline pipeline1 = createAndCheckEntity(createRequest(test).withName(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
     List<PipelineStatus> pipeline1StatusList = new ArrayList<>();
     dateStr = "2021-10-";
     for (int i = 11; i <= 15; i++) {

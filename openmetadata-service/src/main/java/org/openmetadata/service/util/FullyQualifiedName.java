@@ -58,12 +58,20 @@ public class FullyQualifiedName {
   public static String getParent(String fqn) {
     // Split fqn of format a.b.c.d and return the parent a.b.c
     String[] split = split(fqn);
-    if (split.length <= 1) {
+    return getParent(split);
+  }
+
+  public static String getParent(String... fqnParts) {
+    // Fqn parts a b c d are given from fqn a.b.c.d
+    if (fqnParts.length <= 1) {
       return null;
     }
-    String parent = build(split[0]);
-    for (int i = 1; i < split.length - 1; i++) {
-      parent = add(parent, split[i]);
+    if (fqnParts.length == 2) {
+      return unquoteName(fqnParts[0]); // The root name is not quoted and only the unquoted name is returned
+    }
+    String parent = build(fqnParts[0]);
+    for (int i = 1; i < fqnParts.length - 1; i++) {
+      parent = add(parent, fqnParts[i]);
     }
     return parent;
   }
@@ -141,10 +149,6 @@ public class FullyQualifiedName {
     }
     // Return table FQN of format databaseService.tableName
     return build(split[0], split[1], split[2], split[3]);
-  }
-
-  public static String getServiceName(String fqn) {
-    return split(fqn)[0];
   }
 
   public static String getColumnName(String columnFQN) {

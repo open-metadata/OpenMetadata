@@ -73,7 +73,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
       throws IOException {
-    String service = FullyQualifiedName.getServiceName(fqn);
+    String service = FullyQualifiedName.getRoot(fqn);
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
         daoCollection
@@ -109,7 +109,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
       throws IOException {
-    String service = FullyQualifiedName.getServiceName(fqn);
+    String service = FullyQualifiedName.getRoot(fqn);
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
         daoCollection
