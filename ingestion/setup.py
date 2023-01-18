@@ -102,9 +102,7 @@ base_requirements = {
 
 
 plugins: Dict[str, Set[str]] = {
-    "airflow": {
-        "apache-airflow==2.3.3"
-    },  # Same as ingestion container. For development.
+    "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"PyAthena[SQLAlchemy]"},
     "atlas": {},
