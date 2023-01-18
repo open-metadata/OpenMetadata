@@ -97,10 +97,10 @@ describe('Users flow should work properly', () => {
     softDeleteUser(userName);
     deleteSoftDeletedUser(userName);
   });
-});
 
-it('Search bot user', () => {
-  searchBotUser();
+  it('Search bot user', () => {
+    searchBotUser();
+  });
 });
 
 describe('Admin flow should work properly', () => {
