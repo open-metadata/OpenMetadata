@@ -214,9 +214,6 @@ class DynamodbSource(DatabaseServiceSource):
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
-
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 

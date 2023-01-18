@@ -190,9 +190,6 @@ class DomodatabaseSource(DatabaseServiceSource):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
-
     def standardize_table_name(  # pylint: disable=unused-argument
         self, schema: str, table: str
     ) -> str:

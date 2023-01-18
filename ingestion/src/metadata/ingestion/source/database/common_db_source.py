@@ -389,58 +389,6 @@ class CommonDbSourceService(
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        logger.info("Processing Lineage for Views")
-        for view in self.context.table_views:
-            table_name = view.get("table_name")
-            table_type = view.get("table_type")
-            schema_name = view.get("schema_name")
-            db_name = view.get("db_name")
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service.name.__root__,
-                database_name=db_name,
-                schema_name=schema_name,
-                table_name=table_name,
-            )
-            table_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
-            )
-            view_definition = self.get_view_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
-            )
-
-            try:
-                lineage_parser = LineageParser(view_definition)
-                if lineage_parser.source_tables and lineage_parser.target_tables:
-                    yield from get_lineage_by_query(
-                        self.metadata,
-                        query=view_definition,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                    ) or []
-
-                else:
-                    yield from get_lineage_via_table_entity(
-                        self.metadata,
-                        table_entity=table_entity,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                        query=view_definition,
-                    ) or []
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
-                )
-
     def test_connection(self) -> None:
         """
         Used a timed-bound function to test that the engine

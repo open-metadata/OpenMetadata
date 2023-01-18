@@ -119,9 +119,6 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=[
-            "yield_view_lineage",
-        ],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -301,13 +298,6 @@ class DatabaseServiceSource(
         """
         if self.source_config.includeTags:
             yield from self.yield_tag(schema_name) or []
-
-    @abstractmethod
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
 
     @abstractmethod
     def yield_table(

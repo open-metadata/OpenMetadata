@@ -567,9 +567,6 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
         return cols
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
-
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 

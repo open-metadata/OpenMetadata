@@ -373,9 +373,6 @@ class GlueSource(DatabaseServiceSource):
     def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
-
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 

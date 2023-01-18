@@ -247,9 +247,6 @@ class SalesforceSource(DatabaseServiceSource):
             return "INT"
         return "VARCHAR"
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
-
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 
