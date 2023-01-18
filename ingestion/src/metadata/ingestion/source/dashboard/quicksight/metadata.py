@@ -69,10 +69,9 @@ class QuicksightSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
-    def _check_pagination(
-        self, listing_method, entity_response, entity_key
-    ) -> Optional[List]:
+    def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
         entity_summary_list = []
+        entity_response = listing_method(self.default_args)
         entity_summary_list.extend(entity_response[entity_key])
         while entity_response.get("NextToken"):
             try:
@@ -90,11 +89,12 @@ class QuicksightSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        list_dashboards_func = lambda kwargs: self.client.list_dashboards(**kwargs)
+        list_dashboards_func = lambda kwargs: self.client.list_dashboards(  # pylint: disable=unnecessary-lambda-assignment
+            **kwargs
+        )
 
         dashboard_summary_list = self._check_pagination(
             listing_method=list_dashboards_func,
-            entity_response=list_dashboards_func(self.default_args),
             entity_key="DashboardSummaryList",
         )
         dashboard_set = {
@@ -186,17 +186,18 @@ class QuicksightSource(DashboardServiceSource):
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
                 continue
 
-    def yield_dashboard_lineage_details(
+    def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        try:
-            list_data_set_func = lambda kwargs: self.client.list_data_sets(**kwargs)
+        try:  # pylint: disable=too-many-nested-blocks
+            list_data_set_func = lambda kwargs: self.client.list_data_sets(  # pylint: disable=unnecessary-lambda-assignment
+                **kwargs
+            )
             data_set_summary_list = self._check_pagination(
                 listing_method=list_data_set_func,
-                entity_response=list_data_set_func(self.default_args),
                 entity_key="DataSetSummaries",
             )
             dataset_ids = {
@@ -224,13 +225,12 @@ class QuicksightSource(DashboardServiceSource):
                     schema_name = data_source["RelationalTable"]["Schema"]
                     table_name = data_source["RelationalTable"]["Name"]
 
-                    list_data_source_func = (
-                        lambda kwargs: self.client.list_data_sources(**kwargs)
+                    list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
+                        **kwargs
                     )
 
                     data_source_summary_list = self._check_pagination(
                         listing_method=list_data_source_func,
-                        entity_response=list_data_source_func(self.default_args),
                         entity_key="DataSources",
                     )
 
@@ -247,6 +247,7 @@ class QuicksightSource(DashboardServiceSource):
                             DataSourceId=data_source_id,
                         )["DataSource"]["DataSourceParameters"]
                         for db in data_source_dict.keys():
+                            from_fqn = None
                             try:
                                 database_name = data_source_dict[db]["Database"]
                             except Exception as err:
@@ -263,8 +264,8 @@ class QuicksightSource(DashboardServiceSource):
                                 )
                             from_entity = self.metadata.get_by_name(
                                 entity=Table,
-                                fqn=f"""{db_service_name}{fqn.FQN_SEPARATOR}
-                                {database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}"""
+                                fqn=f"{db_service_name}{fqn.FQN_SEPARATOR}"
+                                f"{database_name}{fqn.FQN_SEPARATOR}{schema_name}{fqn.FQN_SEPARATOR}{table_name}"
                                 if database_name
                                 else from_fqn,
                             )
