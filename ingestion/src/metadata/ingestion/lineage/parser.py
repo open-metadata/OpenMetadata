@@ -18,7 +18,6 @@ from logging.config import DictConfigurator
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from cached_property import cached_property
-from sqllineage.sqlfluff_core.models import SqlFluffTable
 from sqlparse.sql import Comparison, Identifier, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
@@ -39,6 +38,7 @@ DictConfigurator.configure = lambda _: None
 from sqllineage.core.models import Column, Schema, Table
 from sqllineage.exceptions import SQLLineageException
 from sqllineage.runner import LineageRunner
+from sqllineage.sqlfluff_core.models import SqlFluffTable
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -110,14 +110,14 @@ class LineageParser:
         """
         Get a list of tuples of column lineage
         """
-        if self.parser._use_sqlparse:
+        if self.parser._use_sqlparse:  # pylint: disable=protected-access
             return self.parser.get_column_lineage()
         column_lineage = []
         for src_column, tgt_column in self.parser.get_column_lineage():
             src_col = Column(src_column.raw_name)
-            src_col._parent = src_column._parent
+            src_col._parent = src_column._parent  # pylint: disable=protected-access
             tgt_col = Column(tgt_column.raw_name)
-            tgt_col._parent = tgt_column._parent
+            tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
             column_lineage.append((src_col, tgt_col))
         return column_lineage
 
@@ -401,8 +401,8 @@ class LineageParser:
             lr_sqlfluff = None
 
         sqlparser_count = 0
+        lr_sqlparser = LineageRunner(query, dialect=dialect.value)
         try:
-            lr_sqlparser = LineageRunner(query, dialect=dialect.value)
             sqlparser_count = len(lr_sqlparser.get_column_lineage()) + len(
                 set(lr_sqlparser.source_tables).union(
                     set(lr_sqlparser.target_tables).union(
@@ -411,7 +411,8 @@ class LineageParser:
                 )
             )
         except Exception:
-            lr_sqlparser = None
+            # if both runner have failed we return the usual one
+            return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
 
         if lr_sqlfluff:
             # if sqlparser retrieve more lineage info that sqlfluff
@@ -421,8 +422,4 @@ class LineageParser:
                 )
                 return lr_sqlparser
             return lr_sqlfluff
-        elif lr_sqlparser:
-            return lr_sqlparser
-        else:
-            # we don't want to fail at this point, so we return a new LineageRunner
-            return LineageRunner(query, dialect=dialect.value)
+        return lr_sqlparser

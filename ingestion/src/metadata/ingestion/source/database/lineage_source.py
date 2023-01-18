@@ -129,7 +129,7 @@ class LineageSource(QueryParserSource, ABC):
         """
         logger.info("Processing query history lineage...")
         connection_type = str(self.service_connection.type.value)
-        dialect = MAP_CONNECTION_TYPE_DIALECT.get(connection_type, default=Dialect.ANSI)
+        dialect = MAP_CONNECTION_TYPE_DIALECT.get(connection_type, Dialect.ANSI)
         for table_query in self.get_table_query():
 
             lineages = get_lineage_by_query(
@@ -161,7 +161,7 @@ class LineageSource(QueryParserSource, ABC):
                 try:
                     connection_type = str(self.service_connection.type.value)
                     dialect = MAP_CONNECTION_TYPE_DIALECT.get(
-                        connection_type, default=Dialect.ANSI
+                        connection_type, Dialect.ANSI
                     )
                     lineage_parser = LineageParser(
                         table_entity.viewDefinition.__root__, dialect=dialect

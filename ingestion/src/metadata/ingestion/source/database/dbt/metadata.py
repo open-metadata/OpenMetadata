@@ -541,9 +541,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             connection_type = str(
                 self.config.serviceConnection.__root__.config.type.value
             )
-            dialect = MAP_CONNECTION_TYPE_DIALECT.get(
-                connection_type, default=Dialect.ANSI
-            )
+            dialect = MAP_CONNECTION_TYPE_DIALECT.get(connection_type, Dialect.ANSI)
             lineages = get_lineage_by_query(
                 self.metadata,
                 query=query,

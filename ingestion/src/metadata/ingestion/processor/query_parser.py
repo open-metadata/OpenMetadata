@@ -112,7 +112,7 @@ class QueryParserProcessor(Processor):
                     parsed_sql = parse_sql_statement(
                         record,
                         MAP_CONNECTION_TYPE_DIALECT.get(
-                            self.connection_type, default=Dialect.ANSI
+                            self.connection_type, Dialect.ANSI
                         ),
                     )
                     if parsed_sql:
