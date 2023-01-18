@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space } from 'antd';
+import { Space, Switch } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
@@ -76,6 +76,7 @@ const AddGlossaryTerm = ({
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [relatedTerms, setRelatedTerms] = useState<GlossaryTerm[]>([]);
   const [synonyms, setSynonyms] = useState('');
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
@@ -232,6 +233,7 @@ const AddGlossaryTerm = ({
             }
           : undefined,
         synonyms: synonyms ? synonyms.split(',') : undefined,
+        mutuallyExclusive,
         glossary: {
           id: glossaryData.id,
           type: 'glossary',
@@ -274,7 +276,7 @@ const AddGlossaryTerm = ({
             theme="primary"
             variant="contained"
             onClick={handleSave}>
-            Save
+            {t('label.save')}
           </Button>
         )}
       </>
@@ -284,14 +286,13 @@ const AddGlossaryTerm = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.configure-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </h6>
         <div className="tw-mb-5">
-          Every term in the glossary has a unique definition. Along with
-          defining the standard term for a concept, the synonyms as well as
-          related terms (for e.g., parent and child terms) can be specified.
-          References can be added to the assets related to the terms. New terms
-          can be added or updated to the Glossary. The glossary terms can be
-          reviewed by certain users, who can accept or reject the terms.
+          {t('message.configure-glossary-term-description')}
         </div>
       </>
     );
@@ -304,11 +305,15 @@ const AddGlossaryTerm = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.add-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </h6>
         <div className="tw-pb-3" data-testid="add-glossary-term">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
-              {requiredField('Name:')}
+              {requiredField(`${t('label.name')}:`)}
             </label>
 
             <input
@@ -316,16 +321,24 @@ const AddGlossaryTerm = ({
               data-testid="name"
               id="name"
               name="name"
-              placeholder="Name"
+              placeholder={t('label.name')}
               type="text"
               value={name}
               onChange={handleValidation}
             />
 
             {showErrorMsg.name
-              ? errorMsg('Glossary term name is required.')
+              ? errorMsg(
+                  t('message.field-text-is-required', {
+                    fieldText: `${t('label.glossary-term')} ${t('label.name')}`,
+                  })
+                )
               : showErrorMsg.invalidName
-              ? errorMsg('Glossary term name is invalid.')
+              ? errorMsg(
+                  t('message.field-text-is-invalid', {
+                    fieldText: `${t('label.glossary-term')} ${t('label.name')}`,
+                  })
+                )
               : null}
           </Field>
 
@@ -333,7 +346,7 @@ const AddGlossaryTerm = ({
             <label
               className="tw-block tw-form-label tw-mb-0"
               htmlFor="description">
-              {requiredField('Description:')}
+              {requiredField(`${t('label.description')}:`)}
             </label>
             <RichTextEditor
               data-testid="description"
@@ -341,12 +354,17 @@ const AddGlossaryTerm = ({
               readonly={!allowAccess}
               ref={markdownRef}
             />
-            {showErrorMsg.description && errorMsg('Description is required.')}
+            {showErrorMsg.description &&
+              errorMsg(
+                t('label.field-required', {
+                  field: t('label.description'),
+                })
+              )}
           </Field>
 
           <Field>
             <Space className="w-full" direction="vertical">
-              <label htmlFor="tags">Tags:</label>
+              <label htmlFor="tags">{t('label.tag-plural')}:</label>
               <AddTags
                 data-testid="tags"
                 setTags={(tag: EntityTags[]) => setTags(tag)}
@@ -356,7 +374,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              Synonyms:
+              {t('label.synonym-plural')}:
             </label>
 
             <input
@@ -371,18 +389,39 @@ const AddGlossaryTerm = ({
             />
           </Field>
 
-          <div data-testid="references">
-            <div className="tw-flex tw-items-center tw-mt-6">
-              <p className="w-form-label tw-mr-3">References</p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={addReferenceFields}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </div>
+          <div className="m-t-lg">
+            <Field>
+              <Space align="end">
+                <label
+                  className="tw-form-label m-b-0"
+                  data-testid="mutually-exclusive-label"
+                  htmlFor="mutuallyExclusive">
+                  {t('label.mutually-exclusive')}
+                </label>
+                <Switch
+                  checked={mutuallyExclusive}
+                  data-testid="mutually-exclusive-button"
+                  id="mutuallyExclusive"
+                  onChange={(value) => setMutuallyExclusive(value)}
+                />
+              </Space>
+            </Field>
+
+            <Field>
+              <Space align="end" data-testid="references">
+                <label className="tw-form-label m-b-0">
+                  {t('label.reference-plural')}
+                </label>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  size="x-small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={addReferenceFields}>
+                  <FontAwesomeIcon icon="plus" />
+                </Button>
+              </Space>
+            </Field>
 
             {references.map((value, i) => (
               <div className="tw-flex tw-items-center" key={i}>
@@ -392,7 +431,7 @@ const AddGlossaryTerm = ({
                       className="tw-form-inputs tw-form-inputs-padding"
                       id={`name-${i}`}
                       name="key"
-                      placeholder="Name"
+                      placeholder={t('label.name')}
                       type="text"
                       value={value.name}
                       onChange={(e) =>
@@ -405,7 +444,7 @@ const AddGlossaryTerm = ({
                       className="tw-form-inputs tw-form-inputs-padding"
                       id={`url-${i}`}
                       name="endpoint"
-                      placeholder="url"
+                      placeholder={t('label.url-lowercase')}
                       type="text"
                       value={value.endpoint}
                       onChange={(e) =>
@@ -425,7 +464,7 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt="delete"
+                    alt={t('label.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
                     width="16px"
@@ -434,13 +473,15 @@ const AddGlossaryTerm = ({
               </div>
             ))}
             {showErrorMsg.invalidReferences
-              ? errorMsg('Endpoints should be valid URL.')
+              ? errorMsg(t('message.valid-url-endpoint'))
               : null}
           </div>
 
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Related terms </p>
+              <p className="w-form-label tw-mr-3">
+                {t('label.related-term-plural')}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 size="x-small"
@@ -469,7 +510,9 @@ const AddGlossaryTerm = ({
           </Field>
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Reviewers </p>
+              <p className="w-form-label tw-mr-3">
+                {t('label.reviewer-plural')}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-reviewers"
@@ -505,7 +548,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="text"
               onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
             {getSaveButton()}
           </Field>

@@ -26,6 +26,7 @@ export type FormModalProp = {
   errorData?: FormErrorData;
   isSaveButtonDisabled?: boolean;
   visible: boolean;
+  showHiddenFields?: boolean;
 };
 export type FormRef = {
   fetchMarkDownData: () => string;

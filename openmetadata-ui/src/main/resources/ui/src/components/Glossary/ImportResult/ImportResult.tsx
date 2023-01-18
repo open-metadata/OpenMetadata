@@ -99,7 +99,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         },
       },
       {
-        title: t('label.synonyms'),
+        title: t('label.synonym-plural'),
         dataIndex: 'synonyms',
         key: 'synonyms',
         render: (synonyms: GlossaryCSVRecord['synonyms']) => {
