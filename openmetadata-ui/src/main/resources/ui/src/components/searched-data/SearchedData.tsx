@@ -46,7 +46,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   isFilterSelected,
   isSummaryPanelVisible,
   searchText,
-  selectedEntityName,
+  selectedEntityId,
   handleSummaryPanelDisplay,
 }) => {
   const highlightSearchResult = () => {
@@ -94,7 +94,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         <div className="tw-mb-3" key={index}>
           <TableDataCardV2
             className={classNames(
-              name === selectedEntityName && isSummaryPanelVisible
+              table.id === selectedEntityId && isSummaryPanelVisible
                 ? 'highlight-card'
                 : ''
             )}

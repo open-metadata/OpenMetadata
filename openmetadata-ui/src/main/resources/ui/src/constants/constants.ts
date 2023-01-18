@@ -114,6 +114,7 @@ export const LOG_ENTITY_TYPE = ':logEntityType';
 export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
+export const PLACEHOLDER_ACTION = ':action';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -209,6 +210,7 @@ export const ROUTES = {
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
+  GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,

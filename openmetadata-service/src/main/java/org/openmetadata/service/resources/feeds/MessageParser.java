@@ -101,13 +101,12 @@ public final class MessageParser {
         this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, arrayFieldName);
       } else if (fieldName != null) {
         this.fullyQualifiedFieldType = String.format("%s.%s", entityType, fieldName);
-        this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, fieldName);
-
         this.linkType = LinkType.ENTITY_REGULAR_FIELD;
+        this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, fieldName);
       } else {
+        this.linkType = LinkType.ENTITY;
         this.fullyQualifiedFieldType = entityType;
         this.fullyQualifiedFieldValue = entityFqn;
-        this.linkType = LinkType.ENTITY;
       }
     }
 
@@ -163,7 +162,7 @@ public final class MessageParser {
     public String toString() {
       return String.format(
           "EntityLink { type = %s, entityType = %s, entityFQN = %s, fieldName = %s, arrayFieldName = %s, arrayFieldValue = %s}",
-          linkType, entityType, entityType, fieldName, arrayFieldName, arrayFieldValue);
+          linkType, entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
     }
 
     @Override
