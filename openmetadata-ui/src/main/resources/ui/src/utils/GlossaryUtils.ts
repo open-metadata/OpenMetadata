@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
+import { isEmpty } from 'lodash';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';

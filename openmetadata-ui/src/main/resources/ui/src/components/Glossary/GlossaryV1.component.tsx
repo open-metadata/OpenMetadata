@@ -65,6 +65,7 @@ import './GlossaryV1.style.less';
 
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const { Title } = Typography;
@@ -567,6 +568,14 @@ const GlossaryV1 = ({
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
+        />
+      )}
+      {isExportAction && (
+        <ExportGlossaryModal
+          glossaryName={selectedData.name}
+          isModalOpen={isExportAction}
+          onCancel={handleCancelGlossaryExport}
+          onOk={handleCancelGlossaryExport}
         />
       )}
     </div>
