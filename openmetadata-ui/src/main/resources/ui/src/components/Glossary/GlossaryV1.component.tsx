@@ -187,7 +187,7 @@ const GlossaryV1 = ({
         return {
           name: d,
           url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
-          activeTitle: isLink,
+          activeTitle: !isLink,
         };
       });
       setBreadcrumb(newData);

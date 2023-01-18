@@ -22,6 +22,7 @@ const markdownButton = (): HTMLButtonElement => {
 
   button.className = 'toastui-editor-toolbar-icons markdown-icon';
   button.style.backgroundImage = 'none';
+  button.type = 'button';
   button.style.margin = '0';
   button.style.marginTop = '4px';
   button.innerHTML = `
