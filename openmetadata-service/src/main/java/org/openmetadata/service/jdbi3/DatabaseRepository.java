@@ -49,7 +49,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void setFullyQualifiedName(Database database) {
-    database.setFullyQualifiedName(FullyQualifiedName.add(database.getService().getName(), database.getName()));
+    database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
   }
 
   @Transaction

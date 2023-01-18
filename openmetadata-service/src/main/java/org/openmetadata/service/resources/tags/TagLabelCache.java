@@ -128,8 +128,9 @@ public class TagLabelCache {
 
   /** Returns true if the parent of the tag label is mutually exclusive */
   public boolean mutuallyExclusive(TagLabel label) {
-    String parentFqn = FullyQualifiedName.getParent(label.getTagFQN());
-    boolean rootParent = FullyQualifiedName.split(parentFqn).length == 1;
+    String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());
+    String parentFqn = FullyQualifiedName.getParent(fqnParts);
+    boolean rootParent = fqnParts.length == 2;
     if (label.getSource() == TagSource.TAG) {
       return rootParent
           ? getClassification(parentFqn).getMutuallyExclusive()
@@ -165,7 +166,7 @@ public class TagLabelCache {
     @Override
     public GlossaryTerm load(@CheckForNull String glossaryTermName) throws IOException {
       GlossaryTerm glossaryTerm = GLOSSARY_TERM_REPOSITORY.getByName(null, glossaryTermName, Fields.EMPTY_FIELDS);
-      LOG.info("Loaded user {}:{}", glossaryTerm.getName(), glossaryTerm.getId());
+      LOG.info("Loaded glossaryTerm {}:{}", glossaryTerm.getName(), glossaryTerm.getId());
       return glossaryTerm;
     }
   }
@@ -174,7 +175,7 @@ public class TagLabelCache {
     @Override
     public Glossary load(@CheckForNull String glossaryName) throws IOException {
       Glossary glossary = GLOSSARY_REPOSITORY.getByName(null, glossaryName, Fields.EMPTY_FIELDS);
-      LOG.info("Loaded user {}:{}", glossary.getName(), glossary.getId());
+      LOG.info("Loaded glossary {}:{}", glossary.getName(), glossary.getId());
       return glossary;
     }
   }

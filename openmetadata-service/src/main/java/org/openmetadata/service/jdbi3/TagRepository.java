@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -76,8 +77,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void setFullyQualifiedName(Tag entity) {
-    EntityUtil.setFullyQualifiedName(entity);
+  public void setFullyQualifiedName(Tag tag) {
+    if (tag.getParent() == null) {
+      tag.setFullyQualifiedName(FullyQualifiedName.build(tag.getClassification().getName(), tag.getName()));
+    } else {
+      tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
+    }
   }
 
   @Override
