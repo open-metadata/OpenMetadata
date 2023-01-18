@@ -94,7 +94,6 @@ jobs:
           distribution: 'adopt'
 
       - name: Generating Data Models
-        if: ${{ steps.npm-cache.outputs.cache-hit != 'true'}}
         run: |
           sudo make install_antlr_cli
           make install_dev generatex
