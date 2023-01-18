@@ -4,12 +4,14 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get update \
-    && apt-get install -y build-essential \
+    && apt-get install -y alien \
+    build-essential \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
     gcc \
     gnupg \
+    libaio1 \
     libevent-dev \
     libffi-dev \
     libpq-dev \
@@ -25,22 +27,22 @@ RUN apt-get update \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
+    unzip \
     vim \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-    && rm -rf /var/lib/apt/lists/* \
-
-# Oracle instant client for thick mode
-# https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#enablingthick
-RUN apt-get update; \
-  apt-get install libaio1 alien unzip -y;
+    && rm -rf /var/lib/apt/lists/*
 
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
- then wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip; \
- else wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip ; fi
+ then \
+ wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ else \
+ wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ fi
 
-RUN unzip -d /instantclient -j /oracle-instantclient.zip
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Security patches for base image

@@ -2,13 +2,15 @@ FROM python:3.9-buster
 
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get update \
-    && apt-get install -y build-essential \
+    && apt-get install -y alien \
+    build-essential \
     ca-certificates \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
     gcc \
     gnupg \
+    libaio1 \
     libevent-dev \
     libffi-dev \
     libpq-dev \
@@ -23,6 +25,7 @@ RUN apt-get update \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
+    unzip \
     wget --no-install-recommends
 
 # Prep to install msodbcsql18
@@ -39,18 +42,17 @@ RUN apt-get update && \
     cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
     cd librdkafka && git checkout tags/v1.9.0 && \
     ./configure && make && make install && \
-    cd ../ && rm -rf librdkafka \
-
-# Oracle instant client for thick mode
-# https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#enablingthick
-RUN apt-get update; \
-  apt-get install libaio1 alien unzip -y;
+    cd ../ && rm -rf librdkafka
 
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
- then wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip; \
- else wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip ; fi
+ then \
+ wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ else \
+ wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ fi
 
-RUN unzip -d /instantclient -j /oracle-instantclient.zip
 ENV LD_LIBRARY_PATH=/instantclient
 
 WORKDIR ingestion/
