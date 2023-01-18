@@ -196,7 +196,7 @@ class QuicksightSource(DashboardServiceSource):
         """
         Get lineage between dashboard and data sources
         """
-        try:  # pylint: disable=too-many-nested-blocks
+        try:
             list_data_set_func = lambda kwargs: self.client.list_data_sets(  # pylint: disable=unnecessary-lambda-assignment
                 **kwargs
             )
