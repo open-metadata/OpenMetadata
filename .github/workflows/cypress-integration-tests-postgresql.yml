@@ -92,6 +92,7 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
+
       - name: Generating Data Models
         run: |
           sudo make install_antlr_cli
