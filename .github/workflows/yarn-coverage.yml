@@ -54,14 +54,43 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           # Disabling shallow clone is recommended for improving relevancy of reporting
           fetch-depth: 0
+
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: pwsh
+        run: echo "dir=$(npm config get cache)" >> ${env:GITHUB_OUTPUT}
+
+      - uses: actions/cache@v3
+        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Use Node.js ${{ matrix.node-version }}
+        if: steps.npm-cache.outputs.cache-hit != 'true'
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install Antlr4 CLI
         run: |
           sudo make install_antlr_cli
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
       - name: Install Yarn Packages
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install
       - name: Run Coverage
