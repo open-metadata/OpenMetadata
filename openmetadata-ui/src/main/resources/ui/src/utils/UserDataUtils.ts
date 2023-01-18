@@ -151,7 +151,7 @@ export const searchFormattedUsersAndTeams = (
   from = 1
 ): Promise<SearchedUsersAndTeams> => {
   return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const teamQuery = `*${searchQuery}* AND teamType:Group`;
+    const teamQuery = `${searchQuery} AND teamType:Group`;
     const promises = [
       getSearchedUsers(searchQuery, from),
       getSearchedTeams(teamQuery, from),
