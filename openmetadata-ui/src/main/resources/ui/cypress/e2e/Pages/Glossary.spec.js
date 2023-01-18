@@ -39,6 +39,7 @@ const visitGlossaryTermPage = (termName) => {
 
 const createGlossaryTerm = (term) => {
   cy.get('[data-testid="breadcrumb-link"]')
+    .scrollIntoView()
     .should('exist')
     .and('be.visible')
     .contains(NEW_GLOSSARY.name)
@@ -226,6 +227,7 @@ describe('Glossary page should work properly', () => {
     cy.wait('@createGlossary').then(() => {
       cy.url().should('include', '/glossary/');
       cy.get('[data-testid="breadcrumb-link"]')
+        .scrollIntoView()
         .should('exist')
         .and('be.visible')
         .within(() => {
