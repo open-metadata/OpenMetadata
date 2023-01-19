@@ -65,6 +65,8 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
             )
         }
 
-        assert set(validation_enum_registry.registry.keys()).issubset(
+        registry_test_name = set(test_name for test_name in validation_enum_registry.registry.keys())
+
+        assert registry_test_name.issubset(
             test_definition_names
         )
