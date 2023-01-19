@@ -32,8 +32,10 @@ def build_query_filter(
     """Dynamically build query filter
 
     Args:
-        filters (List[Tuple[Column, str, Any]]): list of tuples representing filters
-        or_filter (bool, optional): whether to perform an OR or AND condition. Defaults to False.
+        filters (List[Tuple[Column, str, Any]]): list of tuples representing filters.
+            The first value is the column, the second the comparison operators (e.g. "ge", "lt", "eq", "in", etc.) and
+            the last value the comparison value. e.g. (Column("foo"), "ge", 1) will produce "foo >= 1".
+        or_filter (bool, optional): whether to perform an OR or AND condition. Defaults to False (i.e. AND).
 
     Returns:
         BinaryExpression: a filter pattern

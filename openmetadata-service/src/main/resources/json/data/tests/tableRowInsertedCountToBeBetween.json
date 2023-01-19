@@ -30,7 +30,7 @@
       {
         "name": "rangeType",
         "displayName": "Range Type",
-        "description": "One of 'HOUR', 'DAY', 'WEEK', 'MONTH'.",
+        "description": "One of 'HOUR', 'DAY', 'MONTH', 'YEAR'",
         "dataType": "STRING",
         "required": true
       },

@@ -13,27 +13,27 @@
 shared test cases
 """
 
+import os
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from uuid import uuid4
-import os
 
 import pytest
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 
 Base = declarative_base()
 
-TEST_CASE_NAME="my_test_case"
+TEST_CASE_NAME = "my_test_case"
 ENTITY_LINK_NICKNAME = "<#E::table::service.db.users::columns::nickname>"
 ENTITY_LINK_FNAME = "<#E::table::service.db.users::columns::first name>"
 ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
@@ -54,7 +54,8 @@ TABLE = Table(
         Column(name="inserted_date", dataType=DataType.DATE),  # type: ignore
     ],
     database=EntityReference(id=uuid4(), name="db", type="database"),  # type: ignore
-) # type: ignore
+)  # type: ignore
+
 
 class User(Base):
     __tablename__ = "users"
@@ -65,6 +66,7 @@ class User(Base):
     nickname = sqa.Column(sqa.String(256))
     age = sqa.Column(sqa.Integer)
     inserted_date = sqa.Column(sqa.DATE)
+
 
 @pytest.fixture
 def create_sqlite_table():
@@ -120,7 +122,7 @@ def create_sqlite_table():
         ]
         session.add_all(data)
         session.commit()
-    
+
     yield runner
     # clean up
     User.__table__.drop(bind=engine)
@@ -133,13 +135,14 @@ def test_case_column_value_length_to_be_between():
     return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_NICKNAME,
-        testSuite=EntityReference(id=uuid4(), type="TestSuite"), # type: ignore
-        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"), # type: ignore
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="minLength", value="1"),
             TestCaseParameterValue(name="maxLength", value="10"),
         ],
-    ) # type: ignore
+    )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_length_to_be_between_col_space():
@@ -155,6 +158,7 @@ def test_case_column_value_length_to_be_between_col_space():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_value_length_to_be_between_no_min():
     """Test case for test column_value_length_to_be_between"""
@@ -168,78 +172,84 @@ def test_case_column_value_length_to_be_between_no_min():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_value_max_to_be_between():
     """Test case for test column_value_max_to_be_between"""
     return TestCase(
-            name=TEST_CASE_NAME,
-            entityLink=ENTITY_LINK_AGE,
-            testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-            parameterValues=[
-                TestCaseParameterValue(name="minValueForMaxInCol", value="1"),
-                TestCaseParameterValue(name="maxValueForMaxInCol", value="10"),
-            ],
-        )  # type: ignore
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMaxInCol", value="1"),
+            TestCaseParameterValue(name="maxValueForMaxInCol", value="10"),
+        ],
+    )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_max_to_be_between_no_min():
     """Test case for test column_value_max_to_be_between_no_min"""
-    return  TestCase(
-            name=TEST_CASE_NAME,
-            entityLink=ENTITY_LINK_AGE,
-            testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-            parameterValues=[
-                TestCaseParameterValue(name="maxValueForMaxInCol", value="10"),
-            ],
-        )  # type: ignore
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="maxValueForMaxInCol", value="10"),
+        ],
+    )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_mean_to_be_between():
     """Test case for test column_value_mean_to_be_between"""
-    return  TestCase(
-            name=TEST_CASE_NAME,
-            entityLink=ENTITY_LINK_AGE,
-            testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-            parameterValues=[
-                TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
-                TestCaseParameterValue(name="maxValueForMeanInCol", value="10"),
-            ],
-        )  # type: ignore
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
+            TestCaseParameterValue(name="maxValueForMeanInCol", value="10"),
+        ],
+    )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_mean_to_be_between_no_max():
     """Test case for test column_value_mean_to_be_between"""
-    return  TestCase(
-            name=TEST_CASE_NAME,
-            entityLink=ENTITY_LINK_AGE,
-            testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-            parameterValues=[
-                TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
-            ],
-        )  # type: ignore
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
+        ],
+    )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_median_to_be_between():
     """Test case for test column_value_median_to_be_between"""
-    return  TestCase(
-            name=TEST_CASE_NAME,
-            entityLink=ENTITY_LINK_AGE,
-            testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-            parameterValues=[
-                TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
-                TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
-            ],
-        )  # type: ignore
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
+            TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
+        ],
+    )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_min_to_be_between():
     """Test case for test column_value_median_to_be_between"""
-    return  TestCase(
+    return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_AGE,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
@@ -250,10 +260,11 @@ def test_case_column_value_min_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_value_min_to_be_between_no_min():
     """Test case for test column_value_median_to_be_between"""
-    return  TestCase(
+    return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_AGE,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
@@ -262,6 +273,7 @@ def test_case_column_value_min_to_be_between_no_min():
             TestCaseParameterValue(name="maxValueForMinInCol", value="40"),
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_stddev_to_be_between():
@@ -277,6 +289,7 @@ def test_case_column_value_stddev_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_value_stddev_to_be_between_no_min():
     """Test case for test column_value_median_to_be_between"""
@@ -289,6 +302,7 @@ def test_case_column_value_stddev_to_be_between_no_min():
             TestCaseParameterValue(name="maxValueForStdDevInCol", value="40"),
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_value_in_set():
@@ -303,6 +317,7 @@ def test_case_column_value_in_set():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_values_missing_count_to_be_equal():
     """Test case for test column_value_median_to_be_between"""
@@ -315,6 +330,7 @@ def test_case_column_values_missing_count_to_be_equal():
             TestCaseParameterValue(name="missingCountValue", value="10"),
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_values_missing_count_to_be_equal_missing_valuesl():
@@ -330,6 +346,7 @@ def test_case_column_values_missing_count_to_be_equal_missing_valuesl():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_values_not_in_set():
     """Test case for test column_value_median_to_be_between"""
@@ -342,6 +359,7 @@ def test_case_column_values_not_in_set():
             TestCaseParameterValue(name="forbiddenValues", value="['John']"),
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_sum_to_be_between():
@@ -357,6 +375,7 @@ def test_case_column_sum_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_values_to_be_between():
     """Test case for test column_value_median_to_be_between"""
@@ -371,6 +390,7 @@ def test_case_column_values_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_values_to_be_not_null():
     """Test case for test column_value_median_to_be_between"""
@@ -381,6 +401,7 @@ def test_case_column_values_to_be_not_null():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_values_to_be_unique():
     """Test case for test column_value_median_to_be_between"""
@@ -390,6 +411,7 @@ def test_case_column_values_to_be_unique():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_values_to_match_regex():
@@ -404,6 +426,7 @@ def test_case_column_values_to_match_regex():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_column_values_to_not_match_regex():
     """Test case for test column_value_median_to_be_between"""
@@ -416,6 +439,7 @@ def test_case_column_values_to_not_match_regex():
             TestCaseParameterValue(name="forbiddenRegex", value="X%"),
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_table_column_count_to_be_between():
@@ -431,6 +455,7 @@ def test_case_table_column_count_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_column_count_to_equal():
     """Test case for test column_value_median_to_be_between"""
@@ -442,6 +467,7 @@ def test_case_table_column_count_to_equal():
         parameterValues=[TestCaseParameterValue(name="columnCount", value="8")],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_column_name_to_exist():
     """Test case for test column_value_median_to_be_between"""
@@ -452,6 +478,7 @@ def test_case_table_column_name_to_exist():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[TestCaseParameterValue(name="columnName", value="id")],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_to_match_set():
@@ -465,6 +492,7 @@ def test_case_column_to_match_set():
             TestCaseParameterValue(name="columnNames", value="id,name,nickname")
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_column_to_match_set_ordered():
@@ -482,6 +510,7 @@ def test_case_column_to_match_set_ordered():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_custom_sql_query():
     """Test case for test column_value_median_to_be_between"""
@@ -496,6 +525,7 @@ def test_case_table_custom_sql_query():
             ),
         ],
     )  # type: ignore
+
 
 @pytest.fixture
 def test_case_table_custom_sql_query_success():
@@ -512,6 +542,7 @@ def test_case_table_custom_sql_query_success():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_row_count_to_be_between():
     """Test case for test column_value_median_to_be_between"""
@@ -526,6 +557,7 @@ def test_case_table_row_count_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_row_count_to_be_equal():
     """Test case for test column_value_median_to_be_between"""
@@ -536,5 +568,22 @@ def test_case_table_row_count_to_be_equal():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="value", value="10"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_row_inserted_count_to_be_between():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="min", value="3"),
+            TestCaseParameterValue(name="columnName", value="inserted_date"),
+            TestCaseParameterValue(name="rangeType", value="DAY"),
+            TestCaseParameterValue(name="rangeInterval", value="1"),
         ],
     )  # type: ignore
