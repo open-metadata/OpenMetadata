@@ -11,31 +11,6 @@
       "type": "string",
       "enum": ["Superset"],
       "default": "Superset"
-    },
-    "apiConnection":{
-      "title": "API Connection",
-      "type": "object",
-      "properties": {
-        "provider": {
-          "title": "Provider",
-          "description": "Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.",
-          "type": "string",
-          "default": "db",
-          "enum": ["db","ldap"]
-        },
-        "username": {
-          "title": "Username",
-          "description": "Username for Superset.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Password for Superset.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["username","password","provider"]
     }
   },
   "properties": {
@@ -58,7 +33,7 @@
       "description": "Choose between API or database connection fetch metadata from superset.",
       "oneOf": [
         {
-          "$ref": "#/definitions/apiConnection"
+          "$ref": "../../../utils/supersetApiConnection.json"
         },
         {
           "$ref": "../database/postgresConnection.json"

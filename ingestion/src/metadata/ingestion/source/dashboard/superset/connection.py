@@ -17,7 +17,6 @@ from typing import Union
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    ApiConnection,
     SupersetConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
@@ -25,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
+)
+from metadata.generated.schema.entity.utils.supersetApiConnection import (
+    SupersetAPIConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
@@ -43,7 +45,7 @@ def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
     """
     Create connection
     """
-    if isinstance(connection.connection, ApiConnection):
+    if isinstance(connection.connection, SupersetAPIConnection):
         return SupersetAPIClient(connection)
     if isinstance(connection.connection, PostgresConnection):
         return pg_get_connection(connection=connection.connection)

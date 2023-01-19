@@ -12,11 +12,13 @@
 Superset source module
 """
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    ApiConnection,
     SupersetConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.utils.supersetApiConnection import (
+    SupersetAPIConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -39,6 +41,6 @@ class SupersetSource:
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"
             )
-        if isinstance(connection.connection, ApiConnection):
+        if isinstance(connection.connection, SupersetAPIConnection):
             return SupersetAPISource(config, metadata_config)
         return SupersetDBSource(config, metadata_config)
