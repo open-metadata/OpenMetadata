@@ -609,13 +609,12 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        ellipsis: true,
-        width: 220,
+        width: 300,
         render: (name: Column['name'], record: Column) => (
-          <Popover destroyTooltipOnHide content={name} trigger="hover">
+          <div className="d-flex break-word">
             {prepareConstraintIcon(name, record.constraint, tableConstraints)}
-            <span>{name}</span>
-          </Popover>
+            <span className="m-l-xss">{name}</span>
+          </div>
         ),
       },
       {
