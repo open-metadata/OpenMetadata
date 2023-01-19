@@ -109,6 +109,7 @@ class CommonDbSourceService(
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
+        self._connection = None  # Lazy init as well
 
     def get_database_names(self) -> Iterable[str]:
         """
