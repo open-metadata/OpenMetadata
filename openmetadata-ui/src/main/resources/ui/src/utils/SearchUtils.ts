@@ -27,11 +27,7 @@ export const getSearchAPIQueryParams = (
   trackTotalHits = false
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
-  const query = queryString
-    ? queryString.includes(':')
-      ? queryString
-      : `*${queryString}*`
-    : WILD_CARD_CHAR;
+  const query = queryString ? queryString : WILD_CARD_CHAR;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),
