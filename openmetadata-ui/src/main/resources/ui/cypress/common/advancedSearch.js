@@ -47,9 +47,9 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchTerm1: 'Aaron',
-    searchCriteriaFirstGroup: 'Aaron Johnson',
-    responseValueFirstGroup: `"displayName":"Aaron Johnson"`,
+    searchTerm1: 'admin',
+    searchCriteriaFirstGroup: 'admin',
+    responseValueFirstGroup: `"displayName":"admin"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
     responseValueSecondGroup: 'Aaron Singh',
@@ -246,6 +246,35 @@ export const checkmust_notPaths = (
 };
 
 export const addOwner = (searchTerm, ownerName) => {
+  cy.get(
+    '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
+  )
+    .should('exist')
+    .and('be.visible')
+    .click();
+
+  cy.get('[data-testid="user-name"]').should('exist').and('be.visible').click();
+
+  verifyResponseStatusCode('@userProfile', 200);
+
+  cy.get('[data-testid="hiden-layer"]').should('exist').click();
+
+  cy.get('[data-testid="edit-displayName"]')
+    .should('exist')
+    .and('be.visible')
+    .click();
+
+  cy.get('[data-testid="displayName"]')
+    .should('exist')
+    .and('be.visible')
+    .clear()
+    .type(ownerName);
+
+  cy.get('[data-testid="save-displayName"]')
+    .should('exist')
+    .and('be.visible')
+    .click();
+
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
     .and('be.visible')
