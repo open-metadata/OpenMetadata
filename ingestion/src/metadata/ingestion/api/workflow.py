@@ -132,7 +132,11 @@ class Workflow(WorkflowStatusMixin):
             processor_class = import_processor_class(processor_type=processor_type)
             processor_config = self.config.processor.dict().get("config", {})
             self.processor: Processor = processor_class.create(
-                processor_config, metadata_config
+                processor_config,
+                metadata_config,
+                connection_type=str(
+                    self.config.source.serviceConnection.__root__.config.type.value
+                ),
             )
             logger.debug(
                 f"Processor Type: {processor_type}, {processor_class} configured"
