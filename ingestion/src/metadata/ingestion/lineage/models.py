@@ -14,6 +14,9 @@ Models related to lineage parsing
 from enum import Enum
 from typing import Dict
 
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaType,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigqueryType,
 )
@@ -76,7 +79,7 @@ class Dialect(Enum):
 
 
 MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
-    str(MySQLType.Mysql.value): Dialect.ATHENA,
+    str(AthenaType.Athena.value): Dialect.ATHENA,
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
     str(Db2Type.Db2.value): Dialect.DB2,
