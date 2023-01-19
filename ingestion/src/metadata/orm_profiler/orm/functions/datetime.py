@@ -91,7 +91,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DateAddFn, Dialects.SQLite)
-def _(elements, compiler, **kwargs):
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     interval = elements.clauses.clauses[0].value
     interval_unit = elements.clauses.clauses[1].text
     return f"DATE({func.current_date()}, '-{interval} {interval_unit}')"
@@ -151,7 +151,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DatetimeAddFn, Dialects.SQLite)
-def _(elements, compiler, **kwargs):
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     interval = elements.clauses.clauses[0].value
     interval_unit = elements.clauses.clauses[1].text
     return f"DATE({func.current_timestamp()}, '-{interval} {interval_unit}')"

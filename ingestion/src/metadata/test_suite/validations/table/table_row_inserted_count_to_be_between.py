@@ -83,7 +83,10 @@ def _(
     )
 
     if any(var is None for var in [column_name, range_type, range_interval]):
-        result = f"Error computing {test_case.name} for {runner.table.__tablename__}: No value found for columnName, rangeType or rangeInterval"
+        result = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__}:"
+            " No value found for columnName, rangeType or rangeInterval"
+        )
         logger.debug(traceback.format_exc())
         logger.warning(result)
         return build_test_case_result(
@@ -154,7 +157,9 @@ def _(
 
 
 @table_row_inserted_count_to_be_between.register
-def _(runner: DataFrame, test_case: TestCase, execution_date: Union[datetime, float]):
+def _(
+    runner: DataFrame, test_case: TestCase, execution_date: Union[datetime, float]
+):  # pylint: disable=unused-argument
     result = "Test is currently not supported for datalake sources."
     return build_test_case_result(
         execution_date,
