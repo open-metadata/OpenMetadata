@@ -106,9 +106,9 @@ class MetabaseSource(DashboardServiceSource):
             f"{replace_special_with(raw=dashboard_details['name'].lower(), replacement='-')}"
         )
         yield CreateDashboardRequest(
-            name=dashboard_details["name"],
+            name=dashboard_details["id"],
             dashboardUrl=dashboard_url,
-            displayName=dashboard_details["name"],
+            displayName=dashboard_details.get("name"),
             description=dashboard_details.get("description", ""),
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
@@ -150,8 +150,8 @@ class MetabaseSource(DashboardServiceSource):
                     )
                     continue
                 yield CreateChartRequest(
-                    name=chart_details["name"],
-                    displayName=chart_details["name"],
+                    name=chart_details["id"],
+                    displayName=chart_details.get("name"),
                     description=chart_details.get("description", ""),
                     chartType=get_standard_chart_type(
                         str(chart_details["display"])
