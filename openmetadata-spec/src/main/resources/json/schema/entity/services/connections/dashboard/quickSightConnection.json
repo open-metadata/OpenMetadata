@@ -9,7 +9,9 @@
     "quickSightType": {
       "description": "QuickSight service type",
       "type": "string",
-      "enum": ["QuickSight"],
+      "enum": [
+        "QuickSight"
+      ],
       "default": "QuickSight"
     }
   },
@@ -29,11 +31,29 @@
       "description": "AWS Account ID",
       "type": "string"
     },
+    "identityType": {
+      "title": "Identity Type",
+      "description": "The authentication method that the user uses to sign in.",
+      "type": "string",
+      "enum": [
+        "IAM",
+        "QUICKSIGHT",
+        "ANONYMOUS"
+      ],
+      "default": "IAM"
+    },
+    "namespace": {
+      "description": "The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )",
+      "type": "string"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
-  "required": ["awsConfig", "awsAccountId"]
+  "required": [
+    "awsConfig",
+    "awsAccountId"
+  ]
 }

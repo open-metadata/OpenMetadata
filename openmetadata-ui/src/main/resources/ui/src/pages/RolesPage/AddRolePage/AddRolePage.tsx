@@ -201,7 +201,9 @@ const AddRolePage = () => {
 
         <div className="m-t-xlg p-l-lg w-max-400">
           <Typography.Paragraph className="text-base font-medium">
-            {t('label.add-role')}
+            {t('label.add-entity', {
+              entity: t('label.role'),
+            })}
           </Typography.Paragraph>
           <Typography.Text>{t('message.add-role-message')}</Typography.Text>
         </div>

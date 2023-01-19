@@ -235,4 +235,33 @@ describe('Test User Component', () => {
 
     expect(inheritedRoles).toBeInTheDocument();
   });
+
+  it('MyData tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users
+        userData={mockUserData}
+        {...mockProp}
+        isUserEntitiesLoading
+        tab="mydata"
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
+  });
+
+  it('Following tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
+  });
 });

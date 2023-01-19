@@ -32,12 +32,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
-from ....tests.unit.source.test_bigquery import MOCK_GET_SOURCE_CONNECTION
-
 """
 Check Partitioned Table in Profiler Workflow
 """
-
+MOCK_GET_SOURCE_CONNECTION = "XXXXX-XXXX-XXXXX"
 mock_bigquery_config = {
     "source": {
         "type": "bigquery",

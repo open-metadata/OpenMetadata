@@ -39,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
@@ -117,6 +118,7 @@ class CommonDbSourceService(
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
+        self._connection = None  # Lazy init as well
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -127,8 +129,11 @@ class CommonDbSourceService(
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
+        custom_database_name = self.service_connection.__dict__.get("databaseName")
 
-        database_name = self.service_connection.__dict__.get("database", "default")
+        database_name = self.service_connection.__dict__.get(
+            "database", custom_database_name or "default"
+        )
         # By default, set the inspector on the created engine
         self.inspector = inspect(self.engine)
         yield database_name
@@ -416,7 +421,9 @@ class CommonDbSourceService(
             )
 
             try:
-                lineage_parser = LineageParser(view_definition)
+                connection_type = str(self.service_connection.type.value)
+                dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+                lineage_parser = LineageParser(view_definition, dialect)
                 if lineage_parser.source_tables and lineage_parser.target_tables:
                     yield from get_lineage_by_query(
                         self.metadata,
@@ -424,6 +431,7 @@ class CommonDbSourceService(
                         service_name=self.context.database_service.name.__root__,
                         database_name=db_name,
                         schema_name=schema_name,
+                        dialect=dialect,
                     ) or []
 
                 else:
@@ -434,6 +442,7 @@ class CommonDbSourceService(
                         database_name=db_name,
                         schema_name=schema_name,
                         query=view_definition,
+                        dialect=dialect,
                     ) or []
             except Exception as exc:
                 logger.debug(traceback.format_exc())

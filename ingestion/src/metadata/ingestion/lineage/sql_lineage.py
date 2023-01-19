@@ -22,6 +22,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -325,6 +326,7 @@ def get_lineage_by_query(
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
+    dialect: Dialect,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -334,7 +336,7 @@ def get_lineage_by_query(
 
     try:
         logger.debug(f"Running lineage with query: {query}")
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(query, dialect)
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -387,6 +389,7 @@ def get_lineage_via_table_entity(
     schema_name: str,
     service_name: str,
     query: str,
+    dialect: Dialect,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """Get lineage from table entity
 
@@ -397,6 +400,7 @@ def get_lineage_via_table_entity(
         schema_name (str): name of the schema
         service_name (str): name of the service
         query (str): query used for lineage
+        dialect (str): dialect used for lineage
 
     Returns:
         Optional[Iterator[AddLineageRequest]]
@@ -408,7 +412,7 @@ def get_lineage_via_table_entity(
 
     try:
         logger.debug(f"Getting lineage via table entity using query: {query}")
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(query, dialect)
         to_table_name = table_entity.name.__root__
 
         for from_table_name in lineage_parser.source_tables:

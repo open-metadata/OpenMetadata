@@ -118,7 +118,7 @@ with openmetadata/ingestion docker image which will be used with docker compose 
 - There is no change or effect with docker installation
 
 - This is a breaking change if you are using a custom openmetadata-dependencies kubernetes helm chart values file.
-You will need to manually update the airflow image and tag with openmetadata/ingestion:0.12.1
+You will need to manually update the airflow image and tag with openmetadata/ingestion:0.13.1
 
 ```yaml
 ...
@@ -126,17 +126,17 @@ airflow:
   airflow:
     image:
       repository: openmetadata/ingestion
-      tag: 0.12.1
+      tag: 0.13.1
       pullPolicy: "IfNotPresent"
   ...
 ```
 
 <p>
-If you are extending openmetadata/airflow docker image with 0.12.0 release, you can safely replace that with openmetadata/ingestion:0.12.1 Docker Image.
+If you are extending openmetadata/airflow docker image with 0.13.1 release, you can safely replace that with openmetadata/ingestion:0.13.1 Docker Image.
 </p>
 
 ```Dockerfile
-FROM openmetadata/ingestion:0.12.1
+FROM openmetadata/ingestion:0.13.1
 USER airflow
 ...
 ```
