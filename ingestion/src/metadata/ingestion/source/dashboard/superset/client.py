@@ -55,10 +55,10 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def _login_request(self) -> str:
         auth_request = {
-            "username": self.service_connection.username,
-            "password": self.service_connection.password.get_secret_value(),
+            "username": self.service_connection.connection.username,
+            "password": self.service_connection.connection.password.get_secret_value(),
             "refresh": True,
-            "provider": self.service_connection.provider,
+            "provider": self.service_connection.connection.provider.value,
         }
         return json.dumps(auth_request)
 
