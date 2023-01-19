@@ -9,20 +9,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-To be deprecated https://github.com/open-metadata/OpenMetadata/issues/7960
+SQL Queries used during ingestion
 """
-from typing import Optional
 
-from pydantic import BaseModel
+ORACLE_ALL_TABLE_COMMENTS = """
+SELECT 
+	comments table_comment,
+	table_name,
+	owner "schema" 	
+FROM all_tab_comments
+where comments is not null and owner not in ('SYSTEM', 'SYS')
+"""
 
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.table import Table
 
-
-class OMetaDatabaseAndTable(BaseModel):
-    database_schema: DatabaseSchema
-    database: Database
-    table: Table
-    location: Optional[Location]
+ORACLE_ALL_VIEW_DEFINITIONS = """
+SELECT 
+	view_name, 
+	owner "schema",
+	text view_def 
+FROM all_views 
+where text is not null and owner not in ('SYSTEM', 'SYS')
+"""

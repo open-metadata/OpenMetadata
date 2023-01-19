@@ -45,6 +45,7 @@ export interface GetInfoElementsProps {
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   deleted?: boolean;
+  allowTeamOwner?: boolean;
 }
 
 const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
@@ -80,6 +81,7 @@ const EntitySummaryDetails = ({
   removeTier,
   currentOwner,
   deleted = false,
+  allowTeamOwner = true,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
@@ -360,6 +362,7 @@ const EntitySummaryDetails = ({
         </>
       )}
       <OwnerWidgetWrapper
+        allowTeamOwner={allowTeamOwner}
         currentUser={currentOwner}
         hideWidget={() => setShow(false)}
         removeOwner={removeOwner}

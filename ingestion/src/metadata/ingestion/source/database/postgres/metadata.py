@@ -17,6 +17,7 @@ from typing import Iterable, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
+from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import String
 
@@ -49,10 +50,18 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
+    POSTGRES_TABLE_COMMENTS,
+    POSTGRES_VIEW_DEFINITIONS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_view_definitions,
+    get_table_comment_wrapper,
+    get_view_definition_wrapper,
+)
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -91,6 +100,40 @@ class POLYGON(String):
 
 
 ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
+
+
+@reflection.cache
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=POSTGRES_TABLE_COMMENTS,
+    )
+
+
+PGDialect.get_all_table_comments = get_all_table_comments
+PGDialect.get_table_comment = get_table_comment
+
+
+@reflection.cache
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=POSTGRES_VIEW_DEFINITIONS,
+    )
+
+
+PGDialect.get_view_definition = get_view_definition
+PGDialect.get_all_view_definitions = get_all_view_definitions
 
 PGDialect.ischema_names = ischema_names
 
@@ -184,20 +227,6 @@ class PostgresSource(CommonDbSourceService):
             )
             return True, partition_details
         return False, None
-
-    def type_of_column_name(self, sa_type, table_name: str, column_name: str):
-        cur = self.engine.cursor()
-        schema_table = table_name.split(".")
-        cur.execute(
-            """select data_type, udt_name
-               from information_schema.columns
-               where table_schema = %s and table_name = %s and column_name = %s""",
-            (schema_table[0], schema_table[1], column_name),
-        )
-        pgtype = cur.fetchone()[1]
-        if pgtype in ("geometry", "geography"):
-            return "GEOGRAPHY"
-        return sa_type
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
