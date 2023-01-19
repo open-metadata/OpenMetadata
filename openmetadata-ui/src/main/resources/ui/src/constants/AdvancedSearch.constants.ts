@@ -144,15 +144,19 @@ export const autocomplete: (args: {
         fetchSource: isUserAndTeamSearchIndex,
       }).then((resp) => {
         return {
-          values: uniq(resp).map(({ text, _source }) => ({
-            value: text,
-            title:
-              // set displayName or name if index is type of user or team and both.
-              // else set the text
+          values: uniq(resp).map(({ text, _source }) => {
+            // set displayName or name if index is type of user or team and both.
+            // else set the text
+            const name =
               isUserAndTeamSearchIndex && !isUndefined(_source)
                 ? _source?.displayName || _source.name
-                : text,
-          })),
+                : text;
+
+            return {
+              value: name,
+              title: name,
+            };
+          }),
           hasMore: false,
         };
       });
