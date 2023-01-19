@@ -402,12 +402,20 @@ const NavBar = ({
           </div>
           <Space className="tw-ml-auto">
             <Space size={16}>
-              <Select
-                bordered={false}
-                options={languageSelectOptions}
-                value={language}
-                onChange={handleLanguageChange}
-              />
+              <Space>
+                <Select
+                  bordered={false}
+                  options={languageSelectOptions}
+                  value={language}
+                  onChange={handleLanguageChange}
+                />
+                <Badge
+                  color="#7147e8"
+                  count="beta"
+                  offset={[-16, 0]}
+                  size="small"
+                />
+              </Space>
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-settings"
