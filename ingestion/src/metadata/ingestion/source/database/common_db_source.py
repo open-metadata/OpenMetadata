@@ -39,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
@@ -419,7 +420,9 @@ class CommonDbSourceService(
             )
 
             try:
-                lineage_parser = LineageParser(view_definition)
+                connection_type = str(self.service_connection.type.value)
+                dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+                lineage_parser = LineageParser(view_definition, dialect)
                 if lineage_parser.source_tables and lineage_parser.target_tables:
                     yield from get_lineage_by_query(
                         self.metadata,
@@ -427,6 +430,7 @@ class CommonDbSourceService(
                         service_name=self.context.database_service.name.__root__,
                         database_name=db_name,
                         schema_name=schema_name,
+                        dialect=dialect,
                     ) or []
 
                 else:
@@ -437,6 +441,7 @@ class CommonDbSourceService(
                         database_name=db_name,
                         schema_name=schema_name,
                         query=view_definition,
+                        dialect=dialect,
                     ) or []
             except Exception as exc:
                 logger.debug(traceback.format_exc())

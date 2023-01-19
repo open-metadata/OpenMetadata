@@ -18,6 +18,7 @@ from typing import Iterable, Iterator, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -93,6 +94,8 @@ class LineageSource(QueryParserSource, ABC):
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
+        connection_type = str(self.service_connection.type.value)
+        dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         for table_query in self.get_table_query():
 
             lineages = get_lineage_by_query(
@@ -101,6 +104,7 @@ class LineageSource(QueryParserSource, ABC):
                 service_name=table_query.serviceName,
                 database_name=table_query.databaseName,
                 schema_name=table_query.databaseSchema,
+                dialect=dialect,
             )
 
             for lineage_request in lineages or []:
