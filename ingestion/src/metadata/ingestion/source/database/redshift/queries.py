@@ -195,3 +195,17 @@ REDSHIFT_PARTITION_DETAILS = """
   from SVV_TABLE_INFO
   where diststyle not like 'AUTO%%'
 """
+
+
+REDSHIFT_TABLE_COMMENTS = """
+    SELECT n.nspname as schema,
+            c.relname as table_name,
+            pgd.description as table_comment
+    FROM pg_catalog.pg_class c
+        LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
+    WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
+      AND pgd.description IS NOT NULL
+      AND n.nspname <> 'pg_catalog'
+    ORDER BY "schema", "table_name";
+"""
