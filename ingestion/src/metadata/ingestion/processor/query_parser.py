@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
-from metadata.ingestion.lineage.models import MAP_CONNECTION_TYPE_DIALECT, Dialect
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
 
@@ -111,9 +111,7 @@ class QueryParserProcessor(Processor):
                 try:
                     parsed_sql = parse_sql_statement(
                         record,
-                        MAP_CONNECTION_TYPE_DIALECT.get(
-                            self.connection_type, Dialect.ANSI
-                        ),
+                        ConnectionTypeDialectMapper.dialect_of(self.connection_type),
                     )
                     if parsed_sql:
                         data.append(parsed_sql)

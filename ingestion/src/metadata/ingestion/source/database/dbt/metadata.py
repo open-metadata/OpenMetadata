@@ -61,7 +61,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.lineage.models import MAP_CONNECTION_TYPE_DIALECT, Dialect
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -541,7 +541,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             connection_type = str(
                 self.config.serviceConnection.__root__.config.type.value
             )
-            dialect = MAP_CONNECTION_TYPE_DIALECT.get(connection_type, Dialect.ANSI)
+            dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
             lineages = get_lineage_by_query(
                 self.metadata,
                 query=query,

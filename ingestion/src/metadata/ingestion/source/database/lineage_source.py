@@ -20,7 +20,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.lineage.models import MAP_CONNECTION_TYPE_DIALECT, Dialect
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
@@ -129,7 +129,7 @@ class LineageSource(QueryParserSource, ABC):
         """
         logger.info("Processing query history lineage...")
         connection_type = str(self.service_connection.type.value)
-        dialect = MAP_CONNECTION_TYPE_DIALECT.get(connection_type, Dialect.ANSI)
+        dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         for table_query in self.get_table_query():
 
             lineages = get_lineage_by_query(
@@ -160,9 +160,7 @@ class LineageSource(QueryParserSource, ABC):
 
                 try:
                     connection_type = str(self.service_connection.type.value)
-                    dialect = MAP_CONNECTION_TYPE_DIALECT.get(
-                        connection_type, Dialect.ANSI
-                    )
+                    dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
                     lineage_parser = LineageParser(
                         table_entity.viewDefinition.__root__, dialect=dialect
                     )

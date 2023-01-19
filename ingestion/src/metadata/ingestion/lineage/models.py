@@ -89,3 +89,19 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(DeltaLakeType.DeltaLake.value): Dialect.SPARKSQL,
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
 }
+
+
+class ConnectionTypeDialectMapper:
+    """
+    Auxiliary class to handle the mapping between a connection type and a dialect used to analyze lineage
+    """
+
+    @staticmethod
+    def dialect_of(connection_type: str) -> Dialect:
+        """
+        Returns dialect for a given connection_type
+        Args:
+            connection_type: the connection type as string
+        Returns: a dialect
+        """
+        return MAP_CONNECTION_TYPE_DIALECT.get(connection_type, Dialect.ANSI)
