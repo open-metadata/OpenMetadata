@@ -81,9 +81,14 @@ mock_domopipeline_config = {
     },
 }
 
-MOCK_DASHBOARD = {"id": 552315335, "name": "New Dashboard", "children": []}
+MOCK_DASHBOARD = {
+    "id": 552315335,
+    "name": "New Dashboard",
+    "children": [],
+    "cardIds": ["1982511286", "781210736"],
+}
 EXPECTED_DASHBOARD = CreateDashboardRequest(
-    name="New Dashboard",
+    name="552315335",
     displayName="New Dashboard",
     description="",
     dashboardUrl="https://domain.domo.com/page/552315335",
