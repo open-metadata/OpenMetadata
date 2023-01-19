@@ -109,7 +109,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
 
 EXPECTED_DASHBOARDS = [
     CreateChartRequest(
-        name="Top Salespeople",
+        name="1108771657",
         displayName="Top Salespeople",
         description="",
         chartType="Other",
@@ -129,7 +129,7 @@ EXPECTED_DASHBOARDS = [
         ),
     ),
     CreateChartRequest(
-        name="Milan Datasets",
+        name="1985861713",
         displayName="Milan Datasets",
         description="",
         chartType="Other",
@@ -149,7 +149,7 @@ EXPECTED_DASHBOARDS = [
         ),
     ),
     CreateChartRequest(
-        name="Page Fans",
+        name="2025899139",
         displayName="Page Fans",
         description="",
         chartType="Other",

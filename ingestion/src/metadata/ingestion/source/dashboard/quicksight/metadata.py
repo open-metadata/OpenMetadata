@@ -175,7 +175,7 @@ class QuicksightSource(DashboardServiceSource):
                     continue
 
                 yield CreateChartRequest(
-                    name=chart["Name"],
+                    name=chart["SheetId"],
                     displayName=chart["Name"],
                     description="",
                     chartType=ChartType.Other.value,
@@ -240,7 +240,6 @@ class QuicksightSource(DashboardServiceSource):
                         logger.debug(traceback.format_exc())
                         continue
 
-                    # db_name = data_source
                     schema_name = data_source_resp.schema_name
                     table_name = data_source_resp.table_name
 
