@@ -78,6 +78,10 @@ jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('components/IngestionStepper/IngestionStepper.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="stepper">Stepper</div>)
+);
+
 describe('Import Glossary', () => {
   it('Should render the all components', async () => {
     render(<ImportGlossary glossaryName={glossaryName} />);
@@ -86,11 +90,13 @@ describe('Import Glossary', () => {
     const title = await screen.getByTestId('title');
     const uploader = await screen.getByTestId('upload-file-widget');
     const uploadButton = await screen.getByTestId('upload-button');
+    const stepper = await screen.getByTestId('stepper');
 
     expect(breadcrumb).toBeInTheDocument();
     expect(title).toBeInTheDocument();
     expect(uploader).toBeInTheDocument();
     expect(uploadButton).toBeInTheDocument();
+    expect(stepper).toBeInTheDocument();
   });
 
   it('Import Should work', async () => {
@@ -226,11 +232,16 @@ describe('Import Glossary', () => {
     });
 
     const importButton = screen.queryByTestId('import-button');
+    const cancelPreviewButton = await screen.getByTestId(
+      'preview-cancel-button'
+    );
 
     expect(await screen.getByTestId('import-results')).toBeInTheDocument();
 
     // for failure import button should not render
     expect(importButton).not.toBeInTheDocument();
+
+    expect(cancelPreviewButton).toBeInTheDocument();
   });
 
   it('Import Should not work for aborted', async () => {
@@ -262,9 +273,29 @@ describe('Import Glossary', () => {
 
     const abortedReason = await screen.getByTestId('abort-reason');
     const cancelButton = await screen.getByTestId('cancel-button');
+    const previewButton = await screen.getByTestId('preview-button');
 
     expect(abortedReason).toBeInTheDocument();
     expect(abortedReason).toHaveTextContent('Something went wrong');
     expect(cancelButton).toBeInTheDocument();
+    expect(previewButton).toBeInTheDocument();
+
+    // preview should work
+
+    await act(async () => {
+      userEvent.click(previewButton);
+    });
+
+    const importButton = screen.queryByTestId('import-button');
+    const cancelPreviewButton = await screen.getByTestId(
+      'preview-cancel-button'
+    );
+
+    expect(await screen.getByTestId('import-results')).toBeInTheDocument();
+
+    // for abort import button should not render
+    expect(importButton).not.toBeInTheDocument();
+
+    expect(cancelPreviewButton).toBeInTheDocument();
   });
 });

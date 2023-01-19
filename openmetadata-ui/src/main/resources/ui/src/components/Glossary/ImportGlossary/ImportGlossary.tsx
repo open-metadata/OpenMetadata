@@ -28,7 +28,9 @@ import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import Stepper from 'components/IngestionStepper/IngestionStepper.component';
 import Loader from 'components/Loader/Loader';
+import { STEPS_FOR_IMPORT_GLOSSARY_TERMS } from 'constants/Glossary.constant';
 import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -60,6 +62,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const [csvFileResult, setCsvFileResult] = useState<string>('');
 
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
+  const [activeStep, setActiveStep] = useState<number>(1);
 
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => [
@@ -68,7 +71,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
         url: getGlossaryPath(glossaryName),
       },
       {
-        name: 'Import Glossary Terms',
+        name: t('label.import-glossary-terms'),
         url: '',
         activeTitle: true,
       },
@@ -76,25 +79,38 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
     [glossaryName]
   );
 
-  const { isSuccess, isFailure, showAbortedResult, showSuccessResult } =
-    useMemo(() => {
-      const isSuccess =
-        csvImportResult?.status === Status.Success ||
-        csvImportResult?.status === Status.PartialSuccess;
-      const isFailure = csvImportResult?.status === Status.Failure;
-      const showAbortedResult = csvImportResult?.status === Status.Aborted;
-      const showSuccessResult =
-        csvImportResult?.status === Status.Success ||
-        csvImportResult?.status === Status.PartialSuccess ||
-        csvImportResult?.status === Status.Failure;
+  const {
+    isSuccess,
+    isFailure,
+    isAborted,
+    showAbortedResult,
+    showSuccessResult,
+    steps,
+  } = useMemo(() => {
+    const status = csvImportResult?.status;
 
-      return {
-        isSuccess,
-        isFailure,
-        showAbortedResult,
-        showSuccessResult,
-      };
-    }, [csvImportResult]);
+    const isSuccess =
+      status === Status.Success || status === Status.PartialSuccess;
+    const isFailure = status === Status.Failure;
+    const isAborted = status === Status.Aborted;
+
+    const showAbortedResult = isAborted;
+    const showSuccessResult = isSuccess || isFailure;
+
+    const steps =
+      isUndefined(csvImportResult) || isSuccess
+        ? STEPS_FOR_IMPORT_GLOSSARY_TERMS
+        : STEPS_FOR_IMPORT_GLOSSARY_TERMS.slice(0, 2);
+
+    return {
+      isSuccess,
+      isFailure,
+      isAborted,
+      showAbortedResult,
+      showSuccessResult,
+      steps,
+    };
+  }, [csvImportResult]);
 
   const handleUpload: UploadProps['customRequest'] = async (options) => {
     setIsLoading(true);
@@ -113,6 +129,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
 
           setCsvImportResult(response);
           setCsvFileResult(result);
+          setActiveStep(2);
         }
       });
 
@@ -139,6 +156,17 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
     }
   };
 
+  const handlePreview = () => {
+    setIsPreview(true);
+    setActiveStep(3);
+  };
+
+  const handleCancel = () => {
+    setCsvImportResult(undefined);
+    setActiveStep(1);
+    setIsPreview(false);
+  };
+
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
@@ -149,16 +177,31 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
           <Title data-testid="title" level={5}>
             {isPreview ? glossaryName : t('label.import-glossary-terms')}
           </Title>
-          {isPreview && !isUndefined(csvImportResult) && !isFailure && (
-            <Button
-              data-testid="import-button"
-              loading={isLoading}
-              type="primary"
-              onClick={handleImport}>
-              {t('label.import')}
-            </Button>
+          {isPreview && !isUndefined(csvImportResult) && (
+            <>
+              {!isFailure && !isAborted && (
+                <Button
+                  data-testid="import-button"
+                  loading={isLoading}
+                  type="primary"
+                  onClick={handleImport}>
+                  {t('label.import')}
+                </Button>
+              )}
+              {(isFailure || isAborted) && (
+                <Button
+                  data-testid="preview-cancel-button"
+                  type="primary"
+                  onClick={handleCancel}>
+                  {t('label.cancel')}
+                </Button>
+              )}
+            </>
           )}
         </Space>
+      </Col>
+      <Col span={24}>
+        <Stepper activeStep={activeStep} steps={steps} />
       </Col>
       {isPreview && !isUndefined(csvImportResult) ? (
         <Col span={24}>
@@ -231,13 +274,13 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                     <Space size={16}>
                       <Button
                         data-testid="cancel-button"
-                        onClick={() => setCsvImportResult(undefined)}>
+                        onClick={handleCancel}>
                         {t('label.cancel')}
                       </Button>
                       <Button
                         data-testid="preview-button"
                         type="primary"
-                        onClick={() => setIsPreview(true)}>
+                        onClick={handlePreview}>
                         {t('label.preview')}
                       </Button>
                     </Space>
@@ -252,11 +295,19 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                       <strong className="d-block">{t('label.aborted')}</strong>{' '}
                       {csvImportResult.abortReason}
                     </Typography.Text>
-                    <Button
-                      data-testid="cancel-button"
-                      onClick={() => setCsvImportResult(undefined)}>
-                      {t('label.cancel')}
-                    </Button>
+                    <Space size={16}>
+                      <Button
+                        data-testid="cancel-button"
+                        onClick={handleCancel}>
+                        {t('label.cancel')}
+                      </Button>
+                      <Button
+                        data-testid="preview-button"
+                        type="primary"
+                        onClick={handlePreview}>
+                        {t('label.preview')}
+                      </Button>
+                    </Space>
                   </>
                 )}
               </Space>
