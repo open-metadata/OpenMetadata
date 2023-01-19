@@ -185,6 +185,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SqlLogger sqlLogger =
         new SqlLogger() {
           @Override
+          public void logBeforeExecution(StatementContext context) {
+            LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
+          }
+
+          @Override
           public void logAfterExecution(StatementContext context) {
             LOG.debug(
                 "sql {}, parameters {}, timeTaken {} ms",

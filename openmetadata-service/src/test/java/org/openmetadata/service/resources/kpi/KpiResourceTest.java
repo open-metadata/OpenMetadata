@@ -57,8 +57,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     DataInsightResourceTest dataInsightResourceTest = new DataInsightResourceTest();
     CreateDataInsightChart chartRequest =
         dataInsightResourceTest
-            .createRequest()
-            .withName(String.format("TestChart" + "%s", UUID.randomUUID()))
+            .createRequest(String.format("TestChart" + "%s", UUID.randomUUID()))
             .withOwner(USER1_REF)
             .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX)
             .withMetrics(

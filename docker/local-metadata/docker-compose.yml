@@ -41,7 +41,9 @@ services:
       retries: 10
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    build:
+      context: ../../.
+      dockerfile: docker/local-metadata/Dockerfile_elasticsearch
     container_name: openmetadata_elasticsearch
     environment:
       - discovery.type=single-node
@@ -153,7 +155,7 @@ services:
       mysql:
         condition: service_healthy
       openmetadata-server:
-        condition: service_healthy
+        condition: service_started
     expose:
       - 8080
     ports:

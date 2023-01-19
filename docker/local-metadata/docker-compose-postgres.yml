@@ -42,7 +42,9 @@ services:
       retries: 10
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    build:
+      context: ../../.
+      dockerfile: docker/local-metadata/Dockerfile_elasticsearch
     container_name: openmetadata_elasticsearch
     environment:
       - discovery.type=single-node
@@ -138,7 +140,7 @@ services:
       postgresql:
         condition: service_healthy
       openmetadata-server:
-        condition: service_healthy
+        condition: service_started
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor

@@ -46,6 +46,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   onRefreshFeeds,
   withSidePanel = false,
   isEntityFeed = false,
+  isFeedLoading,
   postFeedHandler,
   entityName,
   deletePostHandler,
@@ -295,15 +296,17 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </>
       ) : (
-        <div className="h-min-50">
-          {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
-            <NoFeedPlaceholder entityName={entityName} />
-          ) : !refreshFeedCount ? (
-            <ErrorPlaceHolder>
-              {t('message.no-data-available-for-selected-filter')}
-            </ErrorPlaceHolder>
-          ) : null}
-        </div>
+        !isFeedLoading && (
+          <div className="h-min-50" data-testid="no-data-placeholder-container">
+            {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
+              <NoFeedPlaceholder entityName={entityName} />
+            ) : !refreshFeedCount ? (
+              <ErrorPlaceHolder>
+                {t('message.no-data-available-for-selected-filter')}
+              </ErrorPlaceHolder>
+            ) : null}
+          </div>
+        )
       )}
       <DeleteConfirmationModal
         visible={confirmationState.state}

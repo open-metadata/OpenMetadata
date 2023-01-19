@@ -43,6 +43,7 @@ public class BuildSearchIndexResource {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_BATCH = "eventPublisher:ElasticSearch:BATCH";
+  private ElasticSearchIndexResolver indexResolver;
   private final CollectionDAO dao;
   private final Authorizer authorizer;
   private final UserRepository userRepository;
@@ -56,9 +57,12 @@ public class BuildSearchIndexResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
+      String indexResolverClassName = config.getElasticSearchConfiguration().getIndexResolverClassName();
+      this.indexResolver = ElasticSearchIndexResolver.fromClassName(indexResolverClassName);
       RestHighLevelClient client =
-          ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-      ElasticSearchIndexDefinition elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+              ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      ElasticSearchIndexDefinition elasticSearchIndexDefinition =
+          new ElasticSearchIndexDefinition(client, dao, indexResolver);
       this.elasticSearchIndexUtil =
           new ElasticSearchIndexUtil(dao, client, elasticSearchIndexDefinition, indexResolver);
     }

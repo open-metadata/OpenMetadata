@@ -30,6 +30,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -162,7 +163,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
-    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::c1::description>", TABLE.getFullyQualifiedName());
+    TABLE_COLUMN_LINK =
+        String.format("<#E::table::%s::columns::" + C1 + "::description>", TABLE.getFullyQualifiedName());
     TABLE_DESCRIPTION_LINK = String.format("<#E::table::%s::description>", TABLE.getFullyQualifiedName());
 
     USER = TableResourceTest.USER1;
@@ -189,20 +191,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
+    String failureReason = "[about must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$\"]";
+    assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::>"); // Invalid EntityLink - missing entityType and entityId
-    assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
+    assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::table::>"); // Invalid EntityLink - missing entityId
-    assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
+    assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::table::tableName"); // Invalid EntityLink - missing closing bracket ">"
-    assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
+    assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, failureReason);
   }
 
   @Test
@@ -359,7 +358,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withAssignees(List.of(USER.getEntityReference()))
             .withType(TaskType.RequestDescription)
             .withSuggestion("new description2");
-    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    about = about.substring(0, about.length() - 1) + "::columns::" + C1 + "::description>";
     create =
         new CreateThread()
             .withAbout(about)
@@ -570,7 +569,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withSuggestion("new description");
 
     String about = create().getAbout();
-    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    about = about.substring(0, about.length() - 1) + "::columns::" + C1 + "::description>";
     CreateThread create =
         create()
             .withMessage("Request Description for column")
@@ -589,7 +588,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
     resolveTask(taskId, resolveTask, userAuthHeaders);
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, userAuthHeaders);
-    assertEquals("accepted description", EntityUtil.getColumn(table, ("c1")).getDescription());
+    assertEquals("accepted description", EntityUtil.getColumn(table, (C1)).getDescription());
 
     Thread taskThread = getTask(taskId, userAuthHeaders);
     task = taskThread.getTask();
@@ -613,7 +612,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withSuggestion("new description");
 
     String about = create().getAbout();
-    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    about = about.substring(0, about.length() - 1) + "::columns::" + C1 + "::description>";
     CreateThread create =
         create()
             .withMessage("Request Description for column")
@@ -628,13 +627,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     int taskId = task.getId();
 
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, userAuthHeaders);
-    String oldDescription = EntityUtil.getColumn(table, "c1").getDescription();
+    String oldDescription = EntityUtil.getColumn(table, C1).getDescription();
 
     closeTask(taskId, "closing comment", userAuthHeaders);
 
     // closing the task should not affect description of the table
     table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, userAuthHeaders);
-    assertEquals(oldDescription, EntityUtil.getColumn(table, "c1").getDescription());
+    assertEquals(oldDescription, EntityUtil.getColumn(table, C1).getDescription());
 
     Thread taskThread = getTask(taskId, userAuthHeaders);
     task = taskThread.getTask();
@@ -657,7 +656,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withSuggestion(newValue);
 
     String about = create().getAbout();
-    about = about.substring(0, about.length() - 1) + "::columns::c1::tags>";
+    about = about.substring(0, about.length() - 1) + "::columns::" + C1 + "::tags>";
     CreateThread create =
         create()
             .withMessage("Request Tags for column")
@@ -676,7 +675,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
     resolveTask(taskId, resolveTask, userAuthHeaders);
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), "tags", userAuthHeaders);
-    List<TagLabel> tags = EntityUtil.getColumn(table, "c1").getTags();
+    List<TagLabel> tags = EntityUtil.getColumn(table, C1).getTags();
     assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
 
     Thread taskThread = getTask(taskId, userAuthHeaders);
@@ -1283,7 +1282,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
     post.withReactions(List.of(reaction1, reaction2));
     Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, TEST_AUTH_HEADERS);
-    assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2), REACTION_COMPARATOR));
+    assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2)));
     ThreadList threads = listThreads(null, 5, AUTH_HEADERS);
     thread = threads.getData().get(0);
     assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
@@ -1574,7 +1573,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(expected.getFrom(), patched.getFrom());
     assertEquals(expected.getPostTs(), patched.getPostTs());
     assertEquals(expected.getReactions().size(), patched.getReactions().size());
-    assertTrue(containsAll(expected.getReactions(), patched.getReactions(), REACTION_COMPARATOR));
+    assertTrue(containsAll(expected.getReactions(), patched.getReactions()));
   }
 
   private static <T> BiPredicate<T, T> match(Comparator<T> f) {
@@ -1585,9 +1584,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return u -> f.test(t, u);
   }
 
-  private static <T> boolean containsAll(List<T> list, List<T> items, Comparator<? super T> comparator) {
+  private static <T> boolean containsAll(List<T> list, List<T> items) {
     for (T item : items) {
-      if (list.stream().noneMatch(bind(match(comparator), item))) {
+      if (list.stream().noneMatch(bind(match((Comparator<? super T>) FeedResourceTest.REACTION_COMPARATOR), item))) {
         return false;
       }
     }

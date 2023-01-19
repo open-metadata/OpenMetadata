@@ -199,38 +199,42 @@ public class SearchResource {
     }
 
     SearchSourceBuilder searchSourceBuilder;
-
-    switch (index) {
-      case "topic_search_index":
-        searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
-        break;
-      case "dashboard_search_index":
-        searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
-        break;
-      case "pipeline_search_index":
-        searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
-        break;
-      case "mlmodel_search_index":
-        searchSourceBuilder = buildMlModelSearchBuilder(query, from, size);
-        break;
-      case "table_search_index":
-        searchSourceBuilder = buildTableSearchBuilder(query, from, size);
-        break;
-      case "user_search_index":
-        searchSourceBuilder = buildUserSearchBuilder(query, from, size);
-        break;
-      case "team_search_index":
-        searchSourceBuilder = buildTeamSearchBuilder(query, from, size);
-        break;
-      case "glossary_search_index":
-        searchSourceBuilder = buildGlossaryTermSearchBuilder(query, from, size);
-        break;
-      case "tag_search_index":
-        searchSourceBuilder = buildTagSearchBuilder(query, from, size);
-        break;
-      default:
-        searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
-        break;
+    ElasticSearchIndexResolver.IndexType indexType = indexResolver.findTypeFromIndexName(index).orElse(null);
+    if (indexType != null) {
+      switch (indexType) {
+        case TOPIC_SEARCH_INDEX:
+          searchSourceBuilder = buildTopicSearchBuilder(indexType, query, from, size);
+          break;
+        case DASHBOARD_SEARCH_INDEX:
+          searchSourceBuilder = buildDashboardSearchBuilder(indexType, query, from, size);
+          break;
+        case PIPELINE_SEARCH_INDEX:
+          searchSourceBuilder = buildPipelineSearchBuilder(indexType, query, from, size);
+          break;
+        case MLMODEL_SEARCH_INDEX:
+          searchSourceBuilder = buildMlModelSearchBuilder(indexType, query, from, size);
+          break;
+        case TABLE_SEARCH_INDEX:
+          searchSourceBuilder = buildTableSearchBuilder(indexType, query, from, size);
+          break;
+        case USER_SEARCH_INDEX:
+          searchSourceBuilder = buildUserSearchBuilder(indexType, query, from, size);
+          break;
+        case TEAM_SEARCH_INDEX:
+          searchSourceBuilder = buildTeamSearchBuilder(indexType, query, from, size);
+          break;
+        case GLOSSARY_SEARCH_INDEX:
+          searchSourceBuilder = buildGlossaryTermSearchBuilder(indexType, query, from, size);
+          break;
+        case TAG_SEARCH_INDEX:
+          searchSourceBuilder = buildTagSearchBuilder(indexType, query, from, size);
+          break;
+        default:
+          searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
+          break;
+      }
+    } else {
+      searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
     }
 
     if (!nullOrEmpty(queryFilter)) {
@@ -399,14 +403,16 @@ public class SearchResource {
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        this.indexResolver.customizeQuery(QueryBuilders.queryStringQuery(query).lenient(true));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+        this.indexResolver.customizeQuery(null, QueryBuilders.queryStringQuery(query).lenient(true));
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(null, queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildTableSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         this.indexResolver.customizeQuery(
+            indexType,
             QueryBuilders.queryStringQuery(query)
                 .field(FIELD_DISPLAY_NAME, 20.0f)
                 .field(FIELD_DESCRIPTION, 2.0f)
@@ -440,7 +446,7 @@ public class SearchResource {
     hb.field(highlightColumnChildren);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-    hb = this.indexResolver.customizeHighlight(hb);
+    hb = this.indexResolver.customizeHighlight(indexType, hb);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
@@ -450,9 +456,11 @@ public class SearchResource {
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildTopicSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
+            indexType,
             QueryBuilders.queryStringQuery(query)
                 .field(FIELD_DISPLAY_NAME, 10.0f)
                 .field(FIELD_DESCRIPTION, 2.0f)
@@ -470,15 +478,17 @@ public class SearchResource {
     hb.field(highlightTopicName);
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(indexType, queryBuilder, hb, from, size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("messageSchema.schemaFields.name").field("messageSchema.schemaFields.name"));
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildDashboardSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
+            indexType,
             QueryBuilders.queryStringQuery(query)
                 .field(FIELD_DISPLAY_NAME, 10.0f)
                 .field(FIELD_DESCRIPTION, 2.0f)
@@ -501,13 +511,15 @@ public class SearchResource {
     hb.field(highlightCharts);
     hb.field(highlightChartDescriptions);
 
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(indexType, queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildPipelineSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
+            indexType,
             QueryBuilders.queryStringQuery(query)
                 .field(FIELD_DISPLAY_NAME, 10.0f)
                 .field(DESCRIPTION, 2.0f)
@@ -528,19 +540,22 @@ public class SearchResource {
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
     hb.field(highlightTaskDescriptions);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(indexType, queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildMlModelSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(DESCRIPTION, 2.0f)
-            .field("mlFeatures.name", 2.0f)
-            .field("mlFeatures.description")
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+        this.indexResolver.customizeQuery(
+            indexType,
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_DISPLAY_NAME, 10.0f)
+                .field(DESCRIPTION, 2.0f)
+                .field("mlFeatures.name", 2.0f)
+                .field("mlFeatures.description")
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -554,16 +569,21 @@ public class SearchResource {
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
     hb.field(highlightTaskDescriptions);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(indexType, queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
+  private SearchSourceBuilder searchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType,
+      QueryBuilder queryBuilder,
+      HighlightBuilder hb,
+      int from,
+      int size) {
     SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
     if (hb != null) {
-      hb = this.indexResolver.customizeHighlight(hb);
       hb.preTags("<span class=\"text-highlighter\">");
       hb.postTags("</span>");
+      hb = this.indexResolver.customizeHighlight(indexType, hb);
       builder.highlighter(hb);
     }
     return builder;
@@ -581,23 +601,27 @@ public class SearchResource {
     return builder;
   }
 
-  private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildUserSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
-            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
-    return searchBuilder(queryBuilder, null, from, size);
+            indexType, QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
+    return searchBuilder(indexType, queryBuilder, null, from, size);
   }
 
-  private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildTeamSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
-            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
-    return searchBuilder(queryBuilder, null, from, size);
+            indexType, QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
+    return searchBuilder(indexType, queryBuilder, null, from, size);
   }
 
-  private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildGlossaryTermSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
+            indexType,
             QueryBuilders.queryStringQuery(query)
                 .field(NAME, 10.0f)
                 .field(DESCRIPTION, 3.0f)
@@ -614,12 +638,14 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
 
-    return searchBuilder(queryBuilder, hb, from, size);
+    return searchBuilder(indexType, queryBuilder, hb, from, size);
   }
 
-  private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildTagSearchBuilder(
+      ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
+            indexType,
             QueryBuilders.queryStringQuery(query)
                 .field(NAME, 10.0f)
                 .field(DESCRIPTION, 3.0f)
@@ -636,6 +662,6 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
 
-    return searchBuilder(queryBuilder, hb, from, size);
+    return searchBuilder(indexType, queryBuilder, hb, from, size);
   }
 }

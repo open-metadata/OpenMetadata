@@ -73,6 +73,10 @@ jest.mock('components/common/next-previous/NextPrevious', () =>
   jest.fn().mockReturnValue(<p>NextPrevious</p>)
 );
 
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>)
+);
+
 describe('Test Suite Page', () => {
   it('Component should render error placeholder when data is not present', async () => {
     (getListTestSuites as jest.Mock).mockImplementationOnce(() =>

@@ -1,19 +1,23 @@
 package org.openmetadata.service.elasticsearch;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Optional;
+import javax.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 
 public interface ElasticSearchIndexResolver {
+  Optional<IndexType> findTypeFromIndexName(String indexName);
+
   IndexInfo indexInfo(IndexType type);
 
-  default QueryStringQueryBuilder customizeQuery(QueryStringQueryBuilder builder) {
+  default QueryStringQueryBuilder customizeQuery(@Nullable IndexType indexType, QueryStringQueryBuilder builder) {
     return builder;
   }
 
-  default HighlightBuilder customizeHighlight(HighlightBuilder builder) {
+  default HighlightBuilder customizeHighlight(@Nullable IndexType indexType, HighlightBuilder builder) {
     return builder;
   }
 
@@ -47,6 +51,6 @@ public interface ElasticSearchIndexResolver {
     TAG_SEARCH_INDEX,
     ENTITY_REPORT_DATA_INDEX,
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX,
-    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX
   }
 }

@@ -1042,8 +1042,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       bot =
           Entity.getEntityRepository(Entity.BOT)
               .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
-      throw new IllegalArgumentException(
-          String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
+      throw new IllegalArgumentException(CatalogExceptionMessage.userAlreadyBot(user.getName(), bot.getName()));
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (original != null) {

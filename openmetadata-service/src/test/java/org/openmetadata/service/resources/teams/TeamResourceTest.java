@@ -721,9 +721,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference teamRef = new EntityReference().withId(team.getId()).withType("team");
     locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test), null, null, teamRef), ADMIN_AUTH_HEADERS);
+        locationResourceTest.createRequest(test).withOwner(team.getEntityReference()), ADMIN_AUTH_HEADERS);
     return team;
   }
 
@@ -862,10 +861,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a user with TeamManager role.
     UserResourceTest userResourceTest = new UserResourceTest();
     return userResourceTest.createEntity(
-        userResourceTest
-            .createRequest(testInfo)
-            .withName(getEntityName(testInfo) + "manager")
-            .withRoles(List.of(teamManager.getId())),
+        userResourceTest.createRequest(testInfo).withName("user.TeamManager").withRoles(List.of(teamManager.getId())),
         ADMIN_AUTH_HEADERS);
   }
 

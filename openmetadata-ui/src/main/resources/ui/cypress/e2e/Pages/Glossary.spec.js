@@ -25,8 +25,21 @@ import {
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 
+const visitGlossaryTermPage = (termName) => {
+  cy.get('.ant-tabs [id*=tab-glossaryTerms]').should('be.visible').click();
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
+
+  cy.get(`[data-testid="${termName}-card"]`)
+    .scrollIntoView()
+    .should('be.visible')
+    .contains(termName)
+    .should('be.visible')
+    .click();
+};
+
 const createGlossaryTerm = (term) => {
   cy.get('[data-testid="breadcrumb-link"]')
+    .scrollIntoView()
     .should('exist')
     .and('be.visible')
     .contains(NEW_GLOSSARY.name)
@@ -46,8 +59,13 @@ const createGlossaryTerm = (term) => {
     .scrollIntoView()
     .should('be.visible')
     .type(term.synonyms);
+  cy.get('[data-testid="mutually-exclusive-button"]')
+    .scrollIntoView()
+    .should('exist')
+    .should('be.visible')
+    .click();
 
-  cy.get('[data-testid="references"] > .tw-flex > .button-comp')
+  cy.get('[data-testid="references"] > .ant-space-item > .button-comp')
     .scrollIntoView()
     .should('be.visible')
     .click();
@@ -64,18 +82,18 @@ const createGlossaryTerm = (term) => {
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@createGlossaryTerms', 201);
+  cy.get('.ant-tabs [id*=tab-glossaryTerms]').should('be.visible').click();
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-  cy.get('[data-testid="glossary-left-panel"]')
+  cy.get(`[data-testid="${term.name}-card"]`)
+    .scrollIntoView()
+    .should('be.visible')
     .contains(term.name)
     .should('be.visible');
 };
 
 const deleteGlossary = ({ name }) => {
-  verifyResponseStatusCode('@getGlossaryTerms', 200);
-  cy.get('[data-testid="glossary-left-panel"]')
-    .contains(name)
-    .should('be.visible')
-    .click();
+  visitGlossaryTermPage(name);
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
@@ -111,14 +129,11 @@ const deleteGlossary = ({ name }) => {
 };
 
 const goToAssetsTab = (term) => {
-  cy.get('[data-testid="glossary-left-panel"]')
-    .should('be.visible')
-    .contains(term)
-    .click();
+  visitGlossaryTermPage(term);
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
-  cy.get('[data-testid="Assets"]').should('be.visible').click();
-  cy.get('[data-testid="Assets"]').should('have.class', 'active');
+  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
 describe('Glossary page should work properly', () => {
@@ -126,6 +141,7 @@ describe('Glossary page should work properly', () => {
     cy.login();
 
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
+    interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
     cy.get('[data-testid="governance"]')
       .should('exist')
       .and('be.visible')
@@ -142,13 +158,6 @@ describe('Glossary page should work properly', () => {
           .and('be.visible')
           .click();
       });
-
-    // Todo: need to remove below uncaught exception once tree-view error resolves
-    cy.on('uncaught:exception', () => {
-      // return false to prevent the error from
-      // failing this test
-      return false;
-    });
   });
 
   it('Create new glossary flow should work properly', () => {
@@ -175,6 +184,12 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .type(NEW_GLOSSARY.description);
 
+    cy.get('[data-testid="mutually-exclusive-button"]')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.visible')
+      .click();
+
     cy.get('[data-testid="add-reviewers"]')
       .scrollIntoView()
       .should('be.visible')
@@ -187,6 +202,15 @@ describe('Glossary page should work properly', () => {
       });
 
     // Change this once issue related to suggestion API is fixed.
+    interceptURL(
+      'GET',
+      '/api/v1/search/suggest?q=*&index=user_search_index',
+      'getReviewer'
+    );
+    cy.get('[data-testid="searchbar"]')
+      .should('be.visible')
+      .type(NEW_GLOSSARY.reviewer);
+    verifyResponseStatusCode('@getReviewer', 200);
     cy.get('[data-testid="user-card-container"]')
       .first()
       .should('be.visible')
@@ -214,6 +238,7 @@ describe('Glossary page should work properly', () => {
     cy.wait('@createGlossary').then(() => {
       cy.url().should('include', '/glossary/');
       cy.get('[data-testid="breadcrumb-link"]')
+        .scrollIntoView()
         .should('exist')
         .and('be.visible')
         .within(() => {
@@ -237,7 +262,7 @@ describe('Glossary page should work properly', () => {
         expect(text).to.contain(NEW_GLOSSARY.description);
       });
     cy.get('[data-testid="reviewer-card-container"]').should('have.length', 1);
-    // Uncomment once the suggestion API issue gets resolved
+
     cy.get('[data-testid="reviewer-card-container"]')
       .invoke('text')
       .then((text) => {
@@ -308,10 +333,8 @@ describe('Glossary page should work properly', () => {
       '/api/v1/permissions/glossaryTerm/*',
       'waitForTermPermission'
     );
-    cy.get('[data-testid="glossary-left-panel"]')
-      .should('be.visible')
-      .contains(NEW_GLOSSARY_TERMS.term_1.name)
-      .click();
+    visitGlossaryTermPage(NEW_GLOSSARY_TERMS.term_1.name);
+
     verifyResponseStatusCode('@getGlossaryTerm', 200);
     verifyResponseStatusCode('@waitForTermPermission', 200);
     // updating synonyms
@@ -362,10 +385,7 @@ describe('Glossary page should work properly', () => {
       '/api/v1/permissions/glossaryTerm/*',
       'waitForTermPermission'
     );
-    cy.get('[data-testid="glossary-left-panel"]')
-      .should('be.visible')
-      .contains(NEW_GLOSSARY_TERMS.term_1.name)
-      .click();
+    visitGlossaryTermPage(NEW_GLOSSARY_TERMS.term_1.name);
     verifyResponseStatusCode('@getGlossaryTerm', 200);
     verifyResponseStatusCode('@waitForTermPermission', 200);
     cy.get('[data-testid="section-references"]').should('be.visible');
@@ -420,10 +440,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', '/api/v1/search/query?*', 'glossaryAPI');
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const newDescription = 'Updated description';
-    cy.get('[data-testid="glossary-left-panel"]')
-      .should('be.visible')
-      .contains(term)
-      .click();
+    visitGlossaryTermPage(term);
     verifyResponseStatusCode('@permissionApi', 200);
     verifyResponseStatusCode('@glossaryAPI', 200);
 
@@ -611,7 +628,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Delete glossary should work properly', () => {
-    verifyResponseStatusCode('@getGlossaryTerms', 200);
+    verifyResponseStatusCode('@fetchGlossaries', 200);
     cy.get('[data-testid="header"]')
       .should('be.visible')
       .contains(NEW_GLOSSARY.name)

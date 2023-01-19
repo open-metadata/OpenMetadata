@@ -110,6 +110,7 @@ const mockProp = {
   isAdminUser: false,
   isLoggedinUser: false,
   isAuthDisabled: true,
+  isUserEntitiesLoading: false,
   updateUserDetails,
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),
@@ -231,6 +232,35 @@ describe('Test User Component', () => {
       }
     );
     const inheritedRoles = await findByTestId(container, 'inherited-roles');
+
+    expect(inheritedRoles).toBeInTheDocument();
+  });
+
+  it('MyData tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users
+        userData={mockUserData}
+        {...mockProp}
+        isUserEntitiesLoading
+        tab="mydata"
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const inheritedRoles = await findByTestId(container, 'loader');
+
+    expect(inheritedRoles).toBeInTheDocument();
+  });
+
+  it('Following tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const inheritedRoles = await findByTestId(container, 'loader');
 
     expect(inheritedRoles).toBeInTheDocument();
   });
