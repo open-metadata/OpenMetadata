@@ -110,6 +110,7 @@ const mockProp = {
   isAdminUser: false,
   isLoggedinUser: false,
   isAuthDisabled: true,
+  isUserEntitiesLoading: false,
   updateUserDetails,
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),

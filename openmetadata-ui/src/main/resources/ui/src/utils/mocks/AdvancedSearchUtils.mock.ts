@@ -29,3 +29,8 @@ export const mockLongOptionsArray = [
   { key: 'string3', label: 'string3' },
   { key: 'string4', label: 'string4' },
 ];
+
+export const mockItemLabel = 'Aaron Warren and Aaron Warner';
+
+export const highlightedItemLabel =
+  'Aaron <mark>Wa</mark>rren and Aaron <mark>Wa</mark>rner';

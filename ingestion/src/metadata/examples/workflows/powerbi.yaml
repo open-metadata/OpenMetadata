@@ -1,6 +1,6 @@
 source:
   type: powerbi
-  serviceName: local_power11
+  serviceName: local_powerbi
   serviceConnection:
     config:
       clientId: client_id
@@ -8,6 +8,7 @@ source:
       tenantId: tenant_id
       scope:
         - https://analysis.windows.net/powerbi/api/.default
+      pagination_entity_per_page: 100
       type: PowerBI
   sourceConfig:
     config:
