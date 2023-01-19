@@ -259,7 +259,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference GLOSSARY2_TERM1_REF;
   public static TagLabel GLOSSARY2_TERM1_LABEL;
 
-  public static EntityReference SUPERSET_REFERENCE;
+  public static EntityReference METABASE_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
 
