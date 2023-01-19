@@ -98,7 +98,7 @@ jobs:
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
           }
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.TEST_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
