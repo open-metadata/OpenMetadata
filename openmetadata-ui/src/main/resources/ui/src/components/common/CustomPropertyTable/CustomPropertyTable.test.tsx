@@ -118,5 +118,11 @@ describe('Test CustomProperty Table Component', () => {
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const noDataPlaceHolder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(noDataPlaceHolder).toBeInTheDocument();
   });
 });
