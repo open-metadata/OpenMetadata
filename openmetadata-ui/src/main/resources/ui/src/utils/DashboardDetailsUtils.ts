@@ -24,7 +24,7 @@ ${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField
 
 export const dashboardDetailsTabs = [
   {
-    name: i18next.t('label.details'),
+    name: i18next.t('label.detail-plural'),
     path: 'details',
   },
   {

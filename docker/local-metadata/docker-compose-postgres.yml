@@ -140,7 +140,7 @@ services:
       postgresql:
         condition: service_healthy
       openmetadata-server:
-        condition: service_healthy
+        condition: service_started
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor

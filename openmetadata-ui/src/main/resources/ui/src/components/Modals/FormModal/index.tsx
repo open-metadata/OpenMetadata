@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useRef, useState } from 'react';
 import { Classification } from '../../../generated/entity/classification/classification';
@@ -28,6 +28,7 @@ const FormModal = ({
   errorData,
   isSaveButtonDisabled,
   visible,
+  showHiddenFields = false,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
@@ -47,7 +48,10 @@ const FormModal = ({
       closable={false}
       data-testid="modal-container"
       footer={
-        <div className="tw-modal-footer" data-testid="cta-container">
+        <Space
+          align="end"
+          className="justify-end p-r-lg p-t-sm"
+          data-testid="cta-container">
           <Button type="link" onClick={onCancel}>
             {t('label.cancel')}
           </Button>
@@ -59,7 +63,7 @@ const FormModal = ({
             type="primary">
             {t('label.save')}
           </Button>
-        </div>
+        </Space>
       }
       open={visible}
       title={
@@ -78,6 +82,7 @@ const FormModal = ({
             setData(data);
             onChange && onChange(data);
           }}
+          showHiddenFields={showHiddenFields}
         />
       </form>
     </Modal>

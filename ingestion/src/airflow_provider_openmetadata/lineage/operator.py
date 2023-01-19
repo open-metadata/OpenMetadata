@@ -18,6 +18,7 @@ from airflow.models.baseoperator import BaseOperator
 from airflow.utils.context import Context
 
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
+from airflow_provider_openmetadata.lineage.xlets import XLets, get_xlets_from_dag
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -56,12 +57,13 @@ class OpenMetadataLineageOperator(BaseOperator):
         and push it to OpenMetadata using the Python Client.
         """
         try:
+            xlets: XLets = get_xlets_from_dag(self.dag)
             metadata = OpenMetadata(self.server_config)
             runner = AirflowLineageRunner(
                 metadata=metadata,
                 service_name=self.service_name,
                 dag=self.dag,
-                context=context,
+                xlets=xlets,
                 only_keep_dag_lineage=self.only_keep_dag_lineage,
                 max_status=self.max_status,
             )

@@ -30,7 +30,7 @@ def get_long_description():
 VERSIONS = {
     "airflow": "apache-airflow==2.3.3",
     "avro-python3": "avro-python3~=1.10",
-    "boto3": "boto3~=1.26",  # No need to add botocore separately. It's a dep from boto3
+    "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "great-expectations": "great-expectations~=0.15.0",
@@ -102,9 +102,7 @@ base_requirements = {
 
 
 plugins: Dict[str, Set[str]] = {
-    "airflow": {
-        "apache-airflow==2.3.3"
-    },  # Same as ingestion container. For development.
+    "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"PyAthena[SQLAlchemy]"},
     "atlas": {},
