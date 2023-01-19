@@ -153,7 +153,7 @@ services:
       mysql:
         condition: service_healthy
       openmetadata-server:
-        condition: service_healthy
+        condition: service_started
     expose:
       - 8080
     ports:

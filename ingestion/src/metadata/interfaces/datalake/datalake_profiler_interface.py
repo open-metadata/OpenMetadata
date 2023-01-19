@@ -259,7 +259,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         sampler = DatalakeSampler(
             session=self.client,
             table=self.data_frame_list,
-            profile_sample=self.profile_sample_config,
+            profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )

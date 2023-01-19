@@ -130,6 +130,8 @@ This is a good option if you which to execute your workflow via the Airflow SDK 
       type: Profiler
       generateSampleData: true
       profileSample: 60
+      profileSampleType: ROWS
+      #profileSampleType: PERCENTAGE
       databaseFilterPattern: 
         includes: 
           - dev

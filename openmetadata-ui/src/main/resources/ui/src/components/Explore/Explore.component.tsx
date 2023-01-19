@@ -333,7 +333,7 @@ const Explore: React.FC<ExploreProps> = ({
                       onChangePage(Number.parseInt(value));
                     }
                   }}
-                  selectedEntityName={entityDetails?.details.name || ''}
+                  selectedEntityId={entityDetails?.details.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                 />
               ) : (

@@ -74,7 +74,7 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-    updateOwner();
+    updateOwner(true);
   });
 
   it('Add user to created team', () => {

@@ -777,6 +777,7 @@ const DashboardDetails = ({
                     deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
+                    isFeedLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
                     onFeedFiltersUpdate={handleFeedFilterChange}

@@ -102,6 +102,7 @@ const Users = ({
   ownedEntities,
   feedData,
   isFeedLoading,
+  isUserEntitiesLoading,
   postFeedHandler,
   deletePostHandler,
   fetchFeedHandler,
@@ -805,6 +806,7 @@ const Users = ({
             className=""
             deletePostHandler={deletePostHandler}
             feedList={feedData}
+            isFeedLoading={isFeedLoading}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
           />
@@ -897,6 +899,9 @@ const Users = ({
   const getEntityData = useCallback(
     (tabNumber: number) => {
       const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
+      if (isUserEntitiesLoading) {
+        return <Loader />;
+      }
 
       return (
         <div data-testid="table-container">
@@ -951,7 +956,7 @@ const Users = ({
         </div>
       );
     },
-    [followingEntities, ownedEntities]
+    [followingEntities, ownedEntities, isUserEntitiesLoading]
   );
 
   return (

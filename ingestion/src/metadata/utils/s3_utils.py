@@ -22,6 +22,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 import s3fs
 
+from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -45,7 +46,7 @@ def read_csv_from_s3(
     try:
         stream = client.get_object(Bucket=bucket_name, Key=key)["Body"]
         chunk_list = []
-        with pd.read_csv(stream, sep=sep, chunksize=200000) as reader:
+        with pd.read_csv(stream, sep=sep, chunksize=CHUNKSIZE) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
         return chunk_list

@@ -13,7 +13,7 @@
 OpenMetadata Airflow Provider utilities
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List
 
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -36,46 +36,6 @@ STATUS_MAP = {
     "failed": StatusType.Failed.value,
     "queued": StatusType.Pending.value,
 }
-
-
-def parse_xlets(xlet: List[dict]) -> Optional[List[str]]:
-    """
-    Parse airflow xlets for V1
-    :param xlet: airflow v2 xlet dict
-    :return: table list or None
-    """
-    if len(xlet) and isinstance(xlet[0], dict):
-        tables = xlet[0].get("tables")
-        if tables and isinstance(tables, list):
-            return tables
-
-    return None
-
-
-def get_xlets(
-    operator: "BaseOperator", xlet_mode: str = "_inlets"
-) -> Optional[List[str]]:
-    """
-    Given an Airflow DAG Task, obtain the tables
-    set in inlets or outlets.
-
-    We expect xlets to have the following structure:
-    [{'tables': ['FQN']}]
-
-    :param operator: task to get xlets from
-    :param xlet_mode: get inlet or outlet
-    :return: list of tables FQN
-    """
-    xlet = getattr(operator, xlet_mode)
-    tables = parse_xlets(xlet)
-
-    if not tables:
-        operator.log.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
-
-    else:
-        operator.log.info(f"Found {xlet_mode} {tables} in task {operator.task_id}")
-
-    return tables
 
 
 def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):
