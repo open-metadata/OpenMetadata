@@ -69,7 +69,7 @@ class DomoClient:
             return response[0] if len(response) > 0 else None
 
         except Exception as exc:
-            logger.info(f"Error while getting details for Card {page_id} - {exc}")
+            logger.error(f"Error while getting details for Card {page_id} - {exc}")
             logger.debug(traceback.format_exc())
 
         return None
