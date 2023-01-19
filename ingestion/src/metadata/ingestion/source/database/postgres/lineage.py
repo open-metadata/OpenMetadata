@@ -14,6 +14,7 @@ Postgres lineage module
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
@@ -52,6 +53,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                     service_name=table_query.serviceName,
                     database_name=table_query.databaseName,
                     schema_name=table_query.databaseSchema,
+                    dialect=Dialect.POSTGRES,
                 )
 
                 for lineage_request in lineages or []:
