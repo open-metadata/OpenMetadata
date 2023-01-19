@@ -39,7 +39,7 @@ const visitGlossaryTermPage = (termName) => {
     .click();
 };
 
-const createGlossaryTerm = (term, glossary, isMutually = true) => {
+const createGlossaryTerm = (term, glossary, isMutually = false) => {
   cy.get('[data-testid="breadcrumb-link"]')
     .scrollIntoView()
     .should('exist')
@@ -323,7 +323,7 @@ describe('Glossary page should work properly', () => {
 
   it('Create glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
-    terms.forEach((term) => createGlossaryTerm(term, NEW_GLOSSARY));
+    terms.forEach((term) => createGlossaryTerm(term, NEW_GLOSSARY, true));
 
     // Glossary term for Product glossary
 
@@ -333,9 +333,7 @@ describe('Glossary page should work properly', () => {
       .click();
 
     const ProductTerms = Object.values(NEW_GLOSSARY_1_TERMS);
-    ProductTerms.forEach((term) =>
-      createGlossaryTerm(term, NEW_GLOSSARY_1, false)
-    );
+    ProductTerms.forEach((term) => createGlossaryTerm(term, NEW_GLOSSARY_1));
   });
 
   it('Updating data of glossary should work properly', () => {
@@ -721,8 +719,6 @@ describe('Glossary page should work properly', () => {
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
     cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
-    cy.wait(200);
-    // cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
     cy.get('[data-testid="tags"]')
