@@ -248,9 +248,9 @@ describe('Test User Component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const inheritedRoles = await findByTestId(container, 'loader');
+    const loader = await findByTestId(container, 'loader');
 
-    expect(inheritedRoles).toBeInTheDocument();
+    expect(loader).toBeInTheDocument();
   });
 
   it('Following tab should show loader if the data is loading', async () => {
@@ -260,8 +260,8 @@ describe('Test User Component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const inheritedRoles = await findByTestId(container, 'loader');
+    const loader = await findByTestId(container, 'loader');
 
-    expect(inheritedRoles).toBeInTheDocument();
+    expect(loader).toBeInTheDocument();
   });
 });
