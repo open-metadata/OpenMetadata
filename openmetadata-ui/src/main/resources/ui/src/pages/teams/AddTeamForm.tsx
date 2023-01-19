@@ -108,7 +108,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       <Form
         id="add-team-form"
         initialValues={{
-          teamType: TeamType.Department,
+          teamType: TeamType.Group,
         }}
         layout="vertical"
         name="add-team-nest-messages"

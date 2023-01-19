@@ -9,7 +9,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class UserIndex implements ElasticSearchIndex {
   final User user;
-  final List<String> excludeFields = List.of("owns", "changeDescription");
+  final List<String> excludeFields = List.of("owns", "changeDescription", "follows");
 
   public UserIndex(User user) {
     this.user = user;
@@ -21,8 +21,9 @@ public class UserIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
-    doc.remove("owns");
-    doc.remove("follows");
+    if (user.getDisplayName() == null) {
+      doc.put("displayName", user.getName());
+    }
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     return doc;

@@ -25,7 +25,11 @@ from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_name
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
-from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
+from sqlalchemy_redshift.dialect import (
+    RedshiftDialect,
+    RedshiftDialectMixin,
+    RelationKey,
+)
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -51,10 +55,15 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
+    REDSHIFT_TABLE_COMMENTS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_table_comment_wrapper,
+)
 
 sa_version = Version(sa.__version__)
 
@@ -346,6 +355,23 @@ STANDARD_TABLE_TYPES = {
     "e": TableType.External,
     "v": TableType.View,
 }
+
+
+@reflection.cache
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=REDSHIFT_TABLE_COMMENTS,
+    )
+
+
+RedshiftDialect.get_all_table_comments = get_all_table_comments
+RedshiftDialect.get_table_comment = get_table_comment
 
 
 class RedshiftSource(CommonDbSourceService):

@@ -27,7 +27,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -39,11 +38,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import (
-    get_lineage_by_query,
-    get_lineage_via_table_entity,
-)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -71,7 +65,6 @@ class TableNameAndType(BaseModel):
     type_: TableType = TableType.Regular
 
 
-# pylint: disable=too-many-public-methods
 class CommonDbSourceService(
     DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
 ):
@@ -102,7 +95,6 @@ class CommonDbSourceService(
         self._connection = None  # Lazy init as well
         self.table_constraints = None
         self.database_source_state = set()
-        self.context.table_views = []
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -117,6 +109,7 @@ class CommonDbSourceService(
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
+        self._connection = None  # Lazy init as well
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -127,8 +120,11 @@ class CommonDbSourceService(
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
+        custom_database_name = self.service_connection.__dict__.get("databaseName")
 
-        database_name = self.service_connection.__dict__.get("database", "default")
+        database_name = self.service_connection.__dict__.get(
+            "database", custom_database_name or "default"
+        )
         # By default, set the inspector on the created engine
         self.inspector = inspect(self.engine)
         yield database_name
@@ -372,15 +368,6 @@ class CommonDbSourceService(
                 table_request.tableType = TableType.Partitioned.value
                 table_request.tablePartition = partition_details
 
-            if table_type == TableType.View or view_definition:
-                table_view = {
-                    "table_name": table_name,
-                    "table_type": table_type,
-                    "schema_name": schema_name,
-                    "db_name": db_name,
-                }
-                self.context.table_views.append(table_view)
-
             yield table_request
             self.register_record(table_request=table_request)
 
@@ -388,58 +375,6 @@ class CommonDbSourceService(
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
-
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        logger.info("Processing Lineage for Views")
-        for view in self.context.table_views:
-            table_name = view.get("table_name")
-            table_type = view.get("table_type")
-            schema_name = view.get("schema_name")
-            db_name = view.get("db_name")
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service.name.__root__,
-                database_name=db_name,
-                schema_name=schema_name,
-                table_name=table_name,
-            )
-            table_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
-            )
-            view_definition = self.get_view_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
-            )
-
-            try:
-                lineage_parser = LineageParser(view_definition)
-                if lineage_parser.source_tables and lineage_parser.target_tables:
-                    yield from get_lineage_by_query(
-                        self.metadata,
-                        query=view_definition,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                    ) or []
-
-                else:
-                    yield from get_lineage_via_table_entity(
-                        self.metadata,
-                        table_entity=table_entity,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                        query=view_definition,
-                    ) or []
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
-                )
 
     def test_connection(self) -> None:
         """

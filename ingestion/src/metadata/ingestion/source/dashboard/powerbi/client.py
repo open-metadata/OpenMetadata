@@ -98,7 +98,7 @@ class PowerBiApiClient:
             dict
         """
         try:
-            entities_per_page = 1000
+            entities_per_page = min(100, self.config.pagination_entity_per_page)
             params_data = {"$top": "1"}
             response = self.client.get("/myorg/admin/groups", data=params_data)
             count = response.get("@odata.count")
