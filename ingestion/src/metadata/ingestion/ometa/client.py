@@ -215,7 +215,13 @@ class REST:
                 f"Unexpected error calling [{url}] with method [{method}]: {exc}"
             )
         if resp.text != "":
-            return resp.json()
+            try:
+                return resp.json()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error while returing response {resp} in json format - {exc}"
+                )
         return None
 
     def get(self, path, data=None):
