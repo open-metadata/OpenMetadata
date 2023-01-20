@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveType,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlType,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MySQLType,
 )
@@ -91,6 +94,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(SnowflakeType.Snowflake.value): Dialect.SNOWFLAKE,
     str(DeltaLakeType.DeltaLake.value): Dialect.SPARKSQL,
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
+    str(MssqlType.Mssql.value): Dialect.TSQL,
 }
 
 
