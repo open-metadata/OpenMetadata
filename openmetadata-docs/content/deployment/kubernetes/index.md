@@ -263,7 +263,7 @@ RUN pip install --no-deps .
 ```
   
 where `openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `openmetadata/ingestion:0.13.1`.
-This image needs to be pushed and available to the container registry of your choice.
+This image needs to be built and published to the container registry of your choice.
 
 ### 2. Update your dependency values YAML
 
