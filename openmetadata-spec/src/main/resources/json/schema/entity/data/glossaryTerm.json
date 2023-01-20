@@ -103,6 +103,10 @@
       "description": "User names of the reviewers for this glossary.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "owner": {
+      "description": "Owner of this glossary term.",
+      "$ref": "../../type/entityReference.json"
+    },
     "usageCount": {
       "description": "Count of how many times this and it's children glossary terms are used as labels.",
       "type": "integer"
