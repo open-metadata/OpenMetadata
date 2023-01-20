@@ -316,13 +316,25 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
 
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        SELECT column_name, data_type, column_default, is_nullable, comment
-        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id
-        and com.object_type='COLUMN' and col.column_name=com.child_object
+        SELECT
+          column_name,
+          data_type,
+          column_default,
+          is_nullable,
+          comment
+        FROM v_catalog.columns col
+        LEFT JOIN v_catalog.comments com
+          ON com.object_type = 'COLUMN'
+         AND com.object_name LIKE CONCAT(CONCAT(col.table_name, '_%.'), col.column_name)
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
         UNION ALL
-        SELECT column_name, data_type, '' as column_default, true as is_nullable, ''  as comment
+        SELECT
+          column_name,
+          data_type,
+          '' AS column_default,
+          true AS is_nullable,
+          ''  AS comment
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
@@ -345,6 +357,19 @@ VERTICA_VIEW_DEFINITION = textwrap.dedent(
       FROM V_CATALOG.VIEWS
       WHERE table_name='{view_name}'
       AND {schema_condition}
+    """
+)
+
+VERTICA_LIST_DATABASES = "SELECT database_name from v_catalog.databases"
+
+VERTICA_TABLE_COMMENTS = textwrap.dedent(
+    """
+    SELECT
+      object_schema as schema,
+      object_name as table_name,
+      comment as table_comment
+    FROM v_catalog.comments
+    WHERE object_type = 'TABLE';
     """
 )
 

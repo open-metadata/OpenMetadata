@@ -93,3 +93,11 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     """.format(
         col=col, table=table.value
     )
+
+
+@compiles(MedianFn, Dialects.Vertica)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    col, table = list(elements.clauses)
+    return "(SELECT MEDIAN({col}) OVER() FROM {table} LIMIT 1)".format(
+        col=col, table=table.value
+    )

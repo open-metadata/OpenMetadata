@@ -99,3 +99,12 @@ def _(*_, **__):
     from the already sampled results when executing row::MOD(0, 100) < profile_sample.
     """
     return "0"
+
+
+@compiles(RandomNumFn, Dialects.Vertica)
+def _(*_, **__):
+    """
+    Vertica RANDOM() returns a number 0 < n < 1 as a float.
+    We need to cast it to integer to perform the modulo
+    """
+    return "(RANDOM() * 100)::INTEGER"
