@@ -26,20 +26,20 @@ import textwrap
 # v_catalog.comments with v_catalog.columns.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        SELECT 
+        SELECT
           column_name,
           data_type,
           column_default,
           is_nullable,
           comment
-        FROM v_catalog.columns col 
-        LEFT JOIN v_catalog.comments com 
+        FROM v_catalog.columns col
+        LEFT JOIN v_catalog.comments com
           ON com.object_type = 'COLUMN'
          AND com.object_name LIKE CONCAT(CONCAT(col.table_name, '_%.'), col.column_name)
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
         UNION ALL
-        SELECT 
+        SELECT
           column_name,
           data_type,
           '' AS column_default,
