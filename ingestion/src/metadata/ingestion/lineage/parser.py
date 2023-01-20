@@ -394,13 +394,12 @@ class LineageParser:
                     )
                 )
             )
-        except Exception as exc:
-            logger.warning(
-                f"Lineage with SqlFluff failed for the query [{query}]: {exc}"
+        except Exception:
+            logger.debug(
+                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]"
             )
             lr_sqlfluff = None
 
-        sqlparser_count = 0
         lr_sqlparser = LineageRunner(query, dialect=dialect.value)
         try:
             sqlparser_count = len(lr_sqlparser.get_column_lineage()) + len(
@@ -418,7 +417,8 @@ class LineageParser:
             # if sqlparser retrieve more lineage info that sqlfluff
             if sqlparser_count > sqlfluff_count:
                 logger.debug(
-                    f"Lineage computed with SqlFluff did not perform as expected for query: [{query}]"
+                    "Lineage computed with SqlFluff did not perform as expected "
+                    f"for the [{dialect.value}] query: [{query}]"
                 )
                 return lr_sqlparser
             return lr_sqlfluff
