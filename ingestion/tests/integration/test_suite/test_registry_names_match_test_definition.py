@@ -69,4 +69,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
             test_name for test_name in validation_enum_registry.registry.keys()
         )
 
+        print(f"REGISTRY: {registry_test_name}")
+        print(f"TEST DEFINITION: {test_definition_names}")
+
         assert registry_test_name.issubset(test_definition_names)
