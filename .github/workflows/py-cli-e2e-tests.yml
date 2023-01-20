@@ -100,8 +100,3 @@ jobs:
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-    - name: Force failure
-      if: steps.e2e-test.outcome != 'success'
-      run: |
-        exit 1
