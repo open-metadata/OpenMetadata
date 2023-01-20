@@ -344,6 +344,8 @@ site_menu:
     url: /connectors/database/vertica/airflow
   - category: Connectors / Database / Vertica / CLI
     url: /connectors/database/vertica/cli
+  - category: Connectors / Database / Vertica / Troubleshooting
+    url: /connectors/database/vertica/troubleshooting
   - category: Connectors / Dashboard
     url: /connectors/dashboard
   - category: Connectors / Dashboard / Looker
