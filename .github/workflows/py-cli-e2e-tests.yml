@@ -18,6 +18,7 @@ on:
 jobs:
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
+    fail-fast: false
     strategy:
       matrix:
         py-version: ['3.9']
