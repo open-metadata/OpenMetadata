@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
+from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator
@@ -378,12 +379,14 @@ class CommonDbSourceService(
                 table_request.tablePartition = partition_details
 
             if table_type == TableType.View or view_definition:
-                table_view = {
-                    "table_name": table_name,
-                    "table_type": table_type,
-                    "schema_name": schema_name,
-                    "db_name": db_name,
-                }
+                table_view = TableView.parse_obj(
+                    {
+                        "table_name": table_name,
+                        "schema_name": schema_name,
+                        "db_name": db_name,
+                        "view_definition": view_definition,
+                    }
+                )
                 self.context.table_views.append(table_view)
 
             yield table_request
@@ -396,11 +399,13 @@ class CommonDbSourceService(
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
-        for view in self.context.table_views:
-            table_name = view.get("table_name")
-            table_type = view.get("table_type")
-            schema_name = view.get("schema_name")
-            db_name = view.get("db_name")
+        for view in [
+            v for v in self.context.table_views if v.view_definition is not None
+        ]:
+            table_name = view.table_name
+            schema_name = view.schema_name
+            db_name = view.db_name
+            view_definition = view.view_definition
             table_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
@@ -412,12 +417,6 @@ class CommonDbSourceService(
             table_entity = self.metadata.get_by_name(
                 entity=Table,
                 fqn=table_fqn,
-            )
-            view_definition = self.get_view_definition(
-                table_type=table_type,
-                table_name=table_name,
-                schema_name=schema_name,
-                inspector=self.inspector,
             )
 
             try:
