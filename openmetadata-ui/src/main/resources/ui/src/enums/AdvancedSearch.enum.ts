@@ -32,7 +32,7 @@ export enum AdvancedFields {
 }
 
 export enum EntityFields {
-  OWNER = 'owner.name',
+  OWNER = 'owner.displayName',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
   SERVICE = 'service.name',
