@@ -286,6 +286,8 @@ Upgrade/Install your openmetadata-dependencies helm charts with the below single
 
 ```bash
 helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values.deps.yaml
+```
+
 ### 4. Install OpenMetadata
 
 Finally, follow the usual installation for the `openmetadata` helm charts.
