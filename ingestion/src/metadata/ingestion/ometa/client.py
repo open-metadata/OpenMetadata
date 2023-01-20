@@ -14,7 +14,7 @@ Python API REST wrapper and helpers
 import datetime
 import time
 import traceback
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
@@ -165,7 +165,7 @@ class REST:
         # Example: "Proxy-Authorization": "%(Authorization)s"
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
         if self.config.extra_headers:
-            extra_headers: dict[str, str] = self.config.extra_headers
+            extra_headers: Dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             logger.debug("Extra headers provided '%s'", extra_headers)
             headers = {**headers, **extra_headers}
