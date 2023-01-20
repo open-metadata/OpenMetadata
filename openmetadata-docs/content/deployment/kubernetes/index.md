@@ -282,17 +282,10 @@ airflow:
 
 ### 3. Install or Upgrade openmetadata-dependencies
 
-If this is your first installation of `openmetadata-dependencies`, you can run:
+Upgrade/Install your openmetadata-dependencies helm charts with the below single command:
 
 ```bash
-helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values.deps.yaml
-```
-
-If you had a previous helm installation, you'll need to upgrade via:
-
-```bash
-helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies --values values.deps.yaml
-```
+helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values.deps.yaml
 
 ### 4. Install OpenMetadata
 
