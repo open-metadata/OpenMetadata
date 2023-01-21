@@ -103,6 +103,7 @@ jobs:
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
+      continue-on-error: true
       if: steps.e2e-test.outcome != 'success'
       run: |
         exit 1
