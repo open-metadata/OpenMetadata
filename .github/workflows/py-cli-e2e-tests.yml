@@ -23,8 +23,7 @@ jobs:
       matrix:
         py-version: ['3.9']
         e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift']
-        continue-on-error: true
-
+        continue-on-error: [true]
     environment: test
 
     steps:
