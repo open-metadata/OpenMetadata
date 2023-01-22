@@ -98,6 +98,8 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         datasetFQN,
         PROFILER_FILTER_RANGE[selectedTimeRange].days
       );
+    } else {
+      setIsLoading(false);
     }
   }, [datasetFQN, selectedTimeRange]);
 
