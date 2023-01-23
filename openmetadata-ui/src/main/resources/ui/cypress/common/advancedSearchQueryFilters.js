@@ -109,6 +109,8 @@ export const ownEntityAndAddTag = (termObj, ownerName) => {
     .should('be.visible')
     .click();
 
+  cy.wait(2000);
+
   cy.get('[data-testid="searchInputText"]')
     .should('exist')
     .scrollIntoView()
