@@ -41,7 +41,7 @@ def test_connection(domo: Domo) -> None:
     Test connection
     """
     try:
-        domo.streams.list()
+        domo.streams.list(limit=1, offset=0)
     except Exception as exc:
         msg = f"Unknown error connecting with {domo}: {exc}."
         raise SourceConnectionException(msg)
