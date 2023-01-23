@@ -22,6 +22,17 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+### Permissions
+
+To run the ingestion we need a user with `SELECT` grants on the schemas that you'd like to ingest, as well as to the
+`V_CATALOG` schema. You can grant those as follows for the schemas in your database:
+
+```sql
+CREATE USER openmetadata IDENTIFIED BY 'password';
+GRANT SELECT ON ALL TABLES IN SCHEMA PUBLIC TO openmetadata;
+GRANT SELECT ON ALL TABLES IN SCHEMA V_CATALOG TO openmetadata;
+```
+
 ### Python Requirements
 
 To run the Vertica ingestion, you will need to install:
