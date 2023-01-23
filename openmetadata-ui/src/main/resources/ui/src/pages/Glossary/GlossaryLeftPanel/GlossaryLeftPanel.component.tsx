@@ -139,7 +139,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 {searchTerm ? (
                   <span>
                     {t('message.no-entity-found-for-name', {
-                      entity: t('label.glossary-term'),
+                      entity: t('label.glossary'),
                       name: searchTerm,
                     })}
                   </span>
