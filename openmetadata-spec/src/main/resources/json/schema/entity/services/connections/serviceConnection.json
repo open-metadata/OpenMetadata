@@ -25,6 +25,9 @@
         },
         {
           "$ref": "../mlmodelService.json#/definitions/mlModelConnection"
+        },
+        {
+          "$ref": "../storeService.json#/definitions/storeConnection"
         }
       ]
     }

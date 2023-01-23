@@ -1,0 +1,122 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/file.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "File",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the File entity. A folder contains a collection of files stored by a Store Service.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.File",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "compressionType": {
+      "javaType": "org.openmetadata.schema.type.CompressionType",
+      "description": "Compression type if the file is compressed.",
+      "type": "string",
+      "enum": [
+        "ZIP",
+        "GZIP",
+        "ZSTD"
+      ],
+      "javaEnums": [
+        {
+          "name": "ZIP"
+        },
+        {
+          "name": "GZIP"
+        },
+        {
+          "name": "ZSTD"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this file instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the file. Expected to be unique within a Folder.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a file in the form `serviceName.folderName.fileName`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this file.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a file.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "compressed": {
+      "description": "Whether the file is compressed",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Extension for the file if present",
+      "type": "string",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this file resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this file.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "folder": {
+      "description": "Reference to the Folder that contains this file.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to Store service this file is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type this file is hosted in.",
+      "$ref": "../services/storeService.json#/definitions/storeServiceType"
+    },
+    "tags": {
+      "description": "Tags for this file.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "additionalProperties": false
+}
