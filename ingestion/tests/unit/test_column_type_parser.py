@@ -12,13 +12,11 @@
 Test column type in column_type_parser
 """
 import json
+import logging
 import os
 from unittest import TestCase
 
-from sqlalchemy.sql import sqltypes as types
-
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils.ansi import print_ansi_encoded_string
 
 COLUMN_TYPE_PARSE = [
     "array<string>",
@@ -88,7 +86,7 @@ try:
     ) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
 except Exception as exc:
-    print_ansi_encoded_string(message=exc)
+    logging.error(exc)
 
 
 class ColumnTypeParseTest(TestCase):

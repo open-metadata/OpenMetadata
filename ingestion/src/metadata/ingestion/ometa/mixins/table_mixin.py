@@ -38,7 +38,8 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.utils import model_str, ometa_logger
+from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.logger import ometa_logger
 from metadata.utils.lru_cache import LRUCache
 from metadata.utils.uuid_encoder import UUIDEncoder
 
