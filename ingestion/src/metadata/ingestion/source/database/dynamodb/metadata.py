@@ -20,6 +20,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
@@ -212,6 +213,9 @@ class DynamodbSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass

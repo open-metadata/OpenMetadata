@@ -59,7 +59,9 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.elasticsearch.trustStore.path | string | `Empty String` |
 | global.elasticsearch.trustStore.password.secretRef | string | `elasticsearch-truststore-secrets` |
 | global.elasticsearch.trustStore.password.secretKey | string | `openmetadata-elasticsearch-truststore-password` |
-| global.fernetKey | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
+| global.fernetkey.value | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
+| global.fernetkey.secretRef | string | `` |
+| global.fernetkey.secretKef | string | `` |
 | global.jwtTokenConfiguration.enabled | bool | `true` |
 | global.jwtTokenConfiguration.rsapublicKeyFilePath | string | `./conf/public_key.der` |
 | global.jwtTokenConfiguration.rsaprivateKeyFilePath | string | `./conf/private_key.der` |

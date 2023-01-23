@@ -344,6 +344,8 @@ site_menu:
     url: /connectors/database/vertica/airflow
   - category: Connectors / Database / Vertica / CLI
     url: /connectors/database/vertica/cli
+  - category: Connectors / Database / Vertica / Troubleshooting
+    url: /connectors/database/vertica/troubleshooting
   - category: Connectors / Dashboard
     url: /connectors/dashboard
   - category: Connectors / Dashboard / Looker
@@ -378,6 +380,8 @@ site_menu:
     url: /connectors/dashboard/superset/airflow
   - category: Connectors / Dashboard / Superset / CLI
     url: /connectors/dashboard/superset/cli
+  - category: Connectors / Dashboard / Superset / SSO
+    url: /connectors/dashboard/superset/sso
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Airflow

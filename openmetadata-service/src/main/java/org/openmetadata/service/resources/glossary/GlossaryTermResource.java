@@ -82,6 +82,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     Entity.withHref(uriInfo, term.getChildren());
     Entity.withHref(uriInfo, term.getRelatedTerms());
     Entity.withHref(uriInfo, term.getReviewers());
+    Entity.withHref(uriInfo, term.getOwner());
     return term;
   }
 
@@ -102,7 +103,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     }
   }
 
-  static final String FIELDS = "children,relatedTerms,reviewers,tags,usageCount";
+  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount";
 
   @GET
   @Valid

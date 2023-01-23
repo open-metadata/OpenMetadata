@@ -33,6 +33,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -123,7 +124,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   private List<CustomProperty> getCustomProperties(Type type) throws IOException {
     if (type.getCategory().equals(Category.Field)) {
-      return null; // Property types don't support custom properties
+      return null; // Property type fields don't support custom properties
     }
     List<CustomProperty> customProperties = new ArrayList<>();
     List<Triple<String, String, String>> results =
@@ -152,65 +153,89 @@ public class TypeRepository extends EntityRepository<Type> {
     }
 
     private void updateCustomProperties() throws JsonProcessingException {
-      List<CustomProperty> updatedFields = listOrEmpty(updated.getCustomProperties());
-      List<CustomProperty> origFields = listOrEmpty(original.getCustomProperties());
+      List<CustomProperty> updatedProperties = listOrEmpty(updated.getCustomProperties());
+      List<CustomProperty> origProperties = listOrEmpty(original.getCustomProperties());
       List<CustomProperty> added = new ArrayList<>();
       List<CustomProperty> deleted = new ArrayList<>();
-      recordListChange("customProperties", origFields, updatedFields, added, deleted, customFieldMatch);
+      recordListChange("customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
       for (CustomProperty property : added) {
-        String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
-        String customPropertyJson = JsonUtils.pojoToJson(property);
-        LOG.info(
-            "Adding customProperty {} with type {} to the entity {}",
-            customPropertyFQN,
-            property.getPropertyType().getName(),
-            updated.getName());
-        daoCollection
-            .fieldRelationshipDAO()
-            .insert(
-                customPropertyFQN,
-                property.getPropertyType().getName(),
-                Entity.TYPE,
-                Entity.TYPE,
-                Relationship.HAS.ordinal(),
-                customPropertyJson);
+        storeCustomProperty(property);
       }
       for (CustomProperty property : deleted) {
-        String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
-        LOG.info(
-            "Deleting customProperty {} with type {} from the entity {}",
-            property.getName(),
-            property.getPropertyType().getName(),
-            updated.getName());
-        daoCollection
-            .fieldRelationshipDAO()
-            .delete(
-                customPropertyFQN,
-                property.getPropertyType().getName(),
-                Entity.TYPE,
-                Entity.TYPE,
-                Relationship.HAS.ordinal());
-        // Delete all the data stored in the entity extension for the custom property
-        daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+        deleteCustomProperty(property);
       }
 
       // Record changes to updated custom properties (only description can be updated)
-      for (CustomProperty updated : updatedFields) {
+      for (CustomProperty updateProperty : updatedProperties) {
         // Find property that matches name and type
-        CustomProperty stored =
-            origFields.stream().filter(c -> customFieldMatch.test(c, updated)).findAny().orElse(null);
-        if (stored == null) { // New property added
+        CustomProperty storedProperty =
+            origProperties.stream().filter(c -> customFieldMatch.test(c, updateProperty)).findAny().orElse(null);
+        if (storedProperty == null) { // New property added, which is already handled
           continue;
         }
-
-        updateCustomPropertyDescription(stored, updated);
+        updateCustomPropertyDescription(updated, storedProperty, updateProperty);
       }
     }
 
-    private void updateCustomPropertyDescription(CustomProperty orig, CustomProperty updated)
-        throws JsonProcessingException {
-      String fieldName = getCustomField(orig, FIELD_DESCRIPTION);
-      recordChange(fieldName, orig.getDescription(), updated.getDescription());
+    private void storeCustomProperty(CustomProperty property) throws JsonProcessingException {
+      String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
+      EntityReference propertyType = property.getPropertyType();
+      String customPropertyJson = JsonUtils.pojoToJson(property.withPropertyType(null)); // Don't store entity reference
+      property.withPropertyType(propertyType); // Restore entity reference
+      LOG.info(
+          "Adding customProperty {} with type {} to the entity {}",
+          customPropertyFQN,
+          property.getPropertyType().getName(),
+          updated.getName());
+      daoCollection
+          .fieldRelationshipDAO()
+          .insert(
+              customPropertyFQN,
+              property.getPropertyType().getName(),
+              Entity.TYPE,
+              Entity.TYPE,
+              Relationship.HAS.ordinal(),
+              customPropertyJson);
+    }
+
+    private void deleteCustomProperty(CustomProperty property) {
+      String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
+      LOG.info(
+          "Deleting customProperty {} with type {} from the entity {}",
+          property.getName(),
+          property.getPropertyType().getName(),
+          updated.getName());
+      daoCollection
+          .fieldRelationshipDAO()
+          .delete(
+              customPropertyFQN,
+              property.getPropertyType().getName(),
+              Entity.TYPE,
+              Entity.TYPE,
+              Relationship.HAS.ordinal());
+      // Delete all the data stored in the entity extension for the custom property
+      daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+    }
+
+    private void updateCustomPropertyDescription(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) throws JsonProcessingException {
+      String fieldName = getCustomField(origProperty, FIELD_DESCRIPTION);
+      if (recordChange(fieldName, origProperty.getDescription(), updatedProperty.getDescription())) {
+        String customPropertyFQN = getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+        EntityReference propertyType = updatedProperty.getPropertyType(); // Don't store entity reference
+        String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
+        updatedProperty.withPropertyType(propertyType); // Restore entity reference
+        daoCollection
+            .fieldRelationshipDAO()
+            .upsert(
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal(),
+                "customProperty",
+                customPropertyJson);
+      }
     }
   }
 }

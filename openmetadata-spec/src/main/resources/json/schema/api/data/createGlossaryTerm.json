@@ -50,6 +50,10 @@
       "description": "User names of the reviewers for this glossary.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "owner": {
+      "description": "Owner of this glossary term.",
+      "$ref": "../../type/entityReference.json"
+    },
     "tags": {
       "description": "Tags for this glossary term.",
       "type": "array",
