@@ -25,7 +25,6 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
 )
-from metadata.utils.logger import log_ansi_encoded_string
 
 mock_file_path = Path(__file__).parent / "resources/datasets/databricks_dataset.json"
 with open(mock_file_path, encoding="utf-8") as file:
@@ -122,7 +121,6 @@ class DatabricksLineageTests(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        log_ansi_encoded_string(message="init")
         config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
 
         self.databricks = DatabricksLineageSource.create(
