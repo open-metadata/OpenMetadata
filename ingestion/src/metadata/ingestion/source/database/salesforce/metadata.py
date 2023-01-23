@@ -19,6 +19,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
@@ -245,6 +246,9 @@ class SalesforceSource(DatabaseServiceSource):
         if column_type in {"ID", "PHONE", "CURRENCY"}:
             return "INT"
         return "VARCHAR"
+
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass

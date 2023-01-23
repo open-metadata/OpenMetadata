@@ -88,7 +88,7 @@ const AddUsersModalV1 = ({
       });
   };
 
-  const searchUsers = (text: string, page: number) => {
+  const searchUsers = (text: string, page = 1) => {
     searchData(text, page, PAGE_SIZE_MEDIUM, '', '', '', SearchIndex.USER)
       .then((res) => {
         const data = getFilterUserData(
@@ -150,7 +150,7 @@ const AddUsersModalV1 = ({
     setCurrentPage(1);
     setSearchText(searchValue);
     if (searchValue) {
-      searchUsers(searchValue, currentPage);
+      searchUsers(searchValue);
     } else {
       fetchAllUsers();
     }
