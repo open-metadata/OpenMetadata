@@ -31,12 +31,16 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           AND starttime < '{end_time}'
           LIMIT {result_limit}
   ),
+  deduped_querytext AS ( -- In some instances, rows are duplicated, causing LISTAGG to fail due to exceeding the maximum str length of 65535.
+    SELECT DISTINCT *
+    FROM pg_catalog.stl_querytext
+  ),
   full_queries AS (
     SELECT
           query,
           LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
             WITHIN GROUP (ORDER BY sequence) AS query_text
-      FROM pg_catalog.stl_querytext
+      FROM deduped_querytext
       WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
     GROUP BY query
   ),
