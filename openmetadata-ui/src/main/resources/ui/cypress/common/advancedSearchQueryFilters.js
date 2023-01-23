@@ -92,9 +92,15 @@ export const ownEntityAndAddTag = (termObj, ownerName) => {
     '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
     'getTeams'
   );
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*&from=0&size=10&index=user_search_index',
+    'getUsers'
+  );
   cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
   verifyResponseStatusCode('@getTeams', 200);
+  verifyResponseStatusCode('@getUsers', 200);
 
   // Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')

@@ -64,7 +64,7 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
       cy.login();
     });
 
-    it(`Prerequisite for ${asset.name} quick filter tests`, () => {
+    it(`Prerequisite for ${asset.label} quick filter tests`, () => {
       ownEntityAndAddTag(asset, COMMON_DROPDOWN_ITEMS[0].selectOption1);
     });
 
