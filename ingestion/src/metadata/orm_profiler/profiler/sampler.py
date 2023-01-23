@@ -15,6 +15,7 @@ for the profiler
 from typing import Dict, Optional, Union
 
 from sqlalchemy import column, inspect, text
+import sqlalchemy
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
@@ -23,7 +24,7 @@ from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
-from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
+from metadata.orm_profiler.profiler.handle_partition import format_partition_datetime, partition_filter_handler
 
 RANDOM_LABEL = "random"
 
@@ -147,14 +148,25 @@ class Sampler:
     def _random_sample_for_partitioned_tables(self) -> Query:
         """Return the Query object for partitioned tables"""
         partition_field = self._partition_details["partition_field"]
+        col = self.table.__table__.c.get(partition_field.lower())
+        col_type = None
+        if col is not None:
+            col_type = col.type
+        if partition_field == "_PARTITIONDATE":
+            col_type = sqlalchemy.DATE
+        if partition_field == "_PARTITIONTIME":
+            col_type =  sqlalchemy.DATETIME()
+
         if not self._partition_details.get("partition_values"):
             sample = (
                 self.session.query(self.table)
                 .filter(
-                    column(partition_field)
-                    >= self._partition_details["partition_start"].strftime("%Y-%m-%d"),
-                    column(partition_field)
-                    <= self._partition_details["partition_end"].strftime("%Y-%m-%d"),
+                    format_partition_datetime(
+                        partition_field,
+                        self._partition_details["partition_interval"],
+                        self._partition_details["partition_interval_unit"],
+                        col_type,
+                    )
                 )
                 .subquery()
             )
