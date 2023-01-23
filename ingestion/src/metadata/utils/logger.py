@@ -44,7 +44,8 @@ class Loggers(Enum):
     @DynamicClassAttribute
     def value(self):
         """Centralize the metadata logger under `metadata.NAME`"""
-        return METADATA_LOGGER + "." + self._value_
+        # Disabling linting, false positive as it does not find _value_
+        return METADATA_LOGGER + "." + self._value_  # pylint: disable=no-member
 
 
 class ANSI(Enum):
