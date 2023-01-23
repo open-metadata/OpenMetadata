@@ -82,11 +82,7 @@ export const applyQuickFilterAndCheck = (
   cy.get(`[data-testid="${dataCardTitleTestId}"]`).should('exist');
 };
 
-export const ownEntityAndAddTag = (termObj, ownerName) => {
-  // search for the term and redirect to the respective entity tab
-  visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
-
-  // go to manage tab and search for logged in user and set the owner
+const openEditOwnerDropdown = () => {
   interceptURL(
     'GET',
     '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
@@ -110,6 +106,13 @@ export const ownEntityAndAddTag = (termObj, ownerName) => {
     .click();
 
   cy.wait(2000);
+};
+
+export const ownEntityAndAddTag = (termObj, ownerName) => {
+  // search for the term and redirect to the respective entity tab
+  visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
+
+  openEditOwnerDropdown();
 
   cy.get('[data-testid="searchInputText"]')
     .should('exist')
@@ -160,6 +163,38 @@ export const ownEntityAndAddTag = (termObj, ownerName) => {
     .scrollIntoView()
     .should('be.visible')
     .contains(termObj.tag);
+};
+
+export const removeOwnerAndTag = (termObj) => {
+  // search for the term and redirect to the respective entity tab
+  visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
+
+  openEditOwnerDropdown();
+
+  // Remove owner
+  cy.get('[data-testid="remove-owner"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  // Remove Tag
+  cy.get('[data-testid="edit-button"] > [data-testid="image"]')
+    .eq(0)
+    .should('be.visible')
+    .scrollIntoView()
+    .click();
+
+  cy.wait(500);
+
+  cy.get('.ant-select-selection-item-remove')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="saveAssociatedTag"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
 };
 
 export const checkCheckboxStatus = (boxId, isChecked) => {

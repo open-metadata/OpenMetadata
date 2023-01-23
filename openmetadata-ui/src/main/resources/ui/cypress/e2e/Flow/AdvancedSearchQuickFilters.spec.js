@@ -16,6 +16,7 @@ import {
   checkCheckboxStatus,
   openFilterDropdown,
   ownEntityAndAddTag,
+  removeOwnerAndTag,
 } from '../../common/advancedSearchQueryFilters';
 import { verifyResponseStatusCode } from '../../common/common';
 import {
@@ -124,6 +125,10 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
           checkCheckboxStatus(`${filter.selectOptionTestId2}-checkbox`, true);
         }
       });
+    });
+
+    it(`Cleanup for advanced search quick filter tests for ${asset.label} entities`, () => {
+      removeOwnerAndTag(asset);
     });
   });
 });
