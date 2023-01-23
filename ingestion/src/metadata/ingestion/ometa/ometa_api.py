@@ -17,13 +17,10 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.utils.logger import ometa_logger
-
 try:
     from typing import get_args
 except ImportError:
     from typing_compat import get_args
-
 
 from pydantic import BaseModel
 from requests.utils import quote
@@ -101,6 +98,7 @@ from metadata.ingestion.ometa.provider_registry import (
     auth_provider_registry,
 )
 from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
