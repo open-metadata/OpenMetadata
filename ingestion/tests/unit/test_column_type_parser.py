@@ -18,7 +18,7 @@ from unittest import TestCase
 from sqlalchemy.sql import sqltypes as types
 
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils.ansi import print_ansi_encoded_string
+from metadata.utils.logger import log_ansi_encoded_string
 
 COLUMN_TYPE_PARSE = [
     "array<string>",
@@ -88,7 +88,7 @@ try:
     ) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
 except Exception as exc:
-    print_ansi_encoded_string(message=exc)
+    log_ansi_encoded_string(message=exc)
 
 
 class ColumnTypeParseTest(TestCase):

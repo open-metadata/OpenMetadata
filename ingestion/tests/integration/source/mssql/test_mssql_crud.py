@@ -24,7 +24,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
-from metadata.utils.ansi import print_ansi_encoded_string
+from metadata.utils.logger import log_ansi_encoded_string
 
 headers = {"Content-type": "application/json"}
 url = "http://localhost:8585/api/v1/"
@@ -50,7 +50,7 @@ def status(r):
 def mssql_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("sqlserver", 1433)
-    print_ansi_encoded_string(message="Mssql is running on port {}".format(port))
+    log_ansi_encoded_string(message="Mssql is running on port {}".format(port))
     url = "http://localhost:8585"
     time.sleep(180)
     docker_services.wait_until_responsive(
@@ -96,7 +96,7 @@ def create_delete_database(client):
     )
     created_database = client.create_database(create_database_request)
     resp = create_delete_table(client)
-    print_ansi_encoded_string(message=resp)
+    log_ansi_encoded_string(message=resp)
     client.delete_database(created_database.id.__root__)
     client.delete_database_service(mssql_service.id.__root__)
     return resp
