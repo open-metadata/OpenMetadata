@@ -14,10 +14,12 @@ Module centralising logger configs
 
 import logging
 from enum import Enum
+from types import DynamicClassAttribute
 from typing import Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 
+METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 )
@@ -38,6 +40,11 @@ class Loggers(Enum):
     PROFILER_INTERFACE = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
+
+    @DynamicClassAttribute
+    def value(self):
+        """Centralize the metadata logger under `metadata.NAME`"""
+        return METADATA_LOGGER + "." + self._value_
 
 
 def ometa_logger():
