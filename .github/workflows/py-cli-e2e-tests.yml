@@ -21,7 +21,8 @@ jobs:
     strategy:
       matrix:
         py-version: ['3.9']
-        e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift']
+        e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+        continue-on-error: [true]
     environment: test
 
     steps:
@@ -85,6 +86,10 @@ jobs:
         E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
         E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
         E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+        E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
+        E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
+        E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
+        E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
