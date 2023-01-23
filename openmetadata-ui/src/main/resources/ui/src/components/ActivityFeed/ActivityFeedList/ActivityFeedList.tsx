@@ -310,7 +310,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               <NoFeedPlaceholder entityName={entityName} />
             ) : !refreshFeedCount ? (
               <ErrorPlaceHolder>
-                {t('message.no-data-available-for-selected-filter')}
+                {t('message.no-feed-available-for-selected-filter')}
               </ErrorPlaceHolder>
             ) : null}
           </div>
