@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         py-version: ['3.9']
-        e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift']
+        e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
     environment: test
 
     steps:
