@@ -17,7 +17,6 @@ from typing import Dict, Iterable, Optional
 
 from pydantic import ValidationError
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
