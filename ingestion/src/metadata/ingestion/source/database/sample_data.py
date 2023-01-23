@@ -593,6 +593,7 @@ class SampleDataSource(
                 database_name=db.name.__root__,
                 schema_name=schema.name.__root__,
                 table_name=table_request.name.__root__,
+                skip_es_search=True,
             )
 
             location_fqn = fqn.build(

@@ -199,6 +199,7 @@ class CommonDbSourceService(
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,

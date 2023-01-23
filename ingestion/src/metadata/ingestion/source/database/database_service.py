@@ -379,6 +379,7 @@ class DatabaseServiceSource(
             database_name=self.context.database.name.__root__,
             schema_name=self.context.database_schema.name.__root__,
             table_name=table_name,
+            skip_es_search=True,
         )
         return self.get_tag_by_fqn(entity_fqn=table_fqn)
 
@@ -411,6 +412,7 @@ class DatabaseServiceSource(
             database_name=self.context.database.name.__root__,
             schema_name=self.context.database_schema.name.__root__,
             table_name=table_request.name.__root__,
+            skip_es_search=True,
         )
 
         self.database_source_state.add(table_fqn)
