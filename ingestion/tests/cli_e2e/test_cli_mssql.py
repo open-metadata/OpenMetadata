@@ -14,13 +14,15 @@ MSSQL E2E tests
 """
 
 from typing import List
-from metadata.utils.constants import UTF_8
 
-import yaml
 import pytest
+import yaml
+
+from metadata.utils.constants import UTF_8
 
 from .common_e2e_sqa_mixins import SQACommonMethods
 from .test_cli_db_base_common import CliCommonDB
+
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
@@ -38,7 +40,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     insert_data_queries: List[str] = [
-    """
+        """
     INSERT INTO persons (person_id, full_name, birthdate) VALUES
         (1,'Peter Parker', '2004-08-10'),
         (2,'Bruce Banner', '1988-12-18'),
@@ -88,11 +90,11 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                                 "partitionColumnName": "birthdate",
                                 "partitionIntervalType": "TIME-UNIT",
                                 "partitionInterval": 30,
-                                "partitionIntervalUnit": "YEAR"
-                            }
+                                "partitionIntervalUnit": "YEAR",
+                            },
                         }
                     ]
-                }
+                },
             }
         }
 
@@ -137,7 +139,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def get_includes_tables() -> List[str]:
         return ["persons"]
-    
+
     @staticmethod
     def get_excludes_tables() -> List[str]:
         return ["foo"]

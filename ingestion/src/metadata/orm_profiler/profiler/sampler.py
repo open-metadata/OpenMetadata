@@ -14,8 +14,8 @@ for the profiler
 """
 from typing import Dict, Optional, Union
 
-from sqlalchemy import column, inspect, text
 import sqlalchemy
+from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
@@ -24,7 +24,10 @@ from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
-from metadata.orm_profiler.profiler.handle_partition import format_partition_datetime, partition_filter_handler
+from metadata.orm_profiler.profiler.handle_partition import (
+    format_partition_datetime,
+    partition_filter_handler,
+)
 
 RANDOM_LABEL = "random"
 
@@ -155,7 +158,7 @@ class Sampler:
         if partition_field == "_PARTITIONDATE":
             col_type = sqlalchemy.DATE
         if partition_field == "_PARTITIONTIME":
-            col_type =  sqlalchemy.DATETIME()
+            col_type = sqlalchemy.DATETIME()
 
         if not self._partition_details.get("partition_values"):
             sample = (
