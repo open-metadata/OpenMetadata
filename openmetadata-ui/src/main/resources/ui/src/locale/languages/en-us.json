@@ -722,7 +722,7 @@
     "no-announcement-message": "No Announcements, Click on add announcement to add one.",
     "no-closed-task": "No Closed Tasks",
     "no-data-available": "No data available.",
-    "no-data-available-for-selected-filter": "No data found. Try changing the filters.",
+    "no-data-available-for-selected-filter": "No feed found. Try changing the filters.",
     "no-entity-activity-message": "There is no activity on the {{entity}} yet. Start a conversation by clicking on the",
     "no-entity-available-with-name": "No {{entity}} available with name",
     "no-entity-data-available": "No {{entity}} data available.",
