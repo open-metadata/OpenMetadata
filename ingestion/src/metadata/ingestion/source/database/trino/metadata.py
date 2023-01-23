@@ -182,27 +182,28 @@ class TrinoSource(CommonDbSourceService):
         else:
             results = self.connection.execute("SHOW CATALOGS")
             for res in results:
-                new_catalog = res[0]
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=new_catalog,
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
-                    continue
-
-                try:
-                    self.set_inspector(database_name=new_catalog)
-                    yield new_catalog
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error trying to connect to database {new_catalog}: {exc}"
+                if res:
+                    new_catalog = res[0]
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=new_catalog,
                     )
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog,
+                    ):
+                        self.status.filter(database_fqn, "Database Filtered Out")
+                        continue
+
+                    try:
+                        self.set_inspector(database_name=new_catalog)
+                        yield new_catalog
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error trying to connect to database {new_catalog}: {exc}"
+                        )
