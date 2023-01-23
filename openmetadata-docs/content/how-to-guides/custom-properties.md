@@ -115,7 +115,7 @@ All the custom properties value for the entity will be stored in the `extension`
 Let’s assume you have `raw_product_catalog` table and its id is `208598fc-bd5f-458c-bf98-59224e1620c7` so our PATCH API request will be like this.
 
 ```commandline
-curl -X PATCH http://localhost:8585/api/v1/tables/208598fc-bd5f-458c-bf98-59224e1620c7
+curl -X PATCH http://localhost:8585/api/v1/tables/208598fc-bd5f-458c-bf98-59224e1620c7 -H 'Content-Type: application/json-patch+json'
 ```
 
 For the first time if we want to add the value to the custom property then the payload should be like this.
