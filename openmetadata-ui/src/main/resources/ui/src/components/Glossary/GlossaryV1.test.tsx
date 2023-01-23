@@ -138,7 +138,6 @@ const mockProps: GlossaryV1Props = {
   deleteStatus: 'initial' as LoadingState,
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
-  isChildLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
   updateGlossary: jest.fn(),
   onGlossaryDelete: jest.fn(),

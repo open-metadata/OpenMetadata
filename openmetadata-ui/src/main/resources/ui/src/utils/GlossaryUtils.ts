@@ -12,8 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
+import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, omit } from 'lodash';
+import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -93,4 +95,71 @@ export const parseCSV = (csvData: string) => {
   }
 
   return recordList;
+};
+
+// calculate root level glossary term
+export const getRootLevelGlossaryTerm = (
+  data: GlossaryTerm[],
+  params?: ListGlossaryTermsParams
+) => {
+  return data.reduce((glossaryTerms, curr) => {
+    const currentTerm =
+      curr.children?.length === 0 ? omit(curr, 'children') : curr;
+    if (params?.glossary) {
+      return isUndefined(curr.parent)
+        ? [...glossaryTerms, currentTerm]
+        : glossaryTerms;
+    }
+
+    return curr?.parent?.id === params?.parent
+      ? [...glossaryTerms, currentTerm]
+      : glossaryTerms;
+  }, [] as GlossaryTerm[]);
+};
+
+// update glossaryTerm tree with newly fetch child term
+export const createGlossaryTermTree = (
+  glossaryTerms: ModifiedGlossaryTerm[],
+  updatedData: GlossaryTerm[],
+  glossaryTermId?: string
+) => {
+  return glossaryTerms.map((term) => {
+    if (term.id === glossaryTermId) {
+      term.children = updatedData;
+    } else if (term?.children?.length) {
+      createGlossaryTermTree(
+        term.children as ModifiedGlossaryTerm[],
+        updatedData,
+        glossaryTermId
+      );
+    }
+
+    return term;
+  });
+};
+
+// Calculate searched data based on search value
+export const getSearchedDataFromGlossaryTree = (
+  glossaryTerms: ModifiedGlossaryTerm[],
+  value: string
+): ModifiedGlossaryTerm[] => {
+  return glossaryTerms.reduce((acc, term) => {
+    const isMatching =
+      term.name.toLowerCase().includes(value.toLowerCase()) ||
+      term?.displayName?.toLowerCase().includes(value.toLowerCase());
+
+    if (isMatching) {
+      return [...acc, term];
+    } else if (term.children?.length) {
+      const children = getSearchedDataFromGlossaryTree(
+        term.children as ModifiedGlossaryTerm[],
+        value
+      );
+      if (children.length) {
+        return [...acc, { ...term, children: children as GlossaryTerm[] }];
+      }
+    }
+
+    return acc;
+  }, [] as ModifiedGlossaryTerm[]);
 };

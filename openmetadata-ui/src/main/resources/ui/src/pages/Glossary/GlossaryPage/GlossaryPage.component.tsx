@@ -61,6 +61,7 @@ const GlossaryPage = () => {
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
 
   const isGlossaryActive = useMemo(() => {
+    setSelectedData(undefined);
     if (glossaryFqn) {
       return glossaryFqn.split(FQN_SEPARATOR_CHAR).length === 1;
     }
@@ -79,6 +80,7 @@ const GlossaryPage = () => {
   };
 
   const fetchGlossaryList = async () => {
+    setIsRightPanelLoading(true);
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
@@ -90,6 +92,7 @@ const GlossaryPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+      setIsRightPanelLoading(false);
     }
   };
   useEffect(() => {
@@ -221,6 +224,10 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   if (glossaries.length === 0 && !isLoading) {
     return (
       <ErrorPlaceHolder
@@ -242,23 +249,23 @@ const GlossaryPage = () => {
     );
   }
 
-  if (isLoading || isUndefined(selectedData)) {
-    return <Loader />;
-  }
-
   return (
     <PageContainerV1>
       <PageLayoutV1 leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}>
-        <GlossaryV1
-          deleteStatus={deleteStatus}
-          handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-          isChildLoading={isRightPanelLoading}
-          isGlossaryActive={isGlossaryActive}
-          selectedData={selectedData}
-          updateGlossary={updateGlossary}
-          onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={handleGlossaryTermDelete}
-        />
+        {isUndefined(selectedData) || isRightPanelLoading ? (
+          // Loader for right panel data
+          <Loader />
+        ) : (
+          <GlossaryV1
+            deleteStatus={deleteStatus}
+            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+            isGlossaryActive={isGlossaryActive}
+            selectedData={selectedData}
+            updateGlossary={updateGlossary}
+            onGlossaryDelete={handleGlossaryDelete}
+            onGlossaryTermDelete={handleGlossaryTermDelete}
+          />
+        )}
       </PageLayoutV1>
     </PageContainerV1>
   );

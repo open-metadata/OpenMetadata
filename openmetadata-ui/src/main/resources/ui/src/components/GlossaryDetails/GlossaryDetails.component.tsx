@@ -12,17 +12,17 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button as ButtonAntd, Card as AntdCard, Tabs, Tooltip } from 'antd';
+import { Button as ButtonAntd, Col, Row, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
+import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { getUserPath } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -39,8 +39,6 @@ import {
   searchFormattedUsersAndTeams,
   suggestFormattedUsersAndTeams,
 } from '../../utils/UserDataUtils';
-import Card from '../common/Card/Card';
-import DescriptionV1 from '../common/description/DescriptionV1';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import DropDownList from '../dropdown/DropDownList';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -57,6 +55,7 @@ type props = {
 
 const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const history = useHistory();
 
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -66,7 +65,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [listVisible, setListVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState('summary');
+  const [activeTab, setActiveTab] = useState('glossaryTerms');
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
@@ -278,7 +277,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   }, [glossary.reviewers]);
 
   useEffect(() => {
-    setActiveTab('summary');
+    setActiveTab('glossaryTerms');
   }, [glossaryFqn]);
 
   const AddReviewerButton = () => {
@@ -409,146 +408,82 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   };
 
   return (
-    <div
-      className="tw-w-full tw-h-full tw-flex tw-flex-col"
-      data-testid="glossary-details">
-      <div
-        className="tw-flex tw-items-center tw-flex-wrap tw-group m-b-xss"
-        data-testid="tags">
-        {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
-          <>
-            <SVGIcons
-              alt="icon-tag"
-              className="tw-mx-1"
-              icon="icon-tag-grey"
-              width="16"
-            />
-            <TagsViewer tags={glossary.tags} />
-          </>
-        )}
+    <Row data-testid="glossary-details" gutter={[0, 16]}>
+      <Col span={24}>
+        <GlossaryHeader
+          permissions={permissions}
+          selectedData={glossary}
+          onUpdate={updateGlossary}
+        />
+      </Col>
 
-        <div className="tw-inline-block" onClick={handleTagContainerClick}>
-          <TagsContainer
-            buttonContainerClass="tw-mt-0"
-            containerClass="tw-flex tw-items-center tw-gap-2"
-            dropDownHorzPosRight={false}
-            editable={isTagEditable}
-            isLoading={isTagLoading}
-            selectedTags={getSelectedTags()}
-            showTags={false}
-            size="small"
-            tagList={getTagOptionsFromFQN(tagList)}
-            type="label"
-            onCancel={() => {
-              handleTagSelection();
-            }}
-            onSelectionChange={(tags) => {
-              handleTagSelection(tags);
-            }}>
-            {glossary?.tags && glossary?.tags.length ? (
-              <button
-                className=" tw-ml-1 focus:tw-outline-none flex-center"
-                disabled={!(permissions.EditTags || permissions.EditAll)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
-              </button>
-            ) : (
-              <ButtonAntd
-                className="tw-p-0"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                type="text">
-                <Tags
-                  className="tw-text-primary"
-                  startWith="+ "
-                  tag="Add tag"
-                  type="label"
-                />
-              </ButtonAntd>
-            )}
-          </TagsContainer>
-        </div>
-      </div>
+      <Col span={24}>
+        <Space className="items-center flex-wrap" data-testid="tags">
+          {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
+            <>
+              <SVGIcons
+                alt="icon-tag"
+                className="tw-mx-1"
+                icon="icon-tag-grey"
+                width="16"
+              />
+              <TagsViewer tags={glossary.tags} />
+            </>
+          )}
 
-      <Tabs
-        destroyInactiveTabPane
-        activeKey={activeTab}
-        items={[
-          {
-            label: t('label.summary'),
-            key: 'summary',
-            children: (
-              <div className="tw-flex tw-gap-3">
-                <div className="tw-w-9/12">
-                  <div className="tw-mb-4" data-testid="description-container">
-                    <AntdCard className="glossary-card">
-                      <DescriptionV1
-                        removeBlur
-                        description={glossary?.description}
-                        entityName={glossary?.displayName ?? glossary?.name}
-                        hasEditAccess={
-                          permissions.EditDescription || permissions.EditAll
-                        }
-                        isEdit={isDescriptionEditable}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                    </AntdCard>
-                  </div>
-                </div>
-                <div className="tw-w-3/12 tw-px-2">
-                  <Card
-                    action={ownerAction()}
-                    className="shadow-custom"
-                    heading="Owner">
-                    <div className="tw-flex tw-items-center">
-                      {glossary.owner && getEntityName(glossary.owner) && (
-                        <div className="tw-inline-block tw-mr-2">
-                          <ProfilePicture
-                            displayName={getEntityName(glossary.owner)}
-                            id={glossary.owner?.id || ''}
-                            name={glossary.owner?.name || ''}
-                            textClass="tw-text-xs"
-                            width="25"
-                          />
-                        </div>
-                      )}
-                      {glossary.owner && getEntityName(glossary.owner) ? (
-                        <Link to={getUserPath(glossary.owner.name ?? '')}>
-                          {getEntityName(glossary.owner)}
-                        </Link>
-                      ) : (
-                        <span className="tw-text-grey-muted">
-                          {t('label.no-entity', {
-                            entity: t('label.owner-lowercase'),
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  </Card>
-                  <Card
-                    action={AddReviewerButton()}
-                    className="tw-mt-4 shadow-custom"
-                    heading="Reviewer">
-                    <div>{getReviewerTabData()}</div>
-                  </Card>
-                </div>
-              </div>
-            ),
-          },
-          {
-            label: t('label.glossary-term-plural'),
-            key: 'glossaryTerms',
-            children: <GlossaryTermTab glossaryId={glossary.id} />,
-          },
-        ]}
-        onChange={(key) => setActiveTab(key)}
-      />
+          <div className="inline-block" onClick={handleTagContainerClick}>
+            <TagsContainer
+              buttonContainerClass="tw-mt-0"
+              containerClass="tw-flex tw-items-center tw-gap-2"
+              dropDownHorzPosRight={false}
+              editable={isTagEditable}
+              isLoading={isTagLoading}
+              selectedTags={getSelectedTags()}
+              showTags={false}
+              size="small"
+              tagList={getTagOptionsFromFQN(tagList)}
+              type="label"
+              onCancel={() => {
+                handleTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleTagSelection(tags);
+              }}>
+              {glossary?.tags && glossary?.tags.length ? (
+                <button
+                  className=" tw-ml-1 focus:tw-outline-none flex-center"
+                  disabled={!(permissions.EditTags || permissions.EditAll)}>
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              ) : (
+                <ButtonAntd
+                  className="tw-p-0"
+                  disabled={!(permissions.EditTags || permissions.EditAll)}
+                  type="text">
+                  <Tags
+                    className="tw-text-primary"
+                    startWith="+ "
+                    tag="Add tag"
+                    type="label"
+                  />
+                </ButtonAntd>
+              )}
+            </TagsContainer>
+          </div>
+        </Space>
+      </Col>
 
+      <Col span={24}>
+        <GlossaryTermTab
+          glossaryId={glossary.id}
+          selectedGlossaryFqn={glossary.fullyQualifiedName || glossary.name}
+        />
+      </Col>
       <ReviewerModal
         header={t('label.add-entity', {
           entity: t('label.reviewer'),
@@ -558,7 +493,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         onCancel={onReviewerModalCancel}
         onSave={handleReviewerSave}
       />
-    </div>
+    </Row>
   );
 };
 
