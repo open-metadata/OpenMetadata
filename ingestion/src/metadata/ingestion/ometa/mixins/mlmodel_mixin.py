@@ -41,7 +41,8 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
-from metadata.ingestion.ometa.utils import format_name, ometa_logger
+from metadata.ingestion.ometa.utils import format_name
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
