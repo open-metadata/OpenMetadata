@@ -19,9 +19,11 @@ jobs:
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         py-version: ['3.9']
-        e2e-test: ['mysql', 'bigquery', 'snowflake']
+        e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+        continue-on-error: [true]
     environment: test
 
     steps:
@@ -64,7 +66,6 @@ jobs:
 
     - name: Run Python Tests
       id: e2e-test
-      continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
@@ -76,8 +77,19 @@ jobs:
         E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
         E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
         E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
-        E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
+        E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
         E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+        E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH }}
+        E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH }}
+        E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH }}
+        E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+        E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+        E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+        E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+        E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
+        E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
+        E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
+        E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
@@ -91,7 +103,7 @@ jobs:
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
           }
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.TEST_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure

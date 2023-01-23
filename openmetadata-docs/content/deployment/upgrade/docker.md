@@ -82,7 +82,7 @@ This step is only required if you have not done that yet.
     ```
     mysql:
       container_name: openmetadata_mysql
-      image: openmetadata/db:0.12.3
+      image: openmetadata/db:0.13.1
       restart: always
       environment:
         MYSQL_ROOT_PASSWORD: password
@@ -139,6 +139,40 @@ We will now use the backup generated in the previous step to repopulate the data
 3. Run the reindex from the UI.
 
 Now you should still have all your data with OpenMetadata version 0.13.1.
+
+## Upgrade ingestion patch versions
+
+During the release lifespan we may publish new patch versions of `openmetadata-ingestion`. If you deployed
+the ingestion container and require one of the fixes or improvements from a new patch release, there's usually no need
+to re-deploy the full ingestion container.
+
+<Note>
+
+Note that this process will only work if we are moving from PATCH versions. For example: `0.13.1.1` -> `0.13.1.2`.
+
+This method won't work when upgrading from `0.13.1.X` -> `0.13.2.X`, as that will also require to upgrade the
+server version.
+
+</Note>
+
+The steps to follow are:
+
+1. Connect to the ingestion container. If using our docker compose files or `metadata docker` CLI, this translates
+    to `docker exec -it openmetadata_ingestion bash`.
+2. Validate your `metadata` version via `metadata --version`. You will get back something like:
+   ```bash
+   metadata 0.13.1.5 from /home/airflow/.local/lib/python3.9 (python 3.9)
+   ```
+3. Upgrade the `openmetadata-ingestion` package via `pip install "openmetadata-ingestion==0.13.1.X"`, for example,
+   `pip install "openmetadata-ingestion==0.13.1.7"`. You can find the list of all released versions of
+   the `openmetadata-ingestion` package [here](https://pypi.org/project/openmetadata-ingestion/#history).
+4. Exit the container by typing `exit`.
+5. Restart the ingestion container with `docker restart openmetadata_ingestion`. This will need a few minutes to
+   to stop the container and start it again. Now, Airflow will start with the upgraded `metadata` version.
+6. Connect to the ingestion container and validate the `metadata` version:
+   1. `docker exec -it openmetadata_ingestion bash`
+   2. `metadata version`: where we expect to get the same version that was previously installed.
+
 
 ### Troubleshooting
 

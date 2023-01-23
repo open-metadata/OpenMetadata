@@ -65,6 +65,7 @@ mock_atlas_config = {
                 "password": "password",
                 "databaseServiceName": ["hive"],
                 "messagingServiceName": [],
+                "entity_type": "NotTable",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -106,7 +107,7 @@ def mock_get_entity(self, table):  # pylint: disable=unused-argument
     return mock_data
 
 
-def mock_list_entities(self, entity_type):  # pylint: disable=unused-argument
+def mock_list_entities(self):  # pylint: disable=unused-argument
     return LIST_ENTITIES
 
 

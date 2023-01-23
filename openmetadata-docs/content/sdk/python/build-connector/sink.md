@@ -64,27 +64,28 @@ status: SinkStatus
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def write_record(self, table_and_db: OMetaDatabaseAndTable) -> None:
+    def write_record(self, entity_request) -> None:
+        log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
         try:
-            db_request = CreateDatabaseEntityRequest(name=table_and_db.database.name,
-                                                     description=table_and_db.database.description,
-                                                     service=EntityReference(id=table_and_db.database.service.id,
-                                                                             type="databaseService"))
-            db = self.rest.create_database(db_request)
-            table_request = CreateTableEntityRequest(name=table_and_db.table.name,
-                                                     columns=table_and_db.table.columns,
-                                                     description=table_and_db.table.description,
-                                                     database=db.id)
-            created_table = self.rest.create_or_update_table(table_request)
-            logger.info(
-                'Successfully ingested {}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
-            self.status.records_written(
-                '{}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
-        except (APIError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest table {} in database {} ".format(table_and_db.table.name, table_and_db.database.name))
-            logger.error(err)
-            self.status.failures(table_and_db.table.name)
+            created = self.metadata.create_or_update(entity_request)
+            if created:
+                self.status.records_written(
+                    f"{type(created).__name__}: {created.fullyQualifiedName.__root__}"
+                )
+                logger.debug(f"Successfully ingested {log}")
+            else:
+                self.status.failure(log)
+                logger.error(f"Failed to ingest {log}")
+
+        except (APIError, HTTPError) as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to ingest {log} due to api request failure: {err}")
+            self.status.failure(log)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to ingest {log}: {exc}")
+            self.status.failure(log)
 
     def get_status(self):
         return self.status

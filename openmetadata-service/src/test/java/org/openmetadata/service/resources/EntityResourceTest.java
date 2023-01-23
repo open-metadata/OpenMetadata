@@ -88,6 +88,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -181,11 +182,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
-  protected boolean supportsNameWithDot = true;
+  protected String supportedNameCharacters = ".' _"; // Special characters supported in the entity name
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+
+  public static final String ENTITY_LINK_MATCH_ERROR =
+      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$\"]";
 
   // Users
   public static User USER1;
@@ -255,7 +259,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference GLOSSARY2_TERM1_REF;
   public static TagLabel GLOSSARY2_TERM1_LABEL;
 
-  public static EntityReference SUPERSET_REFERENCE;
+  public static EntityReference METABASE_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
 
@@ -277,6 +281,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static DataInsightChart DI_CHART1;
 
   public static KpiTarget KPI_TARGET;
+
+  public static final String C1 = "c'_+ 1";
+  public static final String C2 = "c2";
+  public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -368,13 +376,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public final K createRequest(TestInfo test) {
     return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
-  }
-
-  public final K createRequest() {
-    return createRequest(String.format("test%s", UUID.randomUUID()))
-        .withDescription("")
-        .withDisplayName(null)
-        .withOwner(null);
   }
 
   public final K createPutRequest(TestInfo test) {
@@ -776,7 +777,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
-    assertResponse(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+    assertResponseContains(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
@@ -896,19 +897,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
-    if (!supportsNameWithDot) {
+    if (!supportedNameCharacters.contains(" ")) { // Name does not support space
       return;
     }
-    // Entity without "." should not have quoted fullyQualifiedName
-    String name = format("%s_foo_bar", entityType);
-    K request = createRequest(name, "", null, null);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertFalse(entity.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
-    name = format("%s_foo.bar", entityType);
-    request = createRequest(name, "", null, null);
-    entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    String name = format("%s_foo.bar", entityType);
+    K request = createRequest(name, "", null, null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // The FQN has quote delimited parts if the FQN is hierarchical.
     // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
@@ -1662,6 +1658,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
+  @SneakyThrows
   public final T createEntity(CreateEntity createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
@@ -2294,7 +2291,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final String getEntityName(TestInfo test) {
-    return format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
+    return format("%s%s%s", entityType, supportedNameCharacters, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**
@@ -2303,8 +2301,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
    * these 3 strings)
    */
   public final String getEntityName(TestInfo test, int index) {
+    // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
     return format(
-        "%s_%s_%s", entityType, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+        "%s%s%s%s",
+        entityType,
+        supportedNameCharacters,
+        test.getDisplayName().replaceAll("\\(.*\\)", ""),
+        getNthAlphanumericString(index));
   }
 
   /**

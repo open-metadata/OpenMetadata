@@ -30,6 +30,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -69,7 +70,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   public void storeRelationships(Classification entity) {}
 
   private int getTermCount(Classification category) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getName());
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(category.getName()));
     return daoCollection.tagDAO().listCount(filter);
   }
 

@@ -143,11 +143,15 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   return <></>;
 };
 
-const getSearchLabel = (itemLabel: string, searchKey: string) => {
+export const getSearchLabel = (itemLabel: string, searchKey: string) => {
   const regex = new RegExp(searchKey, 'gi');
-  const result = itemLabel.replace(regex, `<mark>${searchKey}</mark>`);
+  if (searchKey) {
+    const result = itemLabel.replace(regex, (match) => `<mark>${match}</mark>`);
 
-  return result;
+    return result;
+  } else {
+    return itemLabel;
+  }
 };
 
 export const getSearchDropdownLabels = (

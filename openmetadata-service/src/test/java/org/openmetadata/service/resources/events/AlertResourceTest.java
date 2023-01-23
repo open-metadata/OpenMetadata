@@ -63,6 +63,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
 
   public AlertResourceTest() {
     super(Entity.ALERT, Alert.class, AlertResource.AlertList.class, "alerts", AlertResource.FIELDS);
+    supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsSoftDelete = false;
     supportsFieldsQueryParam = false;
     supportsEmptyDescription = true;
@@ -542,7 +543,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
 
   /** Start webhook subscription for given entity and various event types */
   public void startWebhookEntitySubscriptions(String entity) throws IOException {
-    String alertName = EventType.ENTITY_CREATED + ":" + entity;
+    String alertName = EventType.ENTITY_CREATED + "_" + entity;
     // Alert Action
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/filterBased";
     String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
@@ -568,7 +569,7 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
     createAlert(alertName, triggerConfig, List.of(rule), List.of(genericWebhookAction.getEntityReference()));
 
     // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
-    alertName = EventType.ENTITY_UPDATED + ":" + entity;
+    alertName = EventType.ENTITY_UPDATED + "_" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
 
     Webhook genericWebhook2 = getWebhook(alertName, uri);

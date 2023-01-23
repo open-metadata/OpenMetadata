@@ -133,22 +133,22 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     String classificationName = test.getDisplayName().substring(0, 10);
     Classification classification = createClassification(classificationName);
 
-    Tag t1 = createOrUpdate(classificationName, null, "t1", CREATED);
-    createOrUpdate(classificationName, t1, "t11", CREATED);
-    createOrUpdate(classificationName, t1, "t12", CREATED);
-    Tag t2 = createOrUpdate(classificationName, null, "t2", CREATED);
-    createOrUpdate(classificationName, t2, "t21", CREATED);
-    Tag t22 = createOrUpdate(classificationName, t2, "t22", CREATED);
+    Tag t1 = createOrUpdate(classificationName, null, "t'_1", CREATED);
+    createOrUpdate(classificationName, t1, "t'_11", CREATED);
+    createOrUpdate(classificationName, t1, "t'_12", CREATED);
+    Tag t2 = createOrUpdate(classificationName, null, "t'_2", CREATED);
+    createOrUpdate(classificationName, t2, "t'_21", CREATED);
+    Tag t22 = createOrUpdate(classificationName, t2, "t'_22", CREATED);
 
     // Rename leaf node t22 to newt22
-    renameTagAndCheck(t22, "newt22");
+    renameTagAndCheck(t22, "newt`_22");
 
     // Change the tag t2 name and ensure all the children's FQN are updated
-    renameTagAndCheck(t2, "newt2");
+    renameTagAndCheck(t2, "newt`_2");
 
     // Change classification name and ensure all the tags have the new names
-    String newclassificationName = "new" + classificationName;
-    classificationResourceTest.renameClassificationAndCheck(classification, newclassificationName);
+    String newClassificationName = "new1`_" + classificationName;
+    classificationResourceTest.renameClassificationAndCheck(classification, newClassificationName);
   }
 
   @Test
@@ -164,8 +164,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     String parentFqn = parent != null ? parent.getFullyQualifiedName() : null;
     CreateTag createTag =
         createRequest(name).withParent(parentFqn).withClassification(classificationName).withDescription("description");
-    Tag tag = updateAndCheckEntity(createTag, status, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
-    return tag;
+    return updateAndCheckEntity(createTag, status, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   public void renameTagAndCheck(Tag tag, String newName) throws IOException {

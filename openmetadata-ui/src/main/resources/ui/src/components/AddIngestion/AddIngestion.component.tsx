@@ -22,6 +22,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  DBT_CLASSIFICATION_DEFAULT_VALUE,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/Ingestions.constant';
@@ -192,7 +193,8 @@ const AddIngestion = ({
       resultLimit: sourceConfig?.resultLimit ?? 1000,
       metadataToESConfig: undefined,
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
-      dbtClassificationName: sourceConfig?.dbtClassificationName ?? '',
+      dbtClassificationName:
+        sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
     }),
     []
   );

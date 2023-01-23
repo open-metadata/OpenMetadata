@@ -23,8 +23,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str, ometa_logger
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.helpers import find_column_in_table_with_index
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
