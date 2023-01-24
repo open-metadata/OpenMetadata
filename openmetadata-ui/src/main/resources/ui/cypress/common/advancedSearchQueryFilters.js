@@ -114,11 +114,25 @@ export const ownEntityAndAddTag = (termObj, ownerName) => {
 
   openEditOwnerDropdown();
 
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=${ownerName}%20AND%20teamType:Group&from=0&size=10&index=team_search_index`,
+    'searchTeams'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=${ownerName}&from=0&size=10&index=user_search_index`,
+    'searchUsers'
+  );
+
   cy.get('[data-testid="searchInputText"]')
     .should('exist')
     .scrollIntoView()
     .should('be.visible')
     .type(ownerName);
+
+  verifyResponseStatusCode('@searchTeams', 200);
+  verifyResponseStatusCode('@searchUsers', 200);
 
   // Selecting the user
   cy.get('[data-testid="list-item"]')
