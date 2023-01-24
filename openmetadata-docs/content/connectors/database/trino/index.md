@@ -45,7 +45,7 @@ custom Airflow plugins to handle the workflow deployment.
 
 <Note>
 
-To Inesget metadata from the Trino User Must have select privileges to this tables.
+To ingest metadata from the Trino source, the user must have select privileges for the following tables.
 - `information_schema.schemata`
 - `information_schema.columns`
 - `information_schema.tables`
