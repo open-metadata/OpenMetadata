@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+
 export interface GlossaryTermTabProps {
   glossaryId?: string;
   glossaryTermId?: string;
+  selectedGlossaryFqn?: string;
 }
+
+export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
+  children?: GlossaryTerm[];
+};
