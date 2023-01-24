@@ -256,7 +256,7 @@ const GlossaryTermsV1 = ({
   };
 
   return (
-    <Row data-testid="glossary-term" gutter={[0, 16]}>
+    <Row data-testid="glossary-term">
       <Col span={24}>
         <GlossaryHeader
           permissions={permissions}
@@ -284,7 +284,7 @@ const GlossaryTermsV1 = ({
           onClick={handleTagContainerClick}>
           <TagsContainer
             buttonContainerClass="tw--mt-0"
-            containerClass="flex items-center tw-gap-2"
+            containerClass="flex items-center tw-gap-2 m-t-xs"
             dropDownHorzPosRight={false}
             editable={isTagEditable}
             isLoading={isTagLoading}

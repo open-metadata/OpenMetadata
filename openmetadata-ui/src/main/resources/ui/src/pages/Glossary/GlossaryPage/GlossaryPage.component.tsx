@@ -29,7 +29,6 @@ import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Operation } from 'generated/entity/policies/policy';
 import jsonData from 'jsons/en';
-import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -104,7 +103,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags'
+        'relatedTerms,reviewers,tags,owner'
       );
       setSelectedData(response);
     } catch (error) {
@@ -252,7 +251,7 @@ const GlossaryPage = () => {
   return (
     <PageContainerV1>
       <PageLayoutV1 leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}>
-        {isUndefined(selectedData) || isRightPanelLoading ? (
+        {isRightPanelLoading ? (
           // Loader for right panel data
           <Loader />
         ) : (
@@ -260,7 +259,7 @@ const GlossaryPage = () => {
             deleteStatus={deleteStatus}
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
             isGlossaryActive={isGlossaryActive}
-            selectedData={selectedData}
+            selectedData={selectedData as Glossary}
             updateGlossary={updateGlossary}
             onGlossaryDelete={handleGlossaryDelete}
             onGlossaryTermDelete={handleGlossaryTermDelete}

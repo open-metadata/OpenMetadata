@@ -153,7 +153,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           onClick={handleTagContainerClick}>
           <TagsContainer
             buttonContainerClass="m-t-0"
-            containerClass="flex items-center gap-2"
+            containerClass="flex items-center gap-2 m-t-xs"
             dropDownHorzPosRight={false}
             editable={isTagEditable}
             isLoading={isTagLoading}
@@ -184,7 +184,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
               />
             ) : (
               <Button
-                className="p-0 m-t-xs"
+                className="p-0"
                 disabled={!(permissions.EditTags || permissions.EditAll)}
                 type="text">
                 <Tags

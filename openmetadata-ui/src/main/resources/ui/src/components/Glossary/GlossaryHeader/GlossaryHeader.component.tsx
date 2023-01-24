@@ -328,11 +328,11 @@ const GlossaryHeader = ({
               </Tooltip>
               {listVisible && (
                 <DropDownList
-                  horzPosRight
                   showEmptyList
                   controlledSearchStr={searchText}
                   dropDownList={listOwners}
                   groupType="tab"
+                  horzPosRight={false}
                   isLoading={isUserLoading}
                   listGroups={['Teams', 'Users']}
                   showSearchBar={isCurrentUserAdmin()}
