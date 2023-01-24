@@ -14,13 +14,14 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
+import { getAdvancedFieldOptions } from 'rest/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
   mockAdvancedFieldDefaultOptions,
+  mockAdvancedFieldDuplicateOptions,
   mockAdvancedFieldOptions,
   mockTagSuggestions,
   mockUserSuggestions,
@@ -50,7 +51,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           ))}
           <div
             data-testid={`onSearch-${searchKey}`}
-            onClick={() => onSearch('', searchKey)}>
+            onClick={() => onSearch('e', searchKey)}>
             onSearch
           </div>
           <div
@@ -178,8 +179,8 @@ describe('Test ExploreQuickFilters component', () => {
     const options = await findAllByTestId('option-database.name');
 
     expect(options).toHaveLength(
-      mockAdvancedFieldDefaultOptions.data.aggregations['sterms#database.name']
-        .buckets.length
+      mockAdvancedFieldOptions.data.suggest['metadata-suggest'][0].options
+        .length
     );
   });
 
@@ -199,11 +200,11 @@ describe('Test ExploreQuickFilters component', () => {
     let options = await findAllByTestId('option-database.name');
 
     expect(options).toHaveLength(
-      mockAdvancedFieldDefaultOptions.data.aggregations['sterms#database.name']
-        .buckets.length
+      mockAdvancedFieldOptions.data.suggest['metadata-suggest'][0].options
+        .length
     );
 
-    (getAdvancedFieldDefaultOptions as jest.Mock).mockImplementationOnce(() =>
+    (getAdvancedFieldOptions as jest.Mock).mockImplementationOnce(() =>
       Promise.reject('not done')
     );
 
@@ -214,5 +215,30 @@ describe('Test ExploreQuickFilters component', () => {
     options = queryAllByTestId('option-database.name');
 
     expect(options).toHaveLength(0);
+  });
+
+  it('No duplicate options should be sent to SearchDropdown component', async () => {
+    const { findByTestId, findAllByTestId } = render(
+      <ExploreQuickFilters {...mockProps} />
+    );
+
+    const databaseFieldOnSearch = await findByTestId('onSearch-database.name');
+
+    expect(databaseFieldOnSearch).toBeInTheDocument();
+
+    (getAdvancedFieldOptions as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockAdvancedFieldDuplicateOptions)
+    );
+
+    await act(async () => {
+      userEvent.click(databaseFieldOnSearch);
+    });
+
+    const options = await findAllByTestId('option-database.name');
+
+    expect(options).toHaveLength(
+      mockAdvancedFieldDuplicateOptions.data.suggest['metadata-suggest'][0]
+        .options.length - 1 // expected value reduced by 1 as one option in response is duplicated
+    );
   });
 });
