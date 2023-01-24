@@ -189,6 +189,9 @@ plugins: Dict[str, Set[str]] = {
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {"snowflake-sqlalchemy~=1.4"},
+    "spanner": {
+        "sqlalchemy-spanner>=1.2.2",
+    },
     "superset": {},  # uses requests
     "tableau": {"tableau-api-lib~=0.1"},
     "trino": {"trino[sqlalchemy]"},
