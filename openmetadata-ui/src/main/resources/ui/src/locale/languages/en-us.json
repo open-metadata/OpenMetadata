@@ -530,6 +530,8 @@
     "team-plural": "Teams",
     "team-type": "Team Type",
     "term": "Term",
+    "term-lowercase": "term",
+    "term-plural": "Terms",
     "test": "Test",
     "test-entity": "Test {{entity}}",
     "test-plural": "Tests",

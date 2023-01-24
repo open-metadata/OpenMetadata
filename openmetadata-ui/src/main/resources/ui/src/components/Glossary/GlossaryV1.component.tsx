@@ -12,15 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Button as ButtonAntd,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -30,15 +22,10 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../generated/entity/policies/policy';
 import { useAfterMount } from '../../hooks/useAfterMount';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../utils/PermissionsUtils';
-import {
-  getAddGlossaryTermsPath,
   getGlossaryPath,
   getGlossaryPathWithAction,
 } from '../../utils/RouterUtils';
@@ -77,7 +64,7 @@ const GlossaryV1 = ({
   const history = useHistory();
   const { t } = useTranslation();
 
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -145,16 +132,6 @@ const GlossaryV1 = ({
     }
   };
 
-  const createGlossaryTermPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Create,
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-    [permissions]
-  );
-
   /**
    * To create breadcrumb from the fqn
    * @param fqn fqn of glossary or glossary term
@@ -174,24 +151,6 @@ const GlossaryV1 = ({
         };
       });
       setBreadcrumb(newData);
-    }
-  };
-
-  const handleAddGlossaryTermClick = () => {
-    if (glossaryFqn) {
-      const activeTerm = glossaryFqn.split(FQN_SEPARATOR_CHAR);
-      const glossaryName = activeTerm[0];
-      if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossaryName, glossaryFqn));
-      } else {
-        history.push(getAddGlossaryTermsPath(glossaryName));
-      }
-    } else {
-      history.push(
-        getAddGlossaryTermsPath(
-          selectedData.fullyQualifiedName || selectedData.name
-        )
-      );
     }
   };
 
@@ -346,22 +305,6 @@ const GlossaryV1 = ({
         <div
           className="tw-relative tw-flex tw-justify-between tw-items-center"
           id="add-term-button">
-          <Tooltip
-            title={
-              createGlossaryTermPermission
-                ? 'Add Term'
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <ButtonAntd
-              className="tw-h-8 tw-rounded tw-mr-2"
-              data-testid="add-new-tag-button"
-              disabled={!createGlossaryTermPermission}
-              type="primary"
-              onClick={handleAddGlossaryTermClick}>
-              Add term
-            </ButtonAntd>
-          </Tooltip>
-
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
             disabled={

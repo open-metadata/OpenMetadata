@@ -261,70 +261,74 @@ const GlossaryTermsV1 = ({
         <GlossaryHeader
           permissions={permissions}
           selectedData={glossaryTerm}
-          supportAddOwner={false}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
-      </Col>
-      <Col span={24}>
-        <Space className="flex-wrap items-center" data-testid="tags">
-          {!isTagEditable && (
-            <>
-              {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
-                <>
-                  <SVGIcons
-                    alt="icon-tag"
-                    className="tw-mx-1"
-                    icon="icon-tag-grey"
-                    width="16"
-                  />
-                  <TagsViewer tags={glossaryTerm.tags} />
-                </>
-              )}
-            </>
-          )}
-
-          <div className="inline-block" onClick={handleTagContainerClick}>
-            <TagsContainer
-              buttonContainerClass="tw--mt-0"
-              containerClass="flex items-center tw-gap-2"
-              dropDownHorzPosRight={false}
-              editable={isTagEditable}
-              isLoading={isTagLoading}
-              selectedTags={getSelectedTags()}
-              showTags={false}
-              size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags);
-              }}>
-              {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
-                <button className="tw-ml-1 focus:tw-outline-none">
+        {!isTagEditable && (
+          <>
+            {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
+              <>
+                <SVGIcons
+                  alt="icon-tag"
+                  className="tw-mx-1"
+                  icon="icon-tag-grey"
+                  width="16"
+                />
+                <TagsViewer tags={glossaryTerm.tags} />
+              </>
+            )}
+          </>
+        )}
+        <Space
+          className="flex-wrap items-center"
+          data-testid="tags"
+          onClick={handleTagContainerClick}>
+          <TagsContainer
+            buttonContainerClass="tw--mt-0"
+            containerClass="flex items-center tw-gap-2"
+            dropDownHorzPosRight={false}
+            editable={isTagEditable}
+            isLoading={isTagLoading}
+            selectedTags={getSelectedTags()}
+            showTags={false}
+            size="small"
+            tagList={getTagOptionsFromFQN(tagList)}
+            type="label"
+            onCancel={() => {
+              handleTagSelection();
+            }}
+            onSelectionChange={(tags) => {
+              handleTagSelection(tags);
+            }}>
+            {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
+              <Button
+                className="p-0 m-l-xss flex-center"
+                disabled={!(permissions.EditTags || permissions.EditAll)}
+                icon={
                   <SVGIcons
                     alt="edit"
                     icon="icon-edit"
                     title="Edit"
                     width="16px"
                   />
-                </button>
-              ) : (
-                <Button
-                  className="p-0"
-                  disabled={!(permissions.EditTags || permissions.EditAll)}
-                  type="text">
-                  <Tags
-                    className="tw-text-primary"
-                    startWith="+ "
-                    tag="Add tag"
-                    type="label"
-                  />
-                </Button>
-              )}
-            </TagsContainer>
-          </div>
+                }
+                type="text"
+              />
+            ) : (
+              <Button
+                className="p-0 m-t-xs"
+                disabled={!(permissions.EditTags || permissions.EditAll)}
+                type="text">
+                <Tags
+                  className="tw-text-primary"
+                  startWith="+ "
+                  tag={t('label.add-entity', {
+                    entity: t('label.tag-lowercase'),
+                  })}
+                  type="label"
+                />
+              </Button>
+            )}
+          </TagsContainer>
         </Space>
       </Col>
 

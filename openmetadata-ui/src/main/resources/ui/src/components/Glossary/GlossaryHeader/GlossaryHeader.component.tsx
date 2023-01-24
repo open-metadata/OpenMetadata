@@ -35,17 +35,18 @@ import {
   suggestFormattedUsersAndTeams,
 } from 'utils/UserDataUtils';
 
-const GlossaryHeader = ({
-  selectedData,
-  permissions,
-  onUpdate,
-  supportAddOwner = true,
-}: {
+export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;
   selectedData: Glossary | GlossaryTerm;
   permissions: OperationPermission;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
-}) => {
+}
+
+const GlossaryHeader = ({
+  selectedData,
+  permissions,
+  onUpdate,
+}: GlossaryHeaderProps) => {
   const { t } = useTranslation();
 
   const [displayName, setDisplayName] = useState<string>();
@@ -275,80 +276,75 @@ const GlossaryHeader = ({
       </Col>
       <Col span={24}>
         <Space className="flex-wrap" direction="horizontal">
-          {supportAddOwner && (
-            <>
-              <div className="flex items-center">
-                <Typography.Text className="text-grey-muted m-r-xs">
-                  Owner:
-                </Typography.Text>
+          <div className="flex items-center">
+            <Typography.Text className="text-grey-muted m-r-xs">
+              Owner:
+            </Typography.Text>
 
-                {selectedData.owner && getEntityName(selectedData.owner) ? (
-                  <Space className="m-r-xss" size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(selectedData.owner)}
-                      id={selectedData.owner?.id || ''}
-                      name={selectedData.owner?.name || ''}
-                      textClass="text-xs"
-                      width="20"
+            {selectedData.owner && getEntityName(selectedData.owner) ? (
+              <Space className="m-r-xss" size={4}>
+                <ProfilePicture
+                  displayName={getEntityName(selectedData.owner)}
+                  id={selectedData.owner?.id || ''}
+                  name={selectedData.owner?.name || ''}
+                  textClass="text-xs"
+                  width="20"
+                />
+                <Link to={getUserPath(selectedData.owner.name ?? '')}>
+                  {getEntityName(selectedData.owner)}
+                </Link>
+              </Space>
+            ) : (
+              <span className="text-grey-muted">
+                {t('label.no-entity', {
+                  entity: t('label.owner-lowercase'),
+                })}
+              </span>
+            )}
+            <div className="tw-relative">
+              <Tooltip
+                placement="topRight"
+                title={
+                  permissions.EditAll || permissions.EditOwner
+                    ? 'Update Owner'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="flex-center p-0"
+                  data-testid="owner-dropdown"
+                  disabled={!(permissions.EditOwner || permissions.EditAll)}
+                  icon={
+                    <SVGIcons
+                      alt="edit"
+                      icon={Icons.EDIT}
+                      title="Edit"
+                      width="16px"
                     />
-                    <Link to={getUserPath(selectedData.owner.name ?? '')}>
-                      {getEntityName(selectedData.owner)}
-                    </Link>
-                  </Space>
-                ) : (
-                  <span className="text-grey-muted">
-                    {t('label.no-entity', {
-                      entity: t('label.owner-lowercase'),
-                    })}
-                  </span>
-                )}
-                <div className="tw-relative">
-                  <Tooltip
-                    placement="topRight"
-                    title={
-                      permissions.EditAll || permissions.EditOwner
-                        ? 'Update Owner'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className="flex-center p-0"
-                      data-testid="owner-dropdown"
-                      disabled={!(permissions.EditOwner || permissions.EditAll)}
-                      icon={
-                        <SVGIcons
-                          alt="edit"
-                          icon={Icons.EDIT}
-                          title="Edit"
-                          width="16px"
-                        />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={handleSelectOwnerDropdown}
-                    />
-                  </Tooltip>
-                  {listVisible && (
-                    <DropDownList
-                      horzPosRight
-                      showEmptyList
-                      controlledSearchStr={searchText}
-                      dropDownList={listOwners}
-                      groupType="tab"
-                      isLoading={isUserLoading}
-                      listGroups={['Teams', 'Users']}
-                      showSearchBar={isCurrentUserAdmin()}
-                      value={selectedData.owner?.id || ''}
-                      onSearchTextChange={handleOwnerSearch}
-                      onSelect={handleOwnerSelection}
-                    />
-                  )}
-                </div>
-              </div>
-              <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
-                |
-              </span>{' '}
-            </>
-          )}
+                  }
+                  size="small"
+                  type="text"
+                  onClick={handleSelectOwnerDropdown}
+                />
+              </Tooltip>
+              {listVisible && (
+                <DropDownList
+                  horzPosRight
+                  showEmptyList
+                  controlledSearchStr={searchText}
+                  dropDownList={listOwners}
+                  groupType="tab"
+                  isLoading={isUserLoading}
+                  listGroups={['Teams', 'Users']}
+                  showSearchBar={isCurrentUserAdmin()}
+                  value={selectedData.owner?.id || ''}
+                  onSearchTextChange={handleOwnerSearch}
+                  onSelect={handleOwnerSelection}
+                />
+              )}
+            </div>
+          </div>
+          <span className="tw-mr-1 tw-inline-block tw-text-gray-400">|</span>
+
           <div className="flex items-center tw-flex-wrap">
             <Typography.Text className="text-grey-muted m-r-xs">
               Reviewer:
@@ -384,6 +380,7 @@ const GlossaryHeader = ({
                               icon="remove"
                             />
                           }
+                          size="small"
                           type="text"
                           onClick={() => handleRemoveReviewer(reviewer.id)}
                         />

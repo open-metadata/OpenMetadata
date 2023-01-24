@@ -79,7 +79,7 @@ const GlossaryTermTab = ({
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
-        title: 'Terms',
+        title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
         width: 250,
@@ -92,7 +92,7 @@ const GlossaryTermTab = ({
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (description: string) =>
@@ -100,7 +100,7 @@ const GlossaryTermTab = ({
             <RichTextEditorPreviewer
               enableSeeMoreVariant
               markdown={description}
-              maxLength={500}
+              maxLength={200}
             />
           ) : (
             <span className="tw-no-description">
@@ -109,7 +109,7 @@ const GlossaryTermTab = ({
           ),
       },
       {
-        title: 'Tags',
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         width: 250,
@@ -265,7 +265,9 @@ const GlossaryTermTab = ({
       <Col className="flex justify-end" span={16}>
         <Tooltip
           title={
-            createGlossaryTermPermission ? 'Add Term' : NO_PERMISSION_FOR_ACTION
+            createGlossaryTermPermission
+              ? t('label.add-entity', { entity: t('label.term-lowercase') })
+              : NO_PERMISSION_FOR_ACTION
           }>
           <Button
             className="tw-h-8 tw-rounded tw-mr-2"
@@ -273,7 +275,7 @@ const GlossaryTermTab = ({
             disabled={!createGlossaryTermPermission}
             type="primary"
             onClick={handleAddGlossaryTermClick}>
-            Add term
+            {t('label.add-entity', { entity: t('label.term-lowercase') })}
           </Button>
         </Tooltip>
       </Col>
