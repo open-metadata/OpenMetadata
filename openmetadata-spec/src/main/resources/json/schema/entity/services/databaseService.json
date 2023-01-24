@@ -44,7 +44,8 @@
         "DomoDatabase",
         "QueryLog",
         "CustomDatabase",
-        "Dbt"
+        "Dbt",
+        "Spanner"
       ],
       "javaEnums": [
         {
@@ -136,6 +137,9 @@
         },
         {
           "name": "Dbt"
+        },
+        {
+          "name": "Spanner"
         }
       ]
     },
@@ -232,6 +236,9 @@
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/spannerConnection.json"
             }
           ]
         }
