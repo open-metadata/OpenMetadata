@@ -60,7 +60,7 @@ def test_connection(client: Union[SupersetAPIClient, Engine]) -> None:
     """
     try:
         if isinstance(client, SupersetAPIClient):
-            client.fetch_menu()
+            client.fetch_total_dashboards()
         else:
             test_connection_db_common(client)
     except Exception as exc:
