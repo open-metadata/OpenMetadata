@@ -71,7 +71,7 @@ describe('Test PropertyValue Component', () => {
     expect(await screen.findByTestId('PropertyInput')).toBeInTheDocument();
   });
 
-  it('Should not render edit component', async () => {
+  it('Should not render edit component if user has no edit permissions', async () => {
     render(<PropertyValue {...mockData} hasEditPermissions={false} />);
 
     const iconElement = await screen.queryByTestId('edit-icon');
