@@ -20,7 +20,6 @@ from typing import List
 from unittest import TestCase
 
 import pytest
-from cli_e2e.test_cli_db_base import CliDBBase
 
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.data.table import Table
@@ -30,6 +29,8 @@ from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from .test_cli_db_base import CliDBBase
 
 PATH_TO_RESOURCES = os.path.dirname(os.path.realpath(__file__))
 

@@ -113,11 +113,8 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
             yaml.dump(config_yaml, test_file)
 
-        self.run_command("profile")
-        result = self.catcher.getvalue()
-        self.catcher.truncate(0)
+        result = self.run_command("profile")
 
-        sink_status, source_status = self.retrieve_statuses(result)
         sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
         assert len(sample_data.rows) == 3
 
