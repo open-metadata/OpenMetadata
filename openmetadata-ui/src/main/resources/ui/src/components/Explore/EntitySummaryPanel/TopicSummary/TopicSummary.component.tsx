@@ -12,7 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { isArray } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTopicByFqn } from 'rest/topicsAPI';
@@ -62,9 +62,9 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
         ''
       );
 
-      const { partitions } = res;
+      const { partitions, messageSchema } = res;
 
-      setTopicDetails({ ...entityDetails, partitions });
+      setTopicDetails({ ...entityDetails, partitions, messageSchema });
     } catch {
       showErrorToast(
         t('server.entity-details-fetch-error', {
@@ -126,9 +126,7 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {entityDetails.messageSchema?.schemaFields ? (
-            <SummaryList formattedEntityData={formattedSchemaFieldsData} />
-          ) : (
+          {isEmpty(topicDetails.messageSchema?.schemaFields) ? (
             <div className="m-y-md">
               <Typography.Text
                 className="text-gray"
@@ -136,6 +134,8 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
                 {t('message.no-data-available')}
               </Typography.Text>
             </div>
+          ) : (
+            <SummaryList formattedEntityData={formattedSchemaFieldsData} />
           )}
         </Col>
       </Row>
