@@ -38,9 +38,8 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import ANSI, ingestion_logger, log_ansi_encoded_string
 
 logger = ingestion_logger()
 ROW_DATA_TYPE = "row"
@@ -140,7 +139,7 @@ class TrinoSource(CommonDbSourceService):
                 dbapi,
             )
         except ModuleNotFoundError:
-            print_ansi_encoded_string(
+            log_ansi_encoded_string(
                 color=ANSI.BRIGHT_RED,
                 bold=False,
                 message="Trino source dependencies are missing. Please run\n"
