@@ -203,7 +203,11 @@ const EntitySummaryDetails = ({
                   ? `${t(`label.${toLower(data.key)}`)} - `
                   : null
                 : `${t('label.no-entity', {
-                    entity: t(`label.${toLower(data.key)}`),
+                    entity: t(
+                      `label.${toLower(
+                        data.localizationKey ? data.localizationKey : data.key
+                      )}`
+                    ),
                   })}`
               : null}
           </>
