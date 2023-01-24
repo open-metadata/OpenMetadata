@@ -31,10 +31,10 @@ interface Props {
 
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
   <span
-    className="cursor-pointer m-l-xs h-auto mt-05"
+    className="cursor-pointer m-l-xs h-auto mt-2px"
     data-testid="edit-icon"
     onClick={onShowInput}>
-    <EditIconComponent height={14} width={14} />
+    <EditIconComponent height={16} width={16} />
   </span>
 );
 
