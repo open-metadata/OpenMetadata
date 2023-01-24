@@ -60,6 +60,7 @@ const GlossaryPage = () => {
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
 
   const isGlossaryActive = useMemo(() => {
+    setIsRightPanelLoading(true);
     setSelectedData(undefined);
     if (glossaryFqn) {
       return glossaryFqn.split(FQN_SEPARATOR_CHAR).length === 1;
@@ -163,6 +164,7 @@ const GlossaryPage = () => {
         showSuccessToast(
           jsonData['api-success-messages']['delete-glossary-success']
         );
+        setIsLoading(true);
         history.push(getGlossaryPath());
         fetchGlossaryList();
       })
@@ -210,7 +212,7 @@ const GlossaryPage = () => {
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
-
+        setIsLoading(true);
         history.push(getGlossaryPath(fqn));
         fetchGlossaryList();
       })

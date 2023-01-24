@@ -34,7 +34,7 @@ const visitGlossaryTermPage = (termName) => {
     .contains(termName)
     .should('be.visible')
     .click();
-  cy.get('#rc-tabs-0-tab-summary').should('be.visible').click();
+  cy.get('.ant-tabs [id*=tab-summary]').should('be.visible').click();
 };
 
 const createGlossaryTerm = (term, glossary, isMutually = false) => {
