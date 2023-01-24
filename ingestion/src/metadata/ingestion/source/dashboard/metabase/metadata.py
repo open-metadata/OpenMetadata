@@ -180,7 +180,7 @@ class MetabaseSource(DashboardServiceSource):
             return
         chart_list, dashboard_name = (
             dashboard_details["ordered_cards"],
-            dashboard_details["name"],
+            str(dashboard_details["id"]),
         )
         for chart in chart_list:
             try:
