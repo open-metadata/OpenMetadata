@@ -23,7 +23,6 @@ jobs:
       matrix:
         py-version: ['3.9']
         e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
-        continue-on-error: [true]
     environment: test
 
     steps:
@@ -66,6 +65,7 @@ jobs:
 
     - name: Run Python Tests
       id: e2e-test
+      continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
