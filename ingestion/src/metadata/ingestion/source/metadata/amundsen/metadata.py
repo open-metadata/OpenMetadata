@@ -97,8 +97,11 @@ SUPERSET_DEFAULT_CONFIG = {
     "type": "superset",
     "serviceConnection": {
         "config": {
-            "username": "test",
-            "password": "test",
+            "connection": {
+                "provider": "db",
+                "username": "test",
+                "password": "test",
+            },
             "hostPort": "http://localhost:8088",
             "type": "Superset",
         }
