@@ -26,6 +26,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
@@ -41,22 +42,18 @@ import { getChartById } from 'rest/DataInsightAPI';
 import { getKPIByName, patchKPI } from 'rest/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
-  KPI_DATES,
   KPI_DATE_PICKER_FORMAT,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
-import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
-  getKpiDateFormatByTimeStamp,
-  getKPIFormattedDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
-import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { KPIFormValues } from './KPIPage.interface';
 import './KPIPage.less';
 
 const EditKPIPage = () => {
@@ -65,6 +62,7 @@ const EditKPIPage = () => {
 
   const { t } = useTranslation();
   const history = useHistory();
+  const [form] = useForm<KPIFormValues>();
 
   const [kpiData, setKpiData] = useState<Kpi>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -75,8 +73,6 @@ const EditKPIPage = () => {
 
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isUpdatingKPI, setIsUpdatingKPI] = useState<boolean>(false);
-
-  const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
 
   const breadcrumb = useMemo(
     () => [
@@ -154,16 +150,36 @@ const EditKPIPage = () => {
 
   const handleCancel = () => history.goBack();
 
-  const handleDateChange = (dateString: string, key: KpiDate) => {
-    setKpiDates((previous) => ({ ...previous, [key]: dateString }));
+  const handleFormValuesChange = (
+    changedValues: Partial<KPIFormValues>,
+    allValues: KPIFormValues
+  ) => {
+    if (changedValues.startDate) {
+      const startDate = moment(changedValues.startDate).startOf('day');
+      form.setFieldsValue({ startDate });
+      if (changedValues.startDate > allValues.endDate) {
+        form.setFieldsValue({
+          endDate: '',
+        });
+      }
+    }
+
+    if (changedValues.endDate) {
+      let endDate = moment(changedValues.endDate).endOf('day');
+      form.setFieldsValue({ endDate });
+      if (changedValues.endDate < allValues.startDate) {
+        endDate = moment(changedValues.endDate).startOf('day');
+        form.setFieldsValue({
+          startDate: endDate,
+        });
+      }
+    }
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     if (kpiData && metricData) {
-      const formattedDates = getKPIFormattedDates(kpiDates);
-
-      const startDate = getTimeStampByDateTime(formattedDates.startDate);
-      const endDate = getTimeStampByDateTime(formattedDates.endDate);
+      const startDate = values.startDate.valueOf();
+      const endDate = values.endDate.valueOf();
 
       const targetValue = getKpiTargetValueByMetricType(
         kpiData.metricType,
@@ -204,11 +220,8 @@ const EditKPIPage = () => {
 
   useEffect(() => {
     if (kpiData) {
-      const startDate = getKpiDateFormatByTimeStamp(kpiData.startDate);
-      const endDate = getKpiDateFormatByTimeStamp(kpiData.endDate);
       fetchChartData();
       setDescription(kpiData.description);
-      setKpiDates({ startDate, endDate });
     }
   }, [kpiData]);
 
@@ -244,11 +257,13 @@ const EditKPIPage = () => {
               </Typography.Paragraph>
               <Form
                 data-testid="kpi-form"
+                form={form}
                 id="kpi-form"
                 initialValues={initialValues}
                 layout="vertical"
                 validateMessages={VALIDATE_MESSAGES}
-                onFinish={handleSubmit}>
+                onFinish={handleSubmit}
+                onValuesChange={handleFormValuesChange}>
                 <Form.Item
                   label={t('label.data-insight-chart')}
                   name="dataInsightChart">
@@ -364,9 +379,6 @@ const EditKPIPage = () => {
                         data-testid="start-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
-                        onChange={(_, dateString) =>
-                          handleDateChange(dateString, KpiDate.START_DATE)
-                        }
                       />
                     </Form.Item>
                   </Col>
@@ -388,9 +400,6 @@ const EditKPIPage = () => {
                         data-testid="end-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
-                        onChange={(_, dateString) =>
-                          handleDateChange(dateString, KpiDate.END_DATE)
-                        }
                       />
                     </Form.Item>
                   </Col>
