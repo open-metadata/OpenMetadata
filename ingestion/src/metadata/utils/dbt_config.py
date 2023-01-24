@@ -34,8 +34,8 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
