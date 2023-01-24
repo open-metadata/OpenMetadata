@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Check trigger type
         id: check_trigger
-        run: echo "DOCKER_RELEASE_TAG=0.13.1" >> $GITHUB_OUTPUT
+        run: echo "DOCKER_RELEASE_TAG=0.13.2-beta" >> $GITHUB_OUTPUT
         
       - name: Download application from Artifiact
         uses: actions/download-artifact@v2
@@ -120,7 +120,7 @@ jobs:
       - name: Check trigger type
         id: check_trigger
         if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
-        run: echo "DOCKER_RELEASE_TAG=0.13.1" >> $GITHUB_ENV
+        run: echo "DOCKER_RELEASE_TAG=0.13.2-beta" >> $GITHUB_ENV
 
       - name: Check out the Repo
         uses: actions/checkout@v3
