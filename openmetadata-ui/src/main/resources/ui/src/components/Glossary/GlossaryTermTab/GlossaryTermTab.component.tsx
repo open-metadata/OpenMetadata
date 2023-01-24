@@ -244,6 +244,23 @@ const GlossaryTermTab = ({
         {t('message.no-entity-data-available', {
           entity: t('label.glossary-term'),
         })}
+        <Tooltip
+          title={
+            createGlossaryTermPermission
+              ? t('label.add-entity', { entity: t('label.term-lowercase') })
+              : NO_PERMISSION_FOR_ACTION
+          }>
+          <Button
+            ghost
+            className="m-t-xs"
+            data-testid="add-new-tag-button"
+            disabled={!createGlossaryTermPermission}
+            size="small"
+            type="primary"
+            onClick={handleAddGlossaryTermClick}>
+            {t('label.add-entity', { entity: t('label.term-lowercase') })}
+          </Button>
+        </Tooltip>
       </ErrorPlaceHolder>
     );
   }

@@ -345,14 +345,20 @@ const GlossaryHeader = ({
           </div>
           <span className="tw-mr-1 tw-inline-block tw-text-gray-400">|</span>
 
-          <div className="flex items-center tw-flex-wrap">
+          <div
+            className="flex items-center tw-flex-wrap"
+            data-testid="reviewer-card-container">
             <Typography.Text className="text-grey-muted m-r-xs">
               Reviewer:
             </Typography.Text>{' '}
             {selectedData.reviewers && selectedData.reviewers.length ? (
               <>
                 {selectedData.reviewers.map((reviewer) => (
-                  <Space className="m-r-xss" key={reviewer.name} size={4}>
+                  <Space
+                    className="m-r-xss"
+                    data-testid={`reviewer-${reviewer.displayName}`}
+                    key={reviewer.name}
+                    size={4}>
                     <ProfilePicture
                       displayName={getEntityName(reviewer)}
                       id={reviewer.id || ''}
