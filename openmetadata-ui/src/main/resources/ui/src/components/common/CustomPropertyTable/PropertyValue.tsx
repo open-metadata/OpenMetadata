@@ -14,9 +14,9 @@
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
+import { ReactComponent as EditIconComponent } from '../../../assets/svg/ic-edit.svg';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import { PropertyInput } from './PropertyInput';
@@ -26,14 +26,15 @@ interface Props {
   propertyType: EntityReference;
   extension: Table['extension'];
   onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
+  hasEditPermissions: boolean;
 }
 
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
   <span
-    className="tw-cursor-pointer tw-ml-2"
+    className="cursor-pointer m-l-xs h-auto mt-05"
     data-testid="edit-icon"
     onClick={onShowInput}>
-    <SVGIcons alt="edit" icon={Icons.EDIT} width="16px" />
+    <EditIconComponent height={14} width={14} />
   </span>
 );
 
@@ -42,6 +43,7 @@ export const PropertyValue: FC<Props> = ({
   extension,
   propertyType,
   onExtensionUpdate,
+  hasEditPermissions,
 }) => {
   const value = extension?.[propertyName];
 
@@ -141,9 +143,9 @@ export const PropertyValue: FC<Props> = ({
         getPropertyInput()
       ) : (
         <Fragment>
-          <div className="tw-flex">
+          <div className="d-flex">
             {getValueElement()}
-            <EditIcon onShowInput={onShowInput} />
+            {hasEditPermissions && <EditIcon onShowInput={onShowInput} />}
           </div>
         </Fragment>
       )}
