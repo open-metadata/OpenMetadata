@@ -30,6 +30,17 @@ To run the Trino ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[trino]"
 ```
 
+<Note>
+
+To Inesget metadata from the Trino User Must have select privileges to this tables.
+- `information_schema.schemata`
+- `information_schema.columns`
+- `information_schema.tables`
+- `information_schema.views`
+- `system.metadata.table_comments`
+
+</Note>
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.

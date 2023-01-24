@@ -43,6 +43,17 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+To Inesget metadata from the Trino User Must have select privileges to this tables.
+- `information_schema.schemata`
+- `information_schema.columns`
+- `information_schema.tables`
+- `information_schema.views`
+- `system.metadata.table_comments`
+
+</Note>
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page
