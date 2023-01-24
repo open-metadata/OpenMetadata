@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/spannerConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpannerConnection",
+  "description": "Google Spanner Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SpannerConnection",
+  "definitions": {
+    "spannerType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Spanner"
+      ],
+      "default": "Spanner"
+    },
+    "spannerScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "spanner+spanner"
+      ],
+      "default": "spanner+spanner"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/spannerType",
+      "default": "Spanner"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/spannerScheme",
+      "default": "spanner"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Spanner APIs URL.",
+      "type": "string",
+      "default": "spanner.googleapis.com"
+    },
+    "credentials": {
+      "title": "GCS Credentials",
+      "description": "GCS Credentials",
+      "$ref": "../../../../security/credentials/gcsCredentials.json"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "credentials"
+  ]
+}
