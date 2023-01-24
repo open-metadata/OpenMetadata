@@ -130,8 +130,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
 
   return (
     <Row data-testid="glossary-details" gutter={[0, 16]}>
-      {/* <Col span={24}></Col> */}
-
       <Col span={24}>
         <GlossaryHeader
           permissions={permissions}
