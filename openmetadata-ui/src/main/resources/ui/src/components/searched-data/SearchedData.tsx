@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
@@ -64,7 +64,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         });
       }
 
-      let name = table.name;
+      let name = toString(table.displayName);
       if (!isUndefined(highlight)) {
         name = highlight?.name?.join(' ') || name;
       }
