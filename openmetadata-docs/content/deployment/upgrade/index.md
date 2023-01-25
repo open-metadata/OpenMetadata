@@ -29,6 +29,17 @@ that all the other entities are following. This issue makes backward incompatibl
 
 You can find the full list of API paths changes in the following [issue](https://github.com/open-metadata/OpenMetadata/issues/9259).
 
+### Metabase and Domo `name`
+
+With the new restrictions on the `EntityName` and to ensure unicity of the assets, the Metabase and Domo sources
+now ingest the `name` of the charts and dashboards with their internal ID value. Their `name` value will be used
+as the display name, but not as the OpenMetadata `name` anymore.
+
+The recommended approach here is to create a new service and ingest the metadata again. If you ingest from the same
+service, the assets in there will end up being duplicated, as the `name` in OpenMetadata is used to identify each asset.
+
+Let us know if you have any questions around this topic.
+
 ### Ingestion Framework sources directory structure
 
 We have converted source modules (e.g., `redshift.py`) into packages containing all the necessary information (e.g., `redshift/metadata.py`).
