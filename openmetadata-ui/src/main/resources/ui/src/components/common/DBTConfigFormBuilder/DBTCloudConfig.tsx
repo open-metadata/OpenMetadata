@@ -34,6 +34,7 @@ interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleUpdateDescriptions: (value: boolean) => void;
   handleDbtCloudProjectId: (value: string) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  handleDbtCloudUrl: (value: string) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -41,6 +42,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAuthToken = '',
   dbtCloudProjectId,
   dbtUpdateDescriptions = false,
+  dbtCloudUrl = 'https://cloud.getdbt.com/',
   okText,
   cancelText,
   onCancel,
@@ -50,6 +52,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleUpdateDescriptions,
   handleDbtCloudProjectId,
   dbtClassificationName,
+  handleDbtCloudUrl,
   handleUpdateDBTClassification,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
@@ -68,6 +71,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtUpdateDescriptions,
       dbtCloudProjectId,
       dbtClassificationName,
+      dbtCloudUrl,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -134,6 +138,25 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           type="text"
           value={dbtCloudProjectId}
           onChange={(e) => handleDbtCloudProjectId(e.target.value)}
+        />
+      </Field>
+
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
+          {requiredField('dbt Cloud URL')}
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          URL to connect to your dbt cloud instance. E.g.,
+          https://cloud.getdbt.com or https://emea.dbt.com/
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudUrl"
+          id="dbtCloudUrl"
+          name="dbtCloudUrl"
+          type="text"
+          value={dbtCloudUrl}
+          onChange={(e) => handleDbtCloudUrl(e.target.value)}
         />
       </Field>
       {getSeparator('')}
