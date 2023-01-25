@@ -30,7 +30,11 @@ import org.openmetadata.service.util.ParallelStreamUtil;
 @Provider
 public class EventFilter implements ContainerResponseFilter {
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
-  private static List<String> EXCLUDED_ENDPOINTS = getEndpointsFilters();
+  private static List<String> EXCLUDED_ENDPOINTS = new ArrayList<>(JwtFilter.EXCLUDED_ENDPOINTS);
+
+  static {
+    EXCLUDED_ENDPOINTS.add("v1/analytics/webAnalyticEvent/collect");
+  }
 
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;
@@ -75,11 +79,5 @@ public class EventFilter implements ContainerResponseFilter {
                 ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool);
               }
             });
-  }
-
-  private static List<String> getEndpointsFilters() {
-    List<String> filters = new ArrayList<String>(JwtFilter.EXCLUDED_ENDPOINTS);
-    filters.addAll(Arrays.asList("v1/analytics/webAnalyticEvent/collect"));
-    return filters;
   }
 }
