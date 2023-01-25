@@ -26,15 +26,13 @@ import {
 } from '../../constants/constants';
 
 const visitGlossaryTermPage = (termName) => {
-  cy.get('.ant-tabs [id*=tab-glossaryTerms]').should('be.visible').click();
-  verifyResponseStatusCode('@getGlossaryTerms', 200);
-
-  cy.get(`[data-testid="${termName}-card"]`)
+  cy.get(`[data-row-key="${termName}"]`)
     .scrollIntoView()
     .should('be.visible')
     .contains(termName)
     .should('be.visible')
     .click();
+  cy.get('.ant-tabs [id*=tab-summary]').should('be.visible').click();
 };
 
 const createGlossaryTerm = (term) => {
@@ -81,11 +79,8 @@ const createGlossaryTerm = (term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  verifyResponseStatusCode('@createGlossaryTerms', 201);
-  cy.get('.ant-tabs [id*=tab-glossaryTerms]').should('be.visible').click();
-  verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-  cy.get(`[data-testid="${term.name}-card"]`)
+  cy.get(`[data-row-key="${term.name}"]`)
     .scrollIntoView()
     .should('be.visible')
     .contains(term.name)
@@ -261,9 +256,9 @@ describe('Glossary page should work properly', () => {
       .then((text) => {
         expect(text).to.contain(NEW_GLOSSARY.description);
       });
-    cy.get('[data-testid="reviewer-card-container"]').should('have.length', 1);
+    cy.get('[data-testid="reviewer-card-container"]').should('be.visible');
 
-    cy.get('[data-testid="reviewer-card-container"]')
+    cy.get(`[data-testid="reviewer-${NEW_GLOSSARY.reviewer}"]`)
       .invoke('text')
       .then((text) => {
         expect(text).to.contain(NEW_GLOSSARY.reviewer);

@@ -14,6 +14,7 @@ Source connection handler
 """
 from pydomo import Domo
 
+from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
@@ -25,23 +26,18 @@ def get_connection(connection: DomoPipelineConnection) -> Domo:
     Create connection
     """
     try:
-        domo = Domo(
-            connection.clientId,
-            connection.secretToken.get_secret_value(),
-            api_host=connection.apiHost,
-        )
-        return domo
+        return DomoClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)
 
 
-def test_connection(domo: Domo) -> None:
+def test_connection(connection: Domo) -> None:
     """
     Test connection
     """
     try:
-        domo.streams.list()
+        connection.get_pipelines()
     except Exception as exc:
-        msg = f"Unknown error connecting with {domo}: {exc}."
+        msg = f"Unknown error while extracting pipeline from domo: {exc}."
         raise SourceConnectionException(msg)
