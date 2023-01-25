@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -58,6 +58,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.last-run-result'),
         dataIndex: 'testCaseResult',
         key: 'testCaseResult',
+        width: 150,
         render: (result: TestCaseResult) => (
           <Space size={8}>
             {result?.testCaseStatus && (
@@ -67,7 +68,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 icon={getTestResultBadgeIcon(result.testCaseStatus)}
               />
             )}
-            <span>{result?.testCaseStatus || '--'}</span>
+            <Typography.Text>{result?.testCaseStatus || '--'}</Typography.Text>
           </Space>
         ),
       },
@@ -75,6 +76,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.last-run'),
         dataIndex: 'testCaseResult',
         key: 'lastRun',
+        width: 120,
         render: (result: TestCaseResult) =>
           result?.timestamp
             ? getFormattedDateFromSeconds(result.timestamp)
@@ -84,12 +86,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => <span data-testid={name}>{name}</span>,
+        width: 320,
+        render: (name: string) => (
+          <Typography.Text className="break-word" data-testid={name}>
+            {name}
+          </Typography.Text>
+        ),
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 350,
         render: (text) => (isEmpty(text) ? '--' : text),
       },
       {
@@ -227,6 +235,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         }}
         pagination={false}
         rowKey="id"
+        scroll={{ x: 1550 }}
         size="small"
       />
       <EditTestCaseModal
