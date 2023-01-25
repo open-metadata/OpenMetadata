@@ -227,6 +227,9 @@ const Explore: React.FC<ExploreProps> = ({
         searchResults?.hits?.hits[0]._source as EntityDetailsType,
         tab
       );
+    } else {
+      setShowSummaryPanel(false);
+      setEntityDetails(undefined);
     }
   }, [tab, searchResults]);
 
