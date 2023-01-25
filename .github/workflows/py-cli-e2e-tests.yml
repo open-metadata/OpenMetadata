@@ -103,23 +103,23 @@ jobs:
     - name: Upload coverage artifact
       if: matrix.e2e-test == 'python' && steps.e2e-test.outcome == 'success'
       uses: actions/upload-artifact@v3
-        with:
-          name: coverage-${{ matrix.e2e-test }}
-          path: .coverage
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
       uses: actions/upload-artifact@v3
-        with:
-          name: coverage-${{ matrix.e2e-test }}
-          path: .coverage.${{ matrix.e2e-test }}
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
       if: steps.e2e-test.outcome == 'success'
       uses: actions/upload-artifact@v3
-        with:
-          name: tests-${{ matrix.e2e-test }}
-          path: ingestion/junit/test-results-*.xml
+      with:
+        name: tests-${{ matrix.e2e-test }}
+        path: ingestion/junit/test-results-*.xml
 
     - name: Clean Up
       run: |
