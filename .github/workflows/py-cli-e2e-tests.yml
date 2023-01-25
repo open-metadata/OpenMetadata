@@ -152,7 +152,6 @@ jobs:
 
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
-    environment: test
     needs: py-cli-e2e-tests
 
     steps:
@@ -176,25 +175,25 @@ jobs:
           source env/bin/activate
           make install_all install_test
 
-      - name: Download all artifacts to root folder
-        uses: actions/download-artifact@v3
-
-      - name: Download all artifacts to tests folder
+      - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          path: ingestion/junit
+          path: artifacts
 
       - name: Generate report
         run: |
+          for folder in artifacts/coverage-*; do cp -r $folder/ . ;done
+          mkdir ingestion/junit
+          for folder in artifacts/tests-*; do cp -r $folder/ ingestion/junit ;done
           source env/bin/activate
           coverage combine --rcfile=ingestion/.coveragerc --keep -a
           coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
-          sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+          sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+        shell: bash
 
       - name: Push Results to Sonar
         uses: sonarsource/sonarcloud-github-action@master
-        if: ${{ github.event_name == 'push' &&  matrix.py-version == '3.9' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
