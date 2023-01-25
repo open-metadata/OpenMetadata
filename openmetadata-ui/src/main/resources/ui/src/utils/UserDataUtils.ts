@@ -146,48 +146,47 @@ export const getUserProfilePic = (
   return profile;
 };
 
-export const searchFormattedUsersAndTeams = (
+export const searchFormattedUsersAndTeams = async (
   searchQuery = WILD_CARD_CHAR,
   from = 1
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const teamQuery = `${
-      searchQuery === WILD_CARD_CHAR ? searchQuery : `*${searchQuery}*`
-    } AND teamType:Group`;
+) => {
+  try {
+    const searchText =
+      searchQuery === WILD_CARD_CHAR ? searchQuery : `*${searchQuery}*`;
+    const teamQuery = `${searchText} AND teamType:Group`;
+
     const promises = [
-      getSearchedUsers(searchQuery, from),
+      getSearchedUsers(searchText, from),
       getSearchedTeams(teamQuery, from),
     ];
-    Promise.allSettled(promises)
-      .then(([resUsers, resTeams]) => {
-        const users =
-          resUsers.status === SettledStatus.FULFILLED
-            ? formatUsersResponse(
-                (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits
-                  .hits
-              )
-            : [];
-        const teams =
-          resTeams.status === SettledStatus.FULFILLED
-            ? formatTeamsResponse(
-                (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits
-                  .hits
-              )
-            : [];
-        const usersTotal =
-          resUsers.status === SettledStatus.FULFILLED
-            ? resUsers.value.data.hits.total.value
-            : 0;
-        const teamsTotal =
-          resTeams.status === SettledStatus.FULFILLED
-            ? resTeams.value.data.hits.total.value
-            : 0;
-        resolve({ users, teams, usersTotal, teamsTotal });
-      })
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
-  });
+
+    const [resUsers, resTeams] = await Promise.allSettled(promises);
+
+    const users =
+      resUsers.status === SettledStatus.FULFILLED
+        ? formatUsersResponse(
+            (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits.hits
+          )
+        : [];
+    const teams =
+      resTeams.status === SettledStatus.FULFILLED
+        ? formatTeamsResponse(
+            (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits.hits
+          )
+        : [];
+    const usersTotal =
+      resUsers.status === SettledStatus.FULFILLED
+        ? resUsers.value.data.hits.total.value
+        : 0;
+    const teamsTotal =
+      resTeams.status === SettledStatus.FULFILLED
+        ? resTeams.value.data.hits.total.value
+        : 0;
+
+    return { users, teams, usersTotal, teamsTotal };
+  } catch (error) {
+    return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
+  }
 };
 
 export const suggestFormattedUsersAndTeams = (
