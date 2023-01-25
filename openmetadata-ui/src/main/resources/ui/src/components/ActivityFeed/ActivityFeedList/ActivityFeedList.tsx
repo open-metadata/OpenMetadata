@@ -267,7 +267,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         <>
           {relativeDays.map((d, i) => {
             return (
-              <div data-testid={`feed${i}`} key={i}>
+              <div className="relative z-5" data-testid={`feed${i}`} key={i}>
                 <FeedListSeparator
                   className="relative m-y-xs"
                   relativeDay={d}

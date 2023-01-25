@@ -27,7 +27,6 @@ const DeleteConfirmationModal: FC<DeleteConfirmationModalProp> = ({
     <ConfirmationModal
       bodyText={t('message.confirm-delete-message')}
       cancelText={t('label.cancel')}
-      className="tw-w-auto tw-h-screen"
       confirmText={t('label.delete')}
       header={t('message.delete-message-question-mark')}
       visible={visible}
