@@ -103,7 +103,7 @@ jobs:
         E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
       run: |
         source env/bin/activate
-        coverage run --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        coverage run --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
         coverage report --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
@@ -134,7 +134,7 @@ jobs:
         sudo rm -rf ${PWD}/docker-volume
 
     - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' || steps.python-e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
@@ -146,7 +146,7 @@ jobs:
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
-      if: steps.e2e-test.outcome != 'success' || steps.python-e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
       run: |
         exit 1
 
