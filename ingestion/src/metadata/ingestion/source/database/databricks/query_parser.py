@@ -47,6 +47,7 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.report = SQLSourceStatus()
