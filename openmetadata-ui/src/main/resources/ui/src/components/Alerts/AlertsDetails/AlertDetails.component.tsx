@@ -147,7 +147,18 @@ export const AlertDetailsComponent = ({
                     )}
                   </Space>
                 ) : (
-                  <Card className="h-full" title={<Space size={8} />}>
+                  <Card
+                    className="h-full"
+                    title={
+                      <Space size={16}>
+                        {getAlertsActionTypeIcon(action.alertActionType)}
+
+                        {getAlertActionTypeDisplayName(
+                          action.alertActionType ??
+                            AlertActionType.GenericWebhook
+                        )}
+                      </Space>
+                    }>
                     <Space direction="vertical" size={8}>
                       {action.alertActionType === AlertActionType.Email && (
                         <>
