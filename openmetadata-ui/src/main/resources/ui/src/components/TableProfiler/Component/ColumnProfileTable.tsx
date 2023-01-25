@@ -63,6 +63,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        fixed: 'left',
         render: (name: string, record) => {
           return (
             <Link
@@ -169,6 +170,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Status',
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
+        width: 120,
         render: (_, record) => {
           const summary =
             columnTestSummary?.[

@@ -52,13 +52,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const hasAccess = isAdminUser || isAuthDisabled;
 
-  const columns: ColumnsType<TestCase> = useMemo(() => {
-    return [
+  const columns: ColumnsType<TestCase> = useMemo(
+    () => [
       {
         title: t('label.last-run-result'),
         dataIndex: 'testCaseResult',
         key: 'testCaseResult',
         width: 150,
+        fixed: 'left',
         render: (result: TestCaseResult) => (
           <Space size={8}>
             {result?.testCaseStatus && (
@@ -213,8 +214,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
         },
       },
-    ];
-  }, [hasAccess, deletedTable]);
+    ],
+    [hasAccess, deletedTable]
+  );
 
   return (
     <>
@@ -235,7 +237,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         }}
         pagination={false}
         rowKey="id"
-        scroll={{ x: 1550 }}
+        scroll={{ x: 1600 }}
         size="small"
       />
       <EditTestCaseModal
