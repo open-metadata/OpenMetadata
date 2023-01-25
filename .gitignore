@@ -69,7 +69,7 @@ openmetadata-ui/src/main/resources/ui/webpack
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #tests
-.coverage
+.coverage*
 /ingestion/coverage.xml
 /ingestion/ci-coverage.xml
 /ingestion/junit/*
