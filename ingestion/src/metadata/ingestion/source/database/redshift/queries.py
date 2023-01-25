@@ -32,8 +32,10 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           LIMIT {result_limit}
   ),
   deduped_querytext AS ( -- In some instances, rows are duplicated, causing LISTAGG to fail due to exceeding the maximum str length of 65535.
-    SELECT DISTINCT *
-    FROM pg_catalog.stl_querytext
+    SELECT DISTINCT qt.*
+    FROM pg_catalog.stl_querytext AS qt
+        INNER JOIN queries AS q
+            ON qt.query = q.query
   ),
   full_queries AS (
     SELECT
