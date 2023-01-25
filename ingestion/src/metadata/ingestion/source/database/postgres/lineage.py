@@ -58,4 +58,3 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
 
                 for lineage_request in lineages or []:
                     yield lineage_request
-
