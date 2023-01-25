@@ -19,6 +19,8 @@ import AppState from '../../AppState';
 import { getImages } from '../../utils/CommonUtils';
 import { mockCreateUser } from './mocks/signup.mock';
 
+let letExpectedUserName = 'sample123';
+
 const mockChangeHandler = jest.fn();
 const mockSubmitHandler = jest.fn();
 const mockShowErrorToast = jest.fn();
@@ -82,6 +84,10 @@ jest.mock('../../utils/CommonUtils', () => ({
     .mockResolvedValue(
       'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s96-c'
     ),
+}));
+
+jest.mock('utils/AuthProvider.util', () => ({
+  getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
 }));
 
 describe('Signup page', () => {
@@ -222,6 +228,7 @@ describe('Signup page', () => {
 
   it('Handlers in form should work if data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
+    letExpectedUserName = '';
 
     AppState.newUser = {
       name: '',
