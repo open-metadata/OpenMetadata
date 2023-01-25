@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
@@ -37,6 +37,7 @@ import {
   JoinedWith,
   Table,
   TableJoins,
+  TableProfile,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -133,6 +134,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
+  isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -351,37 +353,62 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       .sort((a, b) => b.joinCount - a.joinCount);
   };
 
-  const prepareTableRowInfo = () => {
-    const rowData =
-      ([
-        {
-          date: new Date(tableProfile?.timestamp || 0),
-          value: tableProfile?.rowCount ?? 0,
-        },
-      ] as Array<{
-        date: Date;
-        value: number;
-      }>) ?? [];
-
-    if (!isUndefined(tableProfile)) {
+  const prepareExtraInfoValues = (
+    key: EntityInfo,
+    isTableProfileLoading?: boolean,
+    tableProfile?: TableProfile,
+    numberOfColumns?: number
+  ) => {
+    if (isTableProfileLoading) {
       return (
-        <div className="tw-flex">
-          {rowData.length > 1 && (
-            <TableProfilerGraph
-              className="tw--mt-4"
-              data={rowData}
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-          )}
-          <span
-            className={classNames({
-              'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile?.rowCount?.toLocaleString() || 0} rows`}</span>
-        </div>
+        <Skeleton active paragraph={{ rows: 1, width: 50 }} title={false} />
       );
-    } else {
-      return '';
+    }
+    switch (key) {
+      case EntityInfo.COLUMNS: {
+        const columnCount =
+          tableProfile && tableProfile?.columnCount
+            ? tableProfile?.columnCount
+            : numberOfColumns
+            ? numberOfColumns
+            : undefined;
+
+        return columnCount
+          ? `${columns.length} ${t('label.column-plural')}`
+          : null;
+      }
+
+      case EntityInfo.ROWS: {
+        const rowData =
+          ([
+            {
+              date: new Date(tableProfile?.timestamp || 0),
+              value: tableProfile?.rowCount ?? 0,
+            },
+          ] as Array<{
+            date: Date;
+            value: number;
+          }>) ?? [];
+
+        return isUndefined(tableProfile) ? null : (
+          <Space align="center">
+            {rowData.length > 1 && (
+              <TableProfilerGraph
+                data={rowData}
+                height={32}
+                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                toolTipPos={{ x: 20, y: 30 }}
+                width={120}
+              />
+            )}
+            <Typography.Paragraph className="m-0">{`${
+              tableProfile?.rowCount?.toLocaleString() || 0
+            } rows`}</Typography.Paragraph>
+          </Space>
+        );
+      }
+      default:
+        return null;
     }
   };
 
@@ -408,16 +435,21 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
     {
       key: EntityInfo.COLUMNS,
-      value:
-        tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} ${t('label.columns-plural')}`
-          : columns.length
-          ? `${columns.length} ${t('label.columns-plural')}`
-          : '',
+      localizationKey: 'column-plural',
+      value: prepareExtraInfoValues(
+        EntityInfo.COLUMNS,
+        isTableProfileLoading,
+        tableProfile,
+        columns.length
+      ),
     },
     {
       key: EntityInfo.ROWS,
-      value: prepareTableRowInfo(),
+      value: prepareExtraInfoValues(
+        EntityInfo.ROWS,
+        isTableProfileLoading,
+        tableProfile
+      ),
     },
   ];
 
