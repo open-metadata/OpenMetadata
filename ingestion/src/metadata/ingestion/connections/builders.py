@@ -12,6 +12,7 @@
 """
 Get and test connection utilities
 """
+from functools import partial
 from typing import Any, Callable, Dict, Optional
 from urllib.parse import quote_plus
 
@@ -24,7 +25,10 @@ from sqlalchemy.pool import QueuePool
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
 )
-from metadata.ingestion.connections.headers import inject_query_header
+from metadata.ingestion.connections.headers import (
+    inject_query_header,
+    inject_query_header_by_conn,
+)
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 
 
@@ -67,7 +71,12 @@ def create_generic_db_connection(
     )
 
     if hasattr(connection, "supportsQueryComment"):
-        listen(engine, "before_cursor_execute", inject_query_header, retval=True)
+        listen(
+            engine,
+            "before_cursor_execute",
+            partial(inject_query_header_by_conn, connection),
+            retval=True,
+        )
 
     return engine
 
