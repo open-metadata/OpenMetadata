@@ -37,8 +37,8 @@ function SummaryListItem({
           {isColumnsData &&
             prepareConstraintIcon(
               entityDetails.name,
-              entityDetails.constraint,
-              undefined,
+              entityDetails.columnConstraint,
+              entityDetails.tableConstraints,
               'm-r-xss',
               '14px'
             )}

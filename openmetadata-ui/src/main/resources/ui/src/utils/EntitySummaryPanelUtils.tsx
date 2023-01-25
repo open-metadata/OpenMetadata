@@ -20,7 +20,7 @@ import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
-import { Column } from '../generated/entity/data/table';
+import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './CommonUtils';
 import SVGIcons from './SvgUtils';
@@ -29,7 +29,8 @@ const { Text } = Typography;
 
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
-  entityInfo?: Column[] | Field[] | Chart[] | Task[] | MlFeature[]
+  entityInfo?: Column[] | Field[] | Chart[] | Task[] | MlFeature[],
+  tableConstraints?: TableConstraint[]
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
@@ -42,7 +43,8 @@ export const getFormattedEntityData = (
         type: column.dataType,
         tags: column.tags,
         description: column.description,
-        constraint: column.constraint,
+        columnConstraint: column.constraint,
+        tableConstraints: tableConstraints,
         children: getFormattedEntityData(
           SummaryEntityType.COLUMN,
           column.children
