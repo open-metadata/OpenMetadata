@@ -13,17 +13,14 @@
 Test DBT with CLI
 """
 import os
-import re
+import subprocess
 from abc import abstractmethod
-from contextlib import redirect_stdout
-from io import StringIO
 from pathlib import Path
 from typing import List
 from unittest import TestCase
 
 import pytest
 
-from metadata.cmd import metadata
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
@@ -33,12 +30,13 @@ from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+from .test_cli_db_base import CliDBBase
+
 PATH_TO_RESOURCES = os.path.dirname(os.path.realpath(__file__))
 
 
 class CliDBTBase(TestCase):
     class TestSuite(TestCase):
-        catcher = StringIO()
         openmetadata: OpenMetadata
         dbt_file_path: str
         config_file_path: str
@@ -47,9 +45,7 @@ class CliDBTBase(TestCase):
         @pytest.mark.order(1)
         def test_connector_ingestion(self) -> None:
             # run ingest with dbt tables
-            self.run_command(file_path=self.config_file_path)
-            result = self.catcher.getvalue()
-            self.catcher.truncate(0)
+            result = self.run_command(file_path=self.config_file_path)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
@@ -57,9 +53,7 @@ class CliDBTBase(TestCase):
         @pytest.mark.order(2)
         def test_dbt_ingestion(self) -> None:
             # run the dbt ingestion
-            self.run_command(file_path=self.dbt_file_path)
-            result = self.catcher.getvalue()
-            self.catcher.truncate(0)
+            result = self.run_command(file_path=self.dbt_file_path)
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_dbt_ingestion(source_status, sink_status)
 
@@ -103,19 +97,22 @@ class CliDBTBase(TestCase):
                 lineage = self.retrieve_lineage(table_fqn)
                 self.assertTrue(len(lineage["upstreamEdges"]) >= 4)
 
-        def run_command(self, file_path: str, command: str = "ingest"):
+        def run_command(self, file_path: str, command: str = "ingest") -> str:
             args = [
+                "metadata",
                 command,
                 "-c",
                 file_path,
             ]
-            with redirect_stdout(self.catcher):
-                with self.assertRaises(SystemExit):
-                    metadata(args)
+            process_status = subprocess.run(args, capture_output=True)
+            return process_status.stderr.decode("utf-8")
 
-        def retrieve_statuses(self, result):
-            source_status: SourceStatus = self.extract_source_status(result)
-            sink_status: SinkStatus = self.extract_sink_status(result)
+        @staticmethod
+        def retrieve_statuses(result):
+            source_status: SourceStatus = CliDBBase.TestSuite.extract_source_status(
+                result
+            )
+            sink_status: SinkStatus = CliDBBase.TestSuite.extract_sink_status(result)
             return sink_status, source_status
 
         def retrieve_lineage(self, table_name_fqn: str) -> dict:
@@ -128,33 +125,6 @@ class CliDBTBase(TestCase):
             config_file = Path(PATH_TO_RESOURCES + f"/dbt/{connector}/{connector}.yaml")
             config_dict = load_config_file(config_file)
             return Workflow.create(config_dict)
-
-        @staticmethod
-        def extract_source_status(output) -> SourceStatus:
-            output_clean = output.replace("\n", " ")
-            output_clean = re.sub(" +", " ", output_clean)
-            output_clean_ansi = re.compile(r"\x1b[^m]*m")
-            output_clean = output_clean_ansi.sub(" ", output_clean)
-            if re.match(".* Processor Status: .*", output_clean):
-                output_clean = re.findall(
-                    "Source Status: (.*?) Processor Status: .*", output_clean.strip()
-                )
-            else:
-                output_clean = re.findall(
-                    "Source Status: (.*?) Sink Status: .*", output_clean.strip()
-                )
-            return SourceStatus.parse_obj(eval(output_clean[0].strip()))
-
-        @staticmethod
-        def extract_sink_status(output) -> SinkStatus:
-            output_clean = output.replace("\n", " ")
-            output_clean = re.sub(" +", " ", output_clean)
-            output_clean_ansi = re.compile(r"\x1b[^m]*m")
-            output_clean = output_clean_ansi.sub("", output_clean)
-            output_clean = re.findall(
-                ".* Sink Status: (.*?) Workflow finished.*", output_clean.strip()
-            )[0].strip()
-            return SinkStatus.parse_obj(eval(output_clean))
 
         @staticmethod
         @abstractmethod
