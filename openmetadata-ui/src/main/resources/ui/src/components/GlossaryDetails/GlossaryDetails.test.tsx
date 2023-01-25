@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { mockedGlossaries } from '../../mocks/Glossary.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
@@ -21,23 +21,15 @@ jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 
-jest.mock('components/common/description/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<>Description component</>);
-});
-
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-});
-
-jest.mock('../common/ProfilePicture/ProfilePicture', () => {
-  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
-});
 jest.mock(
   'components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
   () => {
     return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
   }
 );
+jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () => {
+  return jest.fn().mockReturnValue(<p>GlossaryHeader.component</p>);
+});
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -71,37 +63,16 @@ describe('Test Glossary-details component', () => {
 
     const glossaryDetails = screen.getByTestId('glossary-details');
     const tagsContainer = await screen.findByText(/Tags-container component/i);
-    const description = await screen.findByText(/Description component/i);
-    const tabs = await screen.findAllByRole('tab');
+    const headerComponent = await screen.findByText('GlossaryHeader.component');
 
-    expect(description).toBeInTheDocument();
+    expect(headerComponent).toBeInTheDocument();
     expect(tagsContainer).toBeInTheDocument();
     expect(glossaryDetails).toBeInTheDocument();
-    expect(tabs).toHaveLength(2);
-    expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
-      'label.summary',
-      'label.glossary-term-plural',
-    ]);
-    expect(
-      await screen.findByTestId('owner-card-container')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('reviewer-card-container')
-    ).toBeInTheDocument();
-  });
-
-  it('onClick of glossary term tab, it should render properly', async () => {
-    await act(async () => {
-      render(<GlossaryDetails {...mockProps} />);
-    });
-    const tabs = await screen.findAllByRole('tab');
-    await act(async () => {
-      fireEvent.click(tabs[1]);
-    });
-
-    expect(tabs[1].textContent).toStrictEqual('label.glossary-term-plural');
     expect(
       await screen.findByText('GlossaryTermTab.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('GlossaryHeader.component')
     ).toBeInTheDocument();
   });
 });
