@@ -186,13 +186,13 @@ jobs:
           echo "listing artifacts folder"
           ls -alR artifacts
           for folder in artifacts/coverage-*; do 
-            cp -r $folder/* . ;
+            cp -r $folder/ . ;
           done
           echo "listing root folder"
           ls -al 
           mkdir ingestion/junit
           for folder in artifacts/tests-*; do 
-            cp -r $folder/* ingestion/junit ;
+            cp -r $folder/ ingestion/junit ;
           done
           echo "listing ingestion/junit folder"
           ls -alR ingestion/junit
