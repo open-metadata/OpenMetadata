@@ -651,6 +651,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   }
                   entityType={EntityType.TOPIC}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    topicPermissions.EditAll ||
+                    topicPermissions.EditCustomFields
+                  }
                 />
               )}
               <div

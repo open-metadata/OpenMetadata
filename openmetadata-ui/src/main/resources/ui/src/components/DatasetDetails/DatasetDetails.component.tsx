@@ -846,6 +846,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   }
                   entityType={EntityType.TABLE}
                   handleExtensionUpdate={handleExtensionUpdate}
+                  hasEditAccess={
+                    tablePermissions.EditAll ||
+                    tablePermissions.EditCustomFields
+                  }
                 />
               </div>
             )}
