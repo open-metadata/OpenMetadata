@@ -11,20 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import React from 'react';
-import { HeaderProps } from './PageHeader.interface';
-import './PageHeader.style.less';
-
-const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
-  return (
-    <div className="page-header-container">
-      <Typography.Title className="heading">{header}</Typography.Title>
-      <Typography.Paragraph className="sub-heading">
-        {subHeader}
-      </Typography.Paragraph>
-    </div>
-  );
-};
-
-export default PageHeader;
+export interface HeaderProps {
+  data: {
+    header: string;
+    subHeader: string;
+  };
+}

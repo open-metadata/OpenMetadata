@@ -804,12 +804,11 @@ const TagsPage = () => {
                     </Row>
                   ) : (
                     <Space>
-                      <Typography.Title
-                        className="m-b-0"
-                        data-testid="classification-name"
-                        level={5}>
+                      <Typography.Text
+                        className="m-b-0 font-bold text-lg"
+                        data-testid="classification-name">
                         {getEntityName(currentClassification)}
-                      </Typography.Title>
+                      </Typography.Text>
                       {currentClassification.provider === ProviderType.User && (
                         <Tooltip
                           title={
@@ -886,7 +885,7 @@ const TagsPage = () => {
                 </div>
               </Space>
             )}
-            <div className="m-b-sm" data-testid="description-container">
+            <div className="m-b-sm m-t-xs" data-testid="description-container">
               <Description
                 description={currentClassification?.description || ''}
                 entityName={

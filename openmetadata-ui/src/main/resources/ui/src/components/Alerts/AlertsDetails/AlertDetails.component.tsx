@@ -14,6 +14,10 @@
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Row, Space, Tag, Typography } from 'antd';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageHeader from 'components/header/PageHeader.component';
+import { HeaderProps } from 'components/header/PageHeader.interface';
 import { isArray } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,15 +42,13 @@ import {
   getFunctionDisplayName,
 } from '../../../utils/Alerts/AlertsUtil';
 import { getHostNameFromURL } from '../../../utils/CommonUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
 
 interface AlertDetailsComponentProps {
   alerts: Alerts;
   alertActions: AlertAction[];
   onDelete: () => void;
-  breadcrumb: TitleBreadcrumbProps['titleLinks'];
+  pageHeaderData?: HeaderProps['data'];
+  breadcrumb?: TitleBreadcrumbProps['titleLinks'];
   allowDelete?: boolean;
   allowEdit?: boolean;
 }
@@ -55,8 +57,9 @@ export const AlertDetailsComponent = ({
   alerts,
   alertActions,
   onDelete,
-  breadcrumb,
+  pageHeaderData,
   allowDelete = true,
+  breadcrumb,
   allowEdit = true,
 }: AlertDetailsComponentProps) => {
   const { t } = useTranslation();
@@ -65,7 +68,9 @@ export const AlertDetailsComponent = ({
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
         <div className="d-flex items-center justify-between">
-          <TitleBreadcrumb titleLinks={breadcrumb} />
+          {breadcrumb ? <TitleBreadcrumb titleLinks={breadcrumb} /> : null}
+
+          {pageHeaderData ? <PageHeader data={pageHeaderData} /> : null}
           <Space size={16}>
             {allowEdit && (
               <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
@@ -86,13 +91,6 @@ export const AlertDetailsComponent = ({
       </Col>
       <Col span={24}>
         <Card>
-          {alerts.description && (
-            <>
-              <RichTextEditorPreviewer markdown={alerts?.description ?? ''} />
-              <Divider />
-            </>
-          )}
-
           <Space direction="vertical" size={8}>
             <Typography.Title className="m-0" level={5}>
               {t('label.trigger')}
