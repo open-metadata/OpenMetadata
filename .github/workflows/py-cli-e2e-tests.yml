@@ -21,8 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ['3.9']
-        e2e-test: ['mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
     environment: test
 
     steps:
@@ -35,10 +34,10 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
-    - name: Set up Python ${{ matrix.py-version }}
+    - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
-        python-version:  ${{ matrix.py-version }}
+        python-version: 3.9
 
     - name: Install Ubuntu dependencies
       run: |
@@ -63,7 +62,14 @@ jobs:
       run: ./docker/run_local_docker.sh -m no-ui
       timeout-minutes: 30
 
-    - name: Run Python Tests
+    - name: Run Python Tests & record coverage
+      if: matrix.e2e-test == 'python'
+      run: |
+        source env/bin/activate
+        make coverage
+
+    - name: Run CLI E2E Python Tests & record coverage
+      if: matrix.e2e-test != 'python'
       id: e2e-test
       continue-on-error: true
       env:
@@ -92,7 +98,34 @@ jobs:
         E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
       run: |
         source env/bin/activate
-        python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        coverage run --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+
+    - name: Upload coverage artifact
+      if: matrix.e2e-test == 'python' && steps.e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage
+
+    - name: Upload coverage artifact for Python tests
+      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage.${{ matrix.e2e-test }}
+
+    - name: Upload tests artifact
+      if: steps.e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: tests-${{ matrix.e2e-test }}
+        path: ingestion/junit/test-results-*.xml
+
+    - name: Clean Up
+      run: |
+        cd ./docker/local-metadata
+        docker compose down --remove-orphans
+        sudo rm -rf ${PWD}/docker-volume
 
     - name: Slack on Failure
       if: steps.e2e-test.outcome != 'success'
@@ -110,3 +143,54 @@ jobs:
       if: steps.e2e-test.outcome != 'success'
       run: |
         exit 1
+
+  sonar-cloud-coverage-upload:
+    runs-on: ubuntu-latest
+    environment: test
+    needs: py-cli-e2e-tests
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          unixodbc-dev libevent-dev python3-dev
+
+      - name: Install coverage dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_all install_test
+
+      - name: Download all artifacts to root folder
+        uses: actions/download-artifact@v3
+
+      - name: Download all artifacts to tests folder
+        uses: actions/download-artifact@v3
+        with:
+          path: ingestion/junit
+
+      - name: Generate report
+        run: |
+          source env/bin/activate
+          coverage combine --rcfile=ingestion/.coveragerc --keep -a
+          coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
+          sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+          sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+
+      - name: Push Results to Sonar
+        uses: sonarsource/sonarcloud-github-action@master
+        if: ${{ github.event_name == 'push' &&  matrix.py-version == '3.9' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/

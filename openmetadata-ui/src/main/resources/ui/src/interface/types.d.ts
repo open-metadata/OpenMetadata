@@ -175,6 +175,7 @@ declare module 'Models' {
     key?: string;
     value: string | number | React.ReactNode;
     id?: string;
+    localizationKey?: string;
     isLink?: boolean;
     placeholderText?: string;
     openInNewTab?: boolean;
