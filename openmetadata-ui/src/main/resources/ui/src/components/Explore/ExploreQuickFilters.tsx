@@ -13,7 +13,7 @@
 
 import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEqual, isUndefined, uniqWith } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -49,12 +49,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     try {
       const res = await getAdvancedFieldDefaultOptions(index, key);
       const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-      setOptions(
-        buckets.map((option) => ({
-          key: option.key,
-          label: option.label ?? option.key,
-        }))
-      );
+
+      const optionsArray = buckets.map((option) => ({
+        key: option.key,
+        label: option.label ?? option.key,
+      }));
+
+      setOptions(uniqWith(optionsArray, isEqual));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -77,44 +78,44 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
           const suggestOptions =
             res.data.suggest['metadata-suggest'][0].options ?? [];
-          const uniqueOptions = [
-            ...new Set(
-              suggestOptions.map((op) => ({
-                text: op.text,
-                source: op._source as EntityDetailsType,
-              }))
-            ),
-          ];
-          const optionsObject = getOptionsObject(key, uniqueOptions);
-          setOptions(optionsObject);
+
+          const formattedSuggestions = suggestOptions.map((op) => ({
+            text: op.text,
+            source: op._source as EntityDetailsType,
+          }));
+
+          const optionsArray = getOptionsObject(key, formattedSuggestions);
+
+          setOptions(uniqWith(optionsArray, isEqual));
         } else {
           if (key === 'tags.tagFQN') {
             const res = await getTagSuggestions(value);
 
             const suggestOptions =
               res.data.suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(
-                suggestOptions
-                  .filter((op) => !isUndefined(op._source.fullyQualifiedName))
-                  .map((op) => op._source.fullyQualifiedName as string)
-              ),
-            ];
-            setOptions(uniqueOptions.map((op) => ({ key: op, label: op })));
+
+            const formattedSuggestions = suggestOptions
+              .filter((op) => !isUndefined(op._source.fullyQualifiedName))
+              .map((op) => op._source.fullyQualifiedName as string);
+
+            const optionsArray = formattedSuggestions.map((op) => ({
+              key: op,
+              label: op,
+            }));
+
+            setOptions(uniqWith(optionsArray, isEqual));
           } else {
             const res = await getUserSuggestions(value);
 
             const suggestOptions =
               res.data.suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(
-                suggestOptions.map((op) => ({
-                  key: op._source.displayName ?? op._source.name,
-                  label: op._source.displayName ?? op._source.name,
-                }))
-              ),
-            ];
-            setOptions(uniqueOptions);
+
+            const formattedSuggestions = suggestOptions.map((op) => ({
+              key: op._source.displayName ?? op._source.name,
+              label: op._source.displayName ?? op._source.name,
+            }));
+
+            setOptions(uniqWith(formattedSuggestions, isEqual));
           }
         }
       } else {

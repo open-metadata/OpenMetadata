@@ -11,67 +11,206 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tag, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Table, Tag, Tooltip } from 'antd';
+import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { API_RES_MAX_SIZE } from 'constants/constants';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { TagLabel } from 'generated/entity/data/glossaryTerm';
+import { Operation } from 'generated/entity/policies/policy';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getGlossaryTerms } from 'rest/glossaryAPI';
-import { getGlossaryPath, getTagPath } from 'utils/RouterUtils';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
+import { getEntityName } from 'utils/CommonUtils';
+import {
+  createGlossaryTermTree,
+  getRootLevelGlossaryTerm,
+  getSearchedDataFromGlossaryTree,
+} from 'utils/GlossaryUtils';
+import { checkPermission } from 'utils/PermissionsUtils';
+import {
+  getAddGlossaryTermsPath,
+  getGlossaryPath,
+  getTagPath,
+} from 'utils/RouterUtils';
+import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { GlossaryTermTabProps } from './GlossaryTermTab.interface';
+import {
+  GlossaryTermTabProps,
+  ModifiedGlossaryTerm,
+} from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
   glossaryId,
   glossaryTermId,
+  selectedGlossaryFqn,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const history = useHistory();
+
+  const { glossaryName } = useParams<{ glossaryName: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
-  const [filterData, setFilterData] = useState<GlossaryTerm[]>([]);
+  const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
+    []
+  );
+  const [filterData, setFilterData] = useState<ModifiedGlossaryTerm[]>([]);
+
+  const createGlossaryTermPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.GLOSSARY_TERM,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const columns = useMemo(() => {
+    const data: ColumnsType<ModifiedGlossaryTerm> = [
+      {
+        title: t('label.term-plural'),
+        dataIndex: 'name',
+        key: 'name',
+        width: 250,
+        render: (_, record) => (
+          <Link
+            className="hover:tw-underline tw-cursor-pointer"
+            to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+            {getEntityName(record)}
+          </Link>
+        ),
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        render: (description: string) =>
+          description.trim() ? (
+            <RichTextEditorPreviewer
+              enableSeeMoreVariant
+              markdown={description}
+              maxLength={200}
+            />
+          ) : (
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
+          ),
+      },
+      {
+        title: t('label.tag-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        width: 250,
+        render: (tags: TagLabel[]) =>
+          tags?.length
+            ? tags.map((tag) => (
+                <Tooltip
+                  className="cursor-pointer"
+                  key={tag.tagFQN}
+                  placement="bottomLeft"
+                  title={
+                    <div className="text-left p-xss">
+                      <div className="m-b-xs">
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={false}
+                          markdown={
+                            !isEmpty(tag.description)
+                              ? `**${tag.tagFQN}**\n${tag.description}`
+                              : t('label.no-entity', {
+                                  entity: t('label.description'),
+                                })
+                          }
+                          textVariant="white"
+                        />
+                      </div>
+                    </div>
+                  }
+                  trigger="hover">
+                  <Link
+                    to={getTagPath(tag.tagFQN.split(FQN_SEPARATOR_CHAR)[0])}>
+                    <Tag>{tag.tagFQN}</Tag>
+                  </Link>
+                </Tooltip>
+              ))
+            : '--',
+      },
+    ];
+
+    return data;
+  }, [filterData]);
+
+  const handleAddGlossaryTermClick = () => {
+    if (glossaryName) {
+      const activeTerm = glossaryName.split(FQN_SEPARATOR_CHAR);
+      const glossary = activeTerm[0];
+      if (activeTerm.length > 1) {
+        history.push(getAddGlossaryTermsPath(glossary, glossaryName));
+      } else {
+        history.push(getAddGlossaryTermsPath(glossary));
+      }
+    } else {
+      history.push(getAddGlossaryTermsPath(selectedGlossaryFqn ?? ''));
+    }
+  };
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setFilterData(
-        glossaryTerms.filter(
-          (term) =>
-            term.name.toLowerCase().includes(value) ||
-            term?.displayName?.toLowerCase().includes(value)
-        )
-      );
+      setFilterData(getSearchedDataFromGlossaryTree(glossaryTerms, value));
     } else {
       setFilterData(glossaryTerms);
     }
   };
 
-  const fetchGlossaryTerm = async () => {
-    setIsLoading(true);
+  const fetchGlossaryTerm = async (
+    params?: ListGlossaryTermsParams,
+    updateChild = false
+  ) => {
+    !updateChild && setIsLoading(true);
     try {
       const { data } = await getGlossaryTerms({
-        glossary: glossaryId,
-        parent: glossaryTermId,
+        ...params,
         limit: API_RES_MAX_SIZE,
-        fields: 'tags',
+        fields: 'tags,children',
       });
-      const updatedData = data.filter((glossaryTerm) => {
-        if (glossaryId) {
-          return isUndefined(glossaryTerm.parent);
+
+      const updatedData = getRootLevelGlossaryTerm(data, params);
+
+      if (updateChild) {
+        const updatedGlossaryTermTree = createGlossaryTermTree(
+          glossaryTerms,
+          updatedData,
+          params?.parent
+        );
+
+        // if search term is present, update table only for searched value
+        if (searchTerm) {
+          setFilterData((pre) =>
+            updatedGlossaryTermTree.filter((glossaryTerm) =>
+              pre.find((value) => value.id === glossaryTerm.id)
+            )
+          );
+        } else {
+          setFilterData(updatedGlossaryTermTree);
         }
 
-        return glossaryTerm?.parent?.id === glossaryTermId;
-      });
-      setGlossaryTerms(updatedData);
-      setFilterData(updatedData);
+        setGlossaryTerms(updatedGlossaryTermTree);
+      } else {
+        setGlossaryTerms(updatedData as ModifiedGlossaryTerm[]);
+        setFilterData(updatedData as ModifiedGlossaryTerm[]);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -79,9 +218,21 @@ const GlossaryTermTab = ({
     }
   };
 
+  const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
+    () => ({
+      ...getTableExpandableConfig<ModifiedGlossaryTerm>(),
+      onExpand: (isOpen, record) => {
+        if (isOpen) {
+          fetchGlossaryTerm({ parent: record.id }, true);
+        }
+      },
+    }),
+    [fetchGlossaryTerm]
+  );
+
   useEffect(() => {
-    fetchGlossaryTerm();
-  }, []);
+    fetchGlossaryTerm({ glossary: glossaryId, parent: glossaryTermId });
+  }, [glossaryName]);
 
   if (isLoading) {
     return <Loader />;
@@ -93,13 +244,30 @@ const GlossaryTermTab = ({
         {t('message.no-entity-data-available', {
           entity: t('label.glossary-term'),
         })}
+        <Tooltip
+          title={
+            createGlossaryTermPermission
+              ? t('label.add-entity', { entity: t('label.term-lowercase') })
+              : NO_PERMISSION_FOR_ACTION
+          }>
+          <Button
+            ghost
+            className="m-t-xs"
+            data-testid="add-new-tag-button"
+            disabled={!createGlossaryTermPermission}
+            size="small"
+            type="primary"
+            onClick={handleAddGlossaryTermClick}>
+            {t('label.add-entity', { entity: t('label.term-lowercase') })}
+          </Button>
+        </Tooltip>
       </ErrorPlaceHolder>
     );
   }
 
   return (
     <Row gutter={[0, 16]}>
-      <Col span={6}>
+      <Col span={8}>
         <Searchbar
           removeMargin
           showLoadingStatus
@@ -111,84 +279,43 @@ const GlossaryTermTab = ({
           onSearch={handleSearch}
         />
       </Col>
-      {filterData.length > 0 ? (
-        filterData.map((term) => (
-          <Col key={term.name} span={24}>
-            <Card data-testid={`${term.name}-card`}>
-              <Space direction="vertical" size={8}>
-                <Link to={getGlossaryPath(term.fullyQualifiedName)}>
-                  <Typography.Text className="text-base font-medium">
-                    {term.name}
-                  </Typography.Text>
-                </Link>
-                <Space
-                  className="w-full tw-flex-wrap"
-                  data-testid="tag-container"
-                  size={4}>
-                  <Typography.Text className="text-grey-muted m-r-xs">
-                    {t('label.tag-plural')}:
-                  </Typography.Text>
-                  {term.tags?.length
-                    ? term.tags.map((tag) => (
-                        <Tooltip
-                          className="cursor-pointer"
-                          key={tag.tagFQN}
-                          placement="bottomLeft"
-                          title={
-                            <div className="text-left p-xss">
-                              <div className="m-b-xs">
-                                <RichTextEditorPreviewer
-                                  enableSeeMoreVariant={false}
-                                  markdown={
-                                    !isEmpty(tag.description)
-                                      ? `**${tag.tagFQN}**\n${tag.description}`
-                                      : t('label.no-entity', {
-                                          entity: t('label.description'),
-                                        })
-                                  }
-                                  textVariant="white"
-                                />
-                              </div>
-                            </div>
-                          }
-                          trigger="hover">
-                          <Link
-                            to={getTagPath(
-                              tag.tagFQN.split(FQN_SEPARATOR_CHAR)[0]
-                            )}>
-                            <Tag>{tag.tagFQN}</Tag>
-                          </Link>
-                        </Tooltip>
-                      ))
-                    : '--'}
-                </Space>
-                <div data-testid="description-text">
-                  <Typography.Text className="text-grey-muted m-b-xs">
-                    {t('label.description')}:
-                  </Typography.Text>
-                  {term.description.trim() ? (
-                    <RichTextEditorPreviewer
-                      enableSeeMoreVariant={false}
-                      markdown={term.description}
-                    />
-                  ) : (
-                    <span className="tw-no-description">
-                      {t('label.no-description')}
-                    </span>
-                  )}
-                </div>
-              </Space>
-            </Card>
-          </Col>
-        ))
-      ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.glossary-term'),
-            name: searchTerm,
-          })}
-        </ErrorPlaceHolder>
-      )}
+      <Col className="flex justify-end" span={16}>
+        <Tooltip
+          title={
+            createGlossaryTermPermission
+              ? t('label.add-entity', { entity: t('label.term-lowercase') })
+              : NO_PERMISSION_FOR_ACTION
+          }>
+          <Button
+            className="tw-h-8 tw-rounded tw-mr-2"
+            data-testid="add-new-tag-button"
+            disabled={!createGlossaryTermPermission}
+            type="primary"
+            onClick={handleAddGlossaryTermClick}>
+            {t('label.add-entity', { entity: t('label.term-lowercase') })}
+          </Button>
+        </Tooltip>
+      </Col>
+      <Col span={24}>
+        {filterData.length > 0 ? (
+          <Table
+            bordered
+            columns={columns}
+            dataSource={filterData}
+            expandable={expandableConfig}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
+        ) : (
+          <ErrorPlaceHolder>
+            {t('message.no-entity-found-for-name', {
+              entity: t('label.glossary-term'),
+              name: searchTerm,
+            })}
+          </ErrorPlaceHolder>
+        )}
+      </Col>
     </Row>
   );
 };

@@ -37,7 +37,7 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     if connection.httpPath:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["httpPath"] = connection.httpPath
+        connection.connectionArguments.__root__["http_path"] = connection.httpPath
 
     return create_generic_db_connection(
         connection=connection,

@@ -10,15 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-
-export interface GlossaryTermTabProps {
-  glossaryId?: string;
-  glossaryTermId?: string;
-  selectedGlossaryFqn?: string;
+export interface KPIFormValues {
+  dataInsightChart: string;
+  displayName: string;
+  metricType: string;
+  metricValue: number;
+  endDate: moment.Moment;
+  startDate: moment.Moment;
 }
-
-export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
-  children?: GlossaryTerm[];
-};

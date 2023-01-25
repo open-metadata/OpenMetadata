@@ -307,7 +307,7 @@ const TestSuiteDetailsPage = () => {
     <>
       {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
         <PageContainerV1>
-          <Row className="tw-px-6 tw-w-full">
+          <Row className="tw-pt-4 tw-px-6 tw-w-full">
             <Col span={24}>
               <TestSuiteDetails
                 descriptionHandler={descriptionHandler}

@@ -14,7 +14,10 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { mockTopicEntityDetails } from '../mocks/TopicSummary.mock';
+import {
+  mockTopicByFqnResponse,
+  mockTopicEntityDetails,
+} from '../mocks/TopicSummary.mock';
 import TopicSummary from './TopicSummary.component';
 
 jest.mock(
@@ -34,7 +37,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 );
 
 jest.mock('rest/topicsAPI', () => ({
-  getTopicByFqn: jest.fn().mockImplementation(() => ({ partitions: 128 })),
+  getTopicByFqn: jest.fn().mockImplementation(() => mockTopicByFqnResponse),
 }));
 
 describe('TopicSummary component tests', () => {
@@ -76,19 +79,11 @@ describe('TopicSummary component tests', () => {
     expect(summaryList).toBeInTheDocument();
   });
 
-  it('No data message should be shown in case not schemaFields are available in topic details', async () => {
+  it('No data message should be shown in case no schemaFields are available in topic details', async () => {
+    (getTopicByFqn as jest.Mock).mockImplementation(() => Promise.resolve({}));
+
     await act(async () => {
-      render(
-        <TopicSummary
-          entityDetails={{
-            ...mockTopicEntityDetails,
-            messageSchema: {
-              ...mockTopicEntityDetails.messageSchema,
-              schemaFields: undefined,
-            },
-          }}
-        />
-      );
+      render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
     const summaryList = screen.queryByTestId('SummaryList');
