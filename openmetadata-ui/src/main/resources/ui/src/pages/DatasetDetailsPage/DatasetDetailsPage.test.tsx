@@ -17,6 +17,7 @@ import {
   findByText,
   fireEvent,
   render,
+  screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
@@ -30,6 +31,7 @@ import { getLineageByFQN } from 'rest/lineageAPI';
 import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
+  getLatestTableProfileByFqn,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -40,9 +42,12 @@ import {
   createPostRes,
   mockFollowRes,
   mockLineageRes,
+  mockTableProfileResponse,
   mockUnfollowRes,
   updateTagRes,
 } from './datasetDetailsPage.mock';
+
+const mockShowErrorToast = jest.fn();
 
 const mockUseParams = {
   datasetFQN: 'bigquery_gcp:shopify:dim_address',
@@ -68,8 +73,7 @@ jest.mock('../../AppState', () => ({
 
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
-    permissions: {},
-    getEntityPermission: jest.fn().mockResolvedValue({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       Create: true,
       Delete: true,
       EditAll: true,
@@ -146,6 +150,7 @@ jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
         handleRemoveColumnTest,
         deletePostHandler,
         entityLineageHandler,
+        tableProfile,
       }) => (
         <div data-testid="datasetdetails-component">
           <button data-testid="version-button" onClick={versionHandler}>
@@ -231,6 +236,12 @@ jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
             onClick={entityLineageHandler}>
             entityLineageHandler
           </button>
+          {tableProfile && (
+            <>
+              <div data-testid="rowCount">{tableProfile.rowCount}</div>
+              <div data-testid="columnCount">{tableProfile.columnCount}</div>
+            </>
+          )}
         </div>
       )
     );
@@ -265,6 +276,19 @@ jest.mock('rest/tableAPI', () => ({
   removeFollower: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockUnfollowRes)),
+  getLatestTableProfileByFqn: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTableProfileResponse)),
+}));
+
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockImplementation(() => ({
+    t: jest.fn().mockImplementation((str) => str),
+  })),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast()),
 }));
 
 jest.mock('../../utils/FeedUtils', () => ({
@@ -1158,6 +1182,46 @@ describe('Test DatasetDetails page', () => {
       expect(deletePostHandler).toBeInTheDocument();
 
       fireEvent.click(deletePostHandler);
+    });
+
+    it('Table profile details should be passed correctly after successful API response', async () => {
+      await act(async () => {
+        render(<DatasetDetailsPage />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      const rowCount = screen.getByTestId('rowCount');
+      const columnCount = screen.getByTestId('columnCount');
+
+      expect(rowCount).toBeInTheDocument();
+      expect(columnCount).toBeInTheDocument();
+
+      expect(rowCount).toContainHTML(
+        `${mockTableProfileResponse.profile.rowCount}`
+      );
+      expect(columnCount).toContainHTML(
+        `${mockTableProfileResponse.profile.columnCount}`
+      );
+    });
+
+    it('An error should be thrown if table profile API throws error', async () => {
+      (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject()
+      );
+
+      await act(async () => {
+        render(<DatasetDetailsPage />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      const rowCount = screen.queryByTestId('rowCount');
+      const columnCount = screen.queryByTestId('columnCount');
+
+      expect(rowCount).toBeNull();
+      expect(columnCount).toBeNull();
+      expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
     });
   });
 });
