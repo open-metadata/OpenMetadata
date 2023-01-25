@@ -101,7 +101,7 @@ export const AlertDetailsComponent = ({
               )}
               :
             </Typography.Text>
-            <Typography.Text>
+            <Typography.Text data-testid="display-name-entities">
               {alerts?.triggerConfig.entities
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}

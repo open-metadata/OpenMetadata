@@ -256,9 +256,10 @@ describe('Alerts page should work properly', () => {
       .contains(TEST_CASE.testCaseAlert)
       .click();
     // Check data asset
-    cy.get(
-      '.ant-row-middle > :nth-child(2) > :nth-child(1) > :nth-child(1) > :nth-child(3)'
-    ).should('contain', TEST_CASE.dataAsset);
+    cy.get('[data-testid="display-name-entities"]').should(
+      'contain',
+      TEST_CASE.dataAsset
+    );
     cy.get('div.ant-typography').should('contain', TEST_CASE.filters);
   });
 
