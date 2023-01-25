@@ -61,7 +61,7 @@ jobs:
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
       with:
-        timeout-minutes: 30
+        timeout_minutes: 30
         max_attempts: 2
         retry_on: error
         command: ./docker/run_local_docker.sh -m no-ui
