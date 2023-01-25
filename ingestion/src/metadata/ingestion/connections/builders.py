@@ -25,10 +25,7 @@ from sqlalchemy.pool import QueuePool
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
 )
-from metadata.ingestion.connections.headers import (
-    inject_query_header,
-    inject_query_header_by_conn,
-)
+from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 
 

@@ -32,8 +32,10 @@ def render_query_header(ometa_version: str) -> str:
 
 
 @singledispatch
-def inject_query_header_by_conn(connection, *args, **kwargs):
+def inject_query_header_by_conn(_, *args, **kwargs):
     """
+    The first argument is the `connection`. Only for dispatching.
+
     This function will be called by the `listen` event api as a partial
     giving us the connection argument for the dispatch.
     """
@@ -41,9 +43,7 @@ def inject_query_header_by_conn(connection, *args, **kwargs):
 
 
 @inject_query_header_by_conn.register(VerticaConnection)
-def _(
-    _, conn, cursor, statement, parameters, context, executemany
-):  # pylint: disable=unused-argument
+def _(_, conn, cursor, statement, parameters, context, executemany):
     """
     If we add the header at the top, E.g., /*...*/SELECT * FROM XYZ,
     then the query history tables don't store it.
