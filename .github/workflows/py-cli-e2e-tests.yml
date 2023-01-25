@@ -183,14 +183,21 @@ jobs:
 
       - name: Generate report
         run: |
-          ls -R artifacts
-          for folder in artifacts/coverage-*; do cp -r $folder/ . ;done
-          ls
+          echo "listing artifacts folder"
+          ls -alR artifacts
+          for folder in artifacts/coverage-*; do 
+            cp -r $folder/* . ;
+          done
+          echo "listing root folder"
+          ls -al 
           mkdir ingestion/junit
-          for folder in artifacts/tests-*; do cp -r $folder/ ingestion/junit ;done
-          ls ingestion/junit
+          for folder in artifacts/tests-*; do 
+            cp -r $folder/* ingestion/junit ;
+          done
+          echo "listing ingestion/junit folder"
+          ls -alR ingestion/junit
           source env/bin/activate
-          coverage combine --rcfile=ingestion/.coveragerc --keep -a
+          coverage combine --rcfile=ingestion/.coveragerc --keep -a .coverage*
           coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
