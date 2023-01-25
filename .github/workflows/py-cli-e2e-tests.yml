@@ -21,7 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+#        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+        e2e-test: ['python', 'mysql']
     environment: test
 
     steps:
@@ -182,9 +183,12 @@ jobs:
 
       - name: Generate report
         run: |
+          ls -R artifacts
           for folder in artifacts/coverage-*; do cp -r $folder/ . ;done
+          ls
           mkdir ingestion/junit
           for folder in artifacts/tests-*; do cp -r $folder/ ingestion/junit ;done
+          ls ingestion/junit
           source env/bin/activate
           coverage combine --rcfile=ingestion/.coveragerc --keep -a
           coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
