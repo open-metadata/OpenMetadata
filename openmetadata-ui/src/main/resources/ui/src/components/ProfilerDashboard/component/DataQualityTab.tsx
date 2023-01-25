@@ -58,8 +58,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.last-run-result'),
         dataIndex: 'testCaseResult',
         key: 'testCaseResult',
-        width: 150,
-        fixed: 'left',
+        width: 130,
         render: (result: TestCaseResult) => (
           <Space size={8}>
             {result?.testCaseStatus && (
@@ -158,6 +157,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         width: 100,
+        fixed: 'right',
         render: (_, record) => {
           return (
             <Row align="middle">
