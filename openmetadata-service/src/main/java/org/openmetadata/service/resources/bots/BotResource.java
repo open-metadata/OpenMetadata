@@ -353,6 +353,29 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteBotByFQN",
+      summary = "Delete a bot",
+      tags = "bots",
+      description = "Delete a bot by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the Bot", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, true, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
