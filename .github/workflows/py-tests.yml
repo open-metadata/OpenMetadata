@@ -121,7 +121,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-      projectBaseDir: ingestion/
       with:
         attempt_limit: 3
         attempt_delay: 10000
@@ -134,3 +133,4 @@ jobs:
             -Dsonar.pullrequest.github.repository=OpenMetadata
             -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
             -Dsonar.pullrequest.provider=github
+          projectBaseDir: ingestion/
