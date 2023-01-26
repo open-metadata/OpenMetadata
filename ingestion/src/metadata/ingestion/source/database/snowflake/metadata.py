@@ -282,39 +282,46 @@ class SnowflakeSource(CommonDbSourceService):
         return False, None
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-
-        try:
-            result = self.connection.execute(
-                SNOWFLAKE_FETCH_ALL_TAGS.format(
-                    database_name=self.context.database.name.__root__,
-                    schema_name=schema_name,
+        if self.source_config.includeTags:
+            result = []
+            try:
+                result = self.connection.execute(
+                    SNOWFLAKE_FETCH_ALL_TAGS.format(
+                        database_name=self.context.database.name.__root__,
+                        schema_name=schema_name,
+                    )
                 )
-            )
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
-            result = self.connection.execute(
-                SNOWFLAKE_FETCH_ALL_TAGS.format(
-                    database_name=f'"{self.context.database.name.__root__}"',
-                    schema_name=f'"{self.context.database_schema.name.__root__}"',
+            except Exception as exc:
+                try:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error fetching tags {exc}. Trying with quoted names"
+                    )
+                    result = self.connection.execute(
+                        SNOWFLAKE_FETCH_ALL_TAGS.format(
+                            database_name=f'"{self.context.database.name.__root__}"',
+                            schema_name=f'"{self.context.database_schema.name.__root__}"',
+                        )
+                    )
+                except Exception as inner_exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Failed to fetch tags: {inner_exc}")
+
+            for res in result:
+                row = list(res)
+                fqn_elements = [name for name in row[2:] if name]
+                yield OMetaTagAndClassification(
+                    fqn=fqn._build(  # pylint: disable=protected-access
+                        self.context.database_service.name.__root__, *fqn_elements
+                    ),
+                    classification_request=CreateClassificationRequest(
+                        name=row[0],
+                        description="SNOWFLAKE TAG NAME",
+                    ),
+                    tag_request=CreateTagRequest(
+                        classification=row[0],
+                        name=row[1],
+                        description="SNOWFLAKE TAG VALUE",
+                    ),
                 )
-            )
-
-        for res in result:
-            row = list(res)
-            fqn_elements = [name for name in row[2:] if name]
-            yield OMetaTagAndClassification(
-                fqn=fqn._build(  # pylint: disable=protected-access
-                    self.context.database_service.name.__root__, *fqn_elements
-                ),
-                classification_request=CreateClassificationRequest(
-                    name=row[0],
-                    description="SNOWFLAKE TAG NAME",
-                ),
-                tag_request=CreateTagRequest(
-                    classification=row[0],
-                    name=row[1],
-                    description="SNOWFLAKE TAG VALUE",
-                ),
-            )

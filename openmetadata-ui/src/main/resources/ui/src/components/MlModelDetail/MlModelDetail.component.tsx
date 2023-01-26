@@ -693,6 +693,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   }
                   entityType={EntityType.MLMODEL}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    mlModelPermissions.EditAll ||
+                    mlModelPermissions.EditCustomFields
+                  }
                 />
               )}
               <div

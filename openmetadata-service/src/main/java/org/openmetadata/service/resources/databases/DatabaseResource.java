@@ -363,6 +363,29 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteDatabaseByFQN",
+      summary = "Delete a database",
+      tags = "databases",
+      description = "Delete a database by `fullyQualifiedName`. Databases can only be deleted if it has no tables.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Database for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the database", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(

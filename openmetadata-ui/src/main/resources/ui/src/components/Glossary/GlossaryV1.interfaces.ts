@@ -23,7 +23,6 @@ export type GlossaryV1Props = {
   handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
-  isChildLoading: boolean;
 };
 
 export enum GlossaryAction {
