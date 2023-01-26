@@ -377,6 +377,32 @@ public class MessagingServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteMessagingServiceByName",
+      summary = "Delete a messaging service",
+      tags = "messagingServices",
+      description = "Delete a messaging service by `name`. If topics belong the service, it can't be " + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "MessagingService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(

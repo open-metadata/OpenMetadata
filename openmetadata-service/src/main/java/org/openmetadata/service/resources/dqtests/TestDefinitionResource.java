@@ -222,7 +222,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       operationId = "getTestDefinitionByName",
       summary = "Get a test definition by name",
       tags = "TestDefinitions",
-      description = "Get a test definition by  name.",
+      description = "Get a test definition by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -367,6 +367,30 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTestDefinitionByName",
+      summary = "Delete a test definition",
+      tags = "TestDefinitions",
+      description = "Delete a test definition by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Test definition for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the TestDefinition", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

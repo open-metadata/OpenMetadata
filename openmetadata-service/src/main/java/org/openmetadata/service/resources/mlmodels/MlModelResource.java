@@ -397,6 +397,29 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteMlModelByFQN",
+      summary = "Delete an ML Model",
+      tags = "mlModels",
+      description = "Delete an ML Model by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "model for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the ML model", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
