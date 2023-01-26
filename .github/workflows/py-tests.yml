@@ -121,10 +121,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-      attempt_limit: 3
-      attempt_delay: 10000
       projectBaseDir: ingestion/
       with:
+        attempt_limit: 3
+        attempt_delay: 10000
         action: sonarsource/sonarcloud-github-action@master
         with:
           args: >
