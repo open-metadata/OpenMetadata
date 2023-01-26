@@ -19,12 +19,16 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: 'owner.displayName',
     selectOption1: 'admin',
     selectOptionTestId1: 'admin',
+    selectOption2: 'Aaron Singh',
+    selectOptionTestId2: 'Aaron Singh',
   },
   {
     label: 'Tag',
     key: 'tags.tagFQN',
     selectOption1: 'PersonalData.Personal',
     selectOptionTestId1: 'PersonalData.Personal',
+    selectOption2: 'PII.Sensitive',
+    selectOptionTestId2: 'PII.Sensitive',
   },
   {
     label: 'Service',
@@ -33,13 +37,14 @@ export const COMMON_DROPDOWN_ITEMS = [
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
   {
     label: 'Column',
     key: 'columns.name',
     selectOption1: 'ad_id',
     selectOptionTestId1: 'ad_id',
-    selectOption2: 'campaign_id',
-    selectOptionTestId2: 'campaign_id',
+    selectOption2: 'gross_sales',
+    selectOptionTestId2: 'gross_sales',
   },
 
   {
@@ -57,24 +62,26 @@ export const TABLE_DROPDOWN_ITEMS = [
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
   {
     label: 'Chart',
     key: 'charts.name',
-    selectOption1: 'Average and Sum Trends',
-    selectOptionTestId1: '183',
-    selectOption2: 'Box plot',
-    selectOptionTestId2: '170',
+    selectOption1: 'ETA Predictions Accuracy',
+    selectOptionTestId1: '210',
+    selectOption2: 'Birth in France by department in 2016',
+    selectOptionTestId2: '161',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
   {
     label: 'Task',
     key: 'tasks.name',
-    selectOption1: 'dim_product_task',
-    selectOptionTestId1: 'dim_product_task',
-    selectOption2: 'assert_table_exists',
-    selectOptionTestId2: 'assert_table_exists',
+    selectOption1: 'hive_create_table',
+    selectOptionTestId1: 'hive_create_table',
+    selectOption2: 'presto_task',
+    selectOptionTestId2: 'presto_task',
   },
 ];
 
@@ -82,19 +89,18 @@ export const QUICK_FILTERS_BY_ASSETS = [
   {
     label: 'Tables',
     searchIndex: 'table_search_index',
-    filters: [...TABLE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS],
+    filters: TABLE_DROPDOWN_ITEMS,
     tab: 'tables-tab',
-    term: 'marketing',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
-    tag: 'PersonalData.Personal',
+    tag1: 'PersonalData.Personal',
+    tag2: 'PII.Sensitive',
   },
   {
     label: 'Topics',
     searchIndex: 'topic_search_index',
-    filters: [...COMMON_DROPDOWN_ITEMS],
+    filters: COMMON_DROPDOWN_ITEMS,
     tab: 'topics-tab',
-    term: 'address_book',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
     tag: 'PersonalData.Personal',
@@ -102,9 +108,8 @@ export const QUICK_FILTERS_BY_ASSETS = [
   {
     label: 'Dashboards',
     searchIndex: 'dashboard_search_index',
-    filters: [...DASHBOARD_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS],
+    filters: DASHBOARD_DROPDOWN_ITEMS,
     tab: 'dashboards-tab',
-    term: 'Orders dashboard',
     dashboardName: '8',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
@@ -113,9 +118,8 @@ export const QUICK_FILTERS_BY_ASSETS = [
   {
     label: 'Pipelines',
     searchIndex: 'pipeline_search_index',
-    filters: [...PIPELINE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS],
+    filters: PIPELINE_DROPDOWN_ITEMS,
     tab: 'pipelines-tab',
-    term: 'dim_product_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
     tag: 'PersonalData.Personal',
@@ -126,9 +130,8 @@ export const QUICK_FILTERS_BY_ASSETS = [
   // {
   //   label: 'Ml Models',
   //   searchIndex: 'mlmodel_search_index',
-  //   filters: [...COMMON_DROPDOWN_ITEMS],
+  //   filters: COMMON_DROPDOWN_ITEMS,
   //   tab: 'ml models-tab',
-  //   term: 'eta_predictions',
   //   entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
   //   serviceName: 'mlflow_svc',
   //   tag: 'PersonalData.Personal',

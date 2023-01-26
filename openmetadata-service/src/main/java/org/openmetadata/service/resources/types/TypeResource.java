@@ -206,7 +206,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Path("/name/{name}")
   @Operation(
-      operationId = "getTypeByFQN",
+      operationId = "getTypeByName",
       summary = "Get a type by name",
       tags = "metadata",
       description = "Get a type by name.",
@@ -215,7 +215,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             responseCode = "200",
             description = "The type",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Type.class))),
-        @ApiResponse(responseCode = "404", description = "Type for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Type for instance {name} is not found")
       })
   public Type getByName(
       @Context UriInfo uriInfo,
@@ -366,6 +366,25 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, true);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTypeByName",
+      summary = "Delete a type",
+      tags = "metadata",
+      description = "Delete a type by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "type for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the type", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
   @PUT

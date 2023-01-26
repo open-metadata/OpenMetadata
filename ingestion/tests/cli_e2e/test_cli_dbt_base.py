@@ -104,8 +104,9 @@ class CliDBTBase(TestCase):
                 "-c",
                 file_path,
             ]
-            process_status = subprocess.run(args, capture_output=True)
-            return process_status.stderr.decode("utf-8")
+            process_status = subprocess.Popen(args, stderr=subprocess.PIPE)
+            process_status.wait()
+            return process_status.stderr.read().decode("utf-8")
 
         @staticmethod
         def retrieve_statuses(result):
