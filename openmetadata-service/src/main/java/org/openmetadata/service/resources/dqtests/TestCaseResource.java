@@ -243,13 +243,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       operationId = "getTestCaseByName",
       summary = "Get a testCase by name",
       tags = "TestCases",
-      description = "Get a testCase by  name.",
+      description = "Get a testCase by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The TestCase",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
-        @ApiResponse(responseCode = "404", description = "Test for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Test for instance {name} is not found")
       })
   public TestCase getByName(
       @Context UriInfo uriInfo,
@@ -420,6 +420,30 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     DeleteResponse<TestCase> response = dao.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTestCaseByName",
+      summary = "Delete a testCase",
+      tags = "TestCases",
+      description = "Delete a testCase by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "TestCase for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the TestCase", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

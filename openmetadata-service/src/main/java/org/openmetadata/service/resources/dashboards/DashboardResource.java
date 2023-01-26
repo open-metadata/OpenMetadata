@@ -383,6 +383,29 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteDashboardByFQN",
+      summary = "Delete a Dashboard",
+      tags = "dashboards",
+      description = "Delete a dashboard by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Dashboard for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the Dashboard", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(

@@ -308,6 +308,30 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTestSuiteByName",
+      summary = "Delete a test suite",
+      tags = "TestSuites",
+      description = "Delete a test suite by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Test suite for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the TestSuite", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteTestSuite",

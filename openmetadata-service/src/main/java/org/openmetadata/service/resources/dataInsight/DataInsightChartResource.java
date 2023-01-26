@@ -236,7 +236,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       operationId = "getDataInsightChartByName",
       summary = "Get a data insight chart by name",
       tags = "dataInsight",
-      description = "Get a data insight chart by  name.",
+      description = "Get a data insight chart by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -382,6 +382,30 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       @Parameter(description = "Data Insight Chart Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteDataInsightChartByName",
+      summary = "Delete a data insight chart",
+      tags = "dataInsight",
+      description = "Delete a data insight chart by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Data insight chart for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the Data Insight Chart", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
