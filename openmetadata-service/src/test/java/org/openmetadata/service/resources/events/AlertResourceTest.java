@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -608,7 +607,6 @@ public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
     return createAndCheckEntity(alert, ADMIN_AUTH_HEADERS);
   }
 
-  @SneakyThrows
   @Override
   public CreateAlert createRequest(String name) {
     return new CreateAlert()

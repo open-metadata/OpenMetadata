@@ -325,6 +325,29 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteKpiByName",
+      summary = "Delete a Kpi",
+      tags = "kpi",
+      description = "Delete a Kpi by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Kpi for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteKpi",
