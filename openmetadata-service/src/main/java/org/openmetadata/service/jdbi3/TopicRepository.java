@@ -246,7 +246,7 @@ public class TopicRepository extends EntityRepository<Topic> {
             updated.getMessageSchema().getSchemaText());
         recordChange(
             "messageSchema.schemaType",
-            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaText(),
+            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaType(),
             updated.getMessageSchema().getSchemaType());
         updateSchemaFields(
             "messageSchema.schemaFields",
