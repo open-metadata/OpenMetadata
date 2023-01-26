@@ -125,7 +125,7 @@ jobs:
         attempt_limit: 3
         attempt_delay: 10000
         action: sonarsource/sonarcloud-github-action@master
-        with:
+        with: |
           args: >
             -Dproject.settings=ingestion/sonar-project.properties
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
