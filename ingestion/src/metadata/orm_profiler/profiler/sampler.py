@@ -14,7 +14,6 @@ for the profiler
 """
 from typing import Dict, Optional, Union, cast
 
-import sqlalchemy
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass

@@ -14,7 +14,7 @@ sqlalchemy utility functions
 """
 
 import traceback
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import sqlalchemy
 from sqlalchemy import Column, and_, or_
@@ -109,3 +109,19 @@ def get_partition_col_type(partition_column_name: str, columns: List[Column]):
     if partition_field == "_partitiontime":
         return sqlalchemy.DATETIME()
     return None
+
+
+def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
+    """Get query filters from kwargs. IMPORTANT, this will update the original dictionary
+    passed in the function argument.
+
+    Args:
+        kwargs (Dict): kwargs
+    """
+    if kwargs.get("query_filter_"):
+        query_filter = kwargs.pop("query_filter_")
+        filter_ = build_query_filter(**query_filter)
+    else:
+        filter_ = None
+
+    return filter_
