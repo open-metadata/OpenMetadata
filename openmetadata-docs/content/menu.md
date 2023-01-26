@@ -410,6 +410,8 @@ site_menu:
     url: /connectors/messaging/kafka/airflow
   - category: Connectors / Messaging / Kafka / CLI
     url: /connectors/messaging/kafka/cli
+  - category: Connectors / Messaging / Kafka / Troubleshooting
+    url: /connectors/messaging/kafka/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Airflow
