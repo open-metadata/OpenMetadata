@@ -84,10 +84,14 @@ jobs:
         make install_all install_test
 
     - name: Start Server and Ingest Sample Data
+      uses: nick-fields/retry@v2.8.3
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
-      run: ./docker/run_local_docker.sh -m no-ui
-      timeout-minutes: 30
+      with:
+        timeout_minutes: 30
+        max_attempts: 2
+        retry_on: error
+        command: ./docker/run_local_docker.sh -m no-ui
 
     - name: Run Python Tests
       if: ${{ matrix.py-version != '3.9' }}
@@ -112,17 +116,21 @@ jobs:
 
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
     - name: Push Results in PR to Sonar
-      uses: sonarsource/sonarcloud-github-action@master
+      uses: Wandalen/wretry.action@v1.0.36
       if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      attempt_limit: 3
+      attempt_delay: 10000
+      projectBaseDir: ingestion/
       with:
-        projectBaseDir: ingestion/
-        args: >
-          -Dproject.settings=ingestion/sonar-project.properties
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.head_ref }}
-          -Dsonar.pullrequest.github.repository=OpenMetadata
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-          -Dsonar.pullrequest.provider=github
+        action: sonarsource/sonarcloud-github-action@master
+        with:
+          args: >
+            -Dproject.settings=ingestion/sonar-project.properties
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.github.repository=OpenMetadata
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.pullrequest.provider=github
