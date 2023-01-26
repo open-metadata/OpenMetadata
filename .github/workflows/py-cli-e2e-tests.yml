@@ -103,7 +103,17 @@ jobs:
         E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
       run: |
         source env/bin/activate
-        coverage run --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
+        echo "import os" >> $SITE_CUSTOMIZE_PATH
+        echo "try:" >> $SITE_CUSTOMIZE_PATH
+        echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
+        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/.coveragerc'" >> $SITE_CUSTOMIZE_PATH
+        echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
+        echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
+        echo "    pass" >> $SITE_CUSTOMIZE_PATH
+        sed -i "5i concurrency = multiprocessing" ingestion/.coveragerc
+        coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/.coveragerc --keep -a .coverage*   
         coverage report --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
