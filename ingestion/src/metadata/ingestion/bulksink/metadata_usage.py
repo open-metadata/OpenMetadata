@@ -102,7 +102,7 @@ class MetadataUsageBulkSink(BulkSink):
             self.table_usage_map[table_entity.id.__root__] = {
                 "table_entity": table_entity,
                 "usage_count": table_usage.count,
-                "sql_queries": list(table_usage.sqlQueries),
+                "sql_queries": list(table_usage.sqlQueries or []),
                 "usage_date": table_usage.date,
                 "database": table_usage.databaseName,
                 "database_schema": table_usage.databaseSchema,
