@@ -111,6 +111,16 @@ def _(elements, compiler, **kwargs):
     )
 
 
+@compiles(DatetimeAddFn, Dialects.MySQL)
+def _(elements, compiler, **kwargs):
+    """MySQL date and datetime function"""
+    interval = elements.clauses.clauses[0].value
+    interval_unit = compiler.process(elements.clauses.clauses[1], **kwargs)
+    return (
+        f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS DATETIME)"
+    )
+
+
 @compiles(DatetimeAddFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
     """generic date and datetime function"""

@@ -15,6 +15,7 @@ import json
 from typing import cast
 
 from airflow import DAG
+from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
     build_dag,
@@ -39,7 +40,6 @@ from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
-from metadata.utils.logger import set_loggers_level
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -53,7 +53,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
     Args:
         workflow_config (OpenMetadataWorkflowConfig): _description_
     """
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+    set_operator_logger(workflow_config)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = DataInsightWorkflow.create(config)

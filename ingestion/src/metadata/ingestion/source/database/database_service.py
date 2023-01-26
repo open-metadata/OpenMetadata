@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
@@ -118,6 +119,9 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
+        post_process=[
+            "yield_view_lineage",
+        ],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -299,6 +303,13 @@ class DatabaseServiceSource(
             yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        """
+        From topology.
+        Parses view definition to get lineage information
+        """
+
+    @abstractmethod
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[CreateTableRequest]:
@@ -370,6 +381,7 @@ class DatabaseServiceSource(
             database_name=self.context.database.name.__root__,
             schema_name=self.context.database_schema.name.__root__,
             table_name=table_name,
+            skip_es_search=True,
         )
         return self.get_tag_by_fqn(entity_fqn=table_fqn)
 
@@ -402,6 +414,7 @@ class DatabaseServiceSource(
             database_name=self.context.database.name.__root__,
             schema_name=self.context.database_schema.name.__root__,
             table_name=table_request.name.__root__,
+            skip_es_search=True,
         )
 
         self.database_source_state.add(table_fqn)

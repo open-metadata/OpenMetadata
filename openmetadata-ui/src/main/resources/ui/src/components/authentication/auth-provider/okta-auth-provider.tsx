@@ -59,6 +59,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             picture: (info as any).imageUrl || '',
             locale: info.locale || '',
+            sub: info.sub,
           },
         };
         onLoginSuccess(user);

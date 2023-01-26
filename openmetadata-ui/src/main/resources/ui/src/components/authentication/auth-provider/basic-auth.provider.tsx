@@ -111,6 +111,7 @@ const BasicAuthProvider = ({
               email,
               name: '',
               picture: '',
+              sub: '',
             },
             scope: '',
           });
