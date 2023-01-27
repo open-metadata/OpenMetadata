@@ -68,7 +68,11 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'parent',
         render: (parent: GlossaryCSVRecord['parent']) => {
           return (
-            <Typography.Text>{isEmpty(parent) ? '--' : parent}</Typography.Text>
+            <Typography.Text
+              ellipsis={{ tooltip: parent }}
+              style={{ maxWidth: 100 }}>
+              {isEmpty(parent) ? '--' : parent}
+            </Typography.Text>
           );
         },
       },
@@ -100,10 +104,10 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         render: (description: GlossaryCSVRecord['description*']) => {
           return (
             <Typography.Paragraph
-              className="w-full"
               ellipsis={{
                 rows: 2,
               }}
+              style={{ width: 300 }}
               title={description}>
               {description}
             </Typography.Paragraph>
@@ -116,7 +120,9 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'synonyms',
         render: (synonyms: GlossaryCSVRecord['synonyms']) => {
           return (
-            <Typography.Text>
+            <Typography.Text
+              ellipsis={{ tooltip: synonyms }}
+              style={{ maxWidth: 100 }}>
               {isEmpty(synonyms) ? '--' : synonyms}
             </Typography.Text>
           );
@@ -128,7 +134,9 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'relatedTerms',
         render: (relatedTerms: GlossaryCSVRecord['relatedTerms']) => {
           return (
-            <Typography.Text>
+            <Typography.Text
+              ellipsis={{ tooltip: relatedTerms }}
+              style={{ maxWidth: 100 }}>
               {isEmpty(relatedTerms) ? '--' : relatedTerms}
             </Typography.Text>
           );
@@ -140,7 +148,11 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'tags',
         render: (tags: GlossaryCSVRecord['tags']) => {
           return (
-            <Typography.Text>{isEmpty(tags) ? '--' : tags}</Typography.Text>
+            <Typography.Text
+              ellipsis={{ tooltip: tags }}
+              style={{ maxWidth: 100 }}>
+              {isEmpty(tags) ? '--' : tags}
+            </Typography.Text>
           );
         },
       },
