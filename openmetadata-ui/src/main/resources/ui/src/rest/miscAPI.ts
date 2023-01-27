@@ -14,8 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { startsWith } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -52,10 +50,7 @@ export const searchData = <SI extends SearchIndex>(
     trackTotalHits
   );
 
-  const queryText =
-    q === WILD_CARD_CHAR || startsWith(`${q}`, '*') ? q : `*${q}*`;
-
-  return APIClient.get<SearchResponse<SI>>(`/search/query?q=${queryText}`, {
+  return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
     params,
   });
 };
