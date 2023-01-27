@@ -16,7 +16,13 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { restoreTable } from 'rest/tableAPI';
@@ -137,6 +143,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [isFollowing, setIsFollowing] = useState(false);
   const [usage, setUsage] = useState('');
   const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [tableJoinData, setTableJoinData] = useState<TableJoins>({
     startDate: new Date(),
     dayCount: 0,
@@ -158,6 +165,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const { getEntityPermission } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(async () => {
+    setIsLoading(true);
     try {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
@@ -169,6 +177,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       showErrorToast(
         jsonData['api-error-messages']['fetch-entity-permissions-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
@@ -201,108 +211,111 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     );
     setFollowersCount(followers?.length);
   };
-  const tabs = [
-    {
-      name: t('label.schema'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
+  const tabs = useMemo(
+    () => [
+      {
+        name: t('label.schema'),
+        icon: {
+          alt: 'schema',
+          name: 'icon-schema',
+          title: 'Schema',
+          selectedName: 'icon-schemacolor',
+        },
+        isProtected: false,
+        position: 1,
       },
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: t('label.activity-feed-and-task-plural'),
-      icon: {
-        alt: 'activity_feed',
-        name: 'activity_feed',
-        title: 'Activity Feed',
-        selectedName: 'activity-feed-color',
+      {
+        name: t('label.activity-feed-and-task-plural'),
+        icon: {
+          alt: 'activity_feed',
+          name: 'activity_feed',
+          title: 'Activity Feed',
+          selectedName: 'activity-feed-color',
+        },
+        isProtected: false,
+        position: 2,
+        count: feedCount,
       },
-      isProtected: false,
-      position: 2,
-      count: feedCount,
-    },
-    {
-      name: t('label.sample-data'),
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
+      {
+        name: t('label.sample-data'),
+        icon: {
+          alt: 'sample_data',
+          name: 'sample-data',
+          title: 'Sample Data',
+          selectedName: 'sample-data-color',
+        },
+        isProtected: false,
+        isHidden: !(
+          tablePermissions.ViewAll ||
+          tablePermissions.ViewBasic ||
+          tablePermissions.ViewSampleData
+        ),
+        position: 3,
       },
-      isProtected: false,
-      isHidden: !(
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewBasic ||
-        tablePermissions.ViewSampleData
-      ),
-      position: 3,
-    },
-    {
-      name: t('label.query-plural'),
-      icon: {
-        alt: 'table_queries',
-        name: 'table_queries',
-        title: 'Table Queries',
-        selectedName: '',
+      {
+        name: t('label.query-plural'),
+        icon: {
+          alt: 'table_queries',
+          name: 'table_queries',
+          title: 'Table Queries',
+          selectedName: '',
+        },
+        isProtected: false,
+        isHidden: !(
+          tablePermissions.ViewAll ||
+          tablePermissions.ViewBasic ||
+          tablePermissions.ViewQueries
+        ),
+        position: 4,
       },
-      isProtected: false,
-      isHidden: !(
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewBasic ||
-        tablePermissions.ViewQueries
-      ),
-      position: 4,
-    },
-    {
-      name: t('label.profiler-amp-data-quality'),
-      icon: {
-        alt: 'profiler',
-        name: 'icon-profiler',
-        title: 'Profiler',
-        selectedName: 'icon-profilercolor',
+      {
+        name: t('label.profiler-amp-data-quality'),
+        icon: {
+          alt: 'profiler',
+          name: 'icon-profiler',
+          title: 'Profiler',
+          selectedName: 'icon-profilercolor',
+        },
+        isProtected: false,
+        isHidden: !(
+          tablePermissions.ViewAll ||
+          tablePermissions.ViewBasic ||
+          tablePermissions.ViewDataProfile ||
+          tablePermissions.ViewTests
+        ),
+        position: 5,
       },
-      isProtected: false,
-      isHidden: !(
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewBasic ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests
-      ),
-      position: 5,
-    },
-    {
-      name: t('label.lineage'),
-      icon: {
-        alt: 'lineage',
-        name: 'icon-lineage',
-        title: 'Lineage',
-        selectedName: 'icon-lineagecolor',
+      {
+        name: t('label.lineage'),
+        icon: {
+          alt: 'lineage',
+          name: 'icon-lineage',
+          title: 'Lineage',
+          selectedName: 'icon-lineagecolor',
+        },
+        isProtected: false,
+        position: 7,
       },
-      isProtected: false,
-      position: 7,
-    },
-    {
-      name: t('label.dbt-uppercase'),
-      icon: {
-        alt: 'dbt-model',
-        name: 'dbtmodel-light-grey',
-        title: 'DBT',
-        selectedName: 'dbtmodel-primery',
+      {
+        name: t('label.dbt-uppercase'),
+        icon: {
+          alt: 'dbt-model',
+          name: 'dbtmodel-light-grey',
+          title: 'DBT',
+          selectedName: 'dbtmodel-primery',
+        },
+        isProtected: false,
+        isHidden: !dataModel?.sql,
+        position: 8,
       },
-      isProtected: false,
-      isHidden: !dataModel?.sql,
-      position: 8,
-    },
-    {
-      name: t('label.custom-property-plural'),
-      isProtected: false,
-      position: 9,
-    },
-  ];
+      {
+        name: t('label.custom-property-plural'),
+        isProtected: false,
+        position: 9,
+      },
+    ],
+    [tablePermissions, dataModel, feedCount]
+  );
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
@@ -622,7 +635,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     [paging]
   );
 
-  return (
+  return isLoading ? (
+    <Loader />
+  ) : (
     <PageContainerV1>
       <div className="entity-details-container">
         <EntityPageInfo
