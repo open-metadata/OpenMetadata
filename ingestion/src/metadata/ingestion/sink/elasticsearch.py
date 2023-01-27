@@ -213,10 +213,7 @@ class ElasticsearchSink(Sink[Entity]):
         if self.config.use_AWS_credentials:
             credentials = boto3.Session().get_credentials()
             # We are initializing the Session() here and letting it pick up host creds.
-            # Not marked as a callable function, but a class.
-            region_from_boto3 = (
-                boto3.Session().region_name()  # pylint: disable=not-callable
-            )
+            region_from_boto3 = boto3.Session().region_name
             http_auth = AWS4Auth(
                 region=self.config.region_name
                 if self.config.region_name

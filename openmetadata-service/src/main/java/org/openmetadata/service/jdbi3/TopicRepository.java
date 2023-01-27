@@ -242,15 +242,15 @@ public class TopicRepository extends EntityRepository<Topic> {
       if (updated.getMessageSchema() != null) {
         recordChange(
             "messageSchema.schemaText",
-            original.getMessageSchema().getSchemaText(),
+            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaText(),
             updated.getMessageSchema().getSchemaText());
         recordChange(
             "messageSchema.schemaType",
-            original.getMessageSchema().getSchemaType(),
+            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaType(),
             updated.getMessageSchema().getSchemaType());
         updateSchemaFields(
             "messageSchema.schemaFields",
-            original.getMessageSchema().getSchemaFields(),
+            original.getMessageSchema() == null ? null : original.getMessageSchema().getSchemaFields(),
             updated.getMessageSchema().getSchemaFields(),
             EntityUtil.schemaFieldMatch);
       }

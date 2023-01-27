@@ -570,13 +570,13 @@ public class SearchResource {
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query).field(DISPLAY_NAME, 5.0f).field(NAME, 3.0f).lenient(true);
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query).field(DISPLAY_NAME, 5.0f).field(NAME, 3.0f).lenient(true);
     return searchBuilder(queryBuilder, null, from, size);
   }
 

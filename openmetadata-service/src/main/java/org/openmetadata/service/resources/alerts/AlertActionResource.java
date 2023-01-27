@@ -389,7 +389,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Path("/{id}")
   @Valid
   @Operation(
-      operationId = "deleteAlert",
+      operationId = "deleteAlertAction",
       summary = "Delete a Alert Action",
       tags = "alertAction",
       description = "Get a alert action by given Id",
@@ -408,6 +408,25 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
     Response response = delete(uriInfo, securityContext, id, false, true);
     AlertsPublisherManager.getInstance().deleteAlertActionFromAllAlertPublisher((AlertAction) response.getEntity());
     return response;
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteAlertActionByName",
+      summary = "Delete an Alert Action",
+      tags = "alertAction",
+      description = "Delete an alert action by given `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the alert", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
   public AlertAction getAlertAction(CreateAlertAction create, String user) throws IOException {

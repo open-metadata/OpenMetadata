@@ -23,6 +23,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseType,
 )
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksType,
+)
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Type,
 )
@@ -64,6 +67,7 @@ class Dialect(Enum):
     ATHENA = "athena"
     BIGQUERY = "bigquery"
     CLICKHOUSE = "clickhouse"
+    DATABRICKS = "databricks"
     DB2 = "db2"
     DUCKDB = "duckdb"
     EXASOL = "exasol"
@@ -85,6 +89,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(AthenaType.Athena.value): Dialect.ATHENA,
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
+    str(DatabricksType.Databricks.value): Dialect.DATABRICKS,
     str(Db2Type.Db2.value): Dialect.DB2,
     str(HiveType.Hive.value): Dialect.HIVE,
     str(MySQLType.Mysql.value): Dialect.MYSQL,
