@@ -14,7 +14,7 @@ OpenMetadata community will be doing feature releases and stable releases.
 
 ## 0.13.2 - Stable Release
 
-OpenMetadata 0.13.1 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release)
+OpenMetadata 0.13.2 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release)
 
 If you are upgrading production this is the recommended version to upgrade.
 

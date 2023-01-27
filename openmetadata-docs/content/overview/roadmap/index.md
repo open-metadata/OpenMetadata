@@ -72,20 +72,12 @@ You can check the latest release [here](/overview/releases).
     <li>Users will be able to add descriptions/tags at the field level</li>
     <li>Users can search based on fields in a schema of a topic.</li>
   </Tile>
-  <Tile
-    title="Reverse Metadata **beta**"
-    text=""
-    background="yellow-70"
-    bordercolor="blue-70"
-  >
-    <li>We are super excited about this feature coming in 0.13.1</li>
-  </Tile>
 
 </TileContainer>
 
 
 
-## 1.0 Release - Feb 6th, 2023
+## 1.0 Release - Marc 14th, 2023
 
 <TileContainer>
   <Tile
@@ -149,7 +141,7 @@ You can check the latest release [here](/overview/releases).
   </Tile>
 </TileContainer>
 
-## 1.1 Release - March 15th 2023
+## 1.1 Release - April 18th 2023
 
 <TileContainer>
   <Tile
@@ -198,5 +190,12 @@ You can check the latest release [here](/overview/releases).
   >
   <li> Add support for Notebook Entity </li>
   <li> Add support for Report Entity </li>
+  </Tile>
+  <Tile
+    title="Reverse Metadata **beta**"
+    text=""
+    background="yellow-70"
+    bordercolor="blue-70"
+  >
   </Tile>
 </TileContainer>

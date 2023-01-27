@@ -18,6 +18,9 @@ now allows all users to perform backups regardless of the underlying infrastruct
 
 The backup CLI needs to be used with `openmetadata-ingestion` version 0.13.1 or higher.
 
+However, we recommend to make sure that you are always in the latest `openmetadata-ingestion`
+version to have all the improvements shipped in the CLI.
+
 ## Installation
 
 The CLI comes bundled in the base `openmetadata-ingestion` Python package. You can install it with:
@@ -55,13 +58,6 @@ Make sure that the migrations have been run correctly (find out how [here](/depl
 
 Also, make sure that the target database does not already have any OpenMetadata data, or if it does, that you are OK
 replacing it with whatever comes from the SQL script.
-
-</Note>
-
-<Note>
-
-To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
-version to have all the improvements shipped in the CLI.
 
 </Note>
 

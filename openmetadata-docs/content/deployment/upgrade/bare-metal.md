@@ -35,7 +35,7 @@ version to have all the improvements shipped in the CLI.
    2. `source venv/bin/activate`
    3. `pip install openmetadata-ingestion~=0.13.2`
 3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
-    indeed at 0.13.1. Notice the `python -m metadata` vs. `metadata`. 
+    indeed at 0.13.2. Notice the `python -m metadata` vs. `metadata`. 
 4. Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
