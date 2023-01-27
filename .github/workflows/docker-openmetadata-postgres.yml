@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Check trigger type
         if: ${{ env.input == '' }}
-        run: echo "input=0.13.2-beta" >> $GITHUB_ENV
+        run: echo "input=0.13.2" >> $GITHUB_ENV
         
       - name: Check out the Repo
         uses: actions/checkout@v3

@@ -72,8 +72,8 @@ USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis==0.13.2.0b0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.13.2.0b0"
+RUN pip install "openmetadata-managed-apis==0.13.2.0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.13.2.0"
 # remove all airflow providers except for docker
 RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
