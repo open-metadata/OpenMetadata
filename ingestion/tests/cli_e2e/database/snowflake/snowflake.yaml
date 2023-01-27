@@ -1,6 +1,6 @@
 source:
   type: snowflake
-  serviceName: local_snowflake
+  serviceName: e2e_snowflake
   serviceConnection:
     config:
       username: $E2E_SNOWFLAKE_USERNAME
