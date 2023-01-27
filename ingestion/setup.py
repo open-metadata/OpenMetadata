@@ -34,7 +34,7 @@ base_requirements = {
     "python-dateutil>=2.8.1",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
-    "sqlalchemy>=1.4.0",
+    "sqlalchemy>=1.4.0,<2",
     "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",
@@ -201,7 +201,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.13.1.8",
+    version="0.13.1.9",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
