@@ -15,7 +15,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^[\\w'\\- .\\/()$]+$"
+      "pattern": "^[\\w'\\- ./()$]+$"
     },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
