@@ -14,8 +14,11 @@ Test Snowflake connector with CLI
 """
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
+from .test_cli_db_base import E2EType
 
 from .test_cli_db_base_common import CliCommonDB
 
@@ -79,6 +82,23 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
             connection.execute(self.drop_view_query)
             connection.execute(self.drop_table_query)
             connection.close()
+
+    @pytest.mark.order(2)
+    def test_create_table_with_profiler(self) -> None:
+        # delete table in case it exists
+        self.delete_table_and_view()
+        # create a table and a view
+        self.create_table_and_view()
+        # build config file for ingest
+        self.build_config_file()
+        # run ingest with new tables
+        self.run_command()
+        # build config file for profiler
+        self.build_config_file(E2EType.PROFILER)
+        # run profiler with new tables
+        result = self.run_command("profile")
+        sink_status, source_status = self.retrieve_statuses(result)
+        self.assert_for_table_with_profiler(source_status, sink_status)
 
     @staticmethod
     def expected_tables() -> int:
