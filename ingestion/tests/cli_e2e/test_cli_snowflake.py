@@ -94,7 +94,11 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         # run ingest with new tables
         self.run_command()
         # build config file for profiler
-        self.build_config_file(E2EType.PROFILER)
+        self.build_config_file(
+            E2EType.PROFILER,
+            # Otherwise the sampling here does not pick up rows
+            extra_args={"profileSample": 100}
+        )
         # run profiler with new tables
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
@@ -109,7 +113,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "local_snowflake.E2E_DB.E2E_TEST.PERSONS"
+        return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
