@@ -16,6 +16,8 @@ import traceback
 from abc import ABC
 from typing import Iterable, Iterator, Optional
 
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -64,30 +66,37 @@ class LineageSource(QueryParserSource, ABC):
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             try:
-                with get_connection(self.service_connection).connect() as conn:
-                    rows = conn.execute(
-                        self.get_sql_statement(
-                            start_time=self.start,
-                            end_time=self.end,
-                        )
-                    )
-                    for row in rows:
-                        query_dict = dict(row)
-                        try:
-                            yield TableQuery(
-                                query=query_dict["query_text"],
-                                databaseName=self.get_database_name(query_dict),
-                                serviceName=self.config.serviceName,
-                                databaseSchema=self.get_schema_name(query_dict),
-                            )
-                        except Exception as exc:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Error processing query_dict {query_dict}: {exc}"
-                            )
+                engine = get_connection(self.service_connection)
+                yield from self.yield_table_query(engine)
+
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")
+
+    def yield_table_query(self, engine: Engine) -> Iterator[TableQuery]:
+        """
+        Given an engine, iterate over the query results to
+        yield a TableQuery with query parsing info
+        """
+        with engine.connect() as conn:
+            rows = conn.execute(
+                self.get_sql_statement(
+                    start_time=self.start,
+                    end_time=self.end,
+                )
+            )
+            for row in rows:
+                query_dict = dict(row)
+                try:
+                    yield TableQuery(
+                        query=query_dict["query_text"],
+                        databaseName=self.get_database_name(query_dict),
+                        serviceName=self.config.serviceName,
+                        databaseSchema=self.get_schema_name(query_dict),
+                    )
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error processing query_dict {query_dict}: {exc}")
 
     def next_record(self) -> Iterable[AddLineageRequest]:
         """

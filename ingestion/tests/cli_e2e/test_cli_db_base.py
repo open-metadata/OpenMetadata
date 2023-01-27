@@ -194,8 +194,9 @@ class CliDBBase(TestCase):
                 "-c",
                 self.test_file_path,
             ]
-            process_status = subprocess.run(args, capture_output=True)
-            return process_status.stderr.decode("utf-8")
+            process_status = subprocess.Popen(args, stderr=subprocess.PIPE)
+            process_status.wait()
+            return process_status.stderr.read().decode("utf-8")
 
         def build_config_file(
             self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None

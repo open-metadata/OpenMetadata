@@ -136,8 +136,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_name,
-        database_schema=database_schema,
+        database=database_query,
+        database_schema=schema_query,
         table=table,
     )
 
@@ -147,8 +147,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_query,
-        database_schema=schema_query,
+        database=database_name,
+        database_schema=database_schema,
         table=table,
     )
 

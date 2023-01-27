@@ -32,6 +32,7 @@ docker-volume
 *.class
 venv
 env
+.java-version
 # logs
 logs
 *.log
