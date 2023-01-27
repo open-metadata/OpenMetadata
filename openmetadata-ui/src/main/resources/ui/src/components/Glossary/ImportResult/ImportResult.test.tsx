@@ -31,10 +31,6 @@ const mockCsvImportResult = {
   success,Entity updated,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 };
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockReturnValue(<div>RichTextViewer</div>)
-);
-
 describe('Import Results', () => {
   it('Should render the results', async () => {
     render(
@@ -70,7 +66,10 @@ describe('Import Results', () => {
       firstRow,
       'Glossary2 Term displayName'
     );
-    const rowDescription = await findByText(firstRow, 'RichTextViewer');
+    const rowDescription = await findByText(
+      firstRow,
+      'Description for Glossary2 Term'
+    );
 
     expect(rowStatus).toBeInTheDocument();
     expect(rowDetails).toBeInTheDocument();
