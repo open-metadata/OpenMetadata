@@ -18,8 +18,8 @@ import pytest
 
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
-from .test_cli_db_base import E2EType
 
+from .test_cli_db_base import E2EType
 from .test_cli_db_base_common import CliCommonDB
 
 
@@ -97,7 +97,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         self.build_config_file(
             E2EType.PROFILER,
             # Otherwise the sampling here does not pick up rows
-            extra_args={"profileSample": 100}
+            extra_args={"profileSample": 100},
         )
         # run profiler with new tables
         result = self.run_command("profile")
