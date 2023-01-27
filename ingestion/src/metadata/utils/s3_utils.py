@@ -91,7 +91,7 @@ def read_parquet_from_s3(client: Any, key: str, bucket_name: str):
     Read the parquet file from the s3 bucket and return a dataframe
     """
     s3_fs = s3fs.S3FileSystem()
-    if client.awsAccessKeyId and client.awsSecretAccessKeyx:
+    if client.awsAccessKeyId and client.awsSecretAccessKey:
         s3_fs = s3fs.S3FileSystem(
             key=client.awsAccessKeyId,
             secret=client.awsSecretAccessKey.get_secret_value(),
