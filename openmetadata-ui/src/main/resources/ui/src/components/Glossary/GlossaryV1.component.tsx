@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Dropdown, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -253,16 +253,17 @@ const GlossaryV1 = ({
       : []),
     {
       label: (
-        <Space
+        <Row
           className="tw-cursor-pointer manage-button"
-          size={8}
           onClick={(e) => {
             e.stopPropagation();
             setIsDelete(true);
             setShowActions(false);
           }}>
-          <SVGIcons alt="Delete" icon={Icons.DELETE} />
-          <div className="tw-text-left" data-testid="delete-button">
+          <Col span={3}>
+            <SVGIcons alt="Delete" icon={Icons.DELETE} />
+          </Col>
+          <Col className="tw-text-left" data-testid="delete-button" span={21}>
             <p className="tw-font-medium" data-testid="delete-button-title">
               Delete
             </p>
@@ -270,8 +271,8 @@ const GlossaryV1 = ({
               Deleting this {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}{' '}
               will permanently remove its metadata from OpenMetadata.
             </p>
-          </div>
-        </Space>
+          </Col>
+        </Row>
       ),
       key: 'delete-button',
     },
