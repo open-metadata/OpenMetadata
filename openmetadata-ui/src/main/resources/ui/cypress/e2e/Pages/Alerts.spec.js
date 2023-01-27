@@ -60,8 +60,8 @@ describe('Alerts page should work properly', () => {
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Engineering');
-    cy.get('[title="Engineering"]').should('be.visible').click();
+      .type('Applications');
+    cy.get('[title="Applications"]').should('be.visible').click();
     cy.get('#description').should('be.visible').click();
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
@@ -141,8 +141,8 @@ describe('Alerts page should work properly', () => {
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Engineering');
-    cy.get('[title="Engineering"]').should('be.visible').click();
+      .type('Applications');
+    cy.get('[title="Applications"]').should('be.visible').click();
     cy.get('#name').should('be.visible').click();
 
     // Select second owner
@@ -305,8 +305,8 @@ describe('Alerts page should work properly', () => {
       cy.get('[data-testid="matchAnyOwnerName-select"]')
         .should('be.visible')
         .click()
-        .type('Engineering');
-      cy.get('[title="Engineering"]').should('be.visible').click();
+        .type('Applications');
+      cy.get('[title="Applications"]').should('be.visible').click();
       cy.get('#description').should('be.visible').click();
       // Select include/exclude
       cy.get('[title="Include"]').should('be.visible').click();
