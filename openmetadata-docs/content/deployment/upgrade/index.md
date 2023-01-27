@@ -21,6 +21,31 @@ If you are upgrading production this is the recommended version to upgrade.
 ## Breaking Changes for 0.13.2 Stable Release
 
 ### EntityName
+To better manage and harmonize `entityName` value and allow users to form better expectations around these values the team introduced an enforcement of the `entityName` format using regex pattern.
+
+All the OpenMetadata entities `entityName` fields will enforce by the default the following regex pattern:
+- `^[\w'\- .&]+$`: match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'- .&`. For example when creating a pipeline service the following name will not be allowed `MyPipelineIngestion?!` while the following will be `My-Pipeline `.
+
+Some entities are enforcing specific patterns:
+- Users: `([\w\-.]|[^@])+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.` and don't match the character `@`
+- Webhook: `^[\w'\-.]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.` 
+- Table: `^[\w'\- ./]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'-. /` 
+- Location: `^[\w'\-./]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.'/`
+- Type: `^[a-z][\w]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) starting with a lowercase letter (e.g. `tHisChar` will match, `ThisChar` will not)
+
+If an entity name does not follow the pattern an error will be returned by the OpenMetadata platform.
+
+**The change should be transparent for the end user and no action should be required.**
+
+## EntityLink
+Similar to the implementation done for `entityName`, `entityLink` will now enforce a specific pattern. The structure of `entityLink` is in the form `<#E::{entities}::{entityType}::{field}::{fieldName}::{fieldValue}>`
+
+All the OpenMetadata entities `entityLink` fields will enforce by the default the following regex pattern:
+- `^<#E::\w+::[\w'\- .&/\:+\"\\]+>$`: this means that `{entities}` value needs to match any word characters (equivalent to `[a-zA-Z0-9_]`) and the part after `{entities}` can match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'- .&/\:+\"\`
+
+If an entity name does not follow the pattern an error will be returned by the OpenMetadata platform.
+
+**The change should be transparent for the end user and no action should be required.**
 
 ### Tags API
 
