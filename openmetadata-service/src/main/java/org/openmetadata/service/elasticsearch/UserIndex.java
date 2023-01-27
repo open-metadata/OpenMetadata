@@ -24,7 +24,6 @@ public class UserIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
-    doc.put("displayNameAgg", user.getDisplayName());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     return doc;

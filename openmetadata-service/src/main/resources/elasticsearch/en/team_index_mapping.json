@@ -19,10 +19,7 @@
       },
       "displayName": {
         "type": "text",
-        "normalizer": "lowercase_normalizer"
-      },
-      "displayNameAgg": {
-        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
         "fields": {
           "keyword": {
             "type": "keyword",
