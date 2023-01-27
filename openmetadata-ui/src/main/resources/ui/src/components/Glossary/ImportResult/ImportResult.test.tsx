@@ -28,7 +28,7 @@ const mockCsvImportResult = {
   numberOfRowsFailed: 0,
   importResultsCsv: `status,details,parent,name*,displayName,description*,synonyms,relatedTerms,references,tags\r
   success,Entity updated,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
-  success,Entity updated,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
+  success,Entity updated,,Glossary2 term2,Glossary2 term2 displayname,"Description, data.","ter1,term2",,,\r`,
 };
 
 describe('Import Results', () => {
@@ -76,5 +76,31 @@ describe('Import Results', () => {
     expect(rowName).toBeInTheDocument();
     expect(rowDisplayName).toBeInTheDocument();
     expect(rowDescription).toBeInTheDocument();
+  });
+
+  it('Should render the parsed result properly with special character', async () => {
+    const { container } = render(
+      <ImportResult csvImportResult={mockCsvImportResult as CSVImportResult} />
+    );
+
+    const tableRows = getAllByRole(container, 'row');
+
+    expect(tableRows).toHaveLength(3);
+
+    const secondRow = tableRows[2];
+
+    const rowStatus = await findByText(secondRow, 'success');
+    const rowDetails = await findByText(secondRow, 'Entity updated');
+    const rowName = await findByText(secondRow, 'Glossary2 term2 displayname');
+    const rowDisplayName = await findByText(secondRow, 'Glossary2 term2');
+    const rowDescription = await findByText(secondRow, 'Description, data.');
+    const synonym = await findByText(secondRow, 'ter1,term2');
+
+    expect(rowStatus).toBeInTheDocument();
+    expect(rowDetails).toBeInTheDocument();
+    expect(rowName).toBeInTheDocument();
+    expect(rowDisplayName).toBeInTheDocument();
+    expect(rowDescription).toBeInTheDocument();
+    expect(synonym).toBeInTheDocument();
   });
 });
