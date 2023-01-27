@@ -123,7 +123,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 1
 
     def inserted_rows_count(self) -> int:
-        return 3
+        return len(self.insert_data_queries)
 
     @staticmethod
     def fqn_created_table() -> str:
