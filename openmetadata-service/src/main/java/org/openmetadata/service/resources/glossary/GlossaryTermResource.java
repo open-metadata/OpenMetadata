@@ -403,6 +403,30 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteGlossaryTermByName",
+      summary = "Delete a glossary term",
+      tags = "glossaryTerm",
+      description = "Delete a glossary term by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "glossaryTerm for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the glossary term", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(

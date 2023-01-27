@@ -41,6 +41,16 @@ As a summary:
 
 Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
 
+<Note>
+
+- For usage and lineage grant your user `pg_read_all_stats` permission.
+
+```sql
+GRANT pg_read_all_stats TO your_user;
+```
+
+</Note>
+
 ### Python Requirements
 
 To run the Postgres ingestion, you will need to install:

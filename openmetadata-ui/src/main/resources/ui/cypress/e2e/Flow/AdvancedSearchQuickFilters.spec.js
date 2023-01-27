@@ -12,61 +12,17 @@
  */
 
 import {
-  applyQuickFilterAndCheck,
   checkCheckboxStatus,
   openFilterDropdown,
-  ownEntityAndAddTag,
-  removeOwnerAndTag,
-} from '../../common/advancedSearchQueryFilters';
-import { verifyResponseStatusCode } from '../../common/common';
-import {
-  COMMON_DROPDOWN_ITEMS,
-  QUICK_FILTERS_BY_ASSETS,
-} from '../../constants/advancedSearchQuickFilters.constants';
-
-it('Prerequisites for Advanced search quick filters tests', () => {
-  cy.login();
-
-  // Set admin display name
-  cy.get(
-    '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
-  )
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('[data-testid="user-name"]').should('exist').and('be.visible').click();
-
-  verifyResponseStatusCode('@userProfile', 200);
-
-  // Close the user profile information dropdown
-  cy.get('[data-testid="hiden-layer"]').should('exist').click();
-
-  cy.get('[data-testid="edit-displayName"]')
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('[data-testid="displayName"]')
-    .should('exist')
-    .and('be.visible')
-    .clear()
-    .type(COMMON_DROPDOWN_ITEMS[0].selectOption1);
-
-  cy.get('[data-testid="save-displayName"]')
-    .should('exist')
-    .and('be.visible')
-    .click();
-});
+  searchAndClickOnOption,
+} from '../../common/advancedSearchQuickFilters';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 
 QUICK_FILTERS_BY_ASSETS.map((asset) => {
   describe(`Advanced search quick filters should work properly for ${asset.label} assets`, () => {
     beforeEach(() => {
       cy.login();
-    });
-
-    it(`Prerequisite for ${asset.label} quick filter tests`, () => {
-      ownEntityAndAddTag(asset, COMMON_DROPDOWN_ITEMS[0].selectOption1);
     });
 
     it(`search dropdown should work properly for ${asset.label}`, () => {
@@ -83,35 +39,66 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
         .click();
 
       cy.wait(1000);
+
       asset.filters.map((filter) => {
-        applyQuickFilterAndCheck(
-          asset,
-          filter,
-          filter.selectOption1,
-          filter.selectOptionTestId1
-        );
+        const isSecondOption = filter.selectOption2 !== undefined;
 
-        if (filter.selectOption2) {
-          applyQuickFilterAndCheck(
-            asset,
-            filter,
-            filter.selectOption2,
-            filter.selectOptionTestId2
-          );
+        openFilterDropdown(asset, filter);
 
-          // Check if clear all button works
+        const optionName1 =
+          filter.label === 'Service' ? asset.serviceName : filter.selectOption1;
+        const optionTestId1 =
+          filter.label === 'Service'
+            ? asset.serviceName
+            : filter.selectOptionTestId1;
+
+        searchAndClickOnOption(optionName1, optionTestId1, true);
+
+        let querySearchURL = `http://localhost:8585/api/v1/search/query?*index=${
+          asset.searchIndex
+        }*query_filter=*should*${filter.key}*${encodeURI(optionName1)}*`;
+
+        if (isSecondOption) {
+          const optionName2 =
+            filter.label === 'Service'
+              ? asset.serviceName
+              : filter.selectOption2;
+          const optionTestId2 =
+            filter.label === 'Service'
+              ? asset.serviceName
+              : filter.selectOptionTestId2;
+
+          searchAndClickOnOption(optionName2, optionTestId2, true);
+
+          querySearchURL =
+            querySearchURL + `${filter.key}*${encodeURI(optionName2)}*`;
+        }
+
+        interceptURL('GET', querySearchURL, 'querySearchAPI');
+
+        cy.get('[data-testid="update-btn"]')
+          .should('exist')
+          .and('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@querySearchAPI', 200);
+
+        // Check for clear all and close button functionality
+        if (isSecondOption) {
+          const optionTestId2 =
+            filter.label === 'Service'
+              ? asset.serviceName
+              : filter.selectOptionTestId2;
+
           openFilterDropdown(asset, filter);
 
-          checkCheckboxStatus(`${filter.selectOptionTestId1}-checkbox`, true);
-          checkCheckboxStatus(`${filter.selectOptionTestId2}-checkbox`, true);
-
+          // Check if clear all button works
           cy.get(`[data-testid="clear-button"]`)
             .should('exist')
             .and('be.visible')
             .click();
 
-          checkCheckboxStatus(`${filter.selectOptionTestId1}-checkbox`, false);
-          checkCheckboxStatus(`${filter.selectOptionTestId2}-checkbox`, false);
+          cy.get(`[data-testid="clear-button"]`).should('not.exist');
 
           // Check close button works without changing filters
           cy.get(`[data-testid="close-btn"]`)
@@ -121,14 +108,10 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
 
           openFilterDropdown(asset, filter);
 
-          checkCheckboxStatus(`${filter.selectOptionTestId1}-checkbox`, true);
-          checkCheckboxStatus(`${filter.selectOptionTestId2}-checkbox`, true);
+          checkCheckboxStatus(`${optionTestId1}-checkbox`, true);
+          checkCheckboxStatus(`${optionTestId2}-checkbox`, true);
         }
       });
-    });
-
-    it(`Cleanup for advanced search quick filter tests for ${asset.label} entities`, () => {
-      removeOwnerAndTag(asset);
     });
   });
 });
