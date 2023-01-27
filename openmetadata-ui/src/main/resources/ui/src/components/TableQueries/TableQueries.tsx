@@ -24,10 +24,14 @@ import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
 
 interface TableQueriesProp {
+  isTableDeleted?: boolean;
   tableId: string;
 }
 
-const TableQueries: FC<TableQueriesProp> = ({ tableId }: TableQueriesProp) => {
+const TableQueries: FC<TableQueriesProp> = ({
+  isTableDeleted,
+  tableId,
+}: TableQueriesProp) => {
   const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
   const [isQueriesLoading, setIsQueriesLoading] = useState(true);
 
@@ -44,7 +48,7 @@ const TableQueries: FC<TableQueriesProp> = ({ tableId }: TableQueriesProp) => {
 
   useEffect(() => {
     setIsQueriesLoading(true);
-    if (tableId) {
+    if (tableId && !isTableDeleted) {
       fetchTableQuery();
     } else {
       setIsQueriesLoading(false);

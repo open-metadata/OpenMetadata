@@ -799,6 +799,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [tablePermissions]);
 
   useEffect(() => {
+    !tableDetails.deleted && fetchTableProfileDetails();
+  }, [tableDetails]);
+
+  useEffect(() => {
     fetchResourcePermission(tableFQN);
   }, [tableFQN]);
 

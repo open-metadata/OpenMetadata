@@ -755,16 +755,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 3 && (
               <div className="tab-details-container" id="sampleDataDetails">
-                <SampleDataTable tableId={tableDetails.id} />
+                <SampleDataTable
+                  isTableDeleted={tableDetails.deleted}
+                  tableId={tableDetails.id}
+                />
               </div>
             )}
             {activeTab === 4 && (
               <div className="tab-details-container">
-                <TableQueries tableId={tableDetails.id} />
+                <TableQueries
+                  isTableDeleted={tableDetails.deleted}
+                  tableId={tableDetails.id}
+                />
               </div>
             )}
             {activeTab === 5 && (
               <TableProfilerV1
+                isTableDeleted={tableDetails.deleted}
                 permissions={tablePermissions}
                 tableFqn={tableDetails.fullyQualifiedName || ''}
               />
