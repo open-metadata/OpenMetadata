@@ -183,7 +183,7 @@ export const getTeamsByQuery = async (params: {
 export const getTagSuggestions = (term: string) => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.TAG}`,
+    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
   return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
@@ -249,7 +249,7 @@ export const getAdvancedFieldOptions = (
 };
 
 export const getAdvancedFieldDefaultOptions = (
-  index: SearchIndex,
+  index: SearchIndex | SearchIndex[],
   field: string
 ) => {
   const params = { index, field };
