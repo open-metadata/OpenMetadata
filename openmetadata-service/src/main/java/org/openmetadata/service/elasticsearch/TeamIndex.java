@@ -16,14 +16,15 @@ public class TeamIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
+    if (team.getDisplayName() == null) {
+      team.setDisplayName(team.getName());
+    }
     Map<String, Object> doc = JsonUtils.getMap(team);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(team.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
-    if (team.getDisplayName() == null) {
-      doc.put("displayName", team.getName());
-    }
+    doc.put("displayNameAgg", team.getDisplayName());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
     return doc;
