@@ -12,6 +12,7 @@ source:
       connectionArguments: {}
   sourceConfig:
     config:
+      type: DatabaseMetadata
       tableFilterPattern:
         includes:
           - customer.*

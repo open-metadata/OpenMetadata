@@ -58,6 +58,7 @@ source:
       schemaRegistryConfig: {}
   sourceConfig:
     config:
+      type: MessagingMetadata
       topicFilterPattern:
         excludes:
           - _confluent.*
