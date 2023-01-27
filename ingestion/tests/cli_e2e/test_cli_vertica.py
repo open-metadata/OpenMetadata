@@ -36,8 +36,8 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     create_view_query: str = """
         CREATE VIEW vendor_dimension_v AS
-            SELECT *
-            FROM vendor_dimension_new;
+            SELECT vendor_key, vendor_name
+            FROM public.vendor_dimension_new;
     """
 
     insert_data_queries: List[str] = [
@@ -69,6 +69,9 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
+
+    def view_column_lineage_count(self) -> int:
+        return 2
 
     @staticmethod
     def fqn_created_table() -> str:

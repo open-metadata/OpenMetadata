@@ -21,6 +21,7 @@ import yaml
 from metadata.utils.constants import UTF_8
 
 from .common_e2e_sqa_mixins import SQACommonMethods
+from .test_cli_db_base import E2EType
 from .test_cli_db_base_common import CliCommonDB
 
 
@@ -123,6 +124,9 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def inserted_rows_count(self) -> int:
         return 6
+
+    def view_column_lineage_count(self) -> int:
+        return 3
 
     @staticmethod
     def fqn_created_table() -> str:

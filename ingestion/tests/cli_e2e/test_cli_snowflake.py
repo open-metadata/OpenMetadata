@@ -111,6 +111,9 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 
+    def view_column_lineage_count(self) -> int:
+        return 2
+
     @staticmethod
     def fqn_created_table() -> str:
         return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
