@@ -651,7 +651,7 @@ export const WHATS_NEW = [
 - Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).`,
       'Mutually Exclusive Tags': `- When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive.
 - If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.`,
-      EntityName: `- Special characters`,
+      EntityName: `- To better manage and harmonize entityName value and allow users to form better expectations around these values, the team introduced enforcement of the entityName format using a regex pattern. You can find more information about this in the [docs](https://docs.open-metadata.org/deployment/upgrade).`,
       'Ingestion Framework': `- Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
 - The Oracle connector now ships with the Thick mode enabled.
 - AWS QuickSight fixes
