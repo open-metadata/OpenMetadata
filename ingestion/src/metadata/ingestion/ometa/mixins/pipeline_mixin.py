@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 

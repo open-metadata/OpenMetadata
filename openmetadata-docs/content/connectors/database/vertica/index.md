@@ -43,6 +43,41 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+### Permissions
+
+To run the ingestion we need a user with `SELECT` grants on the schemas that you'd like to ingest, as well as to the
+`V_CATALOG` schema. You can grant those as follows for the schemas in your database:
+
+```sql
+CREATE USER openmetadata IDENTIFIED BY 'password';
+GRANT SELECT ON ALL TABLES IN SCHEMA PUBLIC TO openmetadata;
+GRANT SELECT ON ALL TABLES IN SCHEMA V_CATALOG TO openmetadata;
+```
+
+Note that these `GRANT`s won't be applied to any new table created on the schema unless the schema
+has [Inherited Privileges](https://www.vertica.com/docs/8.1.x/HTML/index.htm#Authoring/AdministratorsGuide/Security/DBUsersAndPrivileges/GrantInheritedPrivileges.htm)
+
+```sql
+ALTER SCHEMA s1 DEFAULT INCLUDE PRIVILEGES;
+-- If using the PUBLIC schema
+ALTER SCHEMA "<db>.public" DEFAULT INCLUDE PRIVILEGES;
+```
+
+If you also want to run the Lineage and Usage workflows, then the user needs to be granted permissions to the
+`V_MONITOR` schema:
+
+```sql
+GRANT SELECT ON ALL TABLES IN SCHEMA V_MONITOR TO openmetadata;
+```
+
+Note that this setting might only grant visibility to the queries executed by this user. A more complete approach
+will be to grant the `SYSMONITOR` role to the `openmetadata` user:
+
+```sql
+GRANT SYSMONITOR TO openmetadata;
+ALTER USER openmetadata DEFAULT ROLE SYSMONITOR;
+```
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page

@@ -43,7 +43,7 @@ describe('Advance search should work properly for all fields', () => {
   });
 
   it('Pre-requisite for advance search', () => {
-    addOwner(FIELDS.Owner.searchCriteriaFirstGroup);
+    addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
     addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
     addTag(FIELDS.Tags.searchCriteriaFirstGroup);
   });
@@ -175,9 +175,6 @@ describe('Advance search should work properly for Add Group functionality', () =
     it(`Verify Add group functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.contains.name} and ${CONDITIONS_MUST_NOT.notContains.name} `, () => {
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
-        if (field.owner) {
-          val = field.searchCriteriaSecondGroup.split(' ')[0];
-        }
 
         checkAddGroupWithOperator(
           CONDITIONS_MUST.contains.name,
@@ -256,9 +253,6 @@ describe('Advance search should work properly for Add Rule functionality', () =>
     it(`Verify Add Rule functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.contains.name} and ${CONDITIONS_MUST_NOT.notContains.name} `, () => {
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
-        if (field.owner) {
-          val = field.searchCriteriaSecondGroup.split(' ')[0];
-        }
         checkAddRuleWithOperator(
           CONDITIONS_MUST.contains.name,
           CONDITIONS_MUST_NOT.notContains.name,

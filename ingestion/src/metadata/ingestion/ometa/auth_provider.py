@@ -47,7 +47,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 # Only load security providers on call
 # pylint: disable=import-outside-toplevel

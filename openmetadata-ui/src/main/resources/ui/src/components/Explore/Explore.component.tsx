@@ -175,7 +175,7 @@ const Explore: React.FC<ExploreProps> = ({
       isEmpty(terms)
         ? undefined
         : {
-            query: { bool: { must: terms } },
+            query: { bool: { should: terms } },
           }
     );
   };

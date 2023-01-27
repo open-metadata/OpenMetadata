@@ -79,7 +79,9 @@ describe('Test Explore component', () => {
     );
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, /tab/i);
+    // Here regular expression '/-tab/i' is used to match all the tabs
+    // Example, Tab for Table assets will have data-testid='tables-tab'
+    const tabs = await findAllByTestId(container, /-tab/i);
 
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
