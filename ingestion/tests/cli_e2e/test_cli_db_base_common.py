@@ -65,7 +65,7 @@ class CliCommonDB:
             self.assertTrue(len(sink_status.records) > self.expected_tables())
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
-            self.assertTrue(len(sample_data.columns) == self.inserted_rows_count())
+            self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
             self.assertTrue(
                 len(lineage["downstreamEdges"][0]["lineageDetails"]["columnsLineage"])
                 == self.inserted_rows_count()

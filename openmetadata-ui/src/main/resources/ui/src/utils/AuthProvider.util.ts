@@ -18,10 +18,7 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import {
-  JWT_PRINCIPAL_CLAIMS,
-  UserProfile,
-} from 'components/authentication/auth-provider/AuthProvider.interface';
+import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -212,18 +209,32 @@ export const getNameFromUserData = (
   user: UserProfile,
   jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = []
 ) => {
-  // get the first claim from claim list
-  const firstClaim = first(jwtPrincipalClaims);
-  const nameFromEmail = getNameFromEmail(user.email);
+  // filter and extract the present claims in user profile
+  const jwtClaims = jwtPrincipalClaims.reduce(
+    (prev: string[], curr: string) => {
+      const currentClaim = user[curr as keyof UserProfile];
+      if (currentClaim) {
+        return [...prev, currentClaim];
+      } else {
+        return prev;
+      }
+    },
+    []
+  );
 
-  /* if first claim is preferred_username then return preferred_username
-   * for fallback if preferred_username is not present then return the name from email
-   */
-  if (firstClaim === JWT_PRINCIPAL_CLAIMS.PREFERRED_USERNAME) {
-    return user.preferred_username ?? nameFromEmail;
+  // get the first claim from claims list
+  const firstClaim = first(jwtClaims);
+
+  let userName = '';
+
+  // if claims contains the "@" then split it out otherwise assign it to username as it is
+  if (firstClaim?.includes('@')) {
+    userName = getNameFromEmail(firstClaim);
+  } else {
+    userName = firstClaim ?? '';
   }
 
-  return nameFromEmail;
+  return userName;
 };
 
 export const isProtectedRoute = (pathname: string) => {

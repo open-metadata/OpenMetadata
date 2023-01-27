@@ -410,6 +410,8 @@ site_menu:
     url: /connectors/messaging/kafka/airflow
   - category: Connectors / Messaging / Kafka / CLI
     url: /connectors/messaging/kafka/cli
+  - category: Connectors / Messaging / Kafka / Troubleshooting
+    url: /connectors/messaging/kafka/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Airflow
@@ -516,6 +518,10 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
+  - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
+    url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics

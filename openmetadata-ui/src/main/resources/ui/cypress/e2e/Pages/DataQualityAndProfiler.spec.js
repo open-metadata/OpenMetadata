@@ -335,9 +335,13 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Column Profile')
       .should('be.visible')
       .click();
-    cy.get('[data-testid="id-test-count"]').should('be.visible').click();
+    cy.get('[data-testid="id-test-count"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
     cy.get(`[data-testid="edit-${columnTestName}"]`)
+      .scrollIntoView()
       .should('be.visible')
       .click();
     cy.get('#tableTestForm_params_minLength')
@@ -364,10 +368,14 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Column Profile')
       .should('be.visible')
       .click();
-    cy.get('[data-testid="id-test-count"]').should('be.visible').click();
+    cy.get('[data-testid="id-test-count"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
     cy.get(`[data-testid="delete-${columnTestName}"]`)
+      .scrollIntoView()
       .should('be.visible')
       .click();
     cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();

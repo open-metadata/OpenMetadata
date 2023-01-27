@@ -995,6 +995,10 @@ const PipelineDetails = ({
               }
               entityType={EntityType.PIPELINE}
               handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                pipelinePermissions.EditAll ||
+                pipelinePermissions.EditCustomFields
+              }
             />
           </Tabs.TabPane>
           <Tabs.TabPane key="*" tab="">

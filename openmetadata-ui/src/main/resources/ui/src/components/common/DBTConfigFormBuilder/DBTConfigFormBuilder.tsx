@@ -89,6 +89,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtCloudAccountId={dbtConfig?.dbtCloudAccountId}
         dbtCloudAuthToken={dbtConfig?.dbtCloudAuthToken}
         dbtCloudProjectId={dbtConfig?.dbtCloudProjectId}
+        dbtCloudUrl={dbtConfig.dbtCloudUrl}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         handleCloudAccountIdChange={(val) => {
           updateDbtConfig('dbtCloudAccountId', val);
@@ -99,6 +100,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         handleDbtCloudProjectId={(val) => {
           updateDbtConfig('dbtCloudProjectId', val);
         }}
+        handleDbtCloudUrl={(val) => updateDbtConfig('dbtCloudUrl', val)}
         handleUpdateDBTClassification={(val) => {
           updateDbtConfig('dbtClassificationName', val);
         }}

@@ -85,9 +85,9 @@ class DomodashboardSource(DashboardServiceSource):
             dashboard_url = f"{self.service_connection.sandboxDomain}/page/{dashboard_details['id']}"
 
             yield CreateDashboardRequest(
-                name=dashboard_details["name"],
+                name=dashboard_details["id"],
                 dashboardUrl=dashboard_url,
-                displayName=dashboard_details["name"],
+                displayName=dashboard_details.get("name"),
                 description=dashboard_details.get("description", ""),
                 charts=[
                     EntityReference(id=chart.id.__root__, type="chart")
@@ -157,9 +157,9 @@ class DomodashboardSource(DashboardServiceSource):
                     continue
 
                 yield CreateChartRequest(
-                    name=chart["title"],
+                    name=chart_id,
                     description=chart.get("description", ""),
-                    displayName=chart["title"],
+                    displayName=chart.get("title"),
                     chartType=get_standard_chart_type(
                         chart["metadata"].get("chartType", "")
                     ).value,

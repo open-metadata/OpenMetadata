@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Table, Tooltip } from 'antd';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -131,19 +132,20 @@ const AlertsPage = () => {
     [handleAlertDelete]
   );
 
+  const pageHeaderData = useMemo(
+    () => ({
+      header: t('label.alert-plural'),
+      subHeader: t('message.alerts-description'),
+    }),
+    []
+  );
+
   return (
     <>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <div>
-              <Typography.Title level={5}>
-                {t('label.alert-plural')}
-              </Typography.Title>
-              <Typography.Text>
-                {t('message.alerts-description')}
-              </Typography.Text>
-            </div>
+            <PageHeader data={pageHeaderData} />
             <Link
               to={getSettingPath(
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
