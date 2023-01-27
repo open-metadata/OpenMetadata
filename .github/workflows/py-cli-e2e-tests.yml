@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql', 'vertica']
     environment: test
 
     steps:

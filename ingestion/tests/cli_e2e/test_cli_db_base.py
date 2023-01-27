@@ -349,7 +349,9 @@ class CliDBBase(TestCase):
                     "config": {
                         "type": "Profiler",
                         "generateSampleData": True,
-                        "profileSample": 1,
+                        "profileSample": extra_args.get("profileSample", 1)
+                        if extra_args
+                        else 1,
                     }
                 }
                 config_yaml["processor"] = {"type": "orm-profiler", "config": {}}

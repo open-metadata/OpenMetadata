@@ -47,8 +47,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         (3,'Steve Rogers', '1988-07-04'),
         (4,'Natasha Romanoff', '1997-12-03'),
         (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17')
-        ;
+        (6,'Diana Prince', '1976-03-17');
     """
     ]
 
@@ -123,7 +122,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 1
 
     def inserted_rows_count(self) -> int:
-        return len(self.insert_data_queries)
+        return 6
 
     @staticmethod
     def fqn_created_table() -> str:
