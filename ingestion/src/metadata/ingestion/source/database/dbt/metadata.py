@@ -185,14 +185,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         logger.info("Validating Manifest File")
 
         required_manifest_keys = [
-            "alias",
             "name",
             "schema",
             "database",
             "resource_type",
-            "description",
         ]
-        required_catalog_keys = ["name", "type", "index", "comment"]
+        required_catalog_keys = ["name", "type", "index"]
 
         if self.source_config.dbtConfigSource and dbt_files.dbt_manifest:
             manifest_entities = {
@@ -369,10 +367,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ),
                         datamodel=DataModel(
                             modelType=ModelType.DBT,
-                            description=manifest_node.get("description")
-                            if manifest_node.get("description")
+                            description=manifest_node.get("description"),
+                            path=f"{manifest_node['root_path']}/{manifest_node['original_file_path']}"
+                            if manifest_node.get("root_path")
+                            and manifest_node.get("original_file_path")
                             else None,
-                            path=f"{manifest_node['root_path']}/{manifest_node['original_file_path']}",
                             rawSql=dbt_raw_query if dbt_raw_query else "",
                             sql=dbt_compiled_query if dbt_compiled_query else "",
                             columns=self.parse_data_model_columns(
@@ -620,6 +619,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     description=test_suite_desciption,
                 )
         except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed to parse the node to capture tests {err}")
 
     def create_dbt_tests_suite_definition(
@@ -651,6 +651,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     ),
                 )
         except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed to parse the node to capture tests {err}")
 
     def create_dbt_test_case(self, dbt_test: dict) -> Iterable[CreateTestCaseRequest]:
@@ -685,6 +686,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     parameterValues=self.create_test_case_parameter_values(dbt_test),
                 )
         except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed to parse the node {test_name} to capture tests {err}")
 
     def update_dbt_test_result(self, dbt_test: dict):
@@ -748,6 +750,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     test_case_fqn=test_case_fqn,
                 )
         except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed capture tests results for node: {test_name} {err}")
 
     def create_test_case_parameter_definitions(self, dbt_test):
