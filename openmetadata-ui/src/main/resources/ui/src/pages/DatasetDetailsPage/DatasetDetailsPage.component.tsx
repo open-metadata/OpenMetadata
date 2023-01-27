@@ -825,7 +825,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [tablePermissions]);
 
   useEffect(() => {
-    fetchTableProfileDetails();
+    !tableDetails.deleted && fetchTableProfileDetails();
   }, [tableDetails]);
 
   useEffect(() => {

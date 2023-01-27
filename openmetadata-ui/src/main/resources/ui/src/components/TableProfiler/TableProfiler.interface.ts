@@ -25,6 +25,7 @@ import { TestCase } from '../../generated/tests/testCase';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TableProfilerProps {
+  isTableDeleted?: boolean;
   tableFqn: string;
   permissions: OperationPermission;
 }
