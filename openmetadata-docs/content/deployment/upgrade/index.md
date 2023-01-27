@@ -29,9 +29,9 @@ that all the other entities are following. This issue makes backward incompatibl
 
 You can find the full list of API paths changes in the following [issue](https://github.com/open-metadata/OpenMetadata/issues/9259).
 
-### Metabase and Domo `name`
+### Metabase and Domo Dashboards `name`
 
-With the new restrictions on the `EntityName` and to ensure unicity of the assets, the Metabase and Domo sources
+With the new restrictions on the `EntityName` and to ensure unicity of the assets, the **Metabase** and **Domo Dashboard** sources
 now ingest the `name` of the charts and dashboards with their internal ID value. Their `name` value will be used
 as the display name, but not as the OpenMetadata `name` anymore.
 

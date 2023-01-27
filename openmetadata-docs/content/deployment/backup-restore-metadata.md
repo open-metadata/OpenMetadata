@@ -16,7 +16,7 @@ now allows all users to perform backups regardless of the underlying infrastruct
 
 ## Requirements
 
-The backup CLI needs to be used with `openmetadata-ingestion` version 0.11.5 or higher.
+The backup CLI needs to be used with `openmetadata-ingestion` version 0.13.1 or higher.
 
 ## Installation
 
@@ -58,12 +58,10 @@ replacing it with whatever comes from the SQL script.
 
 </Note>
 
-
 <Note>
 
-Running the backup or restore commands with version 0.12.3 or lower? The host parameter is `-h`.
-
-For 0.13 or higher, `-h` is the flag used for the help command. Pass the host via `-H`.
+To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
+version to have all the improvements shipped in the CLI.
 
 </Note>
 

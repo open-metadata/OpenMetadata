@@ -20,13 +20,20 @@ It is adviced to go through [openmetadata release notes](/deployment/upgrade/ver
 
 </Warning>
 
-###  Backup 0.12.3 data
+### Backup your data
+
+<Note>
+
+To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
+version to have all the improvements shipped in the CLI.
+
+</Note>
 
 1. Make sure your instance is connected to the Database server
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
    1. `python -m venv venv`
    2. `source venv/bin/activate`
-   3. `pip install openmetadata-ingestion~=0.13.1.0`
+   3. `pip install openmetadata-ingestion~=0.13.2`
 3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
     indeed at 0.13.1. Notice the `python -m metadata` vs. `metadata`. 
 4. Run the backup using the updated `metadata` CLI:
@@ -78,7 +85,7 @@ command.
 
 ```commandline
 
-cd openmetadata-0.13.1
+cd openmetadata-0.13.2
 
 ```
 
@@ -136,4 +143,4 @@ Click on reindex all
 
 in the dialog box choose Recreate Indexes to All
 
- <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
+<Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
