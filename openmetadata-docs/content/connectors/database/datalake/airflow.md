@@ -107,6 +107,7 @@ source:
       prefix: prefix
   sourceConfig:
     config:
+      type: DatabaseMetadata
       tableFilterPattern:
         includes:
         - ''

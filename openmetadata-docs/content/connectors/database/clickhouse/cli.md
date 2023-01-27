@@ -69,6 +69,7 @@ source:
       # scheme: clickhouse+http (default), or clickhouse+native
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

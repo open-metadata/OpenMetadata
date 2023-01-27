@@ -70,6 +70,7 @@ source:
           clientX509CertUrl: https://cert.url
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

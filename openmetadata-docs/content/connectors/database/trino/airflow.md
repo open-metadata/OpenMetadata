@@ -77,6 +77,7 @@ source:
       # key: value
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
