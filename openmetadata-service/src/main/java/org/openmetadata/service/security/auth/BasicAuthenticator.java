@@ -439,6 +439,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   public void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException {
+    // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
+    // for the user is null
+    if (storedUser.getAuthenticationMechanism() == null) {
+      throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
+    }
     @SuppressWarnings("unchecked")
     LinkedHashMap<String, String> storedData =
         (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
