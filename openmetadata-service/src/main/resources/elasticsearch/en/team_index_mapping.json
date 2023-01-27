@@ -6,7 +6,6 @@
       },
       "name": {
         "type": "text",
-        "normalizer": "lowercase_normalizer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -19,7 +18,6 @@
       },
       "displayName": {
         "type": "text",
-        "normalizer": "lowercase_normalizer",
         "fields": {
           "keyword": {
             "type": "keyword",
