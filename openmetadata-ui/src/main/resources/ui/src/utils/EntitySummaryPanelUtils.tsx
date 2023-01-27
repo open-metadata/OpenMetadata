@@ -29,7 +29,7 @@ const { Text } = Typography;
 
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
-  entityInfo?: Column[] | Field[] | Chart[] | Task[] | MlFeature[],
+  entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
   tableConstraints?: TableConstraint[]
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
