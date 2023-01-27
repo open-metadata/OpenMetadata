@@ -62,6 +62,7 @@ source:
       storageServiceName: storage_name
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

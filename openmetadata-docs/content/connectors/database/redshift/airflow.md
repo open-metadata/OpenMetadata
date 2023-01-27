@@ -84,6 +84,7 @@ source:
       # ingestAllDatabases: true
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

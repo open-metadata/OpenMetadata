@@ -62,6 +62,7 @@ source:
       httpPath: <http path of databricks cluster>
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

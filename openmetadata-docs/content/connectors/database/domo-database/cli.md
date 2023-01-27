@@ -61,7 +61,7 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
-    type: DatabaseMetadata
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}
