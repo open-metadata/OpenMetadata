@@ -19,8 +19,8 @@ from typing import Optional
 
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 

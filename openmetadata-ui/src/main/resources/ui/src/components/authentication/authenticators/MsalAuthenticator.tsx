@@ -83,6 +83,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
           email: account?.username || '',
           name: account?.name || '',
           picture: '',
+          sub: '',
         },
       };
 

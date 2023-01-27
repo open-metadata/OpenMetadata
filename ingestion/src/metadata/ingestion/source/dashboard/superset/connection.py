@@ -12,26 +12,57 @@
 """
 Source connection handler
 """
+from typing import Union
+
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.utils.supersetApiConnection import (
+    SupersetAPIConnection,
+)
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_db_common,
+)
 from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
+from metadata.ingestion.source.database.mysql.connection import (
+    get_connection as mysql_get_connection,
+)
+from metadata.ingestion.source.database.postgres.connection import (
+    get_connection as pg_get_connection,
+)
 
 
 def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
     """
     Create connection
     """
-    return SupersetAPIClient(connection)
+    if isinstance(connection.connection, SupersetAPIConnection):
+        return SupersetAPIClient(connection)
+    if isinstance(connection.connection, PostgresConnection):
+        return pg_get_connection(connection=connection.connection)
+    if isinstance(connection.connection, MysqlConnection):
+        return mysql_get_connection(connection=connection.connection)
+    return None
 
 
-def test_connection(client: SupersetAPIClient) -> None:
+def test_connection(client: Union[SupersetAPIClient, Engine]) -> None:
     """
     Test connection
     """
     try:
-        client.fetch_menu()
+        if isinstance(client, SupersetAPIClient):
+            client.fetch_total_dashboards()
+        else:
+            test_connection_db_common(client)
     except Exception as exc:
         msg = f"Unknown error connecting with {client}: {exc}."
         raise SourceConnectionException(msg)

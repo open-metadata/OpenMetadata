@@ -595,6 +595,7 @@ class SampleDataSource(
                 database_name=db.name.__root__,
                 schema_name=schema.name.__root__,
                 table_name=table_request.name.__root__,
+                skip_es_search=True,
             )
 
             location_fqn = fqn.build(
@@ -1001,19 +1002,22 @@ class SampleDataSource(
                 f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
                 fields=["testSuite", "testDefinition"],
             )
-            for days, result in enumerate(test_case_results["results"]):
-                yield OMetaTestCaseResultsSample(
-                    test_case_results=TestCaseResult(
-                        timestamp=(datetime.now() - timedelta(days=days)).timestamp(),
-                        testCaseStatus=result["testCaseStatus"],
-                        result=result["result"],
-                        testResultValue=[
-                            TestResultValue.parse_obj(res_value)
-                            for res_value in result["testResultValues"]
-                        ],
-                    ),
-                    test_case_name=case.fullyQualifiedName.__root__,
-                )
+            if case:
+                for days, result in enumerate(test_case_results["results"]):
+                    yield OMetaTestCaseResultsSample(
+                        test_case_results=TestCaseResult(
+                            timestamp=(
+                                datetime.now() - timedelta(days=days)
+                            ).timestamp(),
+                            testCaseStatus=result["testCaseStatus"],
+                            result=result["result"],
+                            testResultValue=[
+                                TestResultValue.parse_obj(res_value)
+                                for res_value in result["testResultValues"]
+                            ],
+                        ),
+                        test_case_name=case.fullyQualifiedName.__root__,
+                    )
 
     def close(self):
         pass

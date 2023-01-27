@@ -34,7 +34,9 @@ Queries used to create the dbt models can be viewed in the dbt tab
 <Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-query.png" alt="dbt-query" caption="dbt Query"/>
 
 ### 2. dbt Lineage
-Lineage from dbt models can be viewed in the Lineage tab
+Lineage from dbt models can be viewed in the Lineage tab.
+
+For more information on how lineage is extracted from dbt take a look [here](/connectors/ingestion/workflows/dbt/ingest-dbt-lineage)
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-lineage.png" alt="dbt-lineage" caption="dbt Lineage"/>
 
@@ -63,3 +65,7 @@ By default descriptions from `manifest.json` will be imported. Descriptions from
 Tests from dbt will only be imported if the `run_results.json` file is passed.
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-tests.png" alt="dbt-tests" caption="dbt Tests"/>
+
+## Troubleshooting
+
+For any issues please refer to the troubleshooting documentation [here](/connectors/ingestion/workflows/dbt/dbt-troubleshooting)

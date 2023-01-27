@@ -13,14 +13,8 @@
 
 import { Typography } from 'antd';
 import React from 'react';
+import { HeaderProps } from './PageHeader.interface';
 import './PageHeader.style.less';
-
-interface HeaderProps {
-  data: {
-    header: string;
-    subHeader: string;
-  };
-}
 
 const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
   return (

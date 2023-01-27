@@ -105,6 +105,9 @@ jest.mock('./tabs/AssetsTabs.component', () =>
 jest.mock('components/Glossary/GlossaryTermTab/GlossaryTermTab.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryTermTab</div>)
 );
+jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
+);
 
 const mockProps = {
   assetData: mockedAssetData,
@@ -132,27 +135,19 @@ describe('Test Glossary-term component', () => {
 
     const glossaryTerm = screen.getByTestId('glossary-term');
     const tagsContainer = await screen.findByText(/Tags-container component/i);
-    const description = await screen.findByText(/Description component/i);
     const tabs = await screen.findAllByRole('tab');
 
-    expect(description).toBeInTheDocument();
     expect(
-      await screen.findByText('RelatedTermsComponent')
+      await screen.findByText('GlossaryHeader.component')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText('GlossaryTermSynonymsComponent')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('GlossaryTermReferencesComponent')
-    ).toBeInTheDocument();
-    expect(await screen.findByText('Mocked User')).toBeInTheDocument();
+    expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(tagsContainer).toBeInTheDocument();
     expect(glossaryTerm).toBeInTheDocument();
     expect(tabs).toHaveLength(3);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
-      'label.summary',
-      'label.asset-plural1', // 1 added as its count for assets
       'label.glossary-term-plural',
+      'label.asset-plural1', // 1 added as its count for assets
+      'label.summary',
     ]);
   });
 
@@ -169,7 +164,7 @@ describe('Test Glossary-term component', () => {
     expect(await screen.findByText('AssetsTabs')).toBeInTheDocument();
   });
 
-  it('onClick of glossary term tab, it should render properly', async () => {
+  it('onClick of summary tab, it should render properly', async () => {
     await act(async () => {
       render(<GlossaryTerms {...mockProps} />);
     });
@@ -178,7 +173,16 @@ describe('Test Glossary-term component', () => {
       fireEvent.click(tabs[2]);
     });
 
-    expect(tabs[2].textContent).toStrictEqual('label.glossary-term-plural');
-    expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
+    expect(tabs[2].textContent).toStrictEqual('label.summary');
+
+    expect(
+      await screen.findByText('RelatedTermsComponent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('GlossaryTermSynonymsComponent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('GlossaryTermReferencesComponent')
+    ).toBeInTheDocument();
   });
 });

@@ -20,6 +20,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -286,6 +287,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
 
                     if filter_by_table(
@@ -314,6 +316,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
@@ -347,6 +350,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                             database_name=self.context.database.name.__root__,
                             schema_name=self.context.database_schema.name.__root__,
                             table_name=table_name,
+                            skip_es_search=True,
                         )
                         if filter_by_table(
                             self.config.sourceConfig.config.tableFilterPattern,
@@ -530,7 +534,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected exception to get S3 files from [{bucket_name}]: {exc}"
+                f"Unexpected exception to get S3 file [{key}] from bucket [{bucket_name}]: {exc}"
             )
         return None
 
@@ -565,6 +569,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     )
 
         return cols
+
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass

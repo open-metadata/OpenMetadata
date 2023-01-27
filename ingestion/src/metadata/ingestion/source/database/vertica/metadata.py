@@ -12,7 +12,9 @@
 Vertica source implementation.
 """
 import re
+import traceback
 from textwrap import dedent
+from typing import Iterable
 
 from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
@@ -20,6 +22,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_vertica.base import VerticaDialect
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
@@ -34,8 +37,19 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
+    VERTICA_LIST_DATABASES,
+    VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_table_comment_wrapper,
+)
+
+logger = ingestion_logger()
 
 
 class UUID(String):
@@ -219,9 +233,24 @@ def get_view_definition(
     return None
 
 
+@reflection.cache
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=VERTICA_TABLE_COMMENTS,
+    )
+
+
 VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
 VerticaDialect.get_view_definition = get_view_definition
+VerticaDialect.get_all_table_comments = get_all_table_comments
+VerticaDialect.get_table_comment = get_table_comment
 
 
 class VerticaSource(CommonDbSourceService):
@@ -239,3 +268,38 @@ class VerticaSource(CommonDbSourceService):
                 f"Expected VerticaConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_database_names(self) -> Iterable[str]:
+        configured_db = self.config.serviceConnection.__root__.config.database
+        if configured_db:
+            self.set_inspector(database_name=configured_db)
+            yield configured_db
+        else:
+            results = self.connection.execute(VERTICA_LIST_DATABASES)
+            for res in results:
+                row = list(res)
+                new_database = row[0]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
+
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_database,
+                ):
+                    self.status.filter(database_fqn, "Database Filtered Out")
+                    continue
+
+                try:
+                    self.set_inspector(database_name=new_database)
+                    yield new_database
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error trying to connect to database {new_database}: {exc}"
+                    )

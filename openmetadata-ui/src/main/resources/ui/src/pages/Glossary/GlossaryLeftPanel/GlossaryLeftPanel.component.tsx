@@ -87,11 +87,11 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   return (
     <LeftPanelCard id="glossary">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
-        <Row className="m-t-sm" gutter={[0, 16]}>
+        <Row className="p-y-xs" gutter={[0, 16]}>
           <Col className="p-x-sm" span={24}>
-            <Typography.Paragraph className="m-b-0">
+            <Typography.Text strong className="m-b-0">
               {t('label.glossary')}
-            </Typography.Paragraph>
+            </Typography.Text>
           </Col>
           <Col className="p-x-sm" span={24}>
             <Searchbar
@@ -113,12 +113,10 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                   : t('message.no-permission-for-action')
               }>
               <Button
-                ghost
-                className="w-full flex-center gap-2"
+                className="w-full flex-center gap-2 text-primary"
                 data-testid="add-glossary"
                 disabled={!createGlossaryPermission}
                 icon={<PlusIcon />}
-                type="primary"
                 onClick={handleAddGlossaryClick}>
                 {t('label.add-glossary')}
               </Button>
@@ -139,7 +137,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 {searchTerm ? (
                   <span>
                     {t('message.no-entity-found-for-name', {
-                      entity: t('label.glossary-term'),
+                      entity: t('label.glossary'),
                       name: searchTerm,
                     })}
                   </span>

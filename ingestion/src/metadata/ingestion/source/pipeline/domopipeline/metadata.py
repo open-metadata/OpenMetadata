@@ -17,7 +17,6 @@ from typing import Dict, Iterable, Optional
 
 from pydantic import ValidationError
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -58,10 +57,6 @@ class DomopipelineSource(PipelineServiceSource):
 
     config: WorkflowSource
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.domo_client = DomoClient(self.service_connection)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
@@ -76,7 +71,7 @@ class DomopipelineSource(PipelineServiceSource):
         return pipeline_details["name"]
 
     def get_pipelines_list(self) -> Dict:
-        results = self.domo_client.get_pipelines()
+        results = self.connection.get_pipelines()
         for result in results:
             yield result
 
@@ -131,7 +126,7 @@ class DomopipelineSource(PipelineServiceSource):
             )
             return None
 
-        runs = self.domo_client.get_runs(pipeline_id)
+        runs = self.connection.get_runs(pipeline_id)
         try:
 
             for run in runs or []:
