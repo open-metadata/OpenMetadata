@@ -40,6 +40,7 @@ It is adviced to go through [openmetadata release notes](/deployment/upgrade/ver
 5. This will generate the .sql file which can be used for the backup
     In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
     command output.
+
 ### 1. Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases.
