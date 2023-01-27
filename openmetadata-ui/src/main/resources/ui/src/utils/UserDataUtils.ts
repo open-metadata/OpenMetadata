@@ -153,11 +153,10 @@ export const searchFormattedUsersAndTeams = async (
   try {
     const searchText =
       searchQuery === WILD_CARD_CHAR ? searchQuery : `*${searchQuery}*`;
-    const teamQuery = `${searchText} AND teamType:Group`;
 
     const promises = [
       getSearchedUsers(searchText, from),
-      getSearchedTeams(teamQuery, from),
+      getSearchedTeams(searchText, from, 'teamType:Group'),
     ];
 
     const [resUsers, resTeams] = await Promise.allSettled(promises);

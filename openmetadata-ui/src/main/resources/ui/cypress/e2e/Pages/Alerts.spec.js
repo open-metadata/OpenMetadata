@@ -149,8 +149,8 @@ describe('Alerts page should work properly', () => {
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Applications');
-    cy.get('[title="Applications"]').should('be.visible').click();
+      .type('Marketplace');
+    cy.get('[title="Marketplace"]').should('be.visible').click();
     cy.get('#name').should('be.visible').click();
 
     // Select include/exclude

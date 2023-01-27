@@ -205,9 +205,18 @@ export const getSearchedUsers = (
 export const getSearchedTeams = (
   queryString: string,
   from: number,
+  filter?: string,
   size = 10
 ) => {
-  return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
+  return searchData(
+    queryString,
+    from,
+    size,
+    filter ?? '',
+    '',
+    '',
+    SearchIndex.TEAM
+  );
 };
 
 export const getSearchedUsersAndTeams = async (
