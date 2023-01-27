@@ -46,8 +46,8 @@ public final class CsvUtil {
     List<String> headers = getHeaders(csvFile.getHeaders());
     CSVFormat csvFormat = Builder.create(CSVFormat.DEFAULT).setHeader(headers.toArray(new String[0])).build();
     try (CSVPrinter printer = new CSVPrinter(writer, csvFormat)) {
-      for (List<String> record : listOrEmpty(csvFile.getRecords())) {
-        printer.printRecord(record);
+      for (List<String> recordData : listOrEmpty(csvFile.getRecords())) {
+        printer.printRecord(recordData);
       }
     }
     return writer.toString();
@@ -63,8 +63,8 @@ public final class CsvUtil {
     return headers;
   }
 
-  public static String recordToString(CSVRecord record) {
-    return recordToString(record.toList());
+  public static String recordToString(CSVRecord recordString) {
+    return recordToString(recordString.toList());
   }
 
   public static String recordToString(List<String> fields) {
@@ -98,32 +98,32 @@ public final class CsvUtil {
             .collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
-  public static List<String> addField(List<String> record, String field) {
-    record.add(quoteField(field));
-    return record;
+  public static List<String> addField(List<String> recordData, String field) {
+    recordData.add(quoteField(field));
+    return recordData;
   }
 
-  public static List<String> addFieldList(List<String> record, List<String> field) {
-    record.add(quoteField(field));
-    return record;
+  public static List<String> addFieldList(List<String> recordData, List<String> field) {
+    recordData.add(quoteField(field));
+    return recordData;
   }
 
-  public static List<String> addEntityReferences(List<String> record, List<EntityReference> refs) {
-    record.add(
+  public static List<String> addEntityReferences(List<String> recordData, List<EntityReference> refs) {
+    recordData.add(
         nullOrEmpty(refs)
             ? null
             : refs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.joining(FIELD_SEPARATOR)));
-    return record;
+    return recordData;
   }
 
-  public static List<String> addEntityReference(List<String> record, EntityReference ref) {
-    record.add(nullOrEmpty(ref) ? null : quoteField(ref.getFullyQualifiedName()));
-    return record;
+  public static List<String> addEntityReference(List<String> recordData, EntityReference ref) {
+    recordData.add(nullOrEmpty(ref) ? null : quoteField(ref.getFullyQualifiedName()));
+    return recordData;
   }
 
-  public static List<String> addTagLabels(List<String> record, List<TagLabel> tags) {
-    record.add(
+  public static List<String> addTagLabels(List<String> recordData, List<TagLabel> tags) {
+    recordData.add(
         nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
-    return record;
+    return recordData;
   }
 }
