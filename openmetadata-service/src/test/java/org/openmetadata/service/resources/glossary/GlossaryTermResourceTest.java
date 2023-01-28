@@ -195,7 +195,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Apply each of the tag to a table
     TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable createTable = tableResourceTest.createRequest(getEntityName(test)).withTags(toTagLabels(a, aa, aaa));
+    CreateTable createTable =
+        tableResourceTest.createRequest(tableResourceTest.getEntityName(test)).withTags(toTagLabels(a, aa, aaa));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Ensure prefix based tagLabel doesn't double count due too common prefix
