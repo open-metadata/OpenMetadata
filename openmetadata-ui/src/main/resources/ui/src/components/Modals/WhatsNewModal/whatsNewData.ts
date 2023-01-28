@@ -638,7 +638,27 @@ export const WHATS_NEW = [
     id: 12,
     version: 'v0.13.2',
     description: 'Released on 30 January 2023.',
-    features: [],
+    features: [
+      {
+        title: 'Glossary Export',
+        description: 'You can now export your Glossary data as a CSV file.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/ImlcPNFotec',
+      },
+      {
+        title: 'Glossary Bulk Upload',
+        description:
+          'you can now bulk upload terms to a Glossary by adding their details in a CSV file.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/DnFXkg7SgIA',
+      },
+      {
+        title: 'Mutually Exclusive Tags',
+        description: `When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive. If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/_AsfZctGYJU',
+      },
+    ],
     changeLogs: {
       'Improved SQL Lineage': `- We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
     to improve the parsing capabilities of *sqllineage*. We'll continue to collaborate to ship further improvements in new releases.`,
