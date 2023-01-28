@@ -73,7 +73,7 @@ export const getClassificationByName = async (
 
 export const deleteClassification = async (classificationId: string) => {
   const response = await APIClient.delete<Classification>(
-    `/classifications/${classificationId}`
+    `/classifications/${classificationId}?recursive=true&hardDelete=true`
   );
 
   return response.data;

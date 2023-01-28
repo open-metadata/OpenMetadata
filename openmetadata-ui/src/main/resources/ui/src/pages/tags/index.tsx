@@ -33,7 +33,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import FormModal from 'components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -42,6 +42,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
+import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData } from 'Models';
@@ -75,6 +76,7 @@ import { Paging } from '../../generated/type/paging';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityDeleteMessage,
   getEntityName,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -137,6 +139,9 @@ const TagsPage = () => {
         permissions
       ),
     [permissions]
+  );
+  const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
+    LOADING_STATE.INITIAL
   );
 
   const createTagPermission = useMemo(
@@ -333,7 +338,7 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           setIsLoading(true);
-
+          setDeleteStatus(LOADING_STATE.SUCCESS);
           setClassifications((classifications) => {
             const updatedClassification = classifications.filter(
               (data) => data.id !== classificationId
@@ -360,6 +365,7 @@ const TagsPage = () => {
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
         setIsLoading(false);
+        setDeleteStatus(LOADING_STATE.INITIAL);
       });
   };
 
@@ -373,6 +379,7 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           if (currentClassification) {
+            setDeleteStatus(LOADING_STATE.SUCCESS);
             setCurrentClassification({
               ...currentClassification,
             });
@@ -384,13 +391,17 @@ const TagsPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(err, t('server.delete-tag-error'));
       })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
+      .finally(() => {
+        setDeleteTags({ data: undefined, state: false });
+        setDeleteStatus(LOADING_STATE.INITIAL);
+      });
   };
 
   /**
    * It redirects to respective function call based on tag/Classification
    */
   const handleConfirmClick = () => {
+    setDeleteStatus(LOADING_STATE.WAITING);
     if (deleteTags.data?.isCategory) {
       deleteClassificationById(deleteTags.data.id as string);
     } else {
@@ -981,20 +992,12 @@ const TagsPage = () => {
               }}
               onSave={(data) => createPrimaryTag(data as Classification)}
             />
-            <ConfirmationModal
-              bodyText={t('message.are-you-sure-delete-tag', {
-                type: deleteTags.data?.isCategory
-                  ? t('label.classification-lowercase')
-                  : t('label.tag-lowercase'),
-                tagName: deleteTags.data?.name,
-              })}
-              cancelText={t('label.cancel')}
-              confirmText={t('label.confirm')}
-              header={t('label.delete-entity', {
-                entity: deleteTags.data?.isCategory
-                  ? t('label.classification')
-                  : t('label.tag'),
-              })}
+
+            <EntityDeleteModal
+              bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+              entityName={deleteTags.data?.name ?? ''}
+              entityType={t('label.classification')}
+              loadingState={deleteStatus}
               visible={deleteTags.state}
               onCancel={() => setDeleteTags({ data: undefined, state: false })}
               onConfirm={handleConfirmClick}
