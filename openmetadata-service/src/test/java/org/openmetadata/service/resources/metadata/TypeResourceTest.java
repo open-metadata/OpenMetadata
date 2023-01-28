@@ -60,8 +60,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
     supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
-    // Special characters are not supported in the name
-    supportedNameCharacters = supportedNameCharacters.replaceAll("[ ':&/.]", "");
+    supportedNameCharacters = "_"; // No other special characters allowed
   }
 
   public void setupTypes() throws HttpResponseException {

@@ -181,14 +181,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
-  protected String supportedNameCharacters = ".' _"; // Special characters supported in the entity name
+  protected String supportedNameCharacters = "_'-.&"; // Special characters supported in the entity name
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
   public static final String ENTITY_LINK_MATCH_ERROR =
-      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$\"]";
+      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$\"]";
 
   // Users
   public static User USER1;
@@ -281,7 +281,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static KpiTarget KPI_TARGET;
 
-  public static final String C1 = "c'_+ 1";
+  public static final String C1 = "c'_+# 1";
   public static final String C2 = "c2";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
@@ -1624,11 +1624,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected final WebTarget getFollowersCollection(UUID id) {
-    return getResource(collectionName + "/" + id + "/followers");
+    return getResource(id).path("followers");
   }
 
   protected final WebTarget getFollowerResource(UUID id, UUID userId) {
-    return getResource(collectionName + "/" + id + "/followers/" + userId);
+    return getFollowersCollection(id).path("/" + userId);
   }
 
   protected final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
