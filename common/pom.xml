@@ -22,7 +22,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <properties>
-    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>2.1.4-1</dropwizard.swagger.version>
   </properties>
 
   <artifactId>common</artifactId>

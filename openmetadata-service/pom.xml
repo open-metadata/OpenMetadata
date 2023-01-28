@@ -17,7 +17,7 @@
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.17.6</org.testcontainers.version>
-    <awssdk.version>2.19.7</awssdk.version>
+    <awssdk.version>2.19.26</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
   </properties>
 
