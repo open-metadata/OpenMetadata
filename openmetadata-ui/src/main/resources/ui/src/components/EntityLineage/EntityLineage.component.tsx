@@ -33,6 +33,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactFlow, {
   addEdge,
   Background,
@@ -80,7 +81,6 @@ import {
   getAllTracedNodes,
   getClassifiedEdge,
   getColumnType,
-  getDataLabel,
   getDeletedLineagePlaceholder,
   getEdgeStyle,
   getEdgeType,
@@ -145,6 +145,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   hasEditAccess,
   onExitFullScreenViewClick,
 }: EntityLineageProp) => {
+  const { t } = useTranslation();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -494,11 +495,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          `Error while fetching ${getDataLabel(
-            expandNode.displayName,
-            expandNode.name,
-            true
-          )} columns`
+          t('server.entity-details-fetch-error', {
+            entityName: expandNode.displayName ?? expandNode.name,
+            entityType: t('label.column-plural'),
+          })
         );
       }
     }
