@@ -187,7 +187,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         required_manifest_keys = [
             "name",
             "schema",
-            "database",
             "resource_type",
         ]
         required_catalog_keys = ["name", "type", "index"]
@@ -327,11 +326,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         logger.info(f"Skipping DBT node: {key}.")
                         continue
 
-                    model_name = (
-                        manifest_node["alias"]
-                        if "alias" in manifest_node.keys()
-                        else manifest_node["name"]
-                    )
+                    model_name = manifest_node.get("alias", manifest_node["name"])
+
                     logger.info(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
@@ -359,16 +355,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
-                            database_name=(
-                                manifest_node["database"]
-                                if manifest_node["database"]
-                                else "default"
-                            ),
-                            schema_name=(
-                                manifest_node["schema"]
-                                if manifest_node["schema"]
-                                else "default"
-                            ),
+                            database_name=manifest_node.get("database", "default"),
+                            schema_name=manifest_node.get("schema", "default"),
                             table_name=model_name,
                         ),
                         datamodel=DataModel(
@@ -410,12 +398,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=parent_node["database"]
-                        if parent_node["database"]
-                        else "default",
-                        schema_name=parent_node["schema"]
-                        if parent_node["schema"]
-                        else "default",
+                        database_name=parent_node.get("database", "default"),
+                        schema_name=parent_node.get("schema", "default"),
                         table_name=parent_node["name"],
                     ).lower()
                     if parent_fqn:
