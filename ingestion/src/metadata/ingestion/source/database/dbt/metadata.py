@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -79,6 +80,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+class InvalidServiceException(Exception):
+    """
+    The service passed in config is not found
+    """
+
+
 class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
     """
     Class defines method to extract metadata from DBT
@@ -113,6 +120,13 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         """
         By default for DBT nothing is required to be prepared
         """
+        database_service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=self.config.serviceName
+        )
+        if not database_service:
+            raise InvalidServiceException(
+                f"Service with name {self.config.serviceName} not found"
+            )
 
     def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """
