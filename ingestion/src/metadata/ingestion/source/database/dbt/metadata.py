@@ -348,6 +348,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = self.get_dbt_raw_query(manifest_node)
 
+                    datamodel_path = None
+                    if manifest_node.get("root_path") and manifest_node.get(
+                        "original_file_path"
+                    ):
+                        datamodel_path = f"{manifest_node['root_path']}/{manifest_node['original_file_path']}"
+
                     data_model_link = DataModelLink(
                         fqn=fqn.build(
                             self.metadata,
@@ -368,10 +374,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         datamodel=DataModel(
                             modelType=ModelType.DBT,
                             description=manifest_node.get("description"),
-                            path=f"{manifest_node['root_path']}/{manifest_node['original_file_path']}"
-                            if manifest_node.get("root_path")
-                            and manifest_node.get("original_file_path")
-                            else None,
+                            path=datamodel_path,
                             rawSql=dbt_raw_query if dbt_raw_query else "",
                             sql=dbt_compiled_query if dbt_compiled_query else "",
                             columns=self.parse_data_model_columns(
