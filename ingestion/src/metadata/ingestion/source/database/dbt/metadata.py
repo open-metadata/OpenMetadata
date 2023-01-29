@@ -83,7 +83,7 @@ logger = ingestion_logger()
 # Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
 REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 
-# Base on https://schemas.getdbt.com/dbt/catalog/v1.json
+# Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
 
 
