@@ -417,7 +417,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         schema_name=parent_node.schema_
                         if parent_node.schema_
                         else "default",
-                        table_name=parent_node.name,
+                        table_name=table_name,
                     ).lower()
                     if parent_fqn:
                         upstream_nodes.append(parent_fqn)
@@ -639,12 +639,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         try:
             manifest_node = dbt_test.get("manifest_node")
             if manifest_node:
-                test_name = manifest_node.name
                 logger.info(
-                    f"Processing DBT Tests Suite Definition for node: {test_name}"
+                    f"Processing DBT Tests Suite Definition for node: {manifest_node.name}"
                 )
                 check_test_definition_exists = self.metadata.get_by_name(
-                    fqn=test_name,
+                    fqn=manifest_node.name,
                     entity=TestDefinition,
                 )
                 if not check_test_definition_exists:
@@ -654,7 +653,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     else:
                         entity_type = EntityType.TABLE
                     yield CreateTestDefinitionRequest(
-                        name=test_name,
+                        name=manifest_node.name,
                         description=manifest_node.description,
                         entityType=entity_type,
                         testPlatforms=[TestPlatform.DBT],
@@ -673,9 +672,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         try:
             manifest_node = dbt_test.get("manifest_node")
             if manifest_node:
-                test_name = manifest_node.name
                 logger.info(
-                    f"Processing DBT Test Case Definition for node: {test_name}"
+                    f"Processing DBT Test Case Definition for node: {manifest_node.name}"
                 )
                 entity_link_list = self.generate_entity_link(dbt_test)
                 for entity_link in entity_link_list:
@@ -683,11 +681,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         "test_suite_name", "DBT_TEST_SUITE"
                     )
                     yield CreateTestCaseRequest(
-                        name=test_name,
+                        name=manifest_node.name,
                         description=manifest_node.description,
                         testDefinition=EntityReference(
                             id=self.metadata.get_by_name(
-                                fqn=test_name,
+                                fqn=manifest_node.name,
                                 entity=TestDefinition,
                             ).id.__root__,
                             type="testDefinition",
@@ -705,7 +703,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to parse the node {test_name} to capture tests {err}")
+            logger.error(
+                f"Failed to parse the node {manifest_node.name} to capture tests {err}"
+            )
 
     def update_dbt_test_result(self, dbt_test: dict):
         """
@@ -715,8 +715,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             # Process the Test Status
             manifest_node = dbt_test.get("manifest_node")
             if manifest_node:
-                test_name = manifest_node.name
-                logger.info(f"Processing DBT Test Case Results for node: {test_name}")
+                logger.info(
+                    f"Processing DBT Test Case Results for node: {manifest_node.name}"
+                )
                 dbt_test_result = dbt_test.get("results")
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
@@ -760,7 +761,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
                         column_name=manifest_node.column_name,
-                        test_case_name=test_name,
+                        test_case_name=manifest_node.name,
                     )
                     self.metadata.add_test_case_results(
                         test_results=test_case_result,
@@ -768,7 +769,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed capture tests results for node: {test_name} {err}")
+            logger.error(
+                f"Failed capture tests results for node: {manifest_node.name} {err}"
+            )
 
     def create_test_case_parameter_definitions(self, dbt_test):
         test_case_param_definition = [
@@ -811,7 +814,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
     def get_dbt_compiled_query(self, mnode) -> Optional[str]:
         if hasattr(mnode, "compiled_code") and mnode.compiled_code:
             return mnode.compiled_code
-        elif hasattr(mnode, "compiled_sql") and mnode.compiled_sql:
+        if hasattr(mnode, "compiled_sql") and mnode.compiled_sql:
             return mnode.compiled_sql
         logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
         return None
@@ -819,7 +822,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
     def get_dbt_raw_query(self, mnode) -> Optional[str]:
         if hasattr(mnode, "raw_code") and mnode.raw_code:
             return mnode.raw_code
-        elif hasattr(mnode, "raw_sql") and mnode.raw_sql:
+        if hasattr(mnode, "raw_sql") and mnode.raw_sql:
             return mnode.raw_sql
         logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
         return None
