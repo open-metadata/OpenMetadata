@@ -123,7 +123,12 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
         "dagster_graphql~=1.1",
     },
-    "dbt": {"google-cloud", VERSIONS["boto3"], VERSIONS["google-cloud-storage"]},
+    "dbt": {
+        "google-cloud",
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        "dbt-artifacts-parser",
+    },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
