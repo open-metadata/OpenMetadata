@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -307,6 +308,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
+  void testGlossaryCsvDocumentation() throws HttpResponseException {
+    assertEquals(GlossaryCsv.DOCUMENTATION, getCsvDocumentation());
+  }
+
+  @Test
   void testGlossaryImportInvalidCsv() throws IOException {
     String glossaryName = "invalidCsv";
     createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
@@ -379,6 +385,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Finally, export CSV and ensure the exported CSV is same as imported CSV
     String exportedCsv = exportCsv(glossaryName);
     assertEquals(csv, exportedCsv);
+  }
+
+  private CsvDocumentation getCsvDocumentation() throws HttpResponseException {
+    WebTarget target = getCollection().path("/documentation/csv");
+    return TestUtils.get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
   }
 
   private CsvImportResult importCsv(String glossaryName, String csv, boolean dryRun) throws HttpResponseException {
