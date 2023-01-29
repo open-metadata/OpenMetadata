@@ -160,7 +160,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public MlModel get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -188,11 +188,12 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
             responseCode = "200",
             description = "The model",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
-        @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Model for instance {fqn} is not found")
       })
   public MlModel getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of ML Model", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -241,7 +242,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -292,7 +293,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
@@ -314,14 +315,12 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the model", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId)
+          UUID userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @GET
@@ -340,7 +339,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -364,7 +363,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public MlModel getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "ML Model version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -392,7 +391,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
@@ -415,7 +414,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the ML model", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
