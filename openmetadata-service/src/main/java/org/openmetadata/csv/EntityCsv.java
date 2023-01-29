@@ -30,15 +30,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -46,6 +49,8 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.csv.CsvImportResult.Status;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 /**
@@ -53,6 +58,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
  * provide entity specific processing functionality to export an entity to a CSV record, and import an entity from a CSV
  * record.
  */
+@Slf4j
 public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_STATUS_HEADER = "status";
   public static final String IMPORT_STATUS_DETAILS = "details";
@@ -118,6 +124,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     csvFile.withRecords(records);
     return CsvUtil.formatCsv(csvFile);
+  }
+
+  public static CsvDocumentation getCsvDocumentation(String entityType) {
+    LOG.info("Initializing CSV documentation for entity {}", entityType);
+    String path = String.format(".*json/data/%s/%sCsvDocumentation.json$", entityType, entityType);
+    try {
+      List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
+      String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+      return JsonUtils.readValue(json, CsvDocumentation.class);
+    } catch (IOException e) {
+      LOG.error("FATAL - Failed to load CSV documentation for entity {} from the path {}", entityType, path);
+    }
+    return null;
   }
 
   /** Implement this method to turn an entity into a list of fields */
