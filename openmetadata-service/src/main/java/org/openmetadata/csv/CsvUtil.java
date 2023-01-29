@@ -20,6 +20,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
@@ -58,7 +59,7 @@ public final class CsvUtil {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {
       String headerString = header.getRequired() ? String.format("%s*", header.getName()) : header.getName();
-      headers.add(quoteField(headerString));
+      headers.add(headerString);
     }
     return headers;
   }
@@ -68,11 +69,13 @@ public final class CsvUtil {
   }
 
   public static String recordToString(List<String> fields) {
-    return String.join(SEPARATOR, fields);
+    return nullOrEmpty(fields)
+        ? ""
+        : fields.stream().map(str -> str.contains(SEPARATOR) ? quote(str) : str).collect(Collectors.joining(SEPARATOR));
   }
 
   public static String recordToString(String[] fields) {
-    return String.join(SEPARATOR, fields);
+    return recordToString(Arrays.asList(fields));
   }
 
   public static List<String> fieldToStrings(String field) {
@@ -84,11 +87,6 @@ public final class CsvUtil {
     return String.format("\"%s\"", field);
   }
 
-  /** Quote a CSV field that has SEPARATOR with " " */
-  public static String quoteField(String field) {
-    return field == null ? "" : field.contains(SEPARATOR) ? quote(field) : field;
-  }
-
   /** Quote a CSV field made of multiple strings that has SEPARATOR or FIELD_SEPARATOR with " " */
   public static String quoteField(List<String> field) {
     return nullOrEmpty(field)
@@ -98,8 +96,15 @@ public final class CsvUtil {
             .collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
+  public static List<String> addField(List<String> record, Boolean field) {
+    if (field != null) {
+      record.add(field.toString());
+    }
+    return record;
+  }
+
   public static List<String> addField(List<String> record, String field) {
-    record.add(quoteField(field));
+    record.add(field);
     return record;
   }
 
@@ -117,7 +122,7 @@ public final class CsvUtil {
   }
 
   public static List<String> addEntityReference(List<String> record, EntityReference ref) {
-    record.add(nullOrEmpty(ref) ? null : quoteField(ref.getFullyQualifiedName()));
+    record.add(nullOrEmpty(ref) ? null : ref.getFullyQualifiedName());
     return record;
   }
 

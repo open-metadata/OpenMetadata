@@ -142,6 +142,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return glossaryCsv.importCsv(csv, dryRun);
   }
 
+  private List<EntityReference> getReviewers(Glossary entity) throws IOException {
+    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+  }
+
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.GLOSSARY);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
@@ -228,11 +233,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               .map(termReference -> termReference.getName() + CsvUtil.FIELD_SEPARATOR + termReference.getEndpoint())
               .collect(Collectors.joining(";"));
     }
-  }
-
-  private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   /** Handles entity updated from PUT and POST operation. */
