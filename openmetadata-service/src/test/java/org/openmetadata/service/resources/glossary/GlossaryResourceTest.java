@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -53,7 +52,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -66,8 +64,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.csv.CsvDocumentation;
-import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -308,12 +304,12 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
-  void testGlossaryCsvDocumentation() throws HttpResponseException {
+  void testCsvDocumentation() throws HttpResponseException {
     assertEquals(GlossaryCsv.DOCUMENTATION, getCsvDocumentation());
   }
 
   @Test
-  void testGlossaryImportInvalidCsv() throws IOException {
+  void testImportInvalidCsv() throws IOException {
     String glossaryName = "invalidCsv";
     createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
 
@@ -327,80 +323,36 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid tags field
-    record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1";
+    record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(7, "Tag.invalidTag"))};
     assertRows(result, expectedRows);
   }
 
   @Test
   void testGlossaryImportExport() throws IOException {
-    String glossaryName = "importExportTest";
-    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+    Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
 
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags"
     // Create two records
     List<String> createRecords =
         listOf(
-            ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1",
-            ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2");
-    importCsvAndValidate(glossaryName, GlossaryCsv.HEADERS, createRecords, null); // Dry run
+            ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1",
+            ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2",
+            "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,");
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1",
-            ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2");
-    importCsvAndValidate(glossaryName, GlossaryCsv.HEADERS, null, updateRecords);
+            ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2",
+            "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,");
 
     // Add new row to existing rows
-    createRecords = listOf(",g0,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3");
-    importCsvAndValidate(glossaryName, GlossaryCsv.HEADERS, createRecords, updateRecords);
-  }
-
-  private void importCsvAndValidate(
-      String glossaryName, List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords)
-      throws HttpResponseException {
-    createRecords = listOrEmpty(createRecords);
-    updateRecords = listOrEmpty(updateRecords);
-
-    // Import CSV with dryRun=true first
-    String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
-    CsvImportResult dryRunResult = importCsv(glossaryName, csv, true);
-
-    // Validate the import result summary
-    int totalRows = 1 + createRecords.size() + updateRecords.size();
-    assertSummary(dryRunResult, CsvImportResult.Status.SUCCESS, totalRows, totalRows, 0);
-
-    // Validate the import result CSV
-    String resultsCsv = EntityCsvTest.createCsvResult(csvHeaders, createRecords, updateRecords);
-    assertEquals(resultsCsv, dryRunResult.getImportResultsCsv());
-
-    // Import CSV with dryRun=false to import the data
-    CsvImportResult result = importCsv(glossaryName, csv, false);
-    assertEquals(dryRunResult.withDryRun(false), result);
-
-    // Finally, export CSV and ensure the exported CSV is same as imported CSV
-    String exportedCsv = exportCsv(glossaryName);
-    assertEquals(csv, exportedCsv);
-  }
-
-  private CsvDocumentation getCsvDocumentation() throws HttpResponseException {
-    WebTarget target = getCollection().path("/documentation/csv");
-    return TestUtils.get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
-  }
-
-  private CsvImportResult importCsv(String glossaryName, String csv, boolean dryRun) throws HttpResponseException {
-    WebTarget target = getResourceByName(glossaryName).path("/import");
-    target = !dryRun ? target.queryParam("dryRun", false) : target;
-    return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
-  }
-
-  private String exportCsv(String glossaryName) throws HttpResponseException {
-    WebTarget target = getResourceByName(glossaryName).path("/export");
-    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3");
+    testImportExport(glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }
 
   private void copyGlossaryTerm(GlossaryTerm from, GlossaryTerm to) {

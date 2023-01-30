@@ -64,22 +64,22 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_STATUS_DETAILS = "details";
   public static final String IMPORT_STATUS_SUCCESS = "success";
   public static final String IMPORT_STATUS_FAILED = "failure";
+  public static final String ENTITY_CREATED = "Entity created";
+  public static final String ENTITY_UPDATED = "Entity updated";
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
   private final CsvImportResult importResult = new CsvImportResult();
   protected boolean processRecord; // When set to false record processing is discontinued
-  public static final String ENTITY_CREATED = "Entity created";
-  public static final String ENTITY_UPDATED = "Entity updated";
-  private final Map<String, T> dryRunCreatedEntities = new HashMap<>();
-  private final String user;
+  protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
+  private final String importedBy;
 
-  protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String user) {
+  protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String importedBy) {
     this.entityType = entityType;
     this.csvHeaders = csvHeaders;
-    this.user = user;
+    this.importedBy = importedBy;
   }
 
-  // Import entities from the CSV file
+  /** Import entities from a CSV file */
   public final CsvImportResult importCsv(String csv, boolean dryRun) throws IOException {
     importResult.withDryRun(dryRun);
     StringWriter writer = new StringWriter();
@@ -94,7 +94,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return importResult; // Error during parsing
     }
 
-    // Validate headers
+    // First record is CSV header - Validate headers
     List<String> expectedHeaders = CsvUtil.getHeaders(csvHeaders);
     if (!validateHeaders(expectedHeaders, records.next())) {
       return importResult;
@@ -113,7 +113,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return importResult;
   }
 
-  /** Implement this method to validate each record */
+  /** Implement this method to a CSV record and turn it into an entity */
   protected abstract T toEntity(CSVPrinter resultsPrinter, CSVRecord record) throws IOException;
 
   public final String exportCsv(List<T> entities) throws IOException {
@@ -139,8 +139,36 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return null;
   }
 
-  /** Implement this method to turn an entity into a list of fields */
+  /** Implement this method to export an entity into a list of fields to create a CSV record */
   protected abstract List<String> toRecord(T entity);
+
+  /** Owner field is in entityType;entityName format */
+  public EntityReference getOwner(CSVPrinter printer, CSVRecord record, int fieldNumber) throws IOException {
+    List<String> list = CsvUtil.fieldToStrings(record.get(fieldNumber));
+    if (list == null) {
+      return null;
+    }
+    if (list.size() != 2) {
+      importFailure(printer, invalidOwner(fieldNumber), record);
+    }
+    return getEntityReference(printer, record, fieldNumber, list.get(0), list.get(1));
+  }
+
+  protected final Boolean getBoolean(CSVPrinter printer, CSVRecord record, int fieldNumber) throws IOException {
+    String field = record.get(fieldNumber);
+    if (nullOrEmpty(field)) {
+      return null;
+    }
+    if (field.equals(Boolean.TRUE.toString())) {
+      return true;
+    }
+    if (field.equals(Boolean.FALSE.toString())) {
+      return false;
+    }
+    importFailure(printer, invalidBoolean(fieldNumber, field), record);
+    processRecord = false;
+    return false;
+  }
 
   protected final EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord record, int fieldNumber, String entityType) throws IOException {
@@ -148,7 +176,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getEntityReference(printer, record, fieldNumber, entityType, fqn);
   }
 
-  private EntityInterface getEntity(String entityType, String fqn) {
+  protected EntityInterface getEntityByName(String entityType, String fqn) {
     EntityInterface entity = entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
     if (entity == null) {
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
@@ -162,7 +190,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (nullOrEmpty(fqn)) {
       return null;
     }
-    EntityInterface entity = getEntity(entityType, fqn);
+    EntityInterface entity = getEntityByName(entityType, fqn);
     if (entity == null) {
       importFailure(printer, entityNotFound(fieldNumber, fqn), record);
       processRecord = false;
@@ -275,7 +303,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   private void createEntity(CSVPrinter resultsPrinter, CSVRecord record, T entity) throws IOException {
     entity.setId(UUID.randomUUID());
-    entity.setUpdatedBy(user);
+    entity.setUpdatedBy(importedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
     EntityRepository<EntityInterface> repository = Entity.getEntityRepository(entityType);
     Response.Status responseStatus;
@@ -329,6 +357,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   public static String entityNotFound(int field, String fqn) {
     String error = String.format("Entity %s not found", fqn);
+    return String.format("#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidOwner(int field) {
+    String error = "Owner should be of format user;userName or team;teamName";
+    return String.format("#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidBoolean(int field, String fieldValue) {
+    String error = String.format("Field %s should be either 'true' of 'false'", fieldValue);
     return String.format("#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
