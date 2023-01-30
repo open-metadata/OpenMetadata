@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
 import { ServiceTypes } from 'Models';
+import i18n from 'utils/i18next/LocalUtil';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.svg';
@@ -200,23 +200,23 @@ export const SERVICE_CATEGORY_TYPE = {
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
-  databaseServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.database'),
+  databaseServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.database'),
   }),
-  messagingServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.messaging'),
+  messagingServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.messaging'),
   }),
-  dashboardServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.dashboard'),
+  dashboardServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.dashboard'),
   }),
-  pipelineServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.pipeline'),
+  pipelineServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.pipeline'),
   }),
-  mlmodelServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.ml-model'),
+  mlmodelServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.ml-model'),
   }),
-  metadataServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.metadata'),
+  metadataServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.metadata'),
   }),
 };
 
