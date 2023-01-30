@@ -20,6 +20,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import { getVersion } from 'rest/miscAPI';
+import { extractDetailsFromToken } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
 import {
   getExplorePathWithSearch,
@@ -335,6 +336,27 @@ const Appbar: React.FC = (): JSX.Element => {
       }
     }
   }, [appState.userDetails, isAuthDisabled]);
+
+  useEffect(() => {
+    const handleDocumentVisibilityChange = () => {
+      if (
+        isProtectedRoute(location.pathname) &&
+        isTourRoute(location.pathname)
+      ) {
+        return;
+      }
+      const { isExpired } = extractDetailsFromToken();
+      if (!document.hidden && isExpired) {
+        onLogoutHandler();
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, []);
 
   return (
     <>
