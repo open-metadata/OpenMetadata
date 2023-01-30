@@ -190,7 +190,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t12, t2, t21, t22);
     Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
-        tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(listOf(column));
+        tableResourceTest
+            .createRequest(tableResourceTest.getEntityName(test))
+            .withTags(tagLabels)
+            .withColumns(listOf(column));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     //
@@ -247,7 +250,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t111, t12, t121, t13, t131, t2, t21, t211, h1, h11, h111);
     Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
-        tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(listOf(column));
+        tableResourceTest
+            .createRequest(tableResourceTest.getEntityName(test))
+            .withTags(tagLabels)
+            .withColumns(listOf(column));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     Object[][] scenarios = {
@@ -376,13 +382,13 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   private CsvImportResult importCsv(String glossaryName, String csv, boolean dryRun) throws HttpResponseException {
-    WebTarget target = getResourceByName(glossaryName + "/import");
+    WebTarget target = getResourceByName(glossaryName).path("/import");
     target = !dryRun ? target.queryParam("dryRun", false) : target;
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
   private String exportCsv(String glossaryName) throws HttpResponseException {
-    WebTarget target = getResourceByName(glossaryName + "/export");
+    WebTarget target = getResourceByName(glossaryName).path("/export");
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
