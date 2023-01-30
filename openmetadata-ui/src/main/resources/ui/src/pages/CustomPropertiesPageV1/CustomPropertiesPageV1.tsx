@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import { Button } from 'components/buttons/Button/Button';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
@@ -28,6 +27,7 @@ import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
 import {
@@ -47,6 +47,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: string }>();
   const history = useHistory();
 
@@ -216,15 +217,23 @@ const CustomEntityDetailV1 = () => {
               <ErrorPlaceHolder
                 buttons={
                   <Tooltip
-                    title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-                    <ButtonAntd
+                    title={
+                      editPermission
+                        ? t('label.add-custom-entity-property', {
+                            entity: getCustomPageHeader().header,
+                          })
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
                       ghost
                       data-testid="add-field-button"
                       disabled={!editPermission}
                       type="primary"
                       onClick={() => handleAddProperty()}>
-                      Add Property
-                    </ButtonAntd>
+                      {t('label.add-entity', {
+                        entity: t('label.property'),
+                      })}
+                    </Button>
                   </Tooltip>
                 }
                 dataTestId="custom-properties-no-data"
@@ -237,15 +246,24 @@ const CustomEntityDetailV1 = () => {
             <div data-testid="entity-custom-fields">
               <div className="flex justify-end">
                 <Tooltip
-                  title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                  placement="topRight"
+                  title={
+                    editPermission
+                      ? t('label.add-custom-entity-property', {
+                          entity: getCustomPageHeader().header,
+                        })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     className="m-b-md p-y-xss p-x-xs rounded-4"
                     data-testid="add-field-button"
                     disabled={!editPermission}
-                    size="custom"
-                    theme="primary"
+                    size="middle"
+                    type="primary"
                     onClick={() => handleAddProperty()}>
-                    Add Property
+                    {t('label.add-entity', {
+                      entity: t('label.property'),
+                    })}
                   </Button>
                 </Tooltip>
               </div>
