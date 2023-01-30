@@ -1,84 +1,75 @@
 {
-  "summary": "Documentation for CSV file used for importing and exporting teams. Note that the order of team creation must ensure, any team referenced in a row (as parent team) must already exist or created in earlier rows in the CSV file.",
+  "summary": "Documentation for CSV file used for importing and exporting users under a team. Users can be imported to any team that is children of the team for which CSV is imported for.",
   "headers": [
     {
       "name": "name",
       "required": true,
-      "description": "The name of the team being created.",
+      "description": "The name of the user being created. This is same as the login name.",
       "examples": [
-        "`Marketing Team`",
-        "`Data Team`"
+        "`john`",
+        "`adam.smith`"
       ]
     },
     {
       "name": "displayName",
       "required": false,
-      "description": "Display name for the team.",
+      "description": "Display name for the user.",
       "examples": [
-        "`Marketing Team`",
-        "`Data Team`"
+        "`John`",
+        "`Adam Smith`"
       ]
     },
     {
       "name": "description",
       "required": false,
-      "description": "Description for the team in markdown format.",
+      "description": "Description for the user in markdown format.",
       "examples": [
-        "`Data Team` is responsible for creating curated data assets."
+        "`John` is a Data Scientist."
       ]
     },
     {
-      "name": "teamType",
+      "name": "email",
       "required": true,
-      "description": "Type of the team.",
+      "description": "Email address of the user.",
       "examples": [
-        "One of `Group`, `Department`, `Division`, `BusinessUnit`",
-        "When set to empty `\"\"`, the default value is `Group`"
+        "`john@company.com`"
       ]
     },
     {
-      "name": "parents",
+      "name": "timezone",
+      "required": false,
+      "description": "The timezone of the user.",
+      "examples": [
+        "`America/Los_Angeles`",
+        "`Brazil/East`"
+      ]
+    },
+    {
+      "name": "isAdmin",
+      "required": false,
+      "description": "Set true if the user is an Admin. Default - false",
+      "examples": [
+        "`true` or `false`",
+        "\"\" will use default value `false`"
+      ]
+    },
+    {
+      "name": "teams",
       "required": true,
-      "description": "The parent teams to which this team being created belongs to.",
+      "description": "Teams the user belongs to. For multiple teams, provide team names separated by ';'",
       "examples": [
-        "`Engineering Team` could be parent of `Data Team`"
+        "Marketing team",
+        "Marketing team;Finance team"
       ]
     },
     {
-      "name": "Owner",
+      "name": "Roles",
       "required": false,
-      "description": "Name of the user that is owner/administrator/manager of this team.",
-      "examples": [
-        "`jonn`, `adam.smith`, or `\"\"`"
-      ]
-    },
-    {
-      "name": "isJoinable",
-      "required": false,
-      "description": "When true, team is open for any user to join. Default value is `true`.",
-      "examples": [
-        "`true`, or `false`",
-        "When set to empty `\"\"`, the default value is `false`."
-      ]
-    },
-    {
-      "name": "defaultRoles",
-      "required": false,
-      "description": "Roles that are inherited by all the member users of the team. Multiple roles are separated by ';'.",
+      "description": "Roles that are assigned to a user.",
       "examples": [
         "`Data consumer`",
         "`Data consumer;Data steward`",
-        "`\"\" for no default role`"
-      ]
-    },
-    {
-      "name": "policies",
-      "required": false,
-      "description": "List of policies at the team level that applies to all it's members.",
-      "examples": [
-        "`No owner policy`",
-        "`Org policy;No owner policy`",
-        "`\"\" for no policies`"
+        "`\"\" for no role`"
       ]
     }
   ]
