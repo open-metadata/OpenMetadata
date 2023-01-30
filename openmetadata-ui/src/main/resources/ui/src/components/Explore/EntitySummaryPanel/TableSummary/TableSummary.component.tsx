@@ -14,23 +14,26 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   getLatestTableProfileByFqn,
   getTableQueryByTableId,
 } from 'rest/tableAPI';
 import { getListTestCase } from 'rest/testAPI';
+import { DRAWER, getEntityOverview } from 'utils/EntityUtils';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { Table, TableType } from '../../../../generated/entity/data/table';
+import { Table } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
 import {
   formatNumberWithComma,
-  formTwoDigitNmber,
+  formTwoDigitNmber as formTwoDigitNumber,
 } from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
@@ -43,9 +46,12 @@ import {
 } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
-import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
+import { TableSummaryProps } from './TableSummary.interface';
 
-function TableSummary({ entityDetails }: TableSummaryProps) {
+function TableSummary({
+  entityDetails,
+  componentType = DRAWER.explore,
+}: TableSummaryProps) {
   const { t } = useTranslation();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
@@ -140,31 +146,27 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
       },
       {
         title: `${t('label.test-plural')} ${t('label.passed')}`,
-        value: formTwoDigitNmber(tableTests.results.success),
+        value: formTwoDigitNumber(tableTests.results.success),
         className: 'success',
       },
       {
         title: `${t('label.test-plural')} ${t('label.aborted')}`,
-        value: formTwoDigitNmber(tableTests.results.aborted),
+        value: formTwoDigitNumber(tableTests.results.aborted),
         className: 'aborted',
       },
       {
         title: `${t('label.test-plural')} ${t('label.failed')}`,
-        value: formTwoDigitNmber(tableTests.results.failed),
+        value: formTwoDigitNumber(tableTests.results.failed),
         className: 'failed',
       },
     ];
   }, [tableDetails, tableTests]);
 
-  const { tableType, columns, tableQueries } = tableDetails;
+  const { columns } = tableDetails;
 
-  const basicTableInfo: BasicTableInfo = useMemo(
-    () => ({
-      Type: tableType || TableType.Regular,
-      Queries: tableQueries?.length ? `${tableQueries?.length}` : '-',
-      Columns: columns?.length ? `${columns?.length}` : '-',
-    }),
-    [tableType, columns, tableQueries]
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.TABLES, entityDetails),
+    [entityDetails]
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
@@ -187,37 +189,58 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
   return (
     <>
-      <Row className={classNames('m-md')} gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.TABLE}
-            source={tableDetails}
-          />
-        </Col>
+      <Row
+        className={classNames({
+          'm-md': componentType === DRAWER.explore,
+        })}
+        gutter={[0, 4]}>
+        {componentType === DRAWER.explore ? (
+          <Col span={24}>
+            <TableDataCardTitle
+              dataTestId="summary-panel-title"
+              searchIndex={SearchIndex.TABLE}
+              source={tableDetails}
+            />
+          </Col>
+        ) : null}
         <Col span={24}>
           <Row>
-            {Object.keys(basicTableInfo).map((fieldName) => (
-              <Col key={fieldName} span={24}>
-                <Row gutter={16}>
-                  <Col
-                    className="text-gray"
-                    data-testid={`${fieldName}-label`}
-                    span={10}>
-                    {fieldName}
-                  </Col>
-                  <Col data-testid={`${fieldName}-value`} span={12}>
-                    {basicTableInfo[fieldName as keyof BasicTableInfo]}
-                  </Col>
-                </Row>
-              </Col>
-            ))}
+            {entityInfo.map((info) =>
+              info.visible?.includes(componentType) ? (
+                <Col key={info.name} span={24}>
+                  <Row gutter={16}>
+                    <Col
+                      className="text-gray"
+                      data-testid={`${info.name}-label`}
+                      span={10}>
+                      {info.name}
+                    </Col>
+                    <Col data-testid={`${info.name}-value`} span={12}>
+                      {info.isLink ? (
+                        <Link
+                          target={info.isExternal ? '_blank' : '_self'}
+                          to={{ pathname: info.url }}>
+                          {info.value}
+                        </Link>
+                      ) : (
+                        info.value
+                      )}
+                    </Col>
+                  </Row>
+                </Col>
+              ) : null
+            )}
           </Row>
         </Col>
       </Row>
-      <Divider className="m-0" />
 
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
+      <Divider className="m-y-xs" />
+
+      <Row
+        className={classNames({
+          'm-md': componentType === DRAWER.explore,
+        })}
+        gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="section-header"
@@ -259,8 +282,14 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           )}
         </Col>
       </Row>
-      <Divider className="m-0" />
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
+
+      <Divider className="m-y-xs" />
+
+      <Row
+        className={classNames({
+          'm-md': componentType === DRAWER.explore,
+        })}
+        gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="section-header"

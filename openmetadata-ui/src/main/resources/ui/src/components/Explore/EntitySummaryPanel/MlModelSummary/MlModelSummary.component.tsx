@@ -12,15 +12,15 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { startCase } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import classNames from 'classnames';
+import { ExplorePageTabs } from 'enums/Explore.enum';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getDashboardDetailsPath } from '../../../../constants/constants';
+import { DRAWER, getEntityOverview } from 'utils/EntityUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
-import { getEntityName } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -28,34 +28,17 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;
+  componentType?: string;
 }
 
-interface BasicMlModelInfo {
-  algorithm: string;
-  target?: string;
-  server?: ReactNode;
-  dashboard?: ReactNode;
-}
-
-function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
+function MlModelSummary({
+  entityDetails,
+  componentType = DRAWER.explore,
+}: MlModelSummaryProps) {
   const { t } = useTranslation();
 
-  const basicMlModelInfo: BasicMlModelInfo = useMemo(
-    () => ({
-      algorithm: entityDetails.algorithm,
-      target: entityDetails.target,
-      server: entityDetails.server ? (
-        <a href={entityDetails.server}>{entityDetails.server}</a>
-      ) : undefined,
-      dashboard: entityDetails.dashboard ? (
-        <Link
-          to={getDashboardDetailsPath(
-            entityDetails.dashboard?.fullyQualifiedName as string
-          )}>
-          {getEntityName(entityDetails.dashboard)}
-        </Link>
-      ) : undefined,
-    }),
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.MLMODELS, entityDetails),
     [entityDetails]
   );
 
@@ -70,41 +53,57 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
 
   return (
     <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.MLMODEL}
-            source={entityDetails}
-          />
-        </Col>
+      <Row
+        className={classNames({
+          'm-md': componentType === DRAWER.explore,
+        })}
+        gutter={[0, 4]}>
+        {componentType === DRAWER.explore ? (
+          <Col span={24}>
+            <TableDataCardTitle
+              dataTestId="summary-panel-title"
+              searchIndex={SearchIndex.MLMODEL}
+              source={entityDetails}
+            />
+          </Col>
+        ) : null}
         <Col span={24}>
           <Row>
-            {Object.keys(basicMlModelInfo).map((fieldName) => {
-              const value =
-                basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
-
-              return (
-                <Col key={fieldName} span={24}>
+            {entityInfo.map((info) =>
+              info.visible?.includes(componentType) ? (
+                <Col key={info.name} span={24}>
                   <Row gutter={16}>
                     <Col
                       className="text-gray"
-                      data-testid={`${fieldName}-label`}
+                      data-testid={`${info.name}-label`}
                       span={10}>
-                      {startCase(fieldName)}
+                      {info.name}
                     </Col>
-                    <Col data-testid={`${fieldName}-value`} span={12}>
-                      {value ? value : '-'}
+                    <Col data-testid={`${info.name}-value`} span={12}>
+                      {info.isLink ? (
+                        <Link
+                          target={info.isExternal ? '_blank' : '_self'}
+                          to={{ pathname: info.url }}>
+                          {info.value}
+                        </Link>
+                      ) : (
+                        info.value
+                      )}
                     </Col>
                   </Row>
                 </Col>
-              );
-            })}
+              ) : null
+            )}
           </Row>
         </Col>
       </Row>
-      <Divider className="m-0" />
-      <Row className="m-md" gutter={[0, 16]}>
+      <Divider className="m-y-xs" />
+
+      <Row
+        className={classNames({
+          'm-md': componentType === DRAWER.explore,
+        })}
+        gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="section-header"

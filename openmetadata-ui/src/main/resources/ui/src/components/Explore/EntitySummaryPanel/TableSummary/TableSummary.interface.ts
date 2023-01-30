@@ -15,6 +15,7 @@ import { Table, TableType } from '../../../../generated/entity/data/table';
 
 export interface TableSummaryProps {
   entityDetails: Table;
+  componentType?: string;
 }
 
 export interface BasicTableInfo {
