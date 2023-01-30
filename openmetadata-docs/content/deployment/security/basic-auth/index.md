@@ -58,14 +58,11 @@ For the Basic auth we need to set:
 
 <Note>
 
-Please note the following are the formats to bootstrap admins on server startup:
+Please note the following are the formats to bootstrap admins on server startup: `[admin1,admin2,admin3]`
 
-`[admin1,admin2,admin3]` 
+This works for SMTP-enabled servers, Login Password for these are generated randomly and sent to the mail `adminName`@`principalDomain`. 
 
-This works for SMTP-enabled servers, Login Password for these are generated randomly and sent to the mail {adminName}@{principalDomain}. 
-If SMTP is not enabled for OpenMetadata, please use the below method to create admin users.
-
-`[admin1:password1,admin2:password2,admin3:[password3]]` 
+If SMTP is not enabled for OpenMetadata, please use the below method to create admin users: `[admin1:password1,admin2:password2,admin3:password3]`
 
 This allows to bootstrap the server with given password, later on can be changed by specific users by visiting profile page.
 
@@ -95,12 +92,8 @@ email:
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 ```
 
-<Note>
+Following are valid value for transportation strategy:
 
-Following are valid value for transportation Strategy"
-
-- `SMTP`: If SMTP port is 25 use this`
-- `SMTPS`: If SMTP port is 465 use this`
-- `SMTP_TLS`: If SMTP port is 587 use this`
-
-</Note>
+- `SMTP`: If SMTP port is 25 use this
+- `SMTPS`: If SMTP port is 465 use this
+- `SMTP_TLS`: If SMTP port is 587 use this
