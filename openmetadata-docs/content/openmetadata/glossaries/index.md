@@ -26,26 +26,26 @@ src={"/images/openmetadata/glossaries/glossaries.gif"}
 alt="Glossary page demo"
 />
 
-## Glossary Bulk upload
+## Glossary Bulk Upload
 
-With glossary bulk upload you can create/update multiple glossary terms simultaneously. Below are steps for the same.
+With glossary bulk upload, you can create/update multiple glossary terms simultaneously. Below are steps for the same.
 
-- Create glossary in which you want to upload glossary terms `csvEg. Business Glossary`.
-- Click on 3 dots and click on export button (if you have terms already you will get CSV file containing all the terms, if you don't have any terms you will get blank CSV template).
-- Once you have template, you can fill below term details.
-  1. **parent**: If you leave this field blank, Term will be create at root level, If you want to create hierarchy of Glossary Terms, parent details must be needed as per hierarchy (from glossary level) `csvEg. Business Glossary.Department.Sales`
-  2. **name\***: It contains name of the glossary term and it is required field.
-  3. **displayName**: It contains Display name of the glossary term.
-  4. **description\***: It contains description/details of the glossary term and it is required field.
-  5. **synonyms**: A word or phrase that has the same meaning as glossary term. `csvEg. "Cash in hand";Purchase;"one's"`
-  6. **relatedTerms**: A term which has same meaning as glossary term, and available in Open Metadata. `csvEg. "Cash in hand";Purchase;"one's"`
-  7. **references**: External resource for the glossary term. `csvEg. Ref1;https:Ref1Link.com;Ref2;https:Ref2Link.com`
-  8. **tags**: Add Tags from Open Metadata `csvEg. PersonalData.Personal;PII.Sensitive`
-- Once csv is ready, click on 3 dots and Import button.
-- Drag and drop the CSV file or upload by clicking on browse button.
-- Once it is successfully uploaded, you will get preview option. click on preview
-- You will get preview of uploaded terms, all the glossary term will be scan and success/failure will be provided.
-- If all or partial terms are able to create successfully, Import button will be visible, click on the same it will create glossary terms from CSV file in Open Metadata.
+- Create a glossary in which you want to upload glossary terms `csv Eg. Business Glossary`.
+- Click on the 3 dots icon and click on the Export button. If you have glossary terms in your Glossary, the same will be exported as a CSV file. If there are no terms in the Glossary, then a blank CSV template will be downloaded.
+- Once you have the template, you can fill in the following details:
+  1. **parent**: If you leave this field blank, the Term will be created at the root level. If you want to create a hierarchy of Glossary Terms, the parent details must be entered as per hierarchy (from the glossary level) `csv Eg. Business Glossary.Department.Sales`
+  2. **name\***: This contains the name of the glossary term, and is a required field.
+  3. **displayName**: This contains the Display name of the glossary term.
+  4. **description\***: This contains the description/details of the glossary term and is a required field.
+  5. **synonyms**: Include words that have the same meaning as the glossary term. `csv Eg. "Cash in hand";Purchase;"one's"`
+  6. **relatedTerms**: A term which has the same meaning as the glossary term, and is available in OpenMetadata. `csv Eg. "Cash in hand";Purchase;"one's"`
+  7. **references**: Include an external resource for the glossary term. `csv Eg. Ref1;https:Ref1Link.com;Ref2;https:Ref2Link.com`
+  8. **tags**: Add Tags from OpenMetadata `csv Eg. PersonalData.Personal;PII.Sensitive`
+- Once the CSV file is ready, click on the 3 dots icon and select the Import button.
+- Drag and drop the CSV file, or upload it by clicking on the Browse button.
+- Once the file is successfully uploaded, you will get an option to Preview.
+- After previewing the uploaded terms, the glossary terms will be scanned and a Success/Failure message will be provided.
+- Once a part of the terms or all terms are created successfully, the Import button will be displayed. Click on Import to create the glossary terms from the CSV file in OpenMetadata.
 
 #### Glossary Export
 
