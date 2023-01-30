@@ -49,7 +49,10 @@ Admin permissions are required to register the application on the Azure portal.
 "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
 ```
 
-## Create Service Application
+## Create Service Application (optional)
+
+This is a guide to create ingestion bot service account. This step is optional if you configure the ingestion-bot with 
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Access Tokens and ID Tokens
 

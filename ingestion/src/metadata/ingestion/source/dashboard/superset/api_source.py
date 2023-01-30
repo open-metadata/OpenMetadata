@@ -143,7 +143,7 @@ class SupersetAPISource(SupersetSourceMixin):
             chart = CreateChartRequest(
                 name=chart_json["id"],
                 displayName=chart_json.get("slice_name"),
-                description="",
+                description=chart_json.get("description"),
                 chartType=get_standard_chart_type(
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
