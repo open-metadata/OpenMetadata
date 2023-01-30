@@ -74,7 +74,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       isSigningIn,
       setIsSigningIn,
       setLoadingIndicator,
-      initializeAxiosInterceptors,
+      updateAxiosInterceptors,
     } = useAuthContext();
     const history = useHistory();
     const { userDetails, newUser } = AppState;
@@ -168,7 +168,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   }}
                   onSuccess={(user) => {
                     localState.setOidcToken(user.id_token);
-                    initializeAxiosInterceptors();
+                    updateAxiosInterceptors();
                   }}
                 />
               </>

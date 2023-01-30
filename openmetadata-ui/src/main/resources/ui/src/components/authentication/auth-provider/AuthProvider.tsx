@@ -624,7 +624,7 @@ export const AuthProvider = ({
     setLoadingIndicator,
     handleSuccessfulLogin,
     handleUserCreated,
-    initializeAxiosInterceptors,
+    updateAxiosInterceptors: initializeAxiosInterceptors,
     jwtPrincipalClaims,
   };
 
