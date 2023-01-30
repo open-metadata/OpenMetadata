@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.exception;
+package org.openmetadata.sdk.exception;
 
 import javax.ws.rs.core.Response;
 
