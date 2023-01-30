@@ -84,3 +84,25 @@ CREATE TABLE IF NOT EXISTS query_entity (
     UNIQUE(fullyQualifiedName),
     INDEX name_index (fullyQualifiedName)
 );
+
+CREATE TABLE IF NOT EXISTS temp_query_migration (
+    tableId VARCHAR(36)NOT NULL,
+    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    json JSON NOT NULL
+);
+
+
+INSERT INTO temp_query_migration(tableId,json)
+select id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT(checksum, '.', 'table'),'updatedAt','1674566180730','updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',duration double path '$.duration',
+queryDate varchar(200) path '$.queryDate')) as j where extension = "table.tableQueries";
+
+INSERT INTO query_entity(json)
+select json from temp_query_migration;
+
+
+INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
+select tableId,queryId,"table","query",10 from temp_query_migration;
+
+delete from entity_extension where extension = "table.tableQueries";
+
+drop table temp_query_migration;
