@@ -130,8 +130,8 @@ the changes.
 #### Connection Options
 
 - **Host and Port**: URL to the Looker instance.
-- **Username**: Specify the User to connect to Looker. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to Looker.
+- **Client ID**: Specify the Client ID to connect to Looker. It should have enough privileges to read all the metadata.
+- **Client Secret**: Client Secret to connect to Looker.
 - **Environment**: Looker Environment.
 
 ### 6. Configure Metadata Ingestion

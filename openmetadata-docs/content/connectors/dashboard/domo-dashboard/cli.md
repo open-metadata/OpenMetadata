@@ -59,8 +59,6 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
       type: DashboardMetadata
       # dbServiceNames:
       #   - service1

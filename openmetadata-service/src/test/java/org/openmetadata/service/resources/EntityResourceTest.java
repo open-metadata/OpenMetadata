@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
@@ -97,6 +98,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvUtilTest;
+import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -132,6 +135,9 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -181,14 +187,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
-  protected String supportedNameCharacters = ".' _"; // Special characters supported in the entity name
+  protected String supportedNameCharacters = "_'-.&"; // Special characters supported in the entity name
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
   public static final String ENTITY_LINK_MATCH_ERROR =
-      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$\"]";
+      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$\"]";
 
   // Users
   public static User USER1;
@@ -281,7 +287,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static KpiTarget KPI_TARGET;
 
-  public static final String C1 = "c'_+ 1";
+  public static final String C1 = "c'_+# 1";
   public static final String C2 = "c2";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
@@ -1624,11 +1630,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected final WebTarget getFollowersCollection(UUID id) {
-    return getResource(collectionName + "/" + id + "/followers");
+    return getResource(id).path("followers");
   }
 
   protected final WebTarget getFollowerResource(UUID id, UUID userId) {
-    return getResource(collectionName + "/" + id + "/followers/" + userId);
+    return getFollowersCollection(id).path("/" + userId);
   }
 
   protected final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -2371,5 +2377,63 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public String getAllowedFields() {
     return String.join(",", Entity.getAllowedFields(entityClass));
+  }
+
+  protected CsvImportResult importCsv(String entityName, String csv, boolean dryRun) throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/import");
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  protected String exportCsv(String entityName) throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/export");
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  protected void importCsvAndValidate(
+      String entityName, List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords)
+      throws HttpResponseException {
+    createRecords = listOrEmpty(createRecords);
+    updateRecords = listOrEmpty(updateRecords);
+
+    // Import CSV to create new records and update existing records with dryRun=true first
+    String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
+    CsvImportResult dryRunResult = importCsv(entityName, csv, true);
+
+    // Validate the imported result summary - it should include both created and updated records
+    int totalRows = 1 + createRecords.size() + updateRecords.size();
+    assertSummary(dryRunResult, CsvImportResult.Status.SUCCESS, totalRows, totalRows, 0);
+    String expectedResultsCsv = EntityCsvTest.createCsvResult(csvHeaders, createRecords, updateRecords);
+    assertEquals(expectedResultsCsv, dryRunResult.getImportResultsCsv());
+
+    // Import CSV to create new records and update existing records with dryRun=false to really import the data
+    CsvImportResult result = importCsv(entityName, csv, false);
+    assertEquals(dryRunResult.withDryRun(false), result);
+
+    // Finally, export CSV and ensure the exported CSV is same as imported CSV
+    String exportedCsv = exportCsv(entityName);
+    CsvUtilTest.assertCsv(csv, exportedCsv);
+  }
+
+  protected void testImportExport(
+      String entityName,
+      List<CsvHeader> csvHeaders,
+      List<String> createRecords,
+      List<String> updateRecords,
+      List<String> newRecords)
+      throws IOException {
+    // Create new records
+    importCsvAndValidate(entityName, csvHeaders, createRecords, null); // Dry run
+
+    // Update created records with changes
+    importCsvAndValidate(entityName, csvHeaders, null, updateRecords);
+
+    // Add additional new records to the existing ones
+    importCsvAndValidate(entityName, csvHeaders, newRecords, updateRecords);
+  }
+
+  protected CsvDocumentation getCsvDocumentation() throws HttpResponseException {
+    WebTarget target = getCollection().path("/documentation/csv");
+    return TestUtils.get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
   }
 }

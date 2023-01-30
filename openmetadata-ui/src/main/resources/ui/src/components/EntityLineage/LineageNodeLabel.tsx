@@ -11,22 +11,55 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React from 'react';
+import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getDataLabel } from '../../utils/EntityLineageUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 
-const LineageNodeLabel = ({ node }: { node: EntityReference }) => {
+interface LineageNodeLabelProps {
+  node: EntityReference;
+  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void;
+  isExpanded?: boolean;
+}
+
+const LineageNodeLabel = ({
+  node,
+  onNodeExpand,
+  isExpanded = false,
+}: LineageNodeLabelProps) => {
   return (
-    <p className="tw-flex tw-items-center tw-m-0 tw-py-3">
-      <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-      {getDataLabel(
-        node.displayName,
-        node.fullyQualifiedName,
-        false,
-        node.type
-      )}
-    </p>
+    <>
+      {node.type === 'table' ? (
+        <Button
+          ghost
+          className="custom-node-expand-button p-0"
+          icon={
+            <SVGIcons
+              alt="plus"
+              icon={isExpanded ? Icons.ICON_MINUS : Icons.ICON_PLUS}
+              width="16px"
+            />
+          }
+          size="small"
+          type="text"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNodeExpand && onNodeExpand(!isExpanded, node);
+          }}
+        />
+      ) : null}
+      <p className="flex items-center m-0 p-y-sm">
+        <span className="m-r-xs">{getEntityIcon(node.type)}</span>
+        {getDataLabel(
+          node.displayName,
+          node.fullyQualifiedName,
+          false,
+          node.type
+        )}
+      </p>
+    </>
   );
 };
 

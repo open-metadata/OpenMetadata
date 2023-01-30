@@ -26,7 +26,6 @@ public class MicrometerBundleSingleton {
   public static MicrometerBundle getInstance() {
     if (INSTANCE == null) {
       INSTANCE = new MicrometerBundle();
-      webAnalyticEvents = MicrometerBundle.prometheusRegistry.timer("web.analytics.events");
       // We'll use this registry to add monitoring around Ingestion Pipelines
       prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
     }

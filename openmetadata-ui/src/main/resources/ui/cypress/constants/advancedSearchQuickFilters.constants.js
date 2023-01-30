@@ -17,6 +17,8 @@ export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Owner',
     key: 'owner.displayName',
+    aggregateKey: 'displayName.keyword',
+    filterSearchIndex: 'user_search_index%2Cteam_search_index',
     selectOption1: 'admin',
     selectOptionTestId1: 'admin',
     selectOption2: 'Aaron Singh',
@@ -25,6 +27,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Tag',
     key: 'tags.tagFQN',
+    filterSearchIndex: 'tag_search_index%2Cglossary_search_index',
     selectOption1: 'PersonalData.Personal',
     selectOptionTestId1: 'PersonalData.Personal',
     selectOption2: 'PII.Sensitive',

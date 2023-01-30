@@ -93,7 +93,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
-    "sqlalchemy>=1.4.0",
+    "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage==1.0.1",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
@@ -123,7 +123,12 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
         "dagster_graphql~=1.1",
     },
-    "dbt": {"google-cloud", VERSIONS["boto3"], VERSIONS["google-cloud-storage"]},
+    "dbt": {
+        "google-cloud",
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        "dbt-artifacts-parser",
+    },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
