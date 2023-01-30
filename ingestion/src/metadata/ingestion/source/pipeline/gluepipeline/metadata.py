@@ -65,7 +65,7 @@ class GluepipelineSource(PipelineServiceSource):
         super().__init__(config, metadata_config)
         self.task_id_mapping = {}
         self.job_name_list = set()
-        self.glue = self.connection.client
+        self.glue = self.connection
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
