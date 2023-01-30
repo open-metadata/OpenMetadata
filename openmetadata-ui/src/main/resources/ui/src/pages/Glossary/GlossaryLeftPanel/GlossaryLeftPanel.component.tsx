@@ -113,10 +113,11 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                   : t('message.no-permission-for-action')
               }>
               <Button
-                className="w-full flex-center gap-2 text-primary"
+                block
+                className="text-primary"
                 data-testid="add-glossary"
                 disabled={!createGlossaryPermission}
-                icon={<PlusIcon />}
+                icon={<PlusIcon className="anticon" />}
                 onClick={handleAddGlossaryClick}>
                 {t('label.add-glossary')}
               </Button>
