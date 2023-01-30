@@ -18,7 +18,7 @@ import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   ComponentType,
@@ -43,7 +43,6 @@ import { AuthenticationConfiguration } from '../../../generated/configuration/au
 import { AuthType, User } from '../../../generated/entity/teams/user';
 import jsonData from '../../../jsons/en';
 import {
-  EXPIRY_THRESHOLD_MILLES,
   extractDetailsFromToken,
   getAuthConfig,
   getNameFromEmail,
@@ -249,8 +248,8 @@ export const AuthProvider = ({
     try {
       const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
       onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
-    } catch (error: any) {
-      console.error(error.message);
+    } catch (error) {
+      console.error((error as AxiosError).message);
     }
 
     return localState.getOidcToken();
@@ -283,28 +282,24 @@ export const AuthProvider = ({
   };
 
   /**
-   * It will set an timer for 50 secs before Token will expire
-   * If time if less then 50 secs then it will try to SilentSignIn
+   * It will set an timer for 5 mins before Token will expire
+   * If time if less then 5 mins then it will try to SilentSignIn
    * It will also ensure that we have time left for token expiry
    * This method will be call upon successful signIn
    */
   const startTokenExpiryTimer = () => {
     // Extract expiry
-    const { exp, isExpired, diff, timeoutExpiry } = extractDetailsFromToken();
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken();
 
-    if (!isExpired && exp && diff && timeoutExpiry && timeoutExpiry > 0) {
-      // Have 2m buffer before start trying for silent signIn
+    if (!isExpired && isNumber(timeoutExpiry)) {
+      // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
-      if (diff > EXPIRY_THRESHOLD_MILLES) {
-        clearTimeout(timeoutId);
-        const timerId = setTimeout(() => {
-          trySilentSignIn();
-        }, timeoutExpiry);
-        setTimeoutId(Number(timerId));
-      } else {
+      clearTimeout(timeoutId);
+      const timerId = setTimeout(() => {
         trySilentSignIn();
-      }
+      }, timeoutExpiry);
+      setTimeoutId(Number(timerId));
     }
   };
 

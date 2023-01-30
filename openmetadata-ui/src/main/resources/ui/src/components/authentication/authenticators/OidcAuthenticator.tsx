@@ -95,16 +95,10 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
-      try {
-        const user = await userManager.signinSilent();
-        localState.setOidcToken(user.id_token);
+      const user = await userManager.signinSilent();
+      localState.setOidcToken(user.id_token);
 
-        return user.id_token;
-      } catch (err) {
-        console.log('signInSilently catch error', err);
-      }
-
-      return '';
+      return user.id_token;
     };
 
     useImperativeHandle(ref, () => ({

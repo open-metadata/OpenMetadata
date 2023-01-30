@@ -275,7 +275,10 @@ export const extractDetailsFromToken = () => {
       const dateNow = Date.now();
 
       const diff = exp && exp * 1000 - dateNow;
-      const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
+      const timeoutExpiry =
+        diff && diff > EXPIRY_THRESHOLD_MILLES
+          ? diff - EXPIRY_THRESHOLD_MILLES
+          : 0;
 
       return {
         exp,
