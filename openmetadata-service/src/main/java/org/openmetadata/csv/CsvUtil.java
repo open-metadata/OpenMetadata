@@ -58,7 +58,10 @@ public final class CsvUtil {
   public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {
-      String headerString = header.getRequired() ? String.format("%s*", header.getName()) : header.getName();
+      String headerString = header.getName();
+      if (header.getRequired()) {
+        headerString = String.format("%s*", header.getName());
+      }
       headers.add(headerString);
     }
     return headers;
