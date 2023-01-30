@@ -11,6 +11,7 @@ source:
       connectionArguments: {}
   sourceConfig:
     config:
+      type: DatabaseUsage
       queryLogDuration: '1'
       queryLogFilePath: <path to query log file>
 processor:

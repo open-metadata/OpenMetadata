@@ -61,6 +61,7 @@ source:
       # driver: ODBC Driver 18 for SQL Server (default)
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

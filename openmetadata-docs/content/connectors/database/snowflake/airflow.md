@@ -123,6 +123,7 @@ source:
       # role: <role>
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

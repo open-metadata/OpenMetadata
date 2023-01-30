@@ -47,7 +47,7 @@ import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({ entityDetails }: TableSummaryProps) {
   const { t } = useTranslation();
-  const [TableDetails, setTableDetails] = useState<Table>(entityDetails);
+  const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
@@ -116,27 +116,27 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
   };
 
   const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
-    if (isUndefined(TableDetails.profile)) {
+    if (isUndefined(tableDetails.profile)) {
       return undefined;
     }
 
     return [
       {
         title: t('label.row-count'),
-        value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
+        value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
       },
       {
         title: t('label.column-entity', {
           entity: t('label.count'),
         }),
         value:
-          TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
+          tableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
         title: `${t('label.table-entity-text', {
           entityText: t('label.sample'),
         })} %`,
-        value: `${TableDetails?.profile?.profileSample ?? 100}%`,
+        value: `${tableDetails?.profile?.profileSample ?? 100}%`,
       },
       {
         title: `${t('label.test-plural')} ${t('label.passed')}`,
@@ -154,9 +154,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         className: 'failed',
       },
     ];
-  }, [TableDetails, tableTests]);
+  }, [tableDetails, tableTests]);
 
-  const { tableType, columns, tableQueries } = TableDetails;
+  const { tableType, columns, tableQueries } = tableDetails;
 
   const basicTableInfo: BasicTableInfo = useMemo(
     () => ({
@@ -168,8 +168,13 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
-    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns),
-    [columns]
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        columns,
+        tableDetails.tableConstraints
+      ),
+    [columns, tableDetails]
   );
 
   useEffect(() => {
@@ -187,7 +192,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           <TableDataCardTitle
             dataTestId="summary-panel-title"
             searchIndex={SearchIndex.TABLE}
-            source={TableDetails}
+            source={tableDetails}
           />
         </Col>
         <Col span={24}>

@@ -9,6 +9,7 @@ source:
         http_path: <http path of databricks cluster>
   sourceConfig:
     config:
+      type: DatabaseUsage
       queryLogDuration: 1
 processor:
   type: query-parser
