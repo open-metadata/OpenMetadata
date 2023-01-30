@@ -30,11 +30,7 @@ import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
-export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
-
-export const getOidcExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 24 * 1000);
-};
+export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()

@@ -74,6 +74,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       isSigningIn,
       setIsSigningIn,
       setLoadingIndicator,
+      initializeAxiosInterceptors,
     } = useAuthContext();
     const history = useHistory();
     const { userDetails, newUser } = AppState;
@@ -94,7 +95,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
-      return userManager.signinSilent().then((user) => user.id_token);
+      try {
+        const user = await userManager.signinSilent();
+        localState.setOidcToken(user.id_token);
+
+        return user.id_token;
+      } catch (err) {
+        console.log('signInSilently catch error', err);
+      }
+
+      return '';
     };
 
     useImperativeHandle(ref, () => ({
@@ -158,6 +168,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   }}
                   onSuccess={(user) => {
                     localState.setOidcToken(user.id_token);
+                    initializeAxiosInterceptors();
                   }}
                 />
               </>

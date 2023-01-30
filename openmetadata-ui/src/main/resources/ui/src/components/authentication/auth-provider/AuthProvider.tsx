@@ -87,6 +87,9 @@ const userAPIQueryFields = 'profile,teams,roles';
 
 const isEmailVerifyField = 'isEmailVerified';
 
+let requestInterceptor: number | null = null;
+let responseInterceptor: number | null = null;
+
 export const AuthProvider = ({
   childComponentType,
   children,
@@ -242,26 +245,15 @@ export const AuthProvider = ({
    * Renew Id Token handler for all the SSOs.
    * This method will be called when the id token is about to expire.
    */
-  const renewIdToken = (): Promise<string> => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+  const renewIdToken = async () => {
+    try {
+      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+    } catch (error: any) {
+      console.error(error.message);
+    }
 
-    return new Promise((resolve, reject) => {
-      if (onRenewIdTokenHandlerPromise) {
-        onRenewIdTokenHandlerPromise
-          .then(() => {
-            resolve(localState.getOidcToken() || '');
-          })
-          .catch((error) => {
-            if (error.message !== 'Frame window timed out') {
-              reject(error);
-            } else {
-              resolve(localState.getOidcToken() || '');
-            }
-          });
-      } else {
-        reject('RenewIdTokenHandler is undefined');
-      }
-    });
+    return localState.getOidcToken();
   };
 
   /**
@@ -300,7 +292,7 @@ export const AuthProvider = ({
     // Extract expiry
     const { exp, isExpired, diff, timeoutExpiry } = extractDetailsFromToken();
 
-    if (!isExpired && exp && diff && timeoutExpiry) {
+    if (!isExpired && exp && diff && timeoutExpiry && timeoutExpiry > 0) {
       // Have 2m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
@@ -323,12 +315,6 @@ export const AuthProvider = ({
   const cleanup = useCallback(() => {
     clearTimeout(timeoutId);
   }, [timeoutId]);
-
-  useEffect(() => {
-    startTokenExpiryTimer();
-
-    return cleanup;
-  }, []);
 
   const handleFailedLogin = () => {
     setIsSigningIn(false);
@@ -398,7 +384,17 @@ export const AuthProvider = ({
    */
   const initializeAxiosInterceptors = () => {
     // Axios Request interceptor to add Bearer tokens in Header
-    axiosClient.interceptors.request.use(async function (config) {
+    if (requestInterceptor != null) {
+      axiosClient.interceptors.request.eject(requestInterceptor);
+    }
+
+    if (responseInterceptor != null) {
+      axiosClient.interceptors.response.eject(responseInterceptor);
+    }
+
+    requestInterceptor = axiosClient.interceptors.request.use(async function (
+      config
+    ) {
       const token: string = localState.getOidcToken() || '';
       if (token) {
         if (config.headers) {
@@ -414,7 +410,7 @@ export const AuthProvider = ({
     });
 
     // Axios response interceptor for statusCode 401,403
-    axiosClient.interceptors.response.use(
+    responseInterceptor = axiosClient.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response) {
@@ -573,6 +569,9 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig();
+    startTokenExpiryTimer();
+
+    return cleanup;
   }, []);
 
   useEffect(() => {
@@ -625,6 +624,7 @@ export const AuthProvider = ({
     setLoadingIndicator,
     handleSuccessfulLogin,
     handleUserCreated,
+    initializeAxiosInterceptors,
     jwtPrincipalClaims,
   };
 
