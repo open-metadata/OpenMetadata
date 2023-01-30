@@ -19,6 +19,7 @@ import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
 import { extractDetailsFromToken } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
@@ -345,8 +346,9 @@ const Appbar: React.FC = (): JSX.Element => {
       ) {
         return;
       }
-      const { isExpired } = extractDetailsFromToken();
+      const { isExpired, exp } = extractDetailsFromToken();
       if (!document.hidden && isExpired) {
+        exp && toast.info(t('message.session-expired'));
         onLogoutHandler();
       }
     };
