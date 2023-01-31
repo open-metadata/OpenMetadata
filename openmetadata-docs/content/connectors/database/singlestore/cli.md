@@ -4,6 +4,16 @@ slug: /connectors/database/singlestore/cli
 ---
 
 # Run Singlestore using the metadata CLI
+<Table>
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❎      |       ✅       |       ✅      |    Partially via Views    |  ❎  |  --  |
+</Table>
+<Table>
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| Partially via Views | ✅ | ✅ |
+</Table>
 
 In this section, we provide guides and references to use the Singlestore connector.
 
