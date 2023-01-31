@@ -900,9 +900,7 @@ const TagsPage = () => {
                         !classificationPermissions.Delete
                       }
                       size="small"
-                      onClick={() => {
-                        deleteTagHandler();
-                      }}>
+                      onClick={() => deleteTagHandler()}>
                       {t('label.delete-entity', {
                         entity: t('label.classification'),
                       })}
