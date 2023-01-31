@@ -79,15 +79,22 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-- **accessToken**: Access Token for Quicksight Dashboard.
-- **accessTokenPassword**: Access Token Password for Quicksight Dashboard.
-- **workspaceName**: Quicksight Workspace Name.
+**awsConfig**
+  - **AWS Access Key ID**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
+  - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
+  - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
+  - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
+  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
+
+- **identityType**: The authentication method that the user uses to sign in.
+- **awsAccountId**: AWS Account ID
+- **namespace**: The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
 
 ```yaml
