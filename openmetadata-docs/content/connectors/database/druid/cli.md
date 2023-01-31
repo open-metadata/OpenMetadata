@@ -5,13 +5,19 @@ slug: /connectors/database/druid/cli
 
 # Run Druid using the metadata CLI
 <Table>
+
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❎      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |</Table>
+|  PROD  |   ✅   |      ❎      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
+
+</Table>
+
 <Table>
+
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
 | Partially via Views | ✅ | ✅ |
+
 </Table>
 
 In this section, we provide guides and references to use the Druid connector.

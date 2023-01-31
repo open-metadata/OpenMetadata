@@ -5,14 +5,19 @@ slug: /connectors/database/vertica/airflow
 
 # Run Vertica using the Airflow SDK
 <Table>
+
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
 |  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
 </Table>
+
 <Table>
+
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
 | ✅ | ✅ | ✅ |
+
 </Table>
 
 In this section, we provide guides and references to use the Vertica connector.
