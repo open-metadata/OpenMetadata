@@ -50,9 +50,9 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
-  MIN_ZOOM_VALUE,
   NODE_HEIGHT,
   NODE_WIDTH,
+  ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
@@ -109,7 +109,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(MIN_ZOOM_VALUE);
+  reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -193,7 +193,8 @@ export const getLineageData = (
     data: CustomEdgeData
   ) => void,
   handleColumnClick?: (value: string) => void,
-  isExpanded?: boolean
+  isExpanded?: boolean,
+  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -324,7 +325,11 @@ export const getLineageData = (
               </div>
             )}
 
-            <LineageNodeLabel node={node} />
+            <LineageNodeLabel
+              isExpanded={isExpanded}
+              node={node}
+              onNodeExpand={onNodeExpand}
+            />
 
             {type === EntityLineageNodeType.OUTPUT && (
               <div
@@ -392,7 +397,13 @@ export const getLineageData = (
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node core`,
       data: {
-        label: <LineageNodeLabel node={mainNode} />,
+        label: (
+          <LineageNodeLabel
+            isExpanded={isExpanded}
+            node={mainNode}
+            onNodeExpand={onNodeExpand}
+          />
+        ),
         isEditMode,
         removeNodeHandler,
         handleColumnClick,

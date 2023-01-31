@@ -109,6 +109,7 @@ source:
       bucketName: bucket name
       prefix: prefix
   sourceConfig:
+    type: DatabaseMetadata
     config:
       tableFilterPattern:
         includes:

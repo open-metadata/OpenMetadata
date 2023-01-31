@@ -47,9 +47,10 @@ Follow the sections in this guide to set up Auth0 SSO.
 
 <Image src="/images/deployment/security/auth0/credentials.png" alt="credentials"/>
 
-## Create Service Account
+## Create Service Account (optional)
 
-This section will guide to create the Ingestion Bot service account.
+This is a guide to create ingestion bot service account. This step is optional if you configure the ingestion-bot with
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Enable Client-Credential
 

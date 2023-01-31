@@ -38,7 +38,6 @@ import org.openmetadata.schema.api.data.CreateLocation;
 import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.locations.LocationResource.LocationList;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -50,7 +49,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   public LocationResourceTest() {
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
     // TODO quoted location is not allowed by the Location listPrefix APIs
-    supportedNameCharacters = supportedNameCharacters.replaceAll("[ .]", ""); // Space not supported
+    // supportedNameCharacters = "_'-.";
+    supportedNameCharacters = supportedNameCharacters.replaceAll("[ &.]", ""); // Space not supported
   }
 
   @Override
@@ -100,8 +100,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   private List<EntityReference> getAssociatedEntity(Location location) throws HttpResponseException {
-    WebTarget target =
-        OpenMetadataApplicationTest.getResource(String.format("locations/association/%s", location.getId()));
+    WebTarget target = getResource(String.format("locations/association/%s", location.getId()));
     return (List<EntityReference>) TestUtils.get(target, List.class, ADMIN_AUTH_HEADERS);
   }
 

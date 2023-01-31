@@ -48,7 +48,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
@@ -58,7 +57,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.Collection;
@@ -436,7 +434,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   public static EntityReference getRole(String roleName) {
-    EntityRepository<EntityInterface> dao = Entity.getEntityRepository(Entity.ROLE);
-    return dao.dao.findEntityReferenceByName(roleName);
+    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+    return roleRepository.dao.findEntityReferenceByName(roleName);
   }
 }

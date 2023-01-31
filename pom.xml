@@ -29,8 +29,8 @@
   <version>0.13.2-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
-    <module>common</module>
     <module>openmetadata-spec</module>
+    <module>common</module>
     <module>openmetadata-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
@@ -512,11 +512,6 @@
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
-      <dependency>
-        <groupId>org.yaml</groupId>
-        <artifactId>snakeyaml</artifactId>
-        <version>1.33</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 

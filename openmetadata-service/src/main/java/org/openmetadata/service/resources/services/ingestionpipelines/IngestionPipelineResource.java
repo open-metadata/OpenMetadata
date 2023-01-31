@@ -60,6 +60,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
@@ -75,7 +76,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j

@@ -61,9 +61,9 @@ GRANT USAGE ON DATABASE TEST_DB TO ROLE NEW_ROLE;
 -- Grant USAGE Privilege on required Schemas to New Role
 GRANT USAGE ON SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 
--- Grant SELECT Privilege on required Schemas to New Role
+-- Grant SELECT Privilege on required tables & views to New Role
 GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
-
+GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
 
@@ -123,6 +123,7 @@ source:
       # role: <role>
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -148,43 +149,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #      -----BEGIN PRIVATE KEY-----
-      #      Super secret key
-      #      -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}

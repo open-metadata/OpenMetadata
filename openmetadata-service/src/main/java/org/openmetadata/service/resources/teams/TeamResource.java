@@ -55,15 +55,18 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -449,6 +452,66 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
       throws IOException {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/documentation/csv")
+  @Valid
+  @Operation(
+      operationId = "getCsvDocumentation",
+      summary = "Get CSV documentation for team import/export",
+      tags = "teams")
+  public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
+      throws IOException {
+    return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTeams",
+      summary = "Export teams in CSV format",
+      tags = "teams",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with teams information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return exportCsvInternal(securityContext, name);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTeams",
+      summary = "Import from CSV to create, and update teams.",
+      tags = "teams",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {

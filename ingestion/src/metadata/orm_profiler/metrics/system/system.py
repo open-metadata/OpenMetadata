@@ -78,7 +78,7 @@ def _(
     """Compute system metrics for bigquery
 
     Args:
-        dialect (str): bigqeury
+        dialect (str): bigquery
         session (Session): session Object
         table (DeclarativeMeta): orm table
 

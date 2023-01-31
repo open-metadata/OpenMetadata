@@ -71,7 +71,7 @@ export const StyledCard = ({
   subHeading: string;
 }) => {
   return (
-    <div className="bg-grey p-sm rounded-4">
+    <div className="bg-grey p-sm rounded-4 min-h-24">
       <Typography.Text>{heading}</Typography.Text>
       <br />
       <Typography.Text className="text-xs text-grey-muted">

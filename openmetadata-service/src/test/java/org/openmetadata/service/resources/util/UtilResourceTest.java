@@ -58,12 +58,12 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
   }
 
   public static EntitiesCount getEntitiesCount() throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("util/entities/count");
+    WebTarget target = getResource("util/entities/count");
     return TestUtils.get(target, EntitiesCount.class, ADMIN_AUTH_HEADERS);
   }
 
   public static ServicesCount getServicesCount() throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("util/services/count");
+    WebTarget target = getResource("util/services/count");
     return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
   }
 

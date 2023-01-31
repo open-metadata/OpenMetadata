@@ -52,7 +52,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -427,15 +426,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData)
-      throws Exception {
-    return MicrometerBundleSingleton.webAnalyticEvents.recordCallable(
-        () -> {
-          try {
-            return dao.addWebAnalyticEventData(webAnalyticEventData);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+      throws IOException {
+    return dao.addWebAnalyticEventData(webAnalyticEventData);
   }
 
   @DELETE
