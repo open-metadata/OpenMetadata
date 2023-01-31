@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { Table, TableType } from '../../../../generated/entity/data/table';
+import {
+  Table,
+  TableType,
+  TagLabel,
+} from '../../../../generated/entity/data/table';
 
 export interface TableSummaryProps {
   entityDetails: Table;
   componentType?: string;
+  tags?: (TagLabel | undefined)[];
 }
 
 export interface BasicTableInfo {

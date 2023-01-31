@@ -12,14 +12,12 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Divider, Drawer, Row, Typography } from 'antd';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { Col, Drawer, Row } from 'antd';
 import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from 'components/Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
 import TableSummary from 'components/Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from 'components/Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -35,7 +33,10 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { getHeaderLabel } from '../../utils/EntityLineageUtils';
-import { DRAWER, getEntityTags } from '../../utils/EntityUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityTags,
+} from '../../utils/EntityUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -191,47 +192,52 @@ const EntityInfoDrawer = ({
       case EntityType.TABLE:
         return (
           <TableSummary
-            componentType={DRAWER.lineage}
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Table}
+            tags={tags}
           />
         );
 
       case EntityType.TOPIC:
         return (
           <TopicSummary
-            componentType={DRAWER.lineage}
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Topic}
+            tags={tags}
           />
         );
 
       case EntityType.DASHBOARD:
         return (
           <DashboardSummary
-            componentType={DRAWER.lineage}
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Dashboard}
+            tags={tags}
           />
         );
 
       case EntityType.PIPELINE:
         return (
           <PipelineSummary
-            componentType={DRAWER.lineage}
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Pipeline}
+            tags={tags}
           />
         );
 
       case EntityType.MLMODEL:
         return (
           <MlModelSummary
-            componentType={DRAWER.lineage}
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Mlmodel}
+            tags={tags}
           />
         );
 
       default:
         return null;
     }
-  }, [entityDetail, fetchEntityDetail, setEntityDetail]);
+  }, [entityDetail, fetchEntityDetail, setEntityDetail, tags, selectedNode]);
 
   useEffect(() => {
     fetchEntityDetail(selectedNode);
@@ -251,7 +257,7 @@ const EntityInfoDrawer = ({
       style={{ position: 'absolute' }}
       title={
         <>
-          <Row gutter={16}>
+          <Row gutter={[0, 6]}>
             <Col span={24}>
               {'databaseSchema' in entityDetail &&
                 'database' in entityDetail && (
@@ -276,55 +282,7 @@ const EntityInfoDrawer = ({
           </Row>
         </>
       }>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <>
-          {summaryComponent}
-
-          <Row gutter={[0, 16]}>
-            <Col span={24}>
-              <span className="text-grey-muted">{t('label.tag-plural')}</span>
-            </Col>
-            <Col span={24}>
-              <div className="flex flex-wrap">
-                {tags.length > 0 ? (
-                  <TagsViewer sizeCap={-1} tags={tags} />
-                ) : (
-                  <p className="text-xs text-grey-muted">
-                    {t('label.no-tags-added')}
-                  </p>
-                )}
-              </div>
-            </Col>
-          </Row>
-
-          <Divider className="m-y-xs" />
-
-          <Row gutter={[0, 16]}>
-            <Col span={24}>
-              <Typography.Text
-                className="tw-text-grey-muted"
-                data-testid="schema-header">
-                {t('label.description')}
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <div>
-                {entityDetail.description?.trim() ? (
-                  <RichTextEditorPreviewer
-                    markdown={entityDetail.description}
-                  />
-                ) : (
-                  <p className="text-xs text-grey-muted">
-                    {t('label.no-data-found')}
-                  </p>
-                )}
-              </div>
-            </Col>
-          </Row>
-        </>
-      )}
+      {isLoading ? <Loader /> : <>{summaryComponent}</>}
     </Drawer>
   );
 };

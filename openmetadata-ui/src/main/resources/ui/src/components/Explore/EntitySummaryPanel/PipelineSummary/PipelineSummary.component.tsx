@@ -13,11 +13,15 @@
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { TagLabel } from 'generated/type/tagLabel';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { DRAWER, getEntityOverview } from 'utils/EntityUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -30,11 +34,13 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface PipelineSummaryProps {
   entityDetails: Pipeline;
   componentType?: string;
+  tags?: (TagLabel | undefined)[];
 }
 
 function PipelineSummary({
   entityDetails,
-  componentType = DRAWER.explore,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
 }: PipelineSummaryProps) {
   const { t } = useTranslation();
 
@@ -48,14 +54,19 @@ function PipelineSummary({
     [entityDetails]
   );
 
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
+
   return (
     <>
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 4]}>
-        {componentType === DRAWER.explore ? (
+        {isExplore ? (
           <Col span={24}>
             <TableDataCardTitle
               dataTestId="summary-panel-title"
@@ -72,29 +83,30 @@ function PipelineSummary({
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
                     <Col
-                      className="text-gray"
                       data-testid={
                         info.dataTestId ? info.dataTestId : `${info.name}-label`
                       }
                       span={10}>
-                      {info.name}
+                      <Typography.Text className="text-gray">
+                        {info.name}
+                      </Typography.Text>
                     </Col>
                     <Col data-testid={`${info.name}-value`} span={12}>
                       {info.isLink ? (
-                        <Link target="_blank" to={{ pathname: info.url }}>
-                          <Space align="start">
-                            <Typography.Text
-                              className="link"
-                              data-testid="pipeline-link-name">
-                              {info.value}
-                            </Typography.Text>
+                        <Space align="start">
+                          <Typography.Link
+                            data-testid="pipeline-link-name"
+                            href={info.url}
+                            target="_blank">
+                            {info.value}
                             <SVGIcons
                               alt="external-link"
+                              className="m-l-xs"
                               icon="external-link"
                               width="12px"
                             />
-                          </Space>
-                        </Link>
+                          </Typography.Link>
+                        </Space>
                       ) : (
                         info.value
                       )}
@@ -108,14 +120,24 @@ function PipelineSummary({
       </Row>
       <Divider className="m-y-xs" />
 
+      {!isExplore ? (
+        <>
+          <SummaryTagsDescription
+            entityDetail={entityDetails}
+            tags={tags ? tags : []}
+          />
+          <Divider className="m-y-xs" />
+        </>
+      ) : null}
+
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="section-header"
+            className="text-base text-gray"
             data-testid="tasks-header">
             {t('label.task-plural')}
           </Typography.Text>

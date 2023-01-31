@@ -13,15 +13,16 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { DRAWER } from 'utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { Topic } from '../../../../generated/entity/data/topic';
+import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
@@ -33,16 +34,22 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface TopicSummaryProps {
   entityDetails: Topic;
   componentType?: string;
+  tags?: (TagLabel | undefined)[];
 }
 
 function TopicSummary({
   entityDetails,
-  componentType = DRAWER.explore,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
 }: TopicSummaryProps) {
   const { t } = useTranslation();
 
   const [topicDetails, setTopicDetails] = useState<Topic>(entityDetails);
 
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
   const topicConfig = useMemo(() => {
     const configs = getConfigObject(topicDetails);
 
@@ -83,17 +90,17 @@ function TopicSummary({
   }, [entityDetails]);
 
   useEffect(() => {
-    componentType === DRAWER.explore && fetchExtraTopicInfo();
+    isExplore && fetchExtraTopicInfo();
   }, [entityDetails, componentType]);
 
   return (
     <>
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 4]}>
-        {componentType === DRAWER.explore ? (
+        {isExplore ? (
           <Col span={24}>
             <TableDataCardTitle
               dataTestId="summary-panel-title"
@@ -113,11 +120,10 @@ function TopicSummary({
               return (
                 <Col key={fieldName} span={24}>
                   <Row gutter={16}>
-                    <Col
-                      className="text-gray"
-                      data-testid={`${fieldName}-label`}
-                      span={10}>
-                      {fieldName}
+                    <Col data-testid={`${fieldName}-label`} span={10}>
+                      <Typography.Text className="text-gray">
+                        {fieldName}
+                      </Typography.Text>
                     </Col>
                     <Col data-testid={`${fieldName}-value`} span={12}>
                       {fieldValue ? fieldValue : '-'}
@@ -131,14 +137,24 @@ function TopicSummary({
       </Row>
       <Divider className="m-y-xs" />
 
+      {!isExplore ? (
+        <>
+          <SummaryTagsDescription
+            entityDetail={entityDetails}
+            tags={tags ? tags : []}
+          />
+          <Divider className="m-y-xs" />
+        </>
+      ) : null}
+
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="section-header"
+            className="text-base text-gray"
             data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
@@ -146,10 +162,10 @@ function TopicSummary({
         <Col span={24}>
           {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
             <div className="m-y-md">
-              <Typography.Text
-                className="text-gray"
-                data-testid="no-data-message">
-                {t('message.no-data-available')}
+              <Typography.Text data-testid="no-data-message">
+                <Typography.Text className="text-gray">
+                  {t('message.no-data-available')}
+                </Typography.Text>
               </Typography.Text>
             </div>
           ) : (

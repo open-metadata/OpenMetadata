@@ -14,9 +14,16 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
-import { default as React, useEffect, useMemo, useState } from 'react';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -24,7 +31,10 @@ import {
   getTableQueryByTableId,
 } from 'rest/tableAPI';
 import { getListTestCase } from 'rest/testAPI';
-import { DRAWER, getEntityOverview } from 'utils/EntityUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from 'utils/EntityUtils';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -50,7 +60,8 @@ import { TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({
   entityDetails,
-  componentType = DRAWER.explore,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
@@ -58,6 +69,11 @@ function TableSummary({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
 
   const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
 
@@ -90,7 +106,7 @@ function TableSummary({
     }
   };
 
-  const fetchProfilerData = async () => {
+  const fetchProfilerData = useCallback(async () => {
     try {
       const profileResponse = await getLatestTableProfileByFqn(
         entityDetails?.fullyQualifiedName || ''
@@ -119,7 +135,7 @@ function TableSummary({
         })
       );
     }
-  };
+  }, [entityDetails, isTableDeleted]);
 
   const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
     if (isUndefined(tableDetails.profile)) {
@@ -191,10 +207,10 @@ function TableSummary({
     <>
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 4]}>
-        {componentType === DRAWER.explore ? (
+        {isExplore ? (
           <Col span={24}>
             <TableDataCardTitle
               dataTestId="summary-panel-title"
@@ -209,15 +225,15 @@ function TableSummary({
               info.visible?.includes(componentType) ? (
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
-                    <Col
-                      className="text-gray"
-                      data-testid={`${info.name}-label`}
-                      span={10}>
-                      {info.name}
+                    <Col data-testid={`${info.name}-label`} span={10}>
+                      <Typography.Text className="text-gray">
+                        {info.name}
+                      </Typography.Text>
                     </Col>
                     <Col data-testid={`${info.name}-value`} span={12}>
                       {info.isLink ? (
                         <Link
+                          component={Typography.Link}
                           target={info.isExternal ? '_blank' : '_self'}
                           to={{ pathname: info.url }}>
                           {info.value}
@@ -236,14 +252,24 @@ function TableSummary({
 
       <Divider className="m-y-xs" />
 
+      {!isExplore ? (
+        <>
+          <SummaryTagsDescription
+            entityDetail={entityDetails}
+            tags={tags ? tags : []}
+          />
+          <Divider className="m-y-xs" />
+        </>
+      ) : null}
+
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="section-header"
+            className="text-base text-gray"
             data-testid="profiler-header">
             {t('label.profiler-amp-data-quality')}
           </Typography.Text>
@@ -287,12 +313,12 @@ function TableSummary({
 
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="section-header"
+            className="text-base text-gray"
             data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>

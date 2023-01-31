@@ -14,12 +14,17 @@
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { TagLabel } from 'generated/type/tagLabel';
 import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { DRAWER, getEntityOverview } from 'utils/EntityUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -34,11 +39,13 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface DashboardSummaryProps {
   entityDetails: Dashboard;
   componentType?: string;
+  tags?: (TagLabel | undefined)[];
 }
 
 function DashboardSummary({
   entityDetails,
-  componentType = DRAWER.explore,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
 }: DashboardSummaryProps) {
   const { t } = useTranslation();
   const [charts, setCharts] = useState<ChartType[]>();
@@ -77,14 +84,19 @@ function DashboardSummary({
     [charts]
   );
 
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
+
   return (
     <>
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 4]}>
-        {componentType === DRAWER.explore ? (
+        {isExplore ? (
           <Col span={24}>
             <TableDataCardTitle
               dataTestId="summary-panel-title"
@@ -100,21 +112,23 @@ function DashboardSummary({
               info.visible?.includes(componentType) ? (
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
-                    <Col
-                      className="text-gray"
-                      data-testid={`${info.name}-label`}
-                      span={10}>
-                      {info.name}
+                    <Col data-testid={`${info.name}-label`} span={10}>
+                      <Typography.Text className="text-gray">
+                        {info.name}
+                      </Typography.Text>
                     </Col>
                     <Col data-testid="dashboard-url-value" span={12}>
                       {info.isLink ? (
-                        <Link target="_blank" to={{ pathname: info.url }}>
+                        <Link
+                          component={Typography.Link}
+                          target="_blank"
+                          to={{ pathname: info.url }}>
                           <Space align="start">
-                            <Typography.Text
+                            <Typography.Link
                               className="link"
                               data-testid="dashboard-link-name">
-                              {entityDetails.fullyQualifiedName}
-                            </Typography.Text>
+                              {entityDetails.displayName}
+                            </Typography.Link>
                             <SVGIcons
                               alt="external-link"
                               icon="external-link"
@@ -135,14 +149,24 @@ function DashboardSummary({
       </Row>
       <Divider className="m-y-xs" />
 
+      {!isExplore ? (
+        <>
+          <SummaryTagsDescription
+            entityDetail={entityDetails}
+            tags={tags ? tags : []}
+          />
+          <Divider className="m-y-xs" />
+        </>
+      ) : null}
+
       <Row
         className={classNames({
-          'm-md': componentType === DRAWER.explore,
+          'm-md': isExplore,
         })}
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="section-header"
+            className="text-base text-gray"
             data-testid="charts-header">
             {t('label.chart-plural')}
           </Typography.Text>

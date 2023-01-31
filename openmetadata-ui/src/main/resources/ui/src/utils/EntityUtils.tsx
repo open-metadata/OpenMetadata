@@ -63,7 +63,7 @@ import {
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
 
-export enum DRAWER {
+export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
   lineage = 'Lineage',
 }
@@ -135,7 +135,10 @@ export const getEntityOverview = (
           name: i18next.t('label.type'),
           value: tableType || TableType.Regular,
           isLink: false,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.service'),
@@ -145,7 +148,7 @@ export const getEntityOverview = (
             ServiceCategory.DATABASE_SERVICES
           ),
           isLink: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.database'),
@@ -158,7 +161,7 @@ export const getEntityOverview = (
             )
           ),
           isLink: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.schema'),
@@ -171,44 +174,50 @@ export const getEntityOverview = (
             )
           ),
           isLink: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.usage'),
           value: usage,
           isLink: false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.query-plural'),
           value: `${queries} past week`,
           isLink: false,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.column-plural'),
           value: columns ? columns.length : '--',
           isLink: false,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.row-plural'),
           value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 
@@ -236,7 +245,10 @@ export const getEntityOverview = (
           value: displayName,
           url: pipelineUrl,
           isLink: true,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.service'),
@@ -246,20 +258,20 @@ export const getEntityOverview = (
             ServiceCategory.PIPELINE_SERVICES
           ),
           isLink: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
@@ -267,7 +279,7 @@ export const getEntityOverview = (
           url: pipelineUrl as string,
           isLink: true,
           isExternal: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 
@@ -293,7 +305,10 @@ export const getEntityOverview = (
           value: displayName,
           url: dashboardUrl,
           isLink: true,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.service'),
@@ -303,20 +318,20 @@ export const getEntityOverview = (
             ServiceCategory.DASHBOARD_SERVICES
           ),
           isLink: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
@@ -326,7 +341,7 @@ export const getEntityOverview = (
           url: dashboardUrl as string,
           isLink: true,
           isExternal: true,
-          visible: [DRAWER.lineage],
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 
@@ -342,28 +357,40 @@ export const getEntityOverview = (
           value: algorithm || '--',
           url: '',
           isLink: false,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.target'),
           value: target || '--',
           url: '',
           isLink: false,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.server'),
           value: server || '--',
           url: server,
           isLink: true,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
         {
           name: i18next.t('label.dashboard'),
           value: getEntityName(dashboard),
           url: getDashboardDetailsPath(dashboard?.fullyQualifiedName as string),
           isLink: true,
-          visible: [DRAWER.lineage, DRAWER.explore],
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
         },
       ];
 
