@@ -5,6 +5,19 @@ slug: /connectors/database/bigquery/airflow
 
 # Run BigQuery using the Airflow SDK 
 
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+<Table>
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+</Table>
+
 In this section, we provide guides and references to use the BigQuery connector.
 
 Configure and schedule BigQuery metadata and profiler workflows from the OpenMetadata UI:
@@ -41,7 +54,7 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 <h4>GCP Permissions</h4>
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
-
+<Table>
 | # | GCP Permission | GCP Role | Required For |
 | :---------- | :---------- | :---------- | :---------- |
 | 1 | bigquery.datasets.get | BigQuery Data Viewer | Metadata Ingestion |
@@ -55,6 +68,7 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 | 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
 | 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
 | 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+</Table>
 
 
 ## Metadata Ingestion
