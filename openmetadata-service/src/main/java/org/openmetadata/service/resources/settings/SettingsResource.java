@@ -129,7 +129,7 @@ public class SettingsResource {
   }
 
   @GET
-  @Path("/{settingName}")
+  @Path("/{name}")
   @Operation(
       operationId = "getSetting",
       summary = "Get a Setting",
@@ -144,9 +144,10 @@ public class SettingsResource {
   public Settings getSettingByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("settingName") String settingName) {
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string")) @PathParam("name")
+          String name) {
     authorizer.authorizeAdmin(securityContext);
-    return settingsRepository.getConfigWithKey(settingName);
+    return settingsRepository.getConfigWithKey(name);
   }
 
   @PUT
