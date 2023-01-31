@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>0.13.2</version>
+  <version>1.0.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
