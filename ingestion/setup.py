@@ -182,6 +182,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
+    "quicksight": {VERSIONS["boto3"]}
     "redash": {"redash-toolbelt~=0.1"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {

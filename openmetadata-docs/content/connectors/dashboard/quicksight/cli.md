@@ -25,7 +25,7 @@ custom Airflow plugins to handle the workflow deployment.
 To run the Quicksight ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[Quicksight]"
+pip3 install "openmetadata-ingestion[quicksight]"
 ```
 
 ## Metadata Ingestion
