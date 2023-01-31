@@ -8,7 +8,7 @@ slug: /connectors/database/db2/cli
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❎      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
 
 </Table>
 

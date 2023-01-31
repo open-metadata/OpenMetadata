@@ -8,7 +8,7 @@ slug: /connectors/database/salesforce
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❎      |       ✅       |       ✅      |    ❎    |  ❎  |  --  |
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    ❌    |  ❌  |  --  |
 
 </Table>
 
@@ -16,7 +16,7 @@ slug: /connectors/database/salesforce
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
-| ❎ | ❎ | ❎ |
+| ❌ | ❌ | ❌ |
 
 </Table>
 

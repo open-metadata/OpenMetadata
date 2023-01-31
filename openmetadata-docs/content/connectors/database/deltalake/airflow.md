@@ -8,7 +8,7 @@ slug: /connectors/database/deltalake/airflow
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❎      |       ❎       |       ❎      |    ❎    |  ❎  |  --  |
+|  PROD  |   ✅   |      ❌      |       ❌       |       ❌      |    ❌    |  ❌  |  --  |
 
 </Table>
 
