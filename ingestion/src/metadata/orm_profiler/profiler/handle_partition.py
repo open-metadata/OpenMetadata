@@ -14,45 +14,29 @@ Helper submodule for partitioned tables
 
 from __future__ import annotations
 
-import sqlalchemy
-from sqlalchemy import Column, text
-from sqlalchemy.sql import and_
+from typing import List
 
-from metadata.orm_profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from sqlalchemy import Column, text
+
+from metadata.generated.schema.entity.data.table import PartitionProfilerConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.utils.logger import profiler_logger
+from metadata.utils.sqa_utils import (
+    build_query_filter,
+    dispatch_to_date_or_datetime,
+    get_partition_col_type,
+)
 
 RANDOM_LABEL = "random"
 
 logger = profiler_logger()
 
 
-def format_partition_datetime(
-    partition_field: str,
-    partition_interval: int,
-    partition_interval_unit: str,
-    col_type,
+def build_partition_predicate(
+    partition_details: PartitionProfilerConfig,
+    columns: List[Column],
 ):
-    """format partition predicate
-
-    Args:
-        partition_field (_type_): _description_
-        partition_interval (_type_): _description_
-        partition_interval_unit (_type_): _description_
-    """
-    if isinstance(col_type, (sqlalchemy.DATE)):
-        return and_(
-            Column(partition_field)
-            >= DateAddFn(partition_interval, text(partition_interval_unit))
-        )
-    return and_(
-        Column(partition_field)
-        >= DatetimeAddFn(partition_interval, text(partition_interval_unit))
-    )
-
-
-def build_partition_predicate(partition_details: dict, col: Column):
     """_summary_
 
     Args:
@@ -62,20 +46,27 @@ def build_partition_predicate(partition_details: dict, col: Column):
     Returns:
         _type_: _description_
     """
-    if partition_details["partition_values"]:
-        return col.in_(partition_details["partition_values"])
+    partition_field = partition_details.partitionColumnName
+    if partition_details.partitionValues:
+        return build_query_filter(
+            [(Column(partition_field), "in", partition_details.partitionValues)],
+            False,
+        )
 
-    col_type = None
-    if col is not None:
-        col_type = col.type
-    if partition_details["partition_field"] == "_PARTITIONDATE":
-        col_type = sqlalchemy.DATE
+    type_ = get_partition_col_type(
+        partition_field,
+        columns,
+    )
 
-    return format_partition_datetime(
-        partition_details["partition_field"],
-        partition_details["partition_interval"],
-        partition_details["partition_interval_unit"],
-        col_type,
+    date_or_datetime_fn = dispatch_to_date_or_datetime(
+        partition_details.partitionInterval,
+        text(partition_details.partitionIntervalUnit.value),
+        type_,
+    )
+
+    return build_query_filter(
+        [(Column(partition_field), "ge", date_or_datetime_fn)],
+        False,
     )
 
 
@@ -103,12 +94,9 @@ class partition_filter_handler:
         def handle_and_execute(_self, *args, **kwargs):
             """Handle partitioned queries"""
             if _self._partition_details:
-                partition_field = _self._partition_details[
-                    "partition_field"
-                ].lower()  # normnalizing field name as we'll lookup by key
                 partition_filter = build_partition_predicate(
                     _self._partition_details,
-                    _self.table.__table__.c.get(partition_field),
+                    _self.table.__table__.c,
                 )
                 if self.build_sample:
                     return (
