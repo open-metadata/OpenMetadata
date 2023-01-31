@@ -251,7 +251,7 @@ const ManageButton: FC<Props> = ({
           setShowReactiveModal(false);
         }}
         onOk={onRestoreEntity}>
-        <Typography.Text>
+        <Typography.Text data-testid="restore-modal-body">
           {t('message.are-you-want-to-restore', {
             entity: entityName,
           })}
