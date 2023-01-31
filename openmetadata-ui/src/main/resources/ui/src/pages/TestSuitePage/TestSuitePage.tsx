@@ -19,11 +19,14 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
+import { checkPermission } from 'utils/PermissionsUtils';
 import {
   INITIAL_PAGING_VALUE,
   MAX_CHAR_LIMIT_TEST_SUITE,
@@ -33,6 +36,7 @@ import {
 } from '../../constants/constants';
 import { WEBHOOK_DOCS } from '../../constants/docs.constants';
 import { TEST_SUITE_BREADCRUMB } from '../../constants/TestSuite.constant';
+import { Operation } from '../../generated/entity/policies/policy';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName, pluralize } from '../../utils/CommonUtils';
@@ -45,6 +49,15 @@ const TestSuitePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
+  const { permissions } = usePermissionProvider();
+
+  const createPermission = useMemo(() => {
+    return checkPermission(
+      Operation.Create,
+      ResourceEntity.TEST_SUITE,
+      permissions
+    );
+  }, [permissions]);
 
   const fetchTestSuites = async (param?: Record<string, string>) => {
     try {
@@ -144,6 +157,7 @@ const TestSuitePage = () => {
               ghost
               className="h-8 rounded-4 tw-m-y-sm"
               data-testid="add-test-suite-button"
+              disabled={!createPermission}
               size="small"
               type="primary"
               onClick={onAddTestSuite}>
@@ -175,6 +189,7 @@ const TestSuitePage = () => {
         <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
         <Button
           data-testid="add-test-suite"
+          disabled={!createPermission}
           type="primary"
           onClick={onAddTestSuite}>
           {t('label.add-entity', {

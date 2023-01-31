@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { useAuth } from '../../hooks/authHooks';
 import { IcDeleteColored } from '../../utils/SvgUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { Button } from '../buttons/Button/Button';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
@@ -55,20 +54,23 @@ const TestSuiteDetails = ({
           titleLinks={slashedBreadCrumb}
         />
         <Tooltip
+          placement="topRight"
           title={hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION}>
           <Button
+            ghost
             data-testid="test-suite-delete"
             disabled={!hasAccess}
+            icon={
+              <IcDeleteColored
+                className="anticon"
+                height={14}
+                viewBox="0 0 24 24"
+                width={14}
+              />
+            }
             size="small"
-            theme="primary"
-            variant="outlined"
+            type="primary"
             onClick={() => handleDeleteWidgetVisible(true)}>
-            <IcDeleteColored
-              className="tw-mr-1.5"
-              height={14}
-              viewBox="0 0 24 24"
-              width={14}
-            />
             <span>{t('label.delete')}</span>
           </Button>
         </Tooltip>

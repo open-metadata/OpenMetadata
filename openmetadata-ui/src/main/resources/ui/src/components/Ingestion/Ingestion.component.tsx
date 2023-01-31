@@ -405,6 +405,9 @@ const Ingestion: React.FC<IngestionProps> = ({
         <>
           <Button
             data-testid="run"
+            disabled={
+              !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
+            }
             type="link"
             onClick={() =>
               handleTriggerIngestion(ingestion.id as string, ingestion.name)
@@ -581,7 +584,9 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="kill"
-                disabled={!isRequiredDetailsAvailable}
+                disabled={
+                  !isRequiredDetailsAvailable || getEditPermission(record.name)
+                }
                 type="link"
                 onClick={() => {
                   setIsKillModalOpen(true);

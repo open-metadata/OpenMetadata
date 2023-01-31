@@ -404,22 +404,22 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   />
                 )}
 
-                <Tooltip
-                  title={
+                <Link
+                  to={
                     editTest
-                      ? t('label.add-entity', {
-                          entity: t('label.test'),
-                        })
-                      : t('message.no-permission-for-action')
+                      ? getAddDataQualityTableTestPath(
+                          ProfilerDashboardType.TABLE,
+                          `${table?.fullyQualifiedName}`
+                        )
+                      : '#'
                   }>
-                  <Link
-                    to={
+                  <Tooltip
+                    title={
                       editTest
-                        ? getAddDataQualityTableTestPath(
-                            ProfilerDashboardType.TABLE,
-                            `${table?.fullyQualifiedName}`
-                          )
-                        : '#'
+                        ? t('label.add-entity', {
+                            entity: t('label.test'),
+                          })
+                        : t('message.no-permission-for-action')
                     }>
                     <Button
                       className="rounded-4"
@@ -430,10 +430,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                         entity: t('label.test'),
                       })}
                     </Button>
-                  </Link>
-                </Tooltip>
+                  </Tooltip>
+                </Link>
 
                 <Tooltip
+                  placement="topRight"
                   title={
                     editTest
                       ? t('label.setting-plural')
