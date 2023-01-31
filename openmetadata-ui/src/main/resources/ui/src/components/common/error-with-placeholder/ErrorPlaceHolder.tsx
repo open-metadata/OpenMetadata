@@ -60,7 +60,9 @@ const ErrorPlaceHolder = ({
           <>
             <Paragraph style={{ marginBottom: '4px' }}>
               {' '}
-              {t('label.adding-new-entity', { entity: heading })}
+              {t('label.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: heading,
+              })}
             </Paragraph>
             <Paragraph>
               {' '}
@@ -97,7 +99,9 @@ const ErrorPlaceHolder = ({
             {t('message.no-data-available')}
           </Typography.Text>
           <Typography.Text className="tw-text-sm">
-            {t('label.adding-new-entity', { entity: heading })}
+            {t('label.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: heading,
+            })}
           </Typography.Text>
           {doc ? (
             <Typography.Text className="tw-text-sm">

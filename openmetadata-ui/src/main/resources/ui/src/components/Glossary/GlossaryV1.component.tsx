@@ -267,8 +267,11 @@ const GlossaryV1 = ({
               {t('label.delete')}
             </p>
             <p className="tw-text-grey-muted tw-text-xs">
-              {`Deleting this ${isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}
-              will permanently remove its metadata from OpenMetadata.`}
+              {t('message.delete-entity-type-action-description', {
+                entityType: isGlossaryActive
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
+              })}
             </p>
           </Col>
         </Row>

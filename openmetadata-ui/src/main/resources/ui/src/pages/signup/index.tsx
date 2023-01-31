@@ -18,13 +18,13 @@ import { Button } from 'components/buttons/Button/Button';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
-import React, { useState } from 'react';
+import { default as React, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
 import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
-import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
+import { ELLIPSES, REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
@@ -196,7 +196,9 @@ const Signup = () => {
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
                       data-testid="select-team-label">
-                      {t('label.select-teams')}
+                      {t('label.select-field', {
+                        field: t('label.team-plural-lowercase'),
+                      })}
                     </label>
                     <TeamsSelectable
                       filterJoinable
@@ -227,6 +229,7 @@ const Signup = () => {
           className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center"
           data-testid="loading-content">
           {t('label.creating-account')}
+          {ELLIPSES}
         </p>
       )}
     </>

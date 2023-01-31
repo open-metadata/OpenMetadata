@@ -365,7 +365,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'minute' && (
         <>
           <div className="tw-mb-1.5" data-testid="minute-segment-container">
-            <label>{`${t('label.minute')}:`}</label>
+            <label>{`${t('label.minute-lowercase')}:`}</label>
             {getMinuteSegmentSelect(
               selectedMinOption,
               (e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -389,7 +389,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'hour' && (
         <>
           <div className="tw-mb-1.5" data-testid="hour-segment-container">
-            <label>{`${t('label.minute')}:`}</label>
+            <label>{`${t('label.minute-lowercase')}:`}</label>
             {getMinuteSelect(
               selectedHourOption,
               (e: React.ChangeEvent<HTMLSelectElement>) =>
