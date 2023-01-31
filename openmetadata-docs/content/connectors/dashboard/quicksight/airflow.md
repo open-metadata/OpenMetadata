@@ -1,13 +1,13 @@
 ---
-title: Run Redash Connector using Airflow SDK
-slug: /connectors/dashboard/redash/airflow
+title: Run Quicksight Connector using Airflow SDK
+slug: /connectors/dashboard/quicksight/airflow
 ---
 
-# Run Redash using the Airflow SDK
+# Run Quicksight using the Airflow SDK
 
-In this section, we provide guides and references to use the Redash connector.
+In this section, we provide guides and references to use the Quicksight connector.
 
-Configure and schedule Redash metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Quicksight metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
@@ -22,59 +22,51 @@ custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Redash ingestion, you will need to install:
+To run the Quicksight ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[redash]"
+pip3 install "openmetadata-ingestion[Quicksight]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/redashConnection.json)
-you can find the structure to create a connection to Redash.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/quickSightConnection.json)
+you can find the structure to create a connection to Quicksight.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is modeled around the following
+The workflow is Quicksightled around the following
 [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
-This is a sample config for Redash:
+This is a sample config for Quicksight:
 
 ```yaml
 source:
-  type: redash
-  serviceName: local_redash
+  type: quicksight
+  serviceName: local_quicksight
   serviceConnection:
     config:
-      type: Redash
-      hostPort: http://localhost:5000
-      apiKey: api_key
-      username: random
+      type: QuickSight
+      awsConfig:
+        awsAccessKeyId: KEY
+        awsSecretAccessKey: SECRET
+        awsRegion: us-east-2
+        awsSessionToken: Token
+      awsAccountId: <aws-account-id>
+      identityType: IAM #QUICKSIGHT, ANONYMOUS
+      namespace: #to be provided if identityType is Anonymous
+
   sourceConfig:
     config:
-      type: DashboardMetadata
-      # dbServiceNames:
-      #   - service1
-      #   - service2
-      # dashboardFilterPattern:
-      #   includes:
-      #     - dashboard1
-      #     - dashboard2
-      #   excludes:
-      #     - dashboard3
-      #     - dashboard4
-      # chartFilterPattern:
-      #   includes:
-      #     - chart1
-      #     - chart2
-      #   excludes:
-      #     - chart3
-      #     - chart4
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+      dbServiceNames: 
+        - List of Database Service Name for creation of lineage
 sink:
   type: metadata-rest
   config: {}
@@ -83,14 +75,20 @@ workflowConfig:
   openMetadataServerConfig:
     hostPort: <OpenMetadata host and port>
     authProvider: <OpenMetadata auth provider>
-
 ```
 
 #### Source Configuration - Service Connection
 
-- **hostPort**: URL to the Redash instance.
-- **username**: Specify the User to connect to Redash. It should have enough privileges to read all the metadata.
-- **apiKey**: API key of the redash instance to access.
+**awsConfig**
+  - **AWS Access Key ID**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
+  - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
+  - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
+  - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
+  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
+
+- **identityType**: The authentication method that the user uses to sign in.
+- **awsAccountId**: AWS Account ID
+- **namespace**: The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )
 
 #### Source Configuration - Source Config
 
@@ -255,6 +253,7 @@ workflowConfig:
 ```
 
 </Collapse>
+
 
 ## 2. Prepare the Ingestion DAG
 

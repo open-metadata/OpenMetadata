@@ -1,13 +1,13 @@
 ---
-title: Run Redash Connector using Airflow SDK
-slug: /connectors/dashboard/redash/airflow
+title: Run Quicksight Connector using the CLI
+slug: /connectors/dashboard/quicksight/cli
 ---
 
-# Run Redash using the Airflow SDK
+# Run Quicksight using the metadata CLI
 
-In this section, we provide guides and references to use the Redash connector.
+In this section, we provide guides and references to use the Quicksight connector.
 
-Configure and schedule Redash metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Quicksight metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
@@ -22,39 +22,43 @@ custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Redash ingestion, you will need to install:
+To run the Quicksight ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[redash]"
+pip3 install "openmetadata-ingestion[quicksight]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/redashConnection.json)
-you can find the structure to create a connection to Redash.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/quickSightConnection.json)
+you can find the structure to create a connection to Quicksight.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is modeled around the following
+The workflow is Quicksightled around the following
 [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
-This is a sample config for Redash:
+This is a sample config for Quicksight:
 
 ```yaml
 source:
-  type: redash
-  serviceName: local_redash
+  type: Quicksight
+  serviceName: local_Quicksight
   serviceConnection:
     config:
-      type: Redash
-      hostPort: http://localhost:5000
-      apiKey: api_key
-      username: random
+      type: QuickSight
+      awsConfig:
+        awsAccessKeyId: key
+        awsSecretAccessKey: secret
+        awsRegion: ap-south-1
+        awsSessionToken: token
+      awsAccountId: account-id
+      identityType: identityType
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -83,15 +87,20 @@ workflowConfig:
   openMetadataServerConfig:
     hostPort: <OpenMetadata host and port>
     authProvider: <OpenMetadata auth provider>
-
 ```
 
 #### Source Configuration - Service Connection
 
-- **hostPort**: URL to the Redash instance.
-- **username**: Specify the User to connect to Redash. It should have enough privileges to read all the metadata.
-- **apiKey**: API key of the redash instance to access.
+- **awsConfig**
+  - **AWS Access Key ID**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
+  - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
+  - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
+  - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
+  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
 
+- **identityType**: The authentication method that the user uses to sign in.
+- **awsAccountId**: AWS Account ID
+- **namespace**: The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
@@ -256,60 +265,15 @@ workflowConfig:
 
 </Collapse>
 
-## 2. Prepare the Ingestion DAG
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+### 2. Run with the CLI
 
-```python
-import pathlib
-import yaml
-from datetime import timedelta
-from airflow import DAG
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
-}
-
-config = """
-<your YAML configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = yaml.safe_load(config)
-    workflow = Workflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-with DAG(
-    "sample_data",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *',
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
+```bash
+metadata ingest -c <path-to-yaml>
 ```
 
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration, you will
-be able to extract metadata from different sources.
+Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
+you will be able to extract metadata from different sources.
+

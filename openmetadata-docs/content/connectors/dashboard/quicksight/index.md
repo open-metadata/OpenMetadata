@@ -1,27 +1,16 @@
 ---
-title: DomoDatabase
-slug: /connectors/database/domo-database
+title: Quicksight
+slug: /connectors/dashboard/quicksight
 ---
 
-# DomoDatabase
-<Table>
-| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
-|:------:|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❎      |       ❎       |       ❎      |    ❎    |  ❎  |  --  |
-</Table>
-<Table>
-| Lineage | Table-level | Column-level |
-|:------:|:-----------:|:-------------:|
-| ❎ | ❎ | ❎ |
-</Table>
 
-In this section, we provide guides and references to use the DomoDatabase connector.
+# Quicksight
 
-Configure and schedule DomoDatabase metadata and profiler workflows from the OpenMetadata UI:
+In this section, we provide guides and references to use the Quicksight connector.
+
+Configure and schedule Quicksight metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -31,14 +20,14 @@ the following docs to connect using Airflow SDK or with the CLI.
     icon="air"
     title="Ingest with Airflow"
     text="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/domo-database/airflow"
+    link="/connectors/dashboard/quicksight/airflow"
     size="half"
   />
   <Tile
     icon="account_tree"
     title="Ingest with the CLI"
     text="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/domo-database/cli"
+    link="/connectors/dashboard/quicksight/cli"
     size="half"
   />
 </TileContainer>
@@ -51,13 +40,6 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
-
-<Note>
-
-For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
-Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
-
-</Note>
 
 ## Metadata Ingestion
 
@@ -88,11 +70,11 @@ caption="Add a new Service from the Services page"
 
 ### 3. Select the Service Type
 
-Select Domo-Database as the service type and click Next.
+Select Quicksight as the service type and click Next.
 
-<div className="w-110 flex justify-center">
+<div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/domodatabase/image.png"
+  src="/images/openmetadata/connectors/quicksight/select-service.png"
   alt="Select Service"
   caption="Select your service from the list"
 />
@@ -112,7 +94,7 @@ from.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/domodatabase/domo-service-page.png"
+  src="/images/openmetadata/connectors/quicksight/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service"
 />
@@ -123,12 +105,12 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your domodatabase service as
+you've configured the connector to read from your Quicksight service as
 desired.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/domodatabase/domo-ingestion-pipeline.png"
+  src="/images/openmetadata/connectors/quicksight/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />
@@ -148,11 +130,16 @@ the changes.
 
 #### Connection Options
 
-- **Client ID**: Client ID for DOMO Database.
-- **Secret Token**: Secret Token to Connect DOMO Database.
-- **Access Token**: Access to Connect to DOMO Database.
-- **Api Host**: API Host to Connect to DOMO Database instance.
-- **SandBox Domain**: Connect to SandBox Domain.
+- **awsConfig**
+  - **AWS Access Key ID**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
+  - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
+  - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
+  - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
+  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
+
+- **identityType**: The authentication method that the user uses to sign in.
+- **awsAccountId**: AWS Account ID
+- **namespace**: The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )
 
 ### 6. Configure Metadata Ingestion
 
@@ -160,7 +147,7 @@ In this step we will configure the metadata ingestion pipeline,
 Please follow the instructions below
 
 <Image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-database.png"
+src="/images/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page"
 />
@@ -168,20 +155,14 @@ caption="Configure Metadata Ingestion Page"
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Database Filter Pattern (Optional)**: Use to database filter patterns to control whether or not to include database as part of metadata ingestion.
-  - **Include**: Explicitly include databases by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
-  - **Exclude**: Explicitly exclude databases by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all databases with names matching one or more of the supplied regular expressions. All other databases will be included.
-- **Schema Filter Pattern (Optional)**: Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion.
-  - **Include**: Explicitly include schemas by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
-  - **Exclude**: Explicitly exclude schemas by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
-- **Table Filter Pattern (Optional)**: Use to table filter patterns to control whether or not to include tables as part of metadata ingestion.
-  - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
-  - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
-- **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Dashboard Filter Pattern (Optional)**: Use to dashboard filter patterns to control whether or not to include dashboard as part of metadata ingestion.
+    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
+    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+- **Chart Pattern (Optional)**: Use to chart filter patterns to control whether or not to include charts as part of metadata ingestion.
+    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
+    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
-- **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -230,5 +211,4 @@ caption="Edit and Deploy the Ingestion Pipeline"
 />
 
 From the Connection tab, you can also Edit the Service if needed.
-
 
