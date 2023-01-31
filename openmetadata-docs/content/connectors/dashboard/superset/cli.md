@@ -65,9 +65,9 @@ source:
   serviceConnection:
     config:
       type: Superset
+      hostPort: http://localhost:8088
       connection:
         # For Superset API Connection
-        hostPort: http://localhost:8080
         username: admin
         password: admin
         provider: db # or provider: ldap
