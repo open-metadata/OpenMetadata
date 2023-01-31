@@ -8,7 +8,8 @@ slug: /connectors/database/hive/cli
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  --  |
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  Hive >= 2.0
+  |
 
 </Table>
 
