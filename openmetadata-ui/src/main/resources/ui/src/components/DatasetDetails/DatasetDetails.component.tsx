@@ -31,7 +31,7 @@ import {
   JoinedWith,
   Table,
   TableJoins,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -176,9 +176,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   }, [tableDetails.id]);
 
-  const setUsageDetails = (
-    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
-  ) => {
+  const setUsageDetails = (usageSummary: UsageDetails) => {
     if (!isNil(usageSummary?.weeklyStats?.percentileRank)) {
       const percentile = getUsagePercentile(
         usageSummary?.weeklyStats?.percentileRank || 0,
