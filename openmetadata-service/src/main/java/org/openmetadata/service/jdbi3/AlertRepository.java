@@ -102,7 +102,7 @@ public class AlertRepository extends EntityRepository<Alert> {
     List<AlertAction> alertActionList = new ArrayList<>();
     List<CollectionDAO.EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(alertId.toString(), ALERT, CONTAINS.ordinal(), ALERT_ACTION);
-    EntityRepository<AlertAction> alertEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
+    AlertActionRepository alertEntityRepository = (AlertActionRepository) Entity.getEntityRepository(ALERT_ACTION);
     for (CollectionDAO.EntityRelationshipRecord record : records) {
       AlertAction alertAction = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
       alertAction.setStatusDetails(getActionStatus(alertId, alertAction.getId()));

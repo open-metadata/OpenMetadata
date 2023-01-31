@@ -305,12 +305,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     entity.setId(UUID.randomUUID());
     entity.setUpdatedBy(importedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
-    EntityRepository<EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
     Response.Status responseStatus;
     if (!importResult.getDryRun()) {
       try {
         repository.prepareInternal(entity);
-        PutResponse<EntityInterface> response = repository.createOrUpdate(null, entity);
+        PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), record);

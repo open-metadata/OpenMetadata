@@ -63,6 +63,8 @@ ALTER SCHEMA s1 DEFAULT INCLUDE PRIVILEGES;
 ALTER SCHEMA "<db>.public" DEFAULT INCLUDE PRIVILEGES;
 ```
 
+#### Lineage and Usage
+
 If you also want to run the Lineage and Usage workflows, then the user needs to be granted permissions to the
 `V_MONITOR` schema:
 
@@ -76,6 +78,15 @@ will be to grant the `SYSMONITOR` role to the `openmetadata` user:
 ```sql
 GRANT SYSMONITOR TO openmetadata;
 ALTER USER openmetadata DEFAULT ROLE SYSMONITOR;
+```
+
+#### Profiler
+
+To run the profiler, it's not enough to have `USAGE` permissions to the schema as we need to `SELECT` the tables
+in there. Therefore, you'll need to grant `SELECT` on all tables for the schemas:
+
+```sql
+GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 ```
 
 ## Metadata Ingestion

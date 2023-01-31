@@ -35,7 +35,8 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -46,9 +47,9 @@ public class SubjectCache {
   protected static LoadingCache<String, SubjectContext> USER_CACHE;
   protected static LoadingCache<UUID, SubjectContext> USER_CACHE_WIH_ID;
   protected static LoadingCache<UUID, Team> TEAM_CACHE;
-  protected static EntityRepository<User> USER_REPOSITORY;
+  protected static UserRepository USER_REPOSITORY;
   protected static Fields USER_FIELDS;
-  protected static EntityRepository<Team> TEAM_REPOSITORY;
+  protected static TeamRepository TEAM_REPOSITORY;
   protected static Fields TEAM_FIELDS;
 
   // Expected to be called only once from the DefaultAuthorizer
@@ -63,9 +64,9 @@ public class SubjectCache {
               .build(new UserLoaderWithId());
       TEAM_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoader());
-      USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
+      USER_REPOSITORY = (UserRepository) Entity.getEntityRepository(Entity.USER);
       USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin");
-      TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
+      TEAM_REPOSITORY = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
       TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
       INSTANCE = new SubjectCache();
       INITIALIZED = true;

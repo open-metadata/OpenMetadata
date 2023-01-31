@@ -93,6 +93,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -101,6 +102,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -1025,6 +1027,79 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
       throws IOException {
     return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
+  }
+
+  @GET
+  @Path("/documentation/csv")
+  @Valid
+  @Operation(
+      operationId = "getCsvDocumentation",
+      summary = "Get CSV documentation for user import/export",
+      tags = "users")
+  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
+      throws IOException {
+    return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportUsers",
+      summary = "Export users in a team in CSV format",
+      tags = "users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with user information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
+      })
+  public String exportUsersCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team)
+      throws IOException {
+    return exportCsvInternal(securityContext, team);
+  }
+
+  @PUT
+  @Path("/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTeams",
+      summary = "Import from CSV to create, and update teams.",
+      tags = "users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(securityContext, team, csv, dryRun);
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {
