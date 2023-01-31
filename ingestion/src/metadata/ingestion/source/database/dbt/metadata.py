@@ -440,7 +440,10 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                     datamodel_path = None
                     if manifest_node.original_file_path:
-                        if hasattr(manifest_node, "root_path"):
+                        if (
+                            hasattr(manifest_node, "root_path")
+                            and manifest_node.root_path
+                        ):
                             datamodel_path = f"{manifest_node.root_path}/{manifest_node.original_file_path}"
                         else:
                             datamodel_path = manifest_node.original_file_path
