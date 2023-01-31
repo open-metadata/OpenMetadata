@@ -59,8 +59,8 @@ import {
 } from '../../utils/TasksUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../tags-container/tags-container';
-import TagsViewer from '../tags-viewer/tags-viewer';
+import TagsContainer from '../Tag/TagsContainer/tags-container';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 

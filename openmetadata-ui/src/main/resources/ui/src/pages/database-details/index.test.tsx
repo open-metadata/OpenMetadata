@@ -272,7 +272,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
-jest.mock('components/tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<span>Tag</span>);
 });
 

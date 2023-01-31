@@ -62,13 +62,13 @@ jest.mock(
   })
 );
 
-jest.mock('../../tags-container/tags-container', () =>
+jest.mock('components/Tag/TagsContainer/tags-container', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="tag-container">Tag Container</div>)
 );
 
-jest.mock('../../tags-viewer/tags-viewer', () =>
+jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
   jest.fn().mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>)
 );
 

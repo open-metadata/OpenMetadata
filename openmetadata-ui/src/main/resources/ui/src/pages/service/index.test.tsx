@@ -237,7 +237,7 @@ jest.mock(
   }
 );
 
-jest.mock('components/tags-viewer/tags-viewer', () => {
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);

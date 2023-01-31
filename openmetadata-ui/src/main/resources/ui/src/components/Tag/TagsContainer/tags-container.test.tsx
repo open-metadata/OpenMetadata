@@ -24,7 +24,7 @@ const tagList = [
 const onCancel = jest.fn();
 const onSelectionChange = jest.fn();
 
-jest.mock('../../utils/UserDataUtils', () => {
+jest.mock('utils/UserDataUtils', () => {
   return {
     fetchAllUsers: jest.fn(),
     fetchUserProfilePic: jest.fn(),
@@ -34,7 +34,7 @@ jest.mock('../../utils/UserDataUtils', () => {
   };
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>tags</p>);
 });
 

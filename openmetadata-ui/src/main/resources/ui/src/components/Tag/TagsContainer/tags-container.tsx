@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Select, Space } from 'antd';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, {
@@ -24,11 +25,10 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { TagSource } from '../../generated/type/tagLabel';
-import { withLoader } from '../../hoc/withLoader';
-import { Button } from '../buttons/Button/Button';
-import Tags from '../tags/tags';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { withLoader } from '../../../hoc/withLoader';
+import { Button } from '../../buttons/Button/Button';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({

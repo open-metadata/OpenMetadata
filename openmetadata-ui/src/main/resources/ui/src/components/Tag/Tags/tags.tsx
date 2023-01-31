@@ -14,15 +14,15 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { ROUTES } from 'constants/constants';
 import { isEmpty, isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ROUTES } from '../../constants/constants';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagDisplay } from '../../utils/TagsUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { getTagDisplay } from 'utils/TagsUtils';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 

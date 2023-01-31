@@ -90,8 +90,8 @@ import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../tags-container/tags-container';
-import TagsViewer from '../tags-viewer/tags-viewer';
+import TagsContainer from '../Tag/TagsContainer/tags-container';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
