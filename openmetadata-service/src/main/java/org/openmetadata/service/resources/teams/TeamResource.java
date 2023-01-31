@@ -457,7 +457,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation", tags = "glossaries")
+  @Operation(
+      operationId = "getCsvDocumentation",
+      summary = "Get CSV documentation for team import/export",
+      tags = "teams")
   public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);

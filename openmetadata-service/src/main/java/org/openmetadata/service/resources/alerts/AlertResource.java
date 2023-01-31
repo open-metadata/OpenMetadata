@@ -66,9 +66,9 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.ActivityFeedAlertCache;
 import org.openmetadata.service.alerts.AlertUtil;
 import org.openmetadata.service.alerts.AlertsPublisherManager;
+import org.openmetadata.service.jdbi3.AlertActionRepository;
 import org.openmetadata.service.jdbi3.AlertRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -122,9 +122,10 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       activityFeedAlert = JsonUtils.readObjects(alertJson, Alert.class).get(0);
       activityFeedAlert.setId(UUID.randomUUID());
       // populate alert actions
-      EntityRepository<AlertAction> actionEntityRepository = Entity.getEntityRepository(Entity.ALERT_ACTION);
+      AlertActionRepository alertActionRepository =
+          (AlertActionRepository) Entity.getEntityRepository(Entity.ALERT_ACTION);
       AlertAction action =
-          actionEntityRepository.getByName(null, alertActions.getName(), actionEntityRepository.getFields("id"));
+          alertActionRepository.getByName(null, alertActions.getName(), alertActionRepository.getFields("id"));
       activityFeedAlert.setAlertActions(List.of(action.getEntityReference()));
       dao.initializeEntity(activityFeedAlert);
     } catch (Exception e) {
