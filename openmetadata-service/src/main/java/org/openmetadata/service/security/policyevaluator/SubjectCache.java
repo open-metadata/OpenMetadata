@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -100,6 +101,20 @@ public class SubjectCache {
     } catch (ExecutionException | UncheckedExecutionException ex) {
       return null;
     }
+  }
+
+  /** Return true if given list of teams is part of the hierarchy of parentTeam */
+  public boolean isInTeam(String parentTeam, List<EntityReference> teams) {
+    Stack<EntityReference> stack = new Stack<>();
+    listOrEmpty(teams).forEach(stack::push);
+    while (!stack.empty()) {
+      Team parent = getTeam(stack.pop().getId());
+      if (parent.getName().equals(parentTeam)) {
+        return true;
+      }
+      listOrEmpty(parent.getParents()).forEach(stack::push);
+    }
+    return false;
   }
 
   public static void cleanUp() {

@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -352,6 +353,29 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteBotByFQN",
+      summary = "Delete a bot",
+      tags = "bots",
+      description = "Delete a bot by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the Bot", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, true, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -403,8 +427,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
       bot =
           dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);
-      throw new IllegalArgumentException(
-          String.format("Bot user [%s] is already used by [%s] bot", botUser.getName(), bot.getName()));
+      throw new IllegalArgumentException(CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (originalBot != null) {

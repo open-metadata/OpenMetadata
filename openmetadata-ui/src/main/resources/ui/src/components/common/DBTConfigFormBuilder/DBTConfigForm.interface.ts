@@ -43,6 +43,8 @@ export type DbtConfigCloud = Pick<
   | 'dbtCloudAuthToken'
   | 'dbtUpdateDescriptions'
   | 'dbtCloudProjectId'
+  | 'dbtClassificationName'
+  | 'dbtCloudUrl'
 >;
 
 export type DbtConfigLocal = Pick<
@@ -51,6 +53,7 @@ export type DbtConfigLocal = Pick<
   | 'dbtManifestFilePath'
   | 'dbtRunResultsFilePath'
   | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtConfigHttp = Pick<
@@ -59,11 +62,15 @@ export type DbtConfigHttp = Pick<
   | 'dbtManifestHttpPath'
   | 'dbtRunResultsHttpPath'
   | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtConfigS3GCS = Pick<
   ModifiedDbtConfig,
-  'dbtSecurityConfig' | 'dbtPrefixConfig' | 'dbtUpdateDescriptions'
+  | 'dbtSecurityConfig'
+  | 'dbtPrefixConfig'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtS3Creds = Pick<

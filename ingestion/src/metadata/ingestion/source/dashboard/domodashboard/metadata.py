@@ -66,9 +66,13 @@ class DomodashboardSource(DashboardServiceSource):
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
         dashboards = self.client.page_list()
-        return dashboards
+        dashboard_list = []
+        for dashboard in dashboards:
+            dashboard_detail = self.get_page_details(page_id=dashboard["id"])
+            dashboard_list.append(dashboard_detail)
+        return dashboard_list
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard: Any) -> str:
         return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
@@ -81,9 +85,9 @@ class DomodashboardSource(DashboardServiceSource):
             dashboard_url = f"{self.service_connection.sandboxDomain}/page/{dashboard_details['id']}"
 
             yield CreateDashboardRequest(
-                name=dashboard_details["name"],
+                name=dashboard_details["id"],
                 dashboardUrl=dashboard_url,
-                displayName=dashboard_details["name"],
+                displayName=dashboard_details.get("name"),
                 description=dashboard_details.get("description", ""),
                 charts=[
                     EntityReference(id=chart.id.__root__, type="chart")
@@ -110,15 +114,40 @@ class DomodashboardSource(DashboardServiceSource):
             )
             logger.debug(traceback.format_exc())
 
+    def get_page_details(self, page_id):
+        try:
+            pages = self.client.page_get(page_id)
+            return pages
+        except Exception as exc:
+            logger.warning(
+                f"Error while getting details from collection {page_id} - {exc}"
+            )
+            logger.debug(traceback.format_exc())
+            return None
+
+    def get_chart_ids(self, collection_ids: List[Any]):
+        chart_ids = []
+        for collection_id in collection_ids:
+            chart_id = self.get_page_details(page_id=collection_id)
+            for chart in chart_id.get("cardIds", []):
+                chart_ids.append(chart)
+        return chart_ids
+
     def yield_dashboard_chart(
         self, dashboard_details: Any
     ) -> Optional[Iterable[CreateChartRequest]]:
-        charts = self.domo_client.get_chart_details(page_id=dashboard_details["id"])
-        for chart in charts.get("cards") or []:
+        chart_ids = dashboard_details["cardIds"]
+        chart_id_from_collection = self.get_chart_ids(
+            dashboard_details.get("collectionIds", [])
+        )
+        chart_ids.extend(chart_id_from_collection)
+        for chart_id in chart_ids:
             try:
+                chart = self.domo_client.get_chart_details(page_id=chart_id)
+
                 chart_url = (
                     f"{self.service_connection.sandboxDomain}/page/"
-                    f"{charts['id']}/kpis/details/{chart['id']}"
+                    f"{dashboard_details['id']}/kpis/details/{chart_id}"
                 )
 
                 if filter_by_chart(
@@ -128,9 +157,9 @@ class DomodashboardSource(DashboardServiceSource):
                     continue
 
                 yield CreateChartRequest(
-                    name=chart["title"],
+                    name=chart_id,
                     description=chart.get("description", ""),
-                    displayName=chart["title"],
+                    displayName=chart.get("title"),
                     chartType=get_standard_chart_type(
                         chart["metadata"].get("chartType", "")
                     ).value,

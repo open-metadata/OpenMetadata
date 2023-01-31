@@ -38,7 +38,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dataInsight.DataInsightResourceTest;
 import org.openmetadata.service.util.ResultList;
@@ -57,8 +56,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     DataInsightResourceTest dataInsightResourceTest = new DataInsightResourceTest();
     CreateDataInsightChart chartRequest =
         dataInsightResourceTest
-            .createRequest()
-            .withName(String.format("TestChart" + "%s", UUID.randomUUID()))
+            .createRequest(String.format("TestChart" + "%s", UUID.randomUUID()))
             .withOwner(USER1_REF)
             .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX)
             .withMetrics(
@@ -189,15 +187,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     verifyKpiResults(kpiResults, kpiResultList, 12);
   }
 
-  public static void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("kpi/" + fqn + "/kpiResult");
+  public void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
 
-  public static ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
+  public ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("kpi/" + fqn + "/kpiResult");
+    WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, KpiResource.KpiResultList.class, authHeaders);

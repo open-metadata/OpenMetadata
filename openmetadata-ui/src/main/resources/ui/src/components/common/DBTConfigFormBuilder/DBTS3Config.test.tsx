@@ -20,6 +20,7 @@ const mockSubmit = jest.fn();
 const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
 
 const mockProps = {
   okText: 'Next',
@@ -30,10 +31,11 @@ const mockProps = {
   handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
 
-jest.mock('./SwitchField.component', () =>
-  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
 );
 
 describe('Test DBT S3 Config Form', () => {

@@ -15,10 +15,8 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from datetime import datetime
 from typing import Dict, Optional
 
-from dateutil.relativedelta import relativedelta
 from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -102,27 +100,11 @@ class SQAInterfaceMixin:
         if not partition_config:
             return None
 
-        timedelta_mapping = {
-            "YEAR": "years",
-            "MONTH": "months",
-            "DAY": "days",
-            "HOUR": "hours",
-        }
-
-        timedelta_dict = {
-            timedelta_mapping.get(
-                partition_config.partitionIntervalUnit.value, "days"
-            ): partition_config.partitionInterval
-            or 1
-        }
-
-        end = datetime.utcnow()
-        start = end - relativedelta(**timedelta_dict)
         return {
             "partition_field": partition_config.partitionColumnName,
-            "partition_start": start,
-            "partition_end": end,
             "partition_values": partition_config.partitionValues,
+            "partition_interval_unit": partition_config.partitionIntervalUnit.value,
+            "partition_interval": partition_config.partitionInterval,
         }
 
     def close(self):

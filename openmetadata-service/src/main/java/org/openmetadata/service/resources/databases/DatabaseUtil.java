@@ -55,7 +55,7 @@ public final class DatabaseUtil {
     for (TableConstraint t : tableConstraints) {
       if (t.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY && primaryColumnExists) {
         throw new IllegalArgumentException(
-            "A column already tagged as a primary key and table constraint also " + "includes primary key");
+            "A column already tagged as a primary key and table constraint also includes primary key");
       }
       for (String columnName : t.getColumns()) {
         if (!columnNames.contains(columnName)) {

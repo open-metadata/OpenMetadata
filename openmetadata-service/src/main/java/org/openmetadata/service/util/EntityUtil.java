@@ -269,14 +269,6 @@ public final class EntityUtil {
     return ids;
   }
 
-  public static void setFullyQualifiedName(Tag tag) {
-    String fqn =
-        tag.getParent() == null
-            ? FullyQualifiedName.add(tag.getClassification().getName(), tag.getName())
-            : FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName());
-    tag.setFullyQualifiedName(fqn);
-  }
-
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);

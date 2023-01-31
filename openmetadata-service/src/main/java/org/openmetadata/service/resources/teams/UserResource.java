@@ -757,6 +757,29 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return response;
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteUserByName",
+      summary = "Delete a user",
+      tags = "users",
+      description = "Users can't be deleted but are soft-deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -1042,8 +1065,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       bot =
           Entity.getEntityRepository(Entity.BOT)
               .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
-      throw new IllegalArgumentException(
-          String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
+      throw new IllegalArgumentException(CatalogExceptionMessage.userAlreadyBot(user.getName(), bot.getName()));
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (original != null) {

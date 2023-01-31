@@ -32,3 +32,30 @@ SET json = jsonb_set(
   false
 )
 WHERE json->>'name' = 'columnValuesToBeBetween';
+
+UPDATE pipeline_entity
+SET json = jsonb_set(
+        json,
+        '{name}',
+        to_jsonb(replace(json ->> 'name',':',''))
+    )
+WHERE json ->> 'serviceType' = 'Dagster';
+
+UPDATE pipeline_entity
+SET json = jsonb_set(
+        json,
+        '{fullyQualifiedName}',
+        to_jsonb(replace(json ->> 'fullyQualifiedName',':',''))
+    )
+WHERE json ->> 'serviceType' = 'Dagster';
+
+UPDATE dashboard_service_entity  
+SET json = JSONB_SET(json::jsonb,
+'{connection,config}',json::jsonb #>'{connection,config}' #- '{password}' #- '{username}' #- '{provider}'|| 
+jsonb_build_object('connection',jsonb_build_object(
+'username',json #>'{connection,config,username}',
+'password',json #>'{connection,config,password}',
+'provider',json #>'{connection,config,provider}'
+)), true)
+where servicetype = 'Superset';
+

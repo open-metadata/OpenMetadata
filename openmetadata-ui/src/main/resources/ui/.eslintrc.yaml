@@ -26,6 +26,7 @@ extends:
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
   - prettier
+  - 'plugin:cypress/recommended'
 
 parser: '@typescript-eslint/parser'
 
@@ -42,6 +43,7 @@ plugins:
   - jest
   - jest-formatting
   - '@typescript-eslint'
+  - 'cypress'
 
 rules:
   # ESLint rules
@@ -178,6 +180,12 @@ rules:
 
   # React rules
 
+  # Cypress rules
+
+  cypress/no-unnecessary-waiting: warn
+
+  # Cypress rules
+
 overrides:
   # eslint-plugin-jsonc requires its own parser
   - files:
@@ -207,10 +215,17 @@ overrides:
 
   # Explicit assertions not required in most Cypress tests
   - files:
-      - cypress/e2e/**/*.spec.js
+      - cypress/**
     rules:
       jest/expect-expect:
         - off
+      jest/valid-expect-in-promise:
+        - off
+      jest/valid-expect:
+        - off
+
+globals:
+  cypress: true
 
 settings:
   import/resolver:

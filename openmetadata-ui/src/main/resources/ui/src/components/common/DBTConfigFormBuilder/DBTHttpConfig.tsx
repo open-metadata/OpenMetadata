@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
@@ -20,20 +21,20 @@ import {
   requiredField,
 } from '../../../utils/CommonUtils';
 import { validateDbtHttpConfig } from '../../../utils/DBTConfigFormUtil';
-import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import DBTCommonFields from './DBTCommonFields.component';
 import {
   DbtConfigHttp,
   DBTFormCommonProps,
   ErrorDbtHttp,
 } from './DBTConfigForm.interface';
-import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleCatalogHttpPathChange: (value: string) => void;
   handleManifestHttpPathChange: (value: string) => void;
   handleRunResultsHttpPathChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
+  handleUpdateDBTClassification: (value: string) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -49,6 +50,8 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleManifestHttpPathChange,
   handleRunResultsHttpPathChange,
   handleUpdateDescriptions,
+  dbtClassificationName,
+  handleUpdateDBTClassification,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
   const { t } = useTranslation();
@@ -66,6 +69,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       dbtManifestHttpPath,
       dbtRunResultsHttpPath,
       dbtUpdateDescriptions,
+      dbtClassificationName,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -136,32 +140,31 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <SwitchField
+      <DBTCommonFields
+        dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
+        descriptionId="http-update-description"
+        handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
-        id="http-update-description"
       />
 
       {getSeparator('')}
 
-      <Field className="tw-flex tw-justify-end">
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>{cancelText}</span>
+          {cancelText}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleSubmit}>
-          <span>{okText}</span>
+          {okText}
         </Button>
       </Field>
     </Fragment>

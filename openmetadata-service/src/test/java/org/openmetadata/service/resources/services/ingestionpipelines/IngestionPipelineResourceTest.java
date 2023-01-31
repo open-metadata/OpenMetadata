@@ -31,6 +31,7 @@ import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
 import javax.ws.rs.core.Response.Status;
@@ -333,7 +334,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineForDashboardSourceUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(reduceEntityReference(SUPERSET_REFERENCE))
+            .withService(reduceEntityReference(METABASE_REFERENCE))
             .withDescription("description")
             .withSourceConfig(DASHBOARD_METADATA_CONFIG)
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
@@ -352,7 +353,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withScheduleInterval(expectedScheduleInterval)
                         .withStartDate(startDate)),
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.build(SUPERSET_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.build(METABASE_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate, ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -606,8 +607,10 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId(), awsCredentials.getAwsAccessKeyId());
     assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsRegion(), awsCredentials.getAwsRegion());
     assertEquals(
-        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey(),
-        "secret:/openmetadata/pipeline/ingestionpipeline_post_dbtpipeline_configisencrypted/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
+        "secret:/openmetadata/pipeline/"
+            + request.getName().toLowerCase(Locale.ROOT)
+            + "/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey",
+        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
   }
 
   private IngestionPipeline updateIngestionPipeline(CreateIngestionPipeline create, Map<String, String> authHeaders)

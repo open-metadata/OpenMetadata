@@ -79,12 +79,12 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   return (
     <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
-        className="tw-z-9997 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
+        className="tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40 z-10"
         onCancel={onCancel}
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-9997',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto z-10',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,

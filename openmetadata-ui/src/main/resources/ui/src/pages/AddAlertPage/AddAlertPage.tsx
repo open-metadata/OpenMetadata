@@ -43,7 +43,9 @@ import {
   getFilterFunctions,
   updateAlert,
 } from 'rest/alertsAPI';
-import { getSearchedUsersAndTeams, getSuggestions } from 'rest/miscAPI';
+import { getSuggestions } from 'rest/miscAPI';
+import { getEntityName } from 'utils/CommonUtils';
+import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -279,11 +281,11 @@ const AddAlertPage = () => {
 
   const getUsersAndTeamsOptions = useCallback(async (search: string) => {
     try {
-      const response = await getSearchedUsersAndTeams(search, 1);
+      const { teams, users } = await searchFormattedUsersAndTeams(search, 1);
 
-      return response.hits.hits.map((d) => ({
-        label: d._source.displayName ?? d._source.name,
-        value: d._source.fullyQualifiedName,
+      return [...teams, ...users].map((d) => ({
+        label: getEntityName(d),
+        value: d.name,
       }));
     } catch (error) {
       return [];

@@ -83,7 +83,7 @@ export const NAVBAR_DETAILS = {
     testid: '[data-testid="dropdown-profile"]',
     subMenu: '[data-testid="greeting-text"] [data-testid="user-name"]',
     url: `${BASE_URL}/users/admin`,
-  }
+  },
 };
 
 export const SETTINGS_LEFT_PANEL = {
@@ -162,5 +162,5 @@ export const SETTINGS_LEFT_PANEL = {
   bots: {
     testid: '[data-menu-id*="bots"]',
     url: `${BASE_URL}/settings/integrations/bots`,
-  }
-}
+  },
+};

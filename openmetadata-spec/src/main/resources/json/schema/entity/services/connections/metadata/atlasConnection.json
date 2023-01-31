@@ -49,6 +49,11 @@
         "type": "string"
       }    
     },
+    "entity_type": {
+      "title": "Entity Type",
+      "description": "Name of the Entity Type availabe in Atlas",
+      "type": "string"
+    },
     "connectionOptions": {
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
@@ -59,5 +64,6 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
+  "required": ["entity_type", "username", "password"],
   "additionalProperties": false
 }

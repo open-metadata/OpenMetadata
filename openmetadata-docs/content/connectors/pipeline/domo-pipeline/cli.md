@@ -59,8 +59,7 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
-        pipelineFilterPattern: {}
-    type: PipelineMetadata
+      type: PipelineMetadata
       # pipelineFilterPattern:
       #   includes:
       #     - pipeline1

@@ -14,14 +14,14 @@ Python API REST wrapper and helpers
 import datetime
 import time
 import traceback
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -165,7 +165,7 @@ class REST:
         # Example: "Proxy-Authorization": "%(Authorization)s"
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
         if self.config.extra_headers:
-            extra_headers: dict[str, str] = self.config.extra_headers
+            extra_headers: Dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             logger.debug("Extra headers provided '%s'", extra_headers)
             headers = {**headers, **extra_headers}
@@ -228,7 +228,13 @@ class REST:
                 f"Unexpected error calling [{url}] with method [{method}]: {exc}"
             )
         if resp.text != "":
-            return resp.json()
+            try:
+                return resp.json()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error while returing response {resp} in json format - {exc}"
+                )
         return None
 
     def get(self, path, data=None):

@@ -122,6 +122,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
+    supportedNameCharacters = "_-.";
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -927,7 +928,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(
         () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
+        CatalogExceptionMessage.userAlreadyBot(botUser.getName(), create.getName()));
   }
 
   @Test
@@ -1089,7 +1090,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  protected String getAllowedFields() {
+  public String getAllowedFields() {
     List<String> allowedFields = Entity.getAllowedFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { addTeam, interceptURL, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import {
+  addTeam,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
+} from '../../common/common';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const teamName = `team-group-test-${uuid()}`;
@@ -35,8 +41,9 @@ describe('Create a team and add that team as a owner of the entity', () => {
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/users*', 'getTeams');
 
-    //Clicking on teams
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams')
+    // Clicking on teams
+    cy.get('[data-testid="settings-left-panel"]')
+      .contains('Teams')
       .should('exist')
       .should('be.visible')
       .click();
@@ -77,7 +84,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 
-    //Selecting the team
+    // Selecting the team
     cy.get(`[title="${TEAM_DETAILS.name}"]`)
       .should('exist')
       .should('be.visible')

@@ -68,7 +68,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     SUPERSET_INVALID_SERVICE_REFERENCE =
         new EntityReference()
             .withName("invalid_superset_service")
-            .withId(SUPERSET_REFERENCE.getId())
+            .withId(METABASE_REFERENCE.getId())
             .withType("DashboardService1");
   }
 
@@ -94,7 +94,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
   @Test
   void post_DashboardWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
+    EntityReference[] differentServices = {METABASE_REFERENCE, LOOKER_REFERENCE};
 
     // Create Dashboard for each service and test APIs
     for (EntityReference service : differentServices) {
@@ -203,7 +203,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
   @Override
   public EntityReference getContainer() {
-    return SUPERSET_REFERENCE;
+    return METABASE_REFERENCE;
   }
 
   @Override

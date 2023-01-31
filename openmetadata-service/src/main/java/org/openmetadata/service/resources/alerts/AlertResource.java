@@ -541,6 +541,25 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
     return response;
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteAlertByName",
+      summary = "Delete an Alert",
+      tags = "alerts",
+      description = "Delete an Alert by given `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the alert", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, true, true);
+  }
+
   public Alert getAlert(CreateAlert create, String user) throws IOException {
     return copy(new Alert(), create, user)
         .withTriggerConfig(create.getTriggerConfig())

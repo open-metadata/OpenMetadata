@@ -66,6 +66,7 @@ export interface DatasetDetailsProps {
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   deleted?: boolean;
+  isTableProfileLoading?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;

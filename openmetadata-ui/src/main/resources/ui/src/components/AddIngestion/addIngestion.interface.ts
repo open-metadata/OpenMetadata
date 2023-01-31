@@ -87,13 +87,15 @@ export type ScheduleIntervalProps = {
 
 // Todo: Need to refactor below type, as per schema change #9575
 export type ModifiedDbtConfig = DbtConfig &
-  Pick<DbtPipelineClass, 'dbtUpdateDescriptions'>;
+  Pick<DbtPipelineClass, 'dbtUpdateDescriptions' | 'dbtClassificationName'>;
 
 export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
   databaseServiceNames: string[];
+  dbtClassificationName: string;
+  dbtUpdateDescriptions: boolean;
   dbtConfigSource: ModifiedDbtConfig;
   dbtConfigSourceType: DBT_SOURCES;
   description: string;

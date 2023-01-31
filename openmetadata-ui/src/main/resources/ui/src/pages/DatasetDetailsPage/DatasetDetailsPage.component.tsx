@@ -33,12 +33,14 @@ import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
+  getLatestTableProfileByFqn,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -95,6 +97,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
@@ -103,6 +106,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isTableQueriesLoading, setIsTableQueriesLoading] =
     useState<boolean>(false);
   const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+  const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -288,7 +293,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
             joins,
             tags,
             sampleData,
-            profile,
             tableType,
             version,
             service,
@@ -353,7 +357,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setDescription(description ?? '');
           setColumns(columns || []);
           setSampleData(sampleData as TableData);
-          setTableProfile(profile);
           setTableTags(getTagsWithoutTier(tags || []));
           setUsageSummary(usageSummary as UsageDetails);
           setJoins(joins as TableJoins);
@@ -377,6 +380,29 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const fetchTableProfileDetails = async () => {
+    if (!isEmpty(tableDetails)) {
+      setIsTableProfileLoading(true);
+      try {
+        const { profile } = await getLatestTableProfileByFqn(
+          tableDetails.fullyQualifiedName ?? ''
+        );
+
+        setTableProfile(profile);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.table'),
+            entityName: tableDetails.displayName ?? tableDetails.name,
+          })
+        );
+      } finally {
+        setIsTableProfileLoading(false);
+      }
+    }
   };
 
   const fetchTabSpecificData = (tabField = '') => {
@@ -796,6 +822,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [tablePermissions]);
 
   useEffect(() => {
+    !tableDetails.deleted && fetchTableProfileDetails();
+  }, [tableDetails]);
+
+  useEffect(() => {
     fetchResourcePermission(tableFQN);
   }, [tableFQN]);
 
@@ -848,6 +878,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}
               isSampleDataLoading={isSampleDataLoading}
+              isTableProfileLoading={isTableProfileLoading}
               isentityThreadLoading={isentityThreadLoading}
               joins={joins}
               lineageLeafNodes={leafNodes}

@@ -10,6 +10,13 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[\\w'\\- ./()$]+$"
+    },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
@@ -155,6 +162,7 @@
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
+      "pattern": "^[\\w'\\-\" .+#]+$",
       "minLength": 1,
       "maxLength": 128
     },
@@ -818,7 +826,7 @@
     },
     "name": {
       "description": "Name of a table. Expected to be unique within a database.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this table. It could be title or label from the source services.",

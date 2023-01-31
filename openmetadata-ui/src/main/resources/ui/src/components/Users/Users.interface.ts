@@ -42,6 +42,7 @@ export interface Props {
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
+  isUserEntitiesLoading: boolean;
   isAdminUser: boolean;
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
