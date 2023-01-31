@@ -13,6 +13,8 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
+To ingest tableau metadata, minimum `Site Role: Viewer` is requried for the tableau user.
+
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
