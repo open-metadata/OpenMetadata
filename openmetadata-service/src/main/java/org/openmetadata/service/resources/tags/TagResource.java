@@ -52,7 +52,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -64,6 +63,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -103,7 +103,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     if (!(daoCollection.relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
       // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
       // Find tag definitions and load classifications from the json file, if necessary
-      EntityRepository<Classification> classificationRepository = Entity.getEntityRepository(CLASSIFICATION);
+      ClassificationRepository classificationRepository =
+          (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
       try {
         List<Classification> classificationList =
             classificationRepository.listAll(classificationRepository.getFields("*"), new ListFilter(Include.ALL));
@@ -154,7 +155,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
     migrateTags();
     // Find tag definitions and load classifications from the json file, if necessary
-    EntityRepository<EntityInterface> classificationRepository = Entity.getEntityRepository(CLASSIFICATION);
+    ClassificationRepository classificationRepository =
+        (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
     List<LoadTags> loadTagsList =
         EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
@@ -439,6 +441,29 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Tag Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTagByName",
+      summary = "Delete a Tag",
+      tags = "classification",
+      description = "Delete a tag by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "tag for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the tag", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

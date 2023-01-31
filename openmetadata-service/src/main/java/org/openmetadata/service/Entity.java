@@ -48,7 +48,7 @@ public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
 
   // Canonical entity name to corresponding EntityRepository map
-  private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -258,10 +258,14 @@ public final class Entity {
     return entity;
   }
 
-  /** Retrieve the corresponding entity repository for a given entity name. */
-  public static <T extends EntityInterface> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
+  /**
+   * Retrieve the corresponding entity repository for a given entity name.
+   *
+   * @return
+   */
+  public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
+    EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }

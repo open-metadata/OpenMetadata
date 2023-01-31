@@ -36,10 +36,7 @@ public class SettingsCache {
   public static void initialize(CollectionDAO dao) {
     if (!INITIALIZED) {
       SETTINGS_CACHE =
-          CacheBuilder.newBuilder()
-              .maximumSize(1000)
-              .expireAfterAccess(1, TimeUnit.MINUTES)
-              .build(new SettingsLoader());
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
       SETTINGS_REPOSITORY = new SettingsRepository(dao);
       INITIALIZED = true;
     }

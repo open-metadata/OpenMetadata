@@ -23,8 +23,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str, ometa_logger
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.helpers import find_column_in_table_with_index
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -109,7 +110,7 @@ class OMetaPatchMixin(Generic[T]):
 
         if instance.description and not force:
             logger.warning(
-                f"The entity with id [{str(entity_id)}] already has a description."
+                f"The entity with id [{model_str(entity_id)}] already has a description."
                 " To overwrite it, set `force` to True."
             )
             return None
@@ -175,7 +176,7 @@ class OMetaPatchMixin(Generic[T]):
 
         if col.description and not force:
             logger.warning(
-                f"The column '{column_name}' in '{table.displayName}' already has a description."
+                f"The column '{column_name}' in '{table.fullyQualifiedName.__root__}' already has a description."
                 " To overwrite it, set `force` to True."
             )
             return None

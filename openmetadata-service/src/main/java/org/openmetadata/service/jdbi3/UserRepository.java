@@ -13,8 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addEntityReferences;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,6 +32,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -34,6 +43,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvErrorType;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -55,14 +68,7 @@ public class UserRepository extends EntityRepository<User> {
   private final EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
-    super(
-        UserResource.COLLECTION_PATH,
-        Entity.USER,
-        User.class,
-        dao.userDAO(),
-        dao,
-        USER_PATCH_FIELDS,
-        USER_UPDATE_FIELDS);
+    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
     organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
   }
 
@@ -152,6 +158,20 @@ public class UserRepository extends EntityRepository<User> {
     return user.withInheritedRoles(fields.contains("roles") ? getInheritedRoles(user) : null);
   }
 
+  @Override
+  public String exportToCsv(String importingTeam, String user) throws IOException {
+    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    return new UserCsv(team, user).exportCsv();
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(String importingTeam, String csv, boolean dryRun, String user)
+      throws IOException {
+    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    UserCsv userCsv = new UserCsv(team, user);
+    return userCsv.importCsv(csv, dryRun);
+  }
+
   public boolean isTeamJoinable(String teamId) throws IOException {
     Team team = daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
     return team.getIsJoinable();
@@ -204,7 +224,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityRelationshipRecord> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal());
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
@@ -218,7 +238,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.getEntityReferences(
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), USER, Relationship.FOLLOWS.ordinal()));
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) throws IOException {
@@ -252,13 +272,13 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<EntityRelationshipRecord> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
+    List<EntityRelationshipRecord> roleIds = findTo(user.getId(), USER, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
   }
 
   /* Get all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
+    List<EntityRelationshipRecord> records = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
     List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
     teams = teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList()); // Filter deleted teams
     // If there are no teams that a user belongs to then return organization as the default team
@@ -271,7 +291,7 @@ public class UserRepository extends EntityRepository<User> {
   private void assignRoles(User user, List<EntityReference> roles) {
     roles = listOrEmpty(roles);
     for (EntityReference role : roles) {
-      addRelationship(user.getId(), role.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
+      addRelationship(user.getId(), role.getId(), USER, Entity.ROLE, Relationship.HAS);
     }
   }
 
@@ -281,12 +301,119 @@ public class UserRepository extends EntityRepository<User> {
       if (team.getId().equals(organization.getId())) {
         continue; // Default relationship user to organization team is not stored
       }
-      addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
+      addRelationship(team.getId(), user.getId(), Entity.TEAM, USER, Relationship.HAS);
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
       teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
       user.setTeams(teams);
+    }
+  }
+
+  public static class UserCsv extends EntityCsv<User> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(USER);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    public final Team team;
+
+    UserCsv(Team importingTeam, String updatedBy) {
+      super(USER, HEADERS, updatedBy);
+      this.team = importingTeam;
+    }
+
+    @Override
+    protected User toEntity(CSVPrinter printer, CSVRecord record) throws IOException {
+      // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
+      User user =
+          new User()
+              .withName(record.get(0))
+              .withDisplayName(record.get(1))
+              .withDescription(record.get(2))
+              .withEmail(record.get(3))
+              .withTimezone(record.get(4))
+              .withIsAdmin(getBoolean(printer, record, 5));
+
+      // Field 7 - team
+      user.setTeams(getTeams(printer, record, user.getName()));
+      if (!processRecord) {
+        return null;
+      }
+
+      // Field 8 - roles
+      user.setRoles(getEntityReferences(printer, record, 7, ROLE));
+      if (!processRecord) {
+        return null;
+      }
+
+      // TODO authentication mechanism?
+      return user;
+    }
+
+    @Override
+    protected List<String> toRecord(User entity) {
+      // Headers - name,displayName,description,email,timezone,isAdmin,team,roles
+      List<String> record = new ArrayList<>();
+      addField(record, entity.getName());
+      addField(record, entity.getDisplayName());
+      addField(record, entity.getDescription());
+      addField(record, entity.getEmail());
+      addField(record, entity.getTimezone());
+      addField(record, entity.getIsAdmin());
+      addField(record, entity.getTeams().get(0).getFullyQualifiedName());
+      addEntityReferences(record, entity.getRoles());
+      return record;
+    }
+
+    private List<User> listUsers(
+        TeamRepository teamRepository,
+        UserRepository userRepository,
+        String parentTeam,
+        List<User> users,
+        Fields fields)
+        throws IOException {
+      // Export the users by listing users for the entire team hierarchy
+      ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
+
+      // Add users for the given team
+      List<User> userList = userRepository.listAll(fields, filter);
+      if (!nullOrEmpty(userList)) {
+        users.addAll(userList);
+      }
+
+      filter = new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
+      List<Team> teamList = teamRepository.listAll(Fields.EMPTY_FIELDS, filter);
+      for (Team team : teamList) {
+        listUsers(teamRepository, userRepository, team.getName(), users, fields);
+      }
+      return users;
+    }
+
+    public String exportCsv() throws IOException {
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+      TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
+      final Fields fields = userRepository.getFields("roles,teams");
+      return exportCsv(listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
+    }
+
+    private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord record, String user) throws IOException {
+      List<EntityReference> teams = getEntityReferences(printer, record, 6, Entity.TEAM);
+
+      // Validate team being created is under the hierarchy of the team for which CSV is being imported to
+      for (EntityReference teamRef : listOrEmpty(teams)) {
+        if (teamRef.getName().equals(team.getName())) {
+          continue; // Team is same as the team to which CSV is being imported, then it is in the same hierarchy
+        }
+        // Else the parent should already exist
+        if (!SubjectCache.getInstance().isInTeam(team.getName(), listOf(teamRef))) {
+          importFailure(printer, invalidTeam(6, team.getName(), user, teamRef.getName()), record);
+          processRecord = false;
+        }
+      }
+      return teams;
+    }
+
+    public static String invalidTeam(int field, String team, String user, String userTeam) {
+      String error = String.format("Team %s of user %s is not under %s team hierarchy", userTeam, user, team);
+      return String.format("#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
   }
 
@@ -311,7 +438,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateRoles(User original, User updated) throws IOException {
       // Remove roles from original and add roles from updated
-      deleteFrom(original.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
+      deleteFrom(original.getId(), USER, Relationship.HAS, Entity.ROLE);
       assignRoles(updated, updated.getRoles());
 
       List<EntityReference> origRoles = listOrEmpty(original.getRoles());
@@ -327,7 +454,7 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User original, User updated) throws IOException {
       // Remove teams from original and add teams from updated
-      deleteTo(original.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
+      deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
       assignTeams(updated, updated.getTeams());
 
       List<EntityReference> origTeams = listOrEmpty(original.getTeams());

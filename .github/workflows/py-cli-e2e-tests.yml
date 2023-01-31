@@ -19,9 +19,9 @@ jobs:
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        py-version: ['3.9']
-        e2e-test: ['mysql', 'bigquery', 'snowflake']
+        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql', 'vertica']
     environment: test
 
     steps:
@@ -34,10 +34,10 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
 
-    - name: Set up Python ${{ matrix.py-version }}
+    - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
-        python-version:  ${{ matrix.py-version }}
+        python-version: 3.9
 
     - name: Install Ubuntu dependencies
       run: |
@@ -57,12 +57,24 @@ jobs:
         make install_all install_test
 
     - name: Start Server and Ingest Sample Data
+      uses: nick-fields/retry@v2.8.3
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
-      run: ./docker/run_local_docker.sh -m no-ui
-      timeout-minutes: 30
+      with:
+        timeout_minutes: 30
+        max_attempts: 2
+        retry_on: error
+        command: ./docker/run_local_docker.sh -m no-ui
 
-    - name: Run Python Tests
+    - name: Run Python Tests & record coverage
+      if: matrix.e2e-test == 'python'
+      id: python-e2e-test
+      run: |
+        source env/bin/activate
+        make coverage
+
+    - name: Run CLI E2E Python Tests & record coverage
+      if: matrix.e2e-test != 'python'
       id: e2e-test
       continue-on-error: true
       env:
@@ -76,14 +88,66 @@ jobs:
         E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
         E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
         E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
-        E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
+        E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
         E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+        E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH }}
+        E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH }}
+        E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH }}
+        E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+        E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+        E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+        E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+        E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
+        E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
+        E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
+        E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
+        E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
+        E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
+        E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
       run: |
         source env/bin/activate
-        python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
+        echo "import os" >> $SITE_CUSTOMIZE_PATH
+        echo "try:" >> $SITE_CUSTOMIZE_PATH
+        echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
+        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/.coveragerc'" >> $SITE_CUSTOMIZE_PATH
+        echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
+        echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
+        echo "    pass" >> $SITE_CUSTOMIZE_PATH
+        sed -i "5i concurrency = multiprocessing" ingestion/.coveragerc
+        coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/.coveragerc --keep -a .coverage*   
+        coverage report --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST || true
+
+    - name: Upload coverage artifact for Python tests
+      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage
+
+    - name: Upload coverage artifact for CLI E2E tests
+      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage.${{ matrix.e2e-test }}
+
+    - name: Upload tests artifact
+      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: tests-${{ matrix.e2e-test }}
+        path: ingestion/junit/test-results-*.xml
+
+    - name: Clean Up
+      run: |
+        cd ./docker/local-metadata
+        docker compose down --remove-orphans
+        sudo rm -rf ${PWD}/docker-volume
 
     - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
@@ -91,10 +155,64 @@ jobs:
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
           }
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.TEST_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
-      if: steps.e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
       run: |
         exit 1
+
+  sonar-cloud-coverage-upload:
+    runs-on: ubuntu-latest
+    needs: py-cli-e2e-tests
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          unixodbc-dev libevent-dev python3-dev
+
+      - name: Install coverage dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_all install_test
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Generate report
+        run: |
+          for folder in artifacts/coverage-*; do 
+            cp -rT $folder/ . ;
+          done
+          mkdir ingestion/junit
+          for folder in artifacts/tests-*; do 
+            cp -rT $folder/ ingestion/junit ;
+          done
+          source env/bin/activate
+          coverage combine --rcfile=ingestion/.coveragerc --keep -a .coverage*
+          coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
+          sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+          sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+        shell: bash
+
+      - name: Push Results to Sonar
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/

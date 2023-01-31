@@ -7,6 +7,11 @@
   "javaType": "org.openmetadata.schema.entity.Type",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
+    "entityName": {
+      "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
+      "type": "string",
+      "pattern": "^[a-z][\\w]+$"
+    },
     "category": {
       "description": "Metadata category to which a type belongs to.",
       "type": "string",
@@ -24,12 +29,7 @@
     "propertyName": {
       "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
       "type": "string",
-      "pattern": "^[a-z][a-zA-Z0-9]+$"
-    },
-    "typeName": {
-      "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-      "type": "string",
-      "pattern": "^[a-z][a-zA-Z0-9]+$"
+      "pattern": "^[a-z][\\w]+$"
     },
     "customProperty": {
       "description": "Type used for adding custom property to an entity to extend it.",
@@ -59,7 +59,7 @@
     },
     "name": {
       "description": "Unique name that identifies the type.",
-      "$ref": "#/definitions/typeName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",

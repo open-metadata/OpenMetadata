@@ -12,9 +12,10 @@
  */
 
 import {
-    descriptionBox,
-    interceptURL, uuid,
-    verifyResponseStatusCode
+  descriptionBox,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
 
@@ -39,7 +40,7 @@ const roleName = `Role-test-${uuid()}`;
 const description = `This is ${roleName} description`;
 
 const removePolicyFromRole = (policyName) => {
-  //Clicking on remove action for added policy
+  // Clicking on remove action for added policy
   cy.get(`[data-testid="remove-action-${policyName}"]`)
     .should('be.visible')
     .click();
@@ -62,7 +63,10 @@ describe('Roles page should work properly', () => {
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Roles').should('be.visible').click();
+    cy.get('[data-testid="settings-left-panel"]')
+      .contains('Roles')
+      .should('be.visible')
+      .click();
 
     verifyResponseStatusCode('@getRoles', 200);
 
@@ -70,7 +74,7 @@ describe('Roles page should work properly', () => {
   });
 
   it('Default Role and Policies should be displayed', () => {
-    //Verifying the default roles and policies are present
+    // Verifying the default roles and policies are present
 
     Object.values(roles).forEach((role) => {
       cy.get('[data-testid="role-name"]')
@@ -78,7 +82,7 @@ describe('Roles page should work properly', () => {
         .should('be.visible');
     });
 
-    //Validate policy
+    // Validate policy
     cy.get('[data-testid="policy-link"]')
       .should('contain', policies.dataConsumerPolicy)
       .should('be.visible');
@@ -93,15 +97,15 @@ describe('Roles page should work properly', () => {
       .should('be.visible')
       .click();
 
-    //Asserting navigation
+    // Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', 'Add New Role')
       .should('be.visible');
-    //Entering name
+    // Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering descrription
+    // Entering descrription
     cy.get(descriptionBox).type(description);
-    //Select the policies
+    // Select the policies
     cy.get('[data-testid="policies"]').should('be.visible').click();
 
     cy.get('[title="Data Consumer Policy"]')
@@ -113,20 +117,17 @@ describe('Roles page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Save the role
+    // Save the role
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
 
-    //Verify the role is added successfully
-    cy.url().should(
-      'eq',
-      `${BASE_URL}/settings/access/roles/${roleName}`
-    );
+    // Verify the role is added successfully
+    cy.url().should('eq', `${BASE_URL}/settings/access/roles/${roleName}`);
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 
-    //Verify added description
+    // Verify added description
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .should('be.visible')
       .should('contain', description);
@@ -134,7 +135,7 @@ describe('Roles page should work properly', () => {
     // click on the policies tab
     cy.get('[role="tab"]').contains('Policies').should('be.visible').click();
 
-    //Verifying the added policies
+    // Verifying the added policies
     cy.get('.ant-table-cell')
       .should('contain', policies.dataConsumerPolicy)
       .should('be.visible')
@@ -155,7 +156,7 @@ describe('Roles page should work properly', () => {
     cy.get('table').should('be.visible');
     cy.get('.ant-empty').should('be.visible');
 
-    //Navigating to roles tab to verify the added role
+    // Navigating to roles tab to verify the added role
     cy.get('[data-testid="breadcrumb-link"]').first().click();
     cy.get('table').should('be.visible').should('contain', roleName);
     cy.get(`[data-row-key="${roleName}"]`)
@@ -175,19 +176,19 @@ describe('Roles page should work properly', () => {
       .should('be.visible')
       .click();
 
-    //Asserting navigation
+    // Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', 'Add New Role')
       .should('be.visible');
-    //Entering name
+    // Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering descrription
+    // Entering descrription
     cy.get(descriptionBox).type(description);
-    //Do not Select the policies
-    //Save the role
+    // Do not Select the policies
+    // Save the role
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
 
-    //Verify the error message that is displayed
+    // Verify the error message that is displayed
     cy.get('[role="alert"]').should(
       'contain',
       errorMessageValidation.ifPolicyNotSelected
@@ -195,7 +196,7 @@ describe('Roles page should work properly', () => {
   });
 
   it('Edit created role', () => {
-    //Edit description
+    // Edit description
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
       .should('be.visible')
@@ -206,7 +207,7 @@ describe('Roles page should work properly', () => {
     cy.get('[data-testid="save"]').should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]').should('be.visible');
-    //Asserting updated description
+    // Asserting updated description
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .should('be.visible')
       .should('contain', `${description}-updated`);
@@ -217,13 +218,13 @@ describe('Roles page should work properly', () => {
       .contains(roleName)
       .should('be.visible')
       .click();
-    //Asserting navigation
+    // Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', roleName)
       .should('be.visible');
 
     cy.get('[data-testid="add-policy"]').should('be.visible').click();
-    //Checking the added policy is selected in the add policy modal
+    // Checking the added policy is selected in the add policy modal
     cy.get('[data-testid="policy-row"]')
       .should('contain', policies.dataConsumerPolicy)
       .should('have.class', 'selected');
@@ -231,7 +232,7 @@ describe('Roles page should work properly', () => {
       .should('contain', policies.dataStewardPolicy)
       .should('have.class', 'selected');
 
-    //Add policy
+    // Add policy
     cy.get('[data-testid="policy-row"]')
       .contains(policies.organizationPolicy)
       .click();
@@ -252,14 +253,14 @@ describe('Roles page should work properly', () => {
       .contains(roleName)
       .should('be.visible')
       .click();
-    //Asserting navigation
+    // Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', roleName)
       .should('be.visible');
 
     removePolicyFromRole(policies.organizationPolicy);
 
-    //Validating if the policy is removed successfully
+    // Validating if the policy is removed successfully
     cy.get('[data-testid="entity-name"]').should(
       'not.contain',
       policies.organizationPolicy
@@ -274,7 +275,7 @@ describe('Roles page should work properly', () => {
       .should('be.visible')
       .click();
 
-    //Asserting navigation
+    // Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', roleName)
       .should('be.visible');
@@ -282,17 +283,17 @@ describe('Roles page should work properly', () => {
     verifyResponseStatusCode('@getSelectedRole', 200);
 
     interceptURL('PATCH', '/api/v1/roles/*', 'checkDeletedRole');
-    //Removing second policy from the role
+    // Removing second policy from the role
     removePolicyFromRole(policies.dataStewardPolicy);
 
-    //Validating if the policy is removed successfully
+    // Validating if the policy is removed successfully
     cy.get('[data-testid="entity-name"]').should(
       'not.contain',
       policies.dataStewardPolicy
     );
     verifyResponseStatusCode('@checkDeletedRole', 200);
 
-    //Removing the last policy and validating the error message
+    // Removing the last policy and validating the error message
     removePolicyFromRole(policies.dataConsumerPolicy);
 
     cy.get('.Toastify__toast-body')
@@ -316,7 +317,7 @@ describe('Roles page should work properly', () => {
 
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
 
-    //Validate deleted role
+    // Validate deleted role
     cy.get('[data-testid="role-name"]').should('not.contain', roleName);
   });
 });

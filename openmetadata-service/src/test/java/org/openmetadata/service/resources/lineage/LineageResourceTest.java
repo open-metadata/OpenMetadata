@@ -86,8 +86,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     // Random user cannot update lineage.
     UserResourceTest userResourceTest = new UserResourceTest();
     User randomUser =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test.getDisplayName() + "_lineage_user", "", "", null), ADMIN_AUTH_HEADERS);
+        userResourceTest.createEntity(userResourceTest.createRequest("lineage_user", "", "", null), ADMIN_AUTH_HEADERS);
 
     // User with Data Steward role. Data Steward role has a default policy to allow update for lineage.
     RoleResourceTest roleResourceTest = new RoleResourceTest();
@@ -96,7 +95,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     User userWithDataStewardRole =
         userResourceTest.createEntity(
             userResourceTest
-                .createRequest(test.getDisplayName() + "_lineage_user_data_steward", "", "", null)
+                .createRequest("lineage_user_data_steward", "", "", null)
                 .withRoles(List.of(dataStewardRole.getId())),
             ADMIN_AUTH_HEADERS);
 

@@ -115,9 +115,10 @@ The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL
 - The **Audience** is the same as the Client ID.
 <Image src="/images/deployment/security/okta/click-edit-token.png" alt="click-edit-token"/>
 
-## Create Service Application
+## Create Service Application (optional)
 
-This is a guide to create ingestion bot service app.
+This is a guide to create ingestion bot service app. This step is optional if you configure the ingestion-bot with 
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Generate Public/Private Key Pair
 #### For a Test or Staging Instance:

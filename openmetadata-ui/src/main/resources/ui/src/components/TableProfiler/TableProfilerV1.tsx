@@ -70,7 +70,10 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({
+  isTableDeleted,
+  permissions,
+}) => {
   const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
@@ -332,7 +335,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   }, [table, viewTest]);
 
   useEffect(() => {
-    if (datasetFQN) {
+    if (!isTableDeleted && datasetFQN) {
       fetchLatestProfilerData();
     }
   }, [datasetFQN]);

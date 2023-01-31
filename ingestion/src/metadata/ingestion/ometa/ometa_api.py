@@ -97,7 +97,8 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
+from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
@@ -194,6 +195,7 @@ class OpenMetadata(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
+            extra_headers=self.config.extraHeaders,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
         )

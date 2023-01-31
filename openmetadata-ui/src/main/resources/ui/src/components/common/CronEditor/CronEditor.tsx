@@ -187,7 +187,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     event: React.ChangeEvent<HTMLSelectElement>,
     key: string
   ) => {
-    const value = event.target.value;
+    const value = parseInt(event.target.value);
     const obj = { [key]: value };
 
     const { selectedDayOption } = state;
@@ -201,7 +201,8 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     key: string
   ) => {
     const value = event.target.value || event.target.dataset.value;
-    const obj = { [key]: value };
+    const numberValue = value ? parseInt(value) : '';
+    const obj = { [key]: numberValue };
 
     const { selectedWeekOption } = state;
     const weekOption = Object.assign({}, selectedWeekOption, obj);

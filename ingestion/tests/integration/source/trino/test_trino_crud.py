@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.ansi import print_ansi_encoded_string
+from metadata.utils.logger import log_ansi_encoded_string
 
 
 def is_responsive(url):
@@ -60,12 +60,12 @@ def is_port_open(url):
 
 
 def sleep(timeout_s):
-    print_ansi_encoded_string(message=f"sleeping for {timeout_s} seconds")
+    log_ansi_encoded_string(message=f"sleeping for {timeout_s} seconds")
     n = len(str(timeout_s))
     for i in range(timeout_s, 0, -1):
-        print_ansi_encoded_string(message=f"{i:>{n}}", end="\r", flush=True)
+        log_ansi_encoded_string(message=f"{i:>{n}}", end="\r", flush=True)
         time.sleep(1)
-    print_ansi_encoded_string(message=f"{'':>{n}}", end="\n", flush=True)
+    log_ansi_encoded_string(message=f"{'':>{n}}", end="\n", flush=True)
 
 
 def status(r):
@@ -80,7 +80,7 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
-    print_ansi_encoded_string(message=databases[0])
+    log_ansi_encoded_string(message=databases[0])
     db_ref = EntityReference(
         id=databases[0].id.__root__, name=databases[0].name.__root__, type="database"
     )
@@ -108,7 +108,7 @@ def create_delete_database(client: OpenMetadata, databases: List[Database]):
     )
     created_database = client.create_or_update(create_database_request)
     resp = create_delete_table(client, databases)
-    print_ansi_encoded_string(message=resp)
+    log_ansi_encoded_string(message=resp)
     client.delete(entity=Database, entity_id=str(created_database.id.__root__))
     client.delete(entity=DatabaseService, entity_id=str(trino_service.id.__root__))
     return resp
@@ -118,7 +118,7 @@ def create_delete_database(client: OpenMetadata, databases: List[Database]):
 def trino_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("trino-server", 8080)
-    print_ansi_encoded_string(message=f"trino is running on port {port}")
+    log_ansi_encoded_string(message=f"trino is running on port {port}")
     timeout_s = 120
     sleep(timeout_s)
     url = "trino://localhost:8080/"

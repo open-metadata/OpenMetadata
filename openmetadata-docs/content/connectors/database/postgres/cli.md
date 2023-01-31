@@ -41,6 +41,16 @@ As a summary:
 
 Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
 
+<Note>
+
+- For usage and lineage grant your user `pg_read_all_stats` permission.
+
+```sql
+GRANT pg_read_all_stats TO your_user;
+```
+
+</Note>
+
 ### Python Requirements
 
 To run the Postgres ingestion, you will need to install:
@@ -79,6 +89,7 @@ source:
       # database: database
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -104,43 +115,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #      -----BEGIN PRIVATE KEY-----
-      #      Super secret key
-      #      -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}

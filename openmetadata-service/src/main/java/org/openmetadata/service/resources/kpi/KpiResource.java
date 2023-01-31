@@ -19,7 +19,6 @@ import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
-import javax.ws.rs.Encoded;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -326,6 +325,29 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteKpiByName",
+      summary = "Delete a Kpi",
+      tags = "kpi",
+      description = "Delete a Kpi by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Kpi for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteKpi",
@@ -387,8 +409,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response addKpiResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Encoded @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn,
+      @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid KpiResult kpiResult)
       throws IOException {
     return dao.addKpiResult(uriInfo, fqn, kpiResult).toResponse();

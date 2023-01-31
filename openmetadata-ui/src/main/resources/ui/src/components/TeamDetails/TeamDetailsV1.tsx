@@ -1119,6 +1119,7 @@ const TeamDetailsV1 = ({
             {extraInfo.map((info, index) => (
               <Fragment key={uniqueId()}>
                 <EntitySummaryDetails
+                  allowTeamOwner={false}
                   currentOwner={currentTeam.owner}
                   data={info}
                   isGroupType={isGroupType}

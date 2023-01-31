@@ -36,7 +36,6 @@ import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
-import javax.ws.rs.Encoded;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -61,6 +60,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
@@ -76,7 +76,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -559,6 +558,30 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteIngestionPipelineByFQN",
+      summary = "Delete a Ingestion",
+      tags = "ingestionPipelines",
+      description = "Delete an ingestion pipeline by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the ingestion pipeline", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -622,9 +645,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Encoded
-          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
-          @PathParam("fqn")
+      @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
@@ -687,9 +708,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public PipelineStatus getPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Encoded
-          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
-          @PathParam("fqn")
+      @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn,
       @Parameter(description = "Pipeline Status Run Id", schema = @Schema(type = "string")) @PathParam("id") UUID runId)
       throws IOException {

@@ -18,7 +18,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.supersetCon
 )
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -55,10 +55,10 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def _login_request(self) -> str:
         auth_request = {
-            "username": self.service_connection.username,
-            "password": self.service_connection.password.get_secret_value(),
+            "username": self.service_connection.connection.username,
+            "password": self.service_connection.connection.password.get_secret_value(),
             "refresh": True,
-            "provider": self.service_connection.provider,
+            "provider": self.service_connection.connection.provider.value,
         }
         return json.dumps(auth_request)
 
@@ -165,17 +165,4 @@ class SupersetAPIClient:
             requests.Response
         """
         response = self.client.get(f"/database/{database_id}")
-        return response
-
-    def fetch_menu(self):
-        """
-        Check Current User
-
-        Args:
-            No Arguments
-
-        Returns:
-            requests.Response
-        """
-        response = self.client.get("/menu/")
         return response

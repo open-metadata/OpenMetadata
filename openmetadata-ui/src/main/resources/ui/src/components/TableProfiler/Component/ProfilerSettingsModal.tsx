@@ -242,57 +242,67 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     });
   };
 
-  const handleSave: FormProps['onFinish'] = useCallback(async (data) => {
-    const { excludeCol, sqlQuery, includeCol, enablePartition, partitionData } =
-      state;
-    setIsLoading(true);
-    const { profileSamplePercentage, profileSampleRows, profileSampleType } =
-      data;
+  const handleSave: FormProps['onFinish'] = useCallback(
+    async (data) => {
+      const {
+        excludeCol,
+        sqlQuery,
+        includeCol,
+        enablePartition,
+        partitionData,
+      } = state;
 
-    const profileConfig: TableProfilerConfig = {
-      excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
-      profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-      ...{
-        profileSample:
-          profileSampleType === ProfileSampleType.Percentage
-            ? profileSamplePercentage
-            : profileSampleRows,
-        profileSampleType: profileSampleType,
-      },
-      includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
-        ? getIncludesColumns()
-        : undefined,
-      partitioning: enablePartition
-        ? {
-            ...partitionData,
-            enablePartitioning: enablePartition,
-          }
-        : undefined,
-    };
-    try {
-      const data = await putTableProfileConfig(tableId, profileConfig);
-      if (data) {
-        showSuccessToast(
-          jsonData['api-success-messages']['update-profile-congif-success']
+      setIsLoading(true);
+      const { profileSamplePercentage, profileSampleRows, profileSampleType } =
+        data;
+
+      const profileConfig: TableProfilerConfig = {
+        excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
+        profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
+        ...{
+          profileSample:
+            profileSampleType === ProfileSampleType.Percentage
+              ? profileSamplePercentage
+              : profileSampleRows,
+          profileSampleType: profileSampleType,
+        },
+        includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
+          ? getIncludesColumns()
+          : undefined,
+        partitioning: enablePartition
+          ? {
+              ...partitionData,
+              enablePartitioning: enablePartition,
+            }
+          : undefined,
+      };
+      try {
+        const data = await putTableProfileConfig(tableId, profileConfig);
+        if (data) {
+          showSuccessToast(
+            jsonData['api-success-messages']['update-profile-congif-success']
+          );
+          onVisibilityChange(false);
+        } else {
+          throw jsonData['api-error-messages']['update-profiler-config-error'];
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['update-profiler-config-error']
         );
-        onVisibilityChange(false);
-      } else {
-        throw jsonData['api-error-messages']['update-profiler-config-error'];
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['update-profiler-config-error']
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [state, getIncludesColumns]
+  );
+
   const handleCancel = useCallback(() => {
     const { data } = state;
     data && updateInitialConfig(data);
     onVisibilityChange(false);
-  }, []);
+  }, [state]);
 
   const handleProfileSampleType = useCallback(
     (selectedProfileSampleType) =>

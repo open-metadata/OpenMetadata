@@ -21,7 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.csv.EntityCsvTest.assertRows;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
@@ -60,12 +66,15 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -84,8 +93,10 @@ import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
@@ -666,6 +677,91 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF, DATA_STEWARD_ROLE_REF), team21.getInheritedRoles());
   }
 
+  @Test
+  void testCsvDocumentation() throws HttpResponseException {
+    assertEquals(TeamCsv.DOCUMENTATION, getCsvDocumentation());
+  }
+
+  @Test
+  void testImportInvalidCsv() throws IOException {
+    Team team = createEntity(createRequest("invalidCsvTest"), ADMIN_AUTH_HEADERS);
+
+    // Invalid policy
+    String resultsHeader = recordToString(EntityCsv.getResultHeaders(TeamCsv.HEADERS));
+    String record = getRecord(1, GROUP, team.getName(), "", false, "", "invalidPolicy");
+    String csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
+    CsvImportResult result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(8, "invalidPolicy"))};
+    assertRows(result, expectedRows);
+
+    // Invalid roles
+    record = getRecord(1, GROUP, team.getName(), "", false, "invalidRole", "");
+    csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))};
+    assertRows(result, expectedRows);
+
+    // Invalid owner
+    record = getRecord(1, GROUP, team.getName(), "invalidOwner", false, "", "");
+    csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(5, "invalidOwner"))};
+    assertRows(result, expectedRows);
+
+    // Invalid parent team
+    record = getRecord(1, GROUP, "invalidParent", "", false, "", "");
+    csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, "invalidParent"))};
+    assertRows(result, expectedRows);
+
+    // Parent team not in the hierarchy - TEAM21 is not under the team to which import is being done
+    record = getRecord(1, GROUP, TEAM21.getName(), "", false, "", "");
+    csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader, getFailedRecord(record, TeamCsv.invalidTeam(4, team.getName(), "x1", TEAM21.getName()))
+        };
+    assertRows(result, expectedRows);
+  }
+
+  @Test
+  void testTeamImportExport() throws IOException {
+    String teamName = "teamImportExport";
+    Team team = createEntity(createRequest(teamName).withTeamType(DEPARTMENT), ADMIN_AUTH_HEADERS);
+
+    // Create team hierarchy - team has children x1, x2. x1 has x11. x11 has x111
+    String record1 = getRecord(1, DEPARTMENT, teamName, USER1, true, listOf(DATA_CONSUMER_ROLE), listOf(POLICY1));
+    String record2 = getRecord(2, GROUP, teamName, USER2, false, listOf(DATA_STEWARD_ROLE), listOf(POLICY1, POLICY2));
+    String record11 =
+        getRecord(11, DEPARTMENT, "x1", USER2, false, listOf(DATA_STEWARD_ROLE), listOf(POLICY1, POLICY2));
+    String record111 = getRecord(111, GROUP, "x11", USER1, false, listOf(DATA_STEWARD_ROLE), listOf(POLICY1, POLICY2));
+    List<String> createRecords = listOf(record1, record2, record11, record111);
+
+    // Update teams x1, x2 description
+    record1 = record1.replace("description1", "new-description1");
+    record2 = record2.replace("description2", "new-description2");
+    List<String> updateRecords = listOf(record1, record2);
+
+    // Add new team x3 to existing rows
+    String record3 = getRecord(3, GROUP, team.getName(), null, true, null, (List<Policy>) null);
+    List<String> newRecords = listOf(record3);
+    testImportExport(team.getName(), TeamCsv.HEADERS, createRecords, updateRecords, newRecords);
+
+    // Import to team111 a user with parent team1 - since team1 is not under team111 hierarchy, import should fail
+    String record4 = getRecord(3, GROUP, "x1", null, true, null, (List<Policy>) null);
+    String csv = EntityCsvTest.createCsv(TeamCsv.HEADERS, listOf(record4), null);
+    CsvImportResult result = importCsv("x111", csv, false);
+    String error = TeamCsv.invalidTeam(4, "x111", "x3", "x1");
+    assertTrue(result.getImportResultsCsv().contains(error));
+  }
+
   private static void validateTeam(
       Team team,
       String expectedDescription,
@@ -721,9 +817,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference teamRef = new EntityReference().withId(team.getId()).withType("team");
     locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test), null, null, teamRef), ADMIN_AUTH_HEADERS);
+        locationResourceTest.createRequest(test).withOwner(team.getEntityReference()), ADMIN_AUTH_HEADERS);
     return team;
   }
 
@@ -862,10 +957,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a user with TeamManager role.
     UserResourceTest userResourceTest = new UserResourceTest();
     return userResourceTest.createEntity(
-        userResourceTest
-            .createRequest(testInfo)
-            .withName(getEntityName(testInfo) + "manager")
-            .withRoles(List.of(teamManager.getId())),
+        userResourceTest.createRequest(testInfo).withName("user.TeamManager").withRoles(List.of(teamManager.getId())),
         ADMIN_AUTH_HEADERS);
   }
 
@@ -884,5 +976,50 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     target = target.queryParam("isJoinable", isJoinable);
     ResultList<TeamHierarchy> result = TestUtils.get(target, TeamHierarchyList.class, authHeaders);
     return result.getData();
+  }
+
+  private String getRecord(
+      int index,
+      TeamType teamType,
+      String parent,
+      User owner,
+      Boolean isJoinable,
+      List<Role> defaultRoles,
+      List<Policy> policies) {
+    return getRecord(
+        index,
+        teamType,
+        parent != null ? parent : "",
+        owner != null ? owner.getName() : "",
+        isJoinable,
+        defaultRoles != null
+            ? defaultRoles.stream().flatMap(r -> Stream.of(r.getName())).collect(Collectors.joining(";"))
+            : "",
+        policies != null
+            ? policies.stream().flatMap(p -> Stream.of(p.getName())).collect(Collectors.joining(";"))
+            : "");
+  }
+
+  private String getRecord(
+      int index,
+      TeamType teamType,
+      String parent,
+      String owner,
+      Boolean isJoinable,
+      String defaultRoles,
+      String policies) {
+    // CSV Header
+    // "name", "displayName", "description", "teamType", "parents", "owner", "isJoinable", "defaultRoles", & "policies"
+    return String.format(
+        "x%s,displayName%s,description%s,%s,%s,%s,%s,%s,%s",
+        index,
+        index,
+        index,
+        teamType.value(),
+        parent,
+        owner,
+        isJoinable == null ? "" : isJoinable,
+        defaultRoles,
+        policies);
   }
 }

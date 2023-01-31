@@ -46,33 +46,34 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_COLUMN_COMMENTS,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_view_definitions,
+    get_table_comment_wrapper,
+    get_view_definition_wrapper,
+)
 
 logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(  # pylint: disable=unused-argument
-    self, connection, table_name, schema_name, **kw
-):
-    """
-    Returns comment of table.
-    """
-    cursor = connection.execute(
-        MSSQL_GET_TABLE_COMMENTS.format(schema_name=schema_name, table_name=table_name)
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=MSSQL_GET_TABLE_COMMENTS,
     )
-    try:
-        for result in cursor:
-            if result[1]:
-                return {"text": result[1]}
-    except Exception:
-        logger.debug(traceback.format_exc())
-    return {"text": None}
 
 
 @reflection.cache
@@ -243,7 +244,24 @@ def get_columns(
     return cols
 
 
+@reflection.cache
+@_db_plus_owner
+def get_view_definition(
+    self, connection, viewname, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=viewname,
+        schema=owner,
+        query=MSSQL_ALL_VIEW_DEFINITIONS,
+    )
+
+
 MSDialect.get_table_comment = get_table_comment
+MSDialect.get_view_definition = get_view_definition
+MSDialect.get_all_view_definitions = get_all_view_definitions
+MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
 
 

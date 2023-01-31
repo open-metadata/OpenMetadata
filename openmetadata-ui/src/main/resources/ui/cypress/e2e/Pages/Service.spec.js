@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, verifyResponseStatusCode } from '../../common/common';
+import {
+  descriptionBox,
+  interceptURL,
+  verifyResponseStatusCode,
+} from '../../common/common';
 import { service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    //redirecting to services page
+    // redirecting to services page
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
@@ -33,7 +37,7 @@ describe('Services page should work properly', () => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@getService', 200);
-    //need wait here
+    // need wait here
     cy.get('[data-testid="edit-description"]')
       .should('exist')
       .should('be.visible')
@@ -54,7 +58,11 @@ describe('Services page should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getService', 200);
-    interceptURL('GET', '/api/v1//search/query?q=*&from=0&size=10&index=*', 'editOwner');
+    interceptURL(
+      'GET',
+      '/api/v1//search/query?q=*&from=0&size=10&index=*',
+      'editOwner'
+    );
     cy.get('[data-testid="edit-Owner-icon"]')
       .should('exist')
       .should('be.visible')
@@ -74,9 +82,9 @@ describe('Services page should work properly', () => {
       .click();
 
     cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
-    //Checking if description exists after assigning the owner
+    // Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
-    //need wait here
+    // need wait here
 
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
   });

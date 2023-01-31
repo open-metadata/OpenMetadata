@@ -19,6 +19,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ROUTES } from 'constants/constants';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, {
@@ -28,7 +29,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table, TableData } from '../../generated/entity/data/table';
@@ -51,11 +52,16 @@ type SampleData = {
 };
 
 interface Props {
+  isTableDeleted?: boolean;
   tableId: string;
 }
 
-const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
+const SampleDataTable: FunctionComponent<Props> = ({
+  isTableDeleted,
+  tableId,
+}: Props) => {
   const tableRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
   const [sampleData, setSampleData] = useState<SampleData>();
   const [scrollOffset, setScrollOffSet] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -122,7 +128,11 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (tableId) {
+    if (
+      !isTableDeleted &&
+      tableId &&
+      !location.pathname.includes(ROUTES.TOUR)
+    ) {
       fetchSampleData();
     } else {
       setIsLoading(false);

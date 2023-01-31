@@ -38,3 +38,26 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
         LIMIT {result_limit}
 """
 )
+
+
+CLICKHOUSE_TABLE_COMMENTS = textwrap.dedent(
+    """
+SELECT
+      database as schema,
+      name as table_name,
+      comment as table_comment
+  FROM system.tables
+ WHERE name NOT LIKE '.inner%%'
+ and comment <> ''
+"""
+)
+
+CLICKHOUSE_VIEW_DEFINITIONS = textwrap.dedent(
+    """
+select
+	name as view_name,
+	database as schema,
+	create_table_query as view_def
+from system.tables where engine = 'View'
+"""
+)

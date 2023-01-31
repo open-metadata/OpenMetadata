@@ -61,6 +61,7 @@ source:
       password: password
       databaseServiceName: ["local_hive"] # pass database service here
       messagingServiceName: [] # pass messaging service here
+      entity_type: Table # this entity must be present on atlas
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -81,6 +82,7 @@ workflowConfig:
 - **Password**: password to connect  to the Atlas.
 - **databaseServiceName**: source database of the data source(Database service that you created from UI. example- local_hive)
 - **messagingServiceName**: messaging service source of the data source.
+- **entity_type**: Name of the entity type in Atlas.
 
 #### Sink Configuration
 

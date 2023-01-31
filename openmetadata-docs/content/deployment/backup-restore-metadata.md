@@ -188,6 +188,10 @@ Uploading openmetadata_202212161559_backup.sql to https://container.blob.core.wi
 
 # Restore Metadata
 
+Make sure that when restoring metadata, your OpenMetadata server is **NOT RUNNING**. Otherwise, there could be
+clashes on cached values and specific elements that the server creates at start-time and that will be present
+on the restore SQL file as well.
+
 ## Introduction
 
 SQL file which is generated using Backup metadata CLI

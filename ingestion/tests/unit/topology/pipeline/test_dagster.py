@@ -67,7 +67,7 @@ EXPECTED_DAGSTER_DETAILS = mock_data["data"]["graphOrError"]
 
 EXPECTED_CREATED_PIPELINES = [
     CreatePipelineRequest(
-        name="graph:5164c131c3524a271e7ecce49766d50a479b5ff4",
+        name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
         pipelineUrl=None,

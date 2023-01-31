@@ -287,6 +287,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
 
                     if filter_by_table(
@@ -315,6 +316,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
@@ -348,6 +350,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                             database_name=self.context.database.name.__root__,
                             schema_name=self.context.database_schema.name.__root__,
                             table_name=table_name,
+                            skip_es_search=True,
                         )
                         if filter_by_table(
                             self.config.sourceConfig.config.tableFilterPattern,
@@ -531,7 +534,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected exception to get S3 files from [{bucket_name}]: {exc}"
+                f"Unexpected exception to get S3 file [{key}] from bucket [{bucket_name}]: {exc}"
             )
         return None
 

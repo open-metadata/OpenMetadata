@@ -63,6 +63,9 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 
+    def view_column_lineage_count(self) -> int:
+        return 2
+
     @staticmethod
     def fqn_created_table() -> str:
         return "local_bigquery.open-metadata-beta.exclude_me.orders"

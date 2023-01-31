@@ -9,13 +9,16 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class TeamIndex implements ElasticSearchIndex {
   final Team team;
-  final List<String> excludeFields = List.of("owns", "changeDescription", "roles", "inheritedRoles");
+  final List<String> excludeFields = List.of("owns", "changeDescription");
 
   public TeamIndex(Team team) {
     this.team = team;
   }
 
   public Map<String, Object> buildESDoc() {
+    if (team.getDisplayName() == null) {
+      team.setDisplayName(team.getName());
+    }
     Map<String, Object> doc = JsonUtils.getMap(team);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();

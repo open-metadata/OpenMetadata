@@ -177,9 +177,9 @@ def _(
             TestResultValue(
                 name="max",
                 value=str(
-                    min_value_res.timestamp()
-                    if isinstance(min_value_res, datetime)
-                    else min_value_res
+                    max_value_res.timestamp()
+                    if isinstance(max_value_res, datetime)
+                    else max_value_res
                 ),
             ),
         ],

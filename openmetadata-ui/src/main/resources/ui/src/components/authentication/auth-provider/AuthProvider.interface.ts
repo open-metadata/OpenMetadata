@@ -24,7 +24,7 @@ export type UserProfile = {
   name: string;
   picture: string;
   locale?: string;
-} & Pick<Profile, 'preferred_username'>;
+} & Pick<Profile, 'preferred_username' | 'sub'>;
 
 export type OidcUser = {
   id_token: string;
@@ -41,4 +41,5 @@ export interface AuthenticatorRef {
 export enum JWT_PRINCIPAL_CLAIMS {
   EMAIL = 'email',
   PREFERRED_USERNAME = 'preferred_username',
+  SUB = 'sub',
 }

@@ -30,8 +30,8 @@ import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.airflow.AirflowRESTClient;
-import org.openmetadata.service.exception.PipelineServiceClientException;
 
 @ExtendWith(MockitoExtension.class)
 class AirflowRESTClientIntegrationTest {

@@ -31,6 +31,7 @@ type Fields =
   | 'fullyQualifiedName'
   | 'description'
   | 'serviceType'
+  | 'displayName'
   | 'deleted';
 
 export type SourceType = (
@@ -47,6 +48,7 @@ export type SourceType = (
       Fields
     >
 ) & {
+  id: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
   owner?: Partial<
@@ -59,7 +61,7 @@ export type SourceType = (
 
 export interface SearchedDataProps {
   children?: ReactNode;
-  selectedEntityName: string;
+  selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
   currentPage: number;
   isLoading?: boolean;

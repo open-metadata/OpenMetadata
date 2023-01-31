@@ -21,11 +21,14 @@ const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockDbtCloudProjectId = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
+const mockUpdateDBTCloudUrl = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
   dbtCloudAuthToken: '',
   dbtUpdateDescriptions: false,
+  dbtCloudUrl: 'https://cloud.getdbt.com/',
   okText: 'Next',
   cancelText: 'Back',
   onCancel: mockCancel,
@@ -34,10 +37,12 @@ const mockProps = {
   handleCloudAuthTokenChange: mockAuthTokenChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
   handleDbtCloudProjectId: mockDbtCloudProjectId,
+  handleDbtCloudUrl: mockUpdateDBTCloudUrl,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
 
-jest.mock('./SwitchField.component', () =>
-  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
 );
 
 describe('Test DBT Cloud Config Form', () => {

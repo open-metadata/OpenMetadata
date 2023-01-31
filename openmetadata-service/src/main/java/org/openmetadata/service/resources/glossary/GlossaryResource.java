@@ -54,11 +54,12 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.glossary.GlossaryTermResource.GlossaryTermList;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -90,7 +91,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     }
   }
 
-  static final String FIELDS = "owner,tags,reviewers,usageCount";
+  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
 
   @GET
   @Valid
@@ -348,6 +349,30 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteGlossaryByName",
+      summary = "Delete a Glossary",
+      tags = "glossaries",
+      description = "Delete a glossary by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "glossary for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the Glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -368,6 +393,15 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   @GET
+  @Path("/documentation/csv")
+  @Valid
+  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation", tags = "glossaries")
+  public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
+      throws IOException {
+    return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -378,12 +412,11 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossary terms",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+            description = "Exported csv with glossary terms",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
-    return super.exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name);
   }
 
   @PUT
@@ -397,9 +430,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossary terms",
+            description = "Import result",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
       @Context SecurityContext securityContext,
@@ -413,7 +446,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean dryRun,
       String csv)
       throws IOException {
-    return super.importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
