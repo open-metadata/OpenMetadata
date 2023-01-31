@@ -4,7 +4,18 @@ slug: /connectors/database/postgres/airflow
 ---
 
 # Run Postgres using the Airflow SDK
+<Table>
 
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+<Table>
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+</Table>
 In this section, we provide guides and references to use the Postgres connector.
 
 Configure and schedule Postgres metadata and profiler workflows from the OpenMetadata UI:
