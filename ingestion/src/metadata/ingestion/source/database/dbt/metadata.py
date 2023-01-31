@@ -439,8 +439,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     dbt_raw_query = self.get_dbt_raw_query(manifest_node)
 
                     datamodel_path = None
-                    if manifest_node.root_path and manifest_node.original_file_path:
-                        datamodel_path = f"{manifest_node.root_path}/{manifest_node.original_file_path}"
+                    if manifest_node.original_file_path:
+                        if hasattr(manifest_node, "root_path"):
+                            datamodel_path = f"{manifest_node.root_path}/{manifest_node.original_file_path}"
+                        else:
+                            datamodel_path = manifest_node.original_file_path
 
                     data_model_link = DataModelLink(
                         fqn=fqn.build(
@@ -492,7 +495,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         Method to fetch the upstream nodes
         """
         upstream_nodes = []
-        if dbt_node.depends_on and dbt_node.depends_on.nodes:
+        if (
+            hasattr(dbt_node, "depends_on")
+            and dbt_node.depends_on
+            and dbt_node.depends_on.nodes
+        ):
             for node in dbt_node.depends_on.nodes:
                 try:
                     parent_node = manifest_entities[node]
