@@ -5,11 +5,9 @@ slug: /connectors/database/databricks/airflow
 
 # Run Databricks using the airflow SDK
 <Table>
-
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
 |  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
-
 </Table>
 <Table>
 | Lineage | Table-level | Column-level |

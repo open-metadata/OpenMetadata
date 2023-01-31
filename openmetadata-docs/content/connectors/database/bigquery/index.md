@@ -6,11 +6,9 @@ slug: /connectors/database/bigquery
 # BigQuery
 
 <Table>
-
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
 |  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
-
 </Table>
 <Table>
 | Lineage | Table-level | Column-level |
@@ -70,7 +68,6 @@ custom Airflow plugins to handle the workflow deployment.
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
 
 <Table>
-
 | #    | GCP Permission                | GCP Role              | Required For            |
 | :--- | :---------------------------- | :-------------------- | :---------------------- |
 | 1    | bigquery.datasets.get         | BigQuery Data Viewer  | Metadata Ingestion      |

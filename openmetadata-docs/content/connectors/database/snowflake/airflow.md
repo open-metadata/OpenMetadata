@@ -5,17 +5,16 @@ slug: /connectors/database/snowflake/airflow
 
 # Run Snowflake using the Airflow SDK
 <Table>
-
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
 |  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
-
 </Table>
 <Table>
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
 | ✅ | ✅ | ✅ |
 </Table>
+
 In this section, we provide guides and references to use the Snowflake connector.
 
 Configure and schedule Snowflake metadata and profiler workflows from the OpenMetadata UI:
