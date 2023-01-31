@@ -43,14 +43,14 @@ describe('MlModelSummary component tests', () => {
     });
 
     const mlModelTitle = screen.getByTestId('TableDataCardTitle');
-    const algorithmLabel = screen.getByTestId('algorithm-label');
-    const targetLabel = screen.getByTestId('target-label');
-    const serverLabel = screen.getByTestId('server-label');
-    const dashboardLabel = screen.getByTestId('dashboard-label');
-    const algorithmValue = screen.getByTestId('algorithm-value');
-    const targetValue = screen.getByTestId('target-value');
-    const serverValue = screen.getByTestId('server-value');
-    const dashboardValue = screen.getByTestId('dashboard-value');
+    const algorithmLabel = screen.getByTestId('label.algorithm-label');
+    const targetLabel = screen.getByTestId('label.target-label');
+    const serverLabel = screen.getByTestId('label.server-label');
+    const dashboardLabel = screen.getByTestId('label.dashboard-label');
+    const algorithmValue = screen.getByTestId('label.algorithm-value');
+    const targetValue = screen.getByTestId('label.target-value');
+    const serverValue = screen.getByTestId('label.server-value');
+    const dashboardValue = screen.getByTestId('label.dashboard-value');
 
     expect(mlModelTitle).toBeInTheDocument();
     expect(algorithmLabel).toBeInTheDocument();
@@ -68,14 +68,14 @@ describe('MlModelSummary component tests', () => {
       wrapper: MemoryRouter,
     });
 
-    const algorithmLabel = screen.getByTestId('algorithm-label');
-    const targetLabel = screen.queryByTestId('target-label');
-    const serverLabel = screen.queryByTestId('server-label');
-    const dashboardLabel = screen.queryByTestId('dashboard-label');
-    const algorithmValue = screen.getByTestId('algorithm-value');
-    const targetValue = screen.getByTestId('target-value');
-    const serverValue = screen.getByTestId('server-value');
-    const dashboardValue = screen.getByTestId('dashboard-value');
+    const algorithmLabel = screen.getByTestId('label.algorithm-label');
+    const targetLabel = screen.queryByTestId('label.target-label');
+    const serverLabel = screen.queryByTestId('label.server-label');
+    const dashboardLabel = screen.queryByTestId('label.dashboard-label');
+    const algorithmValue = screen.getByTestId('label.algorithm-value');
+    const targetValue = screen.getByTestId('label.target-value');
+    const serverValue = screen.getByTestId('label.server-value');
+    const dashboardValue = screen.getByTestId('label.dashboard-value');
 
     expect(algorithmLabel).toBeInTheDocument();
     expect(targetLabel).toBeInTheDocument();

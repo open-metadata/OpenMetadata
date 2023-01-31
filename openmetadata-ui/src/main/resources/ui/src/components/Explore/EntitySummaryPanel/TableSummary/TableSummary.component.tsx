@@ -135,7 +135,7 @@ function TableSummary({
         })
       );
     }
-  }, [entityDetails, isTableDeleted]);
+  }, [entityDetails, isTableDeleted, fetchAllTests]);
 
   const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
     if (isUndefined(tableDetails.profile)) {
@@ -226,7 +226,7 @@ function TableSummary({
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
                     <Col data-testid={`${info.name}-label`} span={10}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text className="text-grey-muted">
                         {info.name}
                       </Typography.Text>
                     </Col>
@@ -269,7 +269,7 @@ function TableSummary({
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-gray"
+            className="text-base text-grey-muted"
             data-testid="profiler-header">
             {t('label.profiler-amp-data-quality')}
           </Typography.Text>
@@ -286,7 +286,7 @@ function TableSummary({
                   <Row>
                     <Col span={24}>
                       <Typography.Text
-                        className="text-gray"
+                        className="text-grey-muted"
                         data-testid={`${field.title}-label`}>
                         {field.title}
                       </Typography.Text>
@@ -318,7 +318,7 @@ function TableSummary({
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-gray"
+            className="text-base text-grey-muted"
             data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>

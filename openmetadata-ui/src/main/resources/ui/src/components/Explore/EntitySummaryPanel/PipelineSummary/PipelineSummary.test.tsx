@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockPipelineEntityDetails } from '../mocks/PipelineSummary.mock';
 import PipelineSummary from './PipelineSummary.component';
 
@@ -34,7 +35,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 );
 
 describe('PipelineSummary component tests', () => {
-  it('Component should render properly', () => {
+  it('Component should render properly,  when loaded in the Explore page.', () => {
     render(<PipelineSummary entityDetails={mockPipelineEntityDetails} />, {
       wrapper: MemoryRouter,
     });
@@ -52,6 +53,56 @@ describe('PipelineSummary component tests', () => {
     expect(summaryList).toBeInTheDocument();
   });
 
+  it('Component should render properly, when loaded in the Lineage page.', async () => {
+    const labels = [
+      'pipeline-url-label',
+      'label.pipeline label.url-uppercase-value',
+      'label.service-label',
+      'label.owner-label',
+      'label.tier-label',
+    ];
+
+    const values = [
+      'label.service-value',
+      'label.owner-value',
+      'label.tier-value',
+    ];
+    render(
+      <PipelineSummary
+        componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+        entityDetails={mockPipelineEntityDetails}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tableTitle = screen.queryByTestId('TableDataCardTitle');
+    const schemaHeader = screen.getAllByTestId('schema-header');
+    const tags = screen.getByText('label.tag-plural');
+    const noTags = screen.getByText('label.no-tags-added');
+    const pipelineName = screen.getAllByTestId('pipeline-link-name');
+
+    const viewerContainer = screen.getByTestId('viewer-container');
+    const summaryList = screen.getByTestId('SummaryList');
+
+    labels.forEach((label) =>
+      expect(screen.getByTestId(label)).toBeInTheDocument()
+    );
+    values.forEach((value) =>
+      expect(screen.getByTestId(value)).toBeInTheDocument()
+    );
+
+    expect(tableTitle).not.toBeInTheDocument();
+    expect(schemaHeader[0]).toBeInTheDocument();
+    expect(tags).toBeInTheDocument();
+    expect(pipelineName[0]).toBeInTheDocument();
+    expect(noTags).toBeInTheDocument();
+
+    expect(summaryList).toBeInTheDocument();
+    expect(viewerContainer).toBeInTheDocument();
+  });
+
   it('If the pipeline url is not present in pipeline details, "-" should be displayed as pipeline url value', () => {
     render(
       <PipelineSummary
@@ -62,7 +113,9 @@ describe('PipelineSummary component tests', () => {
       }
     );
 
-    const pipelineUrlValue = screen.getByTestId('pipeline-url-value');
+    const pipelineUrlValue = screen.getByTestId(
+      'label.pipeline label.url-uppercase-value'
+    );
 
     expect(pipelineUrlValue).toContainHTML('-');
   });

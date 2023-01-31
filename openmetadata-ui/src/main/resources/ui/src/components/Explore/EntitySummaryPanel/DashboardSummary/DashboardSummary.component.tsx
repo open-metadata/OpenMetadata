@@ -113,7 +113,7 @@ function DashboardSummary({
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
                     <Col data-testid={`${info.name}-label`} span={10}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text className="text-grey-muted">
                         {info.name}
                       </Typography.Text>
                     </Col>
@@ -166,7 +166,7 @@ function DashboardSummary({
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-gray"
+            className="text-base text-grey-muted"
             data-testid="charts-header">
             {t('label.chart-plural')}
           </Typography.Text>

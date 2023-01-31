@@ -116,9 +116,8 @@ const EntityInfoDrawer = ({
           })
           .catch(() => {
             showErrorToast(
-              t('server.entity-details-fetch-error', {
-                entityType: t('label.topic-lowercase'),
-                entityName: selectedNode.name,
+              t('server.error-selected-node-name-details', {
+                selectedNodeName: selectedNode.name,
               })
             );
           })
@@ -256,31 +255,26 @@ const EntityInfoDrawer = ({
       open={show}
       style={{ position: 'absolute' }}
       title={
-        <>
-          <Row gutter={[0, 6]}>
-            <Col span={24}>
-              {'databaseSchema' in entityDetail &&
-                'database' in entityDetail && (
-                  <span
-                    className="text-grey-muted text-xs"
-                    data-testid="database-schema">{`${entityDetail.database?.name}${FQN_SEPARATOR_CHAR}${entityDetail.databaseSchema?.name}`}</span>
-                )}
-            </Col>
-            <Col span={24}>
-              <p className="tw-flex">
-                <span className="tw-mr-2">
-                  {getEntityIcon(selectedNode.type)}
-                </span>
-                {getHeaderLabel(
-                  selectedNode.displayName ?? selectedNode.name,
-                  selectedNode.fqn,
-                  selectedNode.type,
-                  isMainNode
-                )}
-              </p>
-            </Col>
-          </Row>
-        </>
+        <Row gutter={[0, 6]}>
+          <Col span={24}>
+            {'databaseSchema' in entityDetail && 'database' in entityDetail && (
+              <span
+                className="text-grey-muted text-xs"
+                data-testid="database-schema">{`${entityDetail.database?.name}${FQN_SEPARATOR_CHAR}${entityDetail.databaseSchema?.name}`}</span>
+            )}
+          </Col>
+          <Col span={24}>
+            <p className="flex">
+              <span className="m-r-xs">{getEntityIcon(selectedNode.type)}</span>
+              {getHeaderLabel(
+                selectedNode.displayName ?? selectedNode.name,
+                selectedNode.fqn,
+                selectedNode.type,
+                isMainNode
+              )}
+            </p>
+          </Col>
+        </Row>
       }>
       {isLoading ? <Loader /> : <>{summaryComponent}</>}
     </Drawer>

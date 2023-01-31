@@ -13,7 +13,9 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
 
@@ -47,7 +49,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 );
 
 describe('TableSummary component tests', () => {
-  it('Component should render properly', async () => {
+  it('Component should render properly, when loaded in the Explore page.', async () => {
     await act(async () => {
       render(<TableSummary entityDetails={mockTableEntityDetails} />);
     });
@@ -55,12 +57,12 @@ describe('TableSummary component tests', () => {
     const tableTitle = screen.getByTestId('TableDataCardTitle');
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getByTestId('schema-header');
-    const typeLabel = screen.getByTestId('Type-label');
-    const queriesLabel = screen.getByTestId('Queries-label');
-    const columnsLabel = screen.getByTestId('Columns-label');
-    const typeValue = screen.getByTestId('Type-value');
-    const queriesValue = screen.getByTestId('Queries-value');
-    const columnsValue = screen.getByTestId('Columns-value');
+    const typeLabel = screen.getByTestId('label.type-label');
+    const queriesLabel = screen.getByTestId('label.query-plural-label');
+    const columnsLabel = screen.getByTestId('label.column-plural-label');
+    const typeValue = screen.getByTestId('label.type-value');
+    const queriesValue = screen.getByTestId('label.query-plural-value');
+    const columnsValue = screen.getByTestId('label.column-plural-value');
     const noProfilerPlaceholder = screen.getByTestId(
       'no-profiler-enabled-message'
     );
@@ -70,6 +72,67 @@ describe('TableSummary component tests', () => {
     expect(profilerHeader).toBeInTheDocument();
     expect(schemaHeader).toBeInTheDocument();
     expect(typeLabel).toBeInTheDocument();
+    expect(queriesLabel).toBeInTheDocument();
+    expect(columnsLabel).toBeInTheDocument();
+    expect(typeValue).toContainHTML('Regular');
+    expect(queriesValue).toContainHTML('2');
+    expect(columnsValue).toContainHTML('2');
+    expect(noProfilerPlaceholder).toContainHTML(
+      'message.no-profiler-enabled-summary-message'
+    );
+    expect(summaryList).toBeInTheDocument();
+  });
+
+  it('Component should render properly, when loaded in the Lineage page.', async () => {
+    const labels = [
+      'label.service-label',
+      'label.type-label',
+      'label.database-label',
+      'label.schema-label',
+      'label.owner-label',
+      'label.query-plural-label',
+      'label.column-plural-label',
+    ];
+
+    const values = [
+      'label.type-value',
+      'label.service-value',
+      'label.database-value',
+      'label.schema-value',
+    ];
+    render(
+      <TableSummary
+        componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+        entityDetails={mockTableEntityDetails}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tableTitle = screen.queryByTestId('TableDataCardTitle');
+    const profilerHeader = screen.getByTestId('profiler-header');
+    const schemaHeader = screen.getAllByTestId('schema-header');
+    const queriesLabel = screen.getByTestId('label.query-plural-label');
+    const columnsLabel = screen.getByTestId('label.column-plural-label');
+    const typeValue = screen.getByTestId('label.type-value');
+    const queriesValue = screen.getByTestId('label.query-plural-value');
+    const columnsValue = screen.getByTestId('label.column-plural-value');
+    const noProfilerPlaceholder = screen.getByTestId(
+      'no-profiler-enabled-message'
+    );
+    const summaryList = screen.getByTestId('SummaryList');
+
+    labels.forEach((label) =>
+      expect(screen.getByTestId(label)).toBeInTheDocument()
+    );
+    values.forEach((value) =>
+      expect(screen.getByTestId(value)).toBeInTheDocument()
+    );
+
+    expect(tableTitle).not.toBeInTheDocument();
+    expect(profilerHeader).toBeInTheDocument();
+    expect(schemaHeader[0]).toBeInTheDocument();
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
     expect(typeValue).toContainHTML('Regular');

@@ -121,7 +121,7 @@ function TopicSummary({
                 <Col key={fieldName} span={24}>
                   <Row gutter={16}>
                     <Col data-testid={`${fieldName}-label`} span={10}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text className="text-grey-muted">
                         {fieldName}
                       </Typography.Text>
                     </Col>
@@ -154,7 +154,7 @@ function TopicSummary({
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-gray"
+            className="text-base text-grey-muted"
             data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
@@ -163,7 +163,7 @@ function TopicSummary({
           {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
             <div className="m-y-md">
               <Typography.Text data-testid="no-data-message">
-                <Typography.Text className="text-gray">
+                <Typography.Text className="text-grey-muted">
                   {t('message.no-data-available')}
                 </Typography.Text>
               </Typography.Text>

@@ -87,7 +87,7 @@ function PipelineSummary({
                         info.dataTestId ? info.dataTestId : `${info.name}-label`
                       }
                       span={10}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text className="text-grey-muted">
                         {info.name}
                       </Typography.Text>
                     </Col>
@@ -137,7 +137,7 @@ function PipelineSummary({
         gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-gray"
+            className="text-base text-grey-muted"
             data-testid="tasks-header">
             {t('label.task-plural')}
           </Typography.Text>
