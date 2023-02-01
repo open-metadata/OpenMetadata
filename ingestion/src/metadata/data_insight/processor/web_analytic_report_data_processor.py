@@ -64,8 +64,8 @@ ENTITIES = {
 }
 
 CACHED_EVENTS = []
-START_TS = str(get_beginning_of_day_timestamp_mill(days=0))
-END_TS = str(get_end_of_day_timestamp_mill(days=0))
+START_TS = str(get_beginning_of_day_timestamp_mill(days=1))
+END_TS = str(get_end_of_day_timestamp_mill(days=1))
 
 
 class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
