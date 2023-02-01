@@ -92,7 +92,6 @@ const NextPrevious: FC<Prop> = ({
         className="hover-button text-sm flex-center"
         data-testid="previous"
         disabled={computePrevDisableState()}
-        size="middle"
         type="primary"
         onClick={onPreviousHandler}>
         <FontAwesomeIcon className="text-sm p-r-xs" icon={faArrowLeft} />
@@ -109,7 +108,6 @@ const NextPrevious: FC<Prop> = ({
         className="hover-button text-sm flex-center"
         data-testid="next"
         disabled={computeNextDisableState()}
-        size="middle"
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>

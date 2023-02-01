@@ -187,15 +187,19 @@ const TestSuitePage = () => {
     <PageLayoutV1>
       <Space align="center" className="w-full justify-between" size={16}>
         <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
-        <Button
-          data-testid="add-test-suite"
-          disabled={!createPermission}
-          type="primary"
-          onClick={onAddTestSuite}>
-          {t('label.add-entity', {
-            entity: t('label.test-suite'),
-          })}
-        </Button>
+        <Tooltip
+          placement="topRight"
+          title={!createPermission && t('message.no-permission-for-action')}>
+          <Button
+            data-testid="add-test-suite"
+            disabled={!createPermission}
+            type="primary"
+            onClick={onAddTestSuite}>
+            {t('label.add-entity', {
+              entity: t('label.test-suite'),
+            })}
+          </Button>
+        </Tooltip>
       </Space>
 
       <Row className="w-full mt-4">

@@ -119,6 +119,8 @@ const Ingestion: React.FC<IngestionProps> = ({
         };
       }, {});
 
+      console.log(permissionData);
+
       setServicePermission(permissionData);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -399,15 +401,16 @@ const Ingestion: React.FC<IngestionProps> = ({
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
   );
 
+  const getIngestionPermission = (name: string): boolean =>
+    !isRequiredDetailsAvailable || getEditPermission(name);
+
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
         <>
           <Button
             data-testid="run"
-            disabled={
-              !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
-            }
+            disabled={getIngestionPermission(ingestion.name)}
             type="link"
             onClick={() =>
               handleTriggerIngestion(ingestion.id as string, ingestion.name)
@@ -418,9 +421,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
           <Button
             data-testid="re-deploy-btn"
-            disabled={
-              !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
-            }
+            disabled={getIngestionPermission(ingestion.name)}
             type="link"
             onClick={() => handleDeployIngestion(ingestion.id as string)}>
             {getLoadingStatus(currDeployId, ingestion.id, t('label.re-deploy'))}
@@ -431,9 +432,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       return (
         <Button
           data-testid="deploy"
-          disabled={
-            !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
-          }
+          disabled={getIngestionPermission(ingestion.name)}
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
           {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
@@ -532,10 +531,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                   {separator}
                   <Button
                     data-testid="pause"
-                    disabled={
-                      !isRequiredDetailsAvailable ||
-                      getEditPermission(record.name)
-                    }
+                    disabled={getIngestionPermission(record.name)}
                     type="link"
                     onClick={() =>
                       handleEnableDisableIngestion(record.id || '')
@@ -546,10 +542,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               ) : (
                 <Button
                   data-testid="unpause"
-                  disabled={
-                    !isRequiredDetailsAvailable ||
-                    getEditPermission(record.name)
-                  }
+                  disabled={getIngestionPermission(record.name)}
                   type="link"
                   onClick={() => handleEnableDisableIngestion(record.id || '')}>
                   {t('label.unpause')}
@@ -558,9 +551,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="edit"
-                disabled={
-                  !isRequiredDetailsAvailable || getEditPermission(record.name)
-                }
+                disabled={getIngestionPermission(record.name)}
                 type="link"
                 onClick={() => handleUpdate(record)}>
                 {t('label.edit')}
@@ -584,9 +575,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="kill"
-                disabled={
-                  !isRequiredDetailsAvailable || getEditPermission(record.name)
-                }
+                disabled={getIngestionPermission(record.name)}
                 type="link"
                 onClick={() => {
                   setIsKillModalOpen(true);

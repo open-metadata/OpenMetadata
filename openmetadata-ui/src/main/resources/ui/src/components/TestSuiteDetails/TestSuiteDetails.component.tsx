@@ -55,7 +55,7 @@ const TestSuiteDetails = ({
         />
         <Tooltip
           placement="topRight"
-          title={hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION}>
+          title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
           <Button
             ghost
             data-testid="test-suite-delete"

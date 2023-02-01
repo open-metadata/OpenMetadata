@@ -414,13 +414,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                       : '#'
                   }>
                   <Tooltip
-                    title={
-                      editTest
-                        ? t('label.add-entity', {
-                            entity: t('label.test'),
-                          })
-                        : t('message.no-permission-for-action')
-                    }>
+                    title={!editTest && t('message.no-permission-for-action')}>
                     <Button
                       className="rounded-4"
                       data-testid="profiler-add-table-test-btn"

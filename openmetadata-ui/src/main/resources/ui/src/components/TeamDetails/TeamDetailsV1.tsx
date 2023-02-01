@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
+import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -251,7 +252,6 @@ const TeamDetailsV1 = ({
                   ghost
                   data-testid={datatestid}
                   disabled={disabled}
-                  size="middle"
                   title={title}
                   type="primary"
                   onClick={onClick}>
@@ -823,7 +823,6 @@ const TeamDetailsV1 = ({
                   <Button
                     data-testid="add-user"
                     disabled={!entityPermissions.EditAll}
-                    size="middle"
                     title={
                       entityPermissions.EditAll
                         ? t('label.add-entity', { entity: t('label.user') })
@@ -888,7 +887,7 @@ const TeamDetailsV1 = ({
         ),
         button: (
           <Link to="/explore">
-            <Button ghost size="middle" type="primary">
+            <Button ghost type="primary">
               {t('label.explore')}
             </Button>
           </Link>
@@ -935,11 +934,7 @@ const TeamDetailsV1 = ({
   const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
-        <Button
-          data-testid="join-teams"
-          size="middle"
-          type="primary"
-          onClick={joinTeam}>
+        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
           {t('label.join-team')}
         </Button>
       ) : null
@@ -947,7 +942,6 @@ const TeamDetailsV1 = ({
       <Button
         ghost
         data-testid="leave-team-button"
-        size="middle"
         type="primary"
         onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
         {t('label.leave-team')}
@@ -974,7 +968,6 @@ const TeamDetailsV1 = ({
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                 data-testid="cancelAssociatedTag"
-                size="middle"
                 type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
                 <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
@@ -982,7 +975,6 @@ const TeamDetailsV1 = ({
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
                 data-testid="saveAssociatedTag"
-                size="middle"
                 type="primary"
                 onMouseDown={handleHeadingSave}>
                 <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
@@ -1006,8 +998,8 @@ const TeamDetailsV1 = ({
                         })
                       : t('message.no-permission-for-action')
                   }>
-                  <button
-                    className="tw-ml-2 focus:tw-outline-none"
+                  <Button
+                    className="m-l-xss p-0"
                     data-testid="edit-synonyms"
                     disabled={
                       !(
@@ -1015,14 +1007,11 @@ const TeamDetailsV1 = ({
                         entityPermissions.EditAll
                       )
                     }
-                    onClick={() => setIsHeadingEditing(true)}>
-                    <SVGIcons
-                      alt={t('label.edit')}
-                      className="tw-mb-1"
-                      icon="icon-edit"
-                      width="16px"
-                    />
-                  </button>
+                    icon={<IconEdit height={16} width={16} />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsHeadingEditing(true)}
+                  />
                 </Tooltip>
               </div>
             )}
@@ -1291,7 +1280,6 @@ const TeamDetailsV1 = ({
                     <Button
                       data-testid="add-policy"
                       disabled={!entityPermissions.EditAll}
-                      size="middle"
                       title={
                         entityPermissions.EditAll
                           ? addPolicy
@@ -1327,7 +1315,6 @@ const TeamDetailsV1 = ({
                 ghost
                 data-testid="add-team"
                 disabled={!createTeamPermission}
-                size="middle"
                 title={
                   createTeamPermission
                     ? addTeam

@@ -975,9 +975,8 @@ const ServicePage: FunctionComponent = () => {
                     <Tooltip
                       placement="topRight"
                       title={
-                        servicePermission.Delete
-                          ? t('label.delete')
-                          : t('message.no-permission-for-action')
+                        !servicePermission.Delete &&
+                        t('message.no-permission-for-action')
                       }>
                       <Button
                         ghost
