@@ -57,18 +57,18 @@ Let's go through the required steps:
 3. Start the updated compose file.
 4. Run the reindex from the UI.
 
-## Upgrade from 0.12.3 to 0.13.1
+## Upgrade from 0.12.3 to 0.13.2
 
-Your production deployment should go from stable version to stable version. This translated to moving from 0.12.3 to 0.13.1 to
+Your production deployment should go from stable version to stable version. This translated to moving from 0.12.3 to 0.13.2 to
 get the latest stable OpenMetadata release.
 
-Database volumes were just introduced in the 0.13.0 feature release. This means that when moving from 0.12.3 to 0.13.1, we'll
+Database volumes were just introduced in the 0.13.0 feature release. This means that when moving from 0.12.3 to 0.13.2, we'll
 need to do some extra steps to ensure that all your metadata is safe and sound. In this section, we'll guide you step by step on
 what you'll need to do to:
 
 1. Backup your data,
 2. Add volumes and port mapping to the databases and restore your data,
-3. Start OpenMetadata with the 0.13.1 release.
+3. Start OpenMetadata with the 0.13.2 release.
 
 These steps are based on MySQL, but are analogous for Postgres.
 
@@ -92,9 +92,9 @@ Ingestion container should be good to go (as shown in step 4 below).
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
    1. `python -m venv venv`
    2. `source venv/bin/activate`
-   3. `PIP_USER=false pip install openmetadata-ingestion~=0.13.1.0`
+   3. `PIP_USER=false pip install openmetadata-ingestion~=0.13.2`
 3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
-    indeed at 0.13.1. Notice the `python -m metadata` vs. `metadata`. As we're inside the container, the raw metadata 
+    indeed at 0.13.2. Notice the `python -m metadata` vs. `metadata`. As we're inside the container, the raw metadata 
     command will use the system-wide one, which is at 0.12.3.
 4. Run the backup using the updated `metadata` CLI:
     ```
@@ -117,7 +117,7 @@ This step is only required if you have not done that yet.
     ```
     mysql:
       container_name: openmetadata_mysql
-      image: openmetadata/db:0.13.1
+      image: openmetadata/db:0.13.2
       restart: always
       environment:
         MYSQL_ROOT_PASSWORD: password
@@ -150,12 +150,12 @@ This step is only required if you have not done that yet.
 
 We will now use the backup generated in the previous step to repopulate the database.
 
-1. On your laptop/VM, prepare a virtual environment and install `openmetadata-ingestion==0.13.1`. It is important
+1. On your laptop/VM, prepare a virtual environment and install `openmetadata-ingestion==0.13.2`. It is important
    that the instance has access to the database.
    1. `python -m venv venv`
    2. `source venv/bin/activate`
-   3. `pip install openmetadata-ingestion~=0.13.1.0`
-2. Validate the metadata version with `metadata --version`. it should be 0.13.1.
+   3. `pip install openmetadata-ingestion~=0.13.2`
+2. Validate the metadata version with `metadata --version`. it should be 0.13.2.
 3. Run the restore with your file name
     ```
     metadata restore -H localhost -u openmetadata_user -p openmetadata_password -d openmetadata_db --port 3306 --input openmetadata_202212201528_backup.sql
@@ -169,11 +169,11 @@ We will now use the backup generated in the previous step to repopulate the data
 ### 4. Upgrade OpenMetadata versions
 
 1. On the compose file we previously updated the database settings, update the image tag in the `ingestion` and 
-    `openmetadata-server` to 0.13.1. E.g., `image: openmetadata/server:0.13.1`.
+    `openmetadata-server` to 0.13.2. E.g., `image: openmetadata/server:0.13.2`.
 2. Start the updated compose file.
 3. Run the reindex from the UI.
 
-Now you should still have all your data with OpenMetadata version 0.13.1.
+Now you should still have all your data with OpenMetadata version 0.13.2.
 
 ## Upgrade ingestion patch versions
 
