@@ -77,7 +77,7 @@ You can check the latest release [here](/overview/releases).
 
 
 
-## 1.0 Release - Marc 14th, 2023
+## 1.0 Release - March 14th, 2023
 
 <TileContainer>
   <Tile
