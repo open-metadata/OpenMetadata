@@ -567,7 +567,8 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-surefire.version}</version>
         <configuration>
-          <trimStackTrace>false</trimStackTrace>
+          <properties>
+          </properties>
         </configuration>
         <executions>
           <execution>

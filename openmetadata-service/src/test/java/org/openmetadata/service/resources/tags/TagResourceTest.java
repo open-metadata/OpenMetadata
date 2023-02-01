@@ -58,11 +58,13 @@ import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ParallelizeTest
 public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   private final ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
 
@@ -77,7 +79,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
     TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
-    USER_TAG_CATEGORY = createClassification("User");
+    USER_TAG_CATEGORY = createClassification(getEntityName("User"));
 
     ADDRESS_TAG =
         createTag(
@@ -86,7 +88,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
             null,
             PERSONAL_DATA_TAG_LABEL.getTagFQN(),
             PII_SENSITIVE_TAG_LABEL.getTagFQN());
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_TAG_CATEGORY.getName(), "Address"));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {

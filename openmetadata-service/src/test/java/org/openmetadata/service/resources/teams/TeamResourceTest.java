@@ -105,11 +105,13 @@ import org.openmetadata.service.resources.teams.TeamResource.TeamList;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
+@ParallelizeTest
 public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
@@ -634,13 +636,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add policies to the team
-    create = createRequest(getEntityName(test)).withPolicies(List.of(POLICY1.getId(), POLICY2.getId()));
+    create =
+        createRequest(getEntityName(test))
+            .withPolicies(List.of(POLICY1.getId(), POLICY2.getId()))
+            .withName(team.getName());
     ChangeDescription change = getChangeDescription(team.getVersion());
     fieldAdded(change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
     team = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove policies from the team
-    create = createRequest(getEntityName(test));
+    create = createRequest(getEntityName(test)).withName(team.getName());
     change = getChangeDescription(team.getVersion());
     fieldDeleted(change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
     updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);

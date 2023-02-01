@@ -28,9 +28,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.metadata.MetadataServiceResource;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@ParallelizeTest
 public class MetadataServiceResourceTest extends EntityResourceTest<MetadataService, CreateMetadataService> {
   public MetadataServiceResourceTest() {
     super(
@@ -47,7 +49,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
     MetadataServiceResourceTest metadataServiceResourceTest = new MetadataServiceResourceTest();
     CreateMetadataService createMetadata =
         new CreateMetadataService()
-            .withName("amundsen")
+            .withName(getEntityName("amundsen"))
             .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
             .withConnection(TestUtils.AMUNDSEN_CONNECTION);
     MetadataService metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
@@ -55,7 +57,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
     // Create Atlas Service
     createMetadata
-        .withName("atlas")
+        .withName(getEntityName("atlas"))
         .withServiceType(CreateMetadataService.MetadataServiceType.Atlas)
         .withConnection(TestUtils.ATLAS_CONNECTION);
 

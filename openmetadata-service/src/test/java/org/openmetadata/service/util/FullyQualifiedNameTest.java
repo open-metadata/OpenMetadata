@@ -8,6 +8,7 @@ import java.util.List;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
+@ParallelizeTest
 class FullyQualifiedNameTest {
   private static class FQNTest {
     private final String[] parts;

@@ -27,9 +27,11 @@ import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@ParallelizeTest
 public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalyticEvent, CreateWebAnalyticEvent> {
   public WebAnalyticEventResourceTest() {
     super(

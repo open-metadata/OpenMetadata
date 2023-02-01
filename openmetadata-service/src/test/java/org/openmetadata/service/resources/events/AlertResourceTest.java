@@ -49,9 +49,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.alerts.AlertResource;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@ParallelizeTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public static final TriggerConfig ALL_EVENTS_FILTER =

@@ -57,6 +57,16 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     entityResourceTest.setup(test);
   }
 
+  public EntitiesCount getEntitiesCount() throws HttpResponseException {
+    WebTarget target = getResource("util/entities/count");
+    return TestUtils.get(target, EntitiesCount.class, ADMIN_AUTH_HEADERS);
+  }
+
+  public ServicesCount getServicesCount() throws HttpResponseException {
+    WebTarget target = getResource("util/services/count");
+    return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
+  }
+
   @Test
   public void entitiesCount(TestInfo test) throws HttpResponseException {
     // Get count before adding entities
@@ -101,6 +111,18 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // Get count after adding entities
+    int afterTableCount = getEntitiesCount().getTableCount();
+    int afterDashboardCount = getEntitiesCount().getDashboardCount();
+    int afterPipelineCount = getEntitiesCount().getPipelineCount();
+    int afterTopicCount = getEntitiesCount().getTopicCount();
+    int afterServiceCount = getEntitiesCount().getServicesCount();
+    int afterUserCount = getEntitiesCount().getUserCount();
+    int afterTeamCount = getEntitiesCount().getTeamCount();
+    int afterTestSuiteCount = getEntitiesCount().getTestSuiteCount();
+
+    int actualCount = 1;
 
     // Ensure counts of entities is increased by 1
     EntitiesCount afterCount = getEntitiesCount();

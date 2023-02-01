@@ -26,9 +26,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
+@ParallelizeTest
 class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
   private static TableResourceTest tableResourceTest;
 

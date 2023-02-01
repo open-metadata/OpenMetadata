@@ -77,11 +77,13 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ParallelizeTest
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
   private final GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
 

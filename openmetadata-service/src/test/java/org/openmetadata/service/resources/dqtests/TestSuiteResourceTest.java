@@ -25,9 +25,11 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@ParallelizeTest
 public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateTestSuite> {
   public TestSuiteResourceTest() {
     super(
@@ -43,7 +45,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     TEST_SUITE1 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
-    createTestSuite = testSuiteResourceTest.createRequest("testSuite2");
+    createTestSuite = testSuiteResourceTest.createRequest(getEntityName("testSuite2"));
     TEST_SUITE2 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
   }
 
@@ -100,7 +102,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertEquals(deletedTestSuite.getDeleted(), true);
   }
 
-  public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
+  public ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("testSuite");
     target = limit != null ? target.queryParam("limit", limit) : target;

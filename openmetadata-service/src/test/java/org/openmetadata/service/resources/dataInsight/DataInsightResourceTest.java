@@ -17,7 +17,9 @@ import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.ParallelizeTest;
 
+@ParallelizeTest
 public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart, CreateDataInsightChart> {
   public DataInsightResourceTest() {
     super(

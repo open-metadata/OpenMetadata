@@ -28,9 +28,11 @@ import org.openmetadata.schema.type.StorageServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource.StorageServiceList;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@ParallelizeTest
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {
     super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class, "services/storageServices", "owner");
@@ -41,12 +43,12 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     // Create AWS storage service, S3
     StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
     CreateStorageService createService =
-        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
+        new CreateStorageService().withName(getEntityName("s3")).withServiceType(StorageServiceType.S3);
     StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     AWS_STORAGE_SERVICE_REFERENCE = service.getEntityReference();
 
     // Create GCP storage service, GCS
-    createService.withName("gs").withServiceType(StorageServiceType.GCS);
+    createService.withName(getEntityName("gs")).withServiceType(StorageServiceType.GCS);
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE = service.getEntityReference();
   }

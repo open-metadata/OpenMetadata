@@ -3,7 +3,9 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.util.ParallelizeTest;
 
+@ParallelizeTest
 class ListFilterTest {
   @Test
   void test_escapeApostrophe() {

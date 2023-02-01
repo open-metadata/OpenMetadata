@@ -41,7 +41,9 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.util.ParallelizeTest;
 
+@ParallelizeTest
 public class SubjectContextTest {
   private static List<Role> team1Roles;
   private static List<Policy> team1Policies;

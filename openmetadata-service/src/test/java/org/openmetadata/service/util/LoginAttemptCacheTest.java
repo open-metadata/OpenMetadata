@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 
 @Slf4j
+@ParallelizeTest
 public class LoginAttemptCacheTest {
   @Test
   void testFailedLogin() {

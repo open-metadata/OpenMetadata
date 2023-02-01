@@ -57,11 +57,13 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
+@ParallelizeTest
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   private static final String SCHEMA_TEXT =
       "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\","

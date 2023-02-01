@@ -62,10 +62,12 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.mlmodels.MlModelResource.MlModelList;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ParallelizeTest
 public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlModel> {
 
   public static final String ALGORITHM = "regression";

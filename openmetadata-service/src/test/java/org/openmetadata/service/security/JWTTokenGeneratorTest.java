@@ -20,9 +20,11 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.ParallelizeTest;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ParallelizeTest
 class JWTTokenGeneratorTest {
   protected static final String rsaPrivateKeyPath = ResourceHelpers.resourceFilePath("private_key.der");
   protected static final String rsaPublicKeyPath = ResourceHelpers.resourceFilePath("public_key.der");

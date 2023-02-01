@@ -27,8 +27,10 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 
+@ParallelizeTest
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
   public static EntityReference botUserRef;

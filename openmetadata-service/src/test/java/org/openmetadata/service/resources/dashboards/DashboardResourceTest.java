@@ -50,10 +50,12 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@ParallelizeTest
 public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateDashboard> {
   public static EntityReference SUPERSET_INVALID_SERVICE_REFERENCE;
 

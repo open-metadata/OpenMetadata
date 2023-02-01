@@ -72,11 +72,13 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ParallelizeTest
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
     // TODO add system glossary
@@ -86,21 +88,20 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   public void setupGlossaries() throws IOException {
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest(getEntityName("g1"), "", "", null);
     GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
     GLOSSARY1_REF = GLOSSARY1.getEntityReference();
 
-    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
+    createGlossary = glossaryResourceTest.createRequest(getEntityName("g2"), "", "", null);
     GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
     GLOSSARY2_REF = GLOSSARY2.getEntityReference();
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g1t1", "", "", null)
+            .createRequest(getEntityName("g1t1"), "", "", null)
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1_REF)
-            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
             .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
@@ -109,7 +110,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g2t1", "", "", null)
+            .createRequest(getEntityName("g1t2"), "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
             .withGlossary(GLOSSARY2_REF)
             .withReviewers(GLOSSARY1.getReviewers());

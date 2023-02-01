@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @Slf4j
+@ParallelizeTest
 class RestUtilTest {
   @Test
   void hrefTests() throws URISyntaxException {

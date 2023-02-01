@@ -28,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.ChartType;
@@ -35,9 +37,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResource.ChartList;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+@ParallelizeTest
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   public ChartResourceTest() {
@@ -45,6 +49,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
@@ -54,6 +59,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {METABASE_REFERENCE, LOOKER_REFERENCE};
 
@@ -72,6 +78,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
+  @Execution(ExecutionMode.CONCURRENT)
   public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     String fields = "";
     chart =

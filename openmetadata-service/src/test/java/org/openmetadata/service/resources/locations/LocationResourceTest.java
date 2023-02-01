@@ -41,10 +41,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.locations.LocationResource.LocationList;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@ParallelizeTest
 public class LocationResourceTest extends EntityResourceTest<Location, CreateLocation> {
   public LocationResourceTest() {
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
@@ -176,7 +178,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     }
   }
 
-  public static Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)
+  public Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getResource("locations"), create, Location.class, status, authHeaders);
   }
@@ -201,7 +203,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     return location;
   }
 
-  public static LocationList listPrefixes(
+  public LocationList listPrefixes(
       String fields, String fqn, Integer limitParam, String before, String after, Map<String, String> authHeaders)
       throws HttpResponseException {
     String encodedFqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8);

@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -52,12 +51,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
+@ParallelizeTest
 public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTestCase> {
   public static String TABLE_LINK;
   public static String TABLE_COLUMN_LINK;
@@ -80,7 +81,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName("testCase'_ Table")
+            .withName(getEntityName("testCase'_ Table"))
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withOwner(USER1_REF)
             .withColumns(
@@ -95,7 +96,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName("testCaseTable" + UUID.randomUUID())
+            .withName(getEntityName("testCaseTable"))
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withColumns(
                 List.of(
@@ -439,7 +440,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     fieldUpdated(change, "description", oldDescription, newDescription);
     testCase =
         updateAndCheckEntity(
-            createRequest(test).withDescription(newDescription), OK, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+            createRequest(test).withDescription(newDescription).withName(testCase.getName()),
+            OK,
+            ownerAuthHeaders,
+            UpdateType.MINOR_UPDATE,
+            change);
 
     // Update description with PATCH
     oldDescription = testCase.getDescription();

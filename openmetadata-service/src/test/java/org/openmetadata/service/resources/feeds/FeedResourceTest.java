@@ -67,6 +67,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -109,10 +110,13 @@ import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ParallelizeTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static Table TABLE;
   public static Table TABLE2;
@@ -136,7 +140,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
               : 1;
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
     TABLE_RESOURCE_TEST = new TableResourceTest();
     TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
@@ -1303,8 +1307,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         entityNotFound("Post", NON_EXISTENT_ENTITY));
   }
 
-  public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public Thread createAndCheck(CreateThread create, Map<String, String> authHeaders) throws HttpResponseException {
     // Validate returned thread from POST
     Thread thread = createThread(create, authHeaders);
     validateThread(thread, create.getMessage(), create.getFrom(), create.getAbout());
@@ -1326,14 +1329,14 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return returnedThread;
   }
 
-  private static void validateThread(Thread thread, String message, String from, String about) {
+  private void validateThread(Thread thread, String message, String from, String about) {
     assertNotNull(thread.getId());
     assertEquals(message, thread.getMessage());
     assertEquals(from, thread.getCreatedBy());
     assertEquals(about, thread.getAbout());
   }
 
-  private static void validatePost(Thread expected, Thread actual, String from, String message) {
+  private void validatePost(Thread expected, Thread actual, String from, String message) {
     // Make sure the post added is as expected
     Post actualPost = actual.getPosts().get(actual.getPosts().size() - 1); // Last post was newly added to the thread
     assertEquals(from, actualPost.getFrom());
@@ -1344,56 +1347,54 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(expected.getPosts().size() + 1, actual.getPosts().size());
   }
 
-  public static Thread createThread(CreateThread create, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread createThread(CreateThread create, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("feed"), create, Thread.class, authHeaders);
   }
 
-  public static Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
   }
 
-  public static Thread deleteThread(UUID threadId, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread deleteThread(UUID threadId, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.delete(getResource("feed/" + threadId), Thread.class, authHeaders);
   }
 
-  public static Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.delete(getResource("feed/" + threadId + "/posts/" + postId), Post.class, authHeaders);
   }
 
-  public static CreateThread create() {
+  public CreateThread create() {
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
   }
 
-  public static CreatePost createPost(String message) {
+  public CreatePost createPost(String message) {
     message = StringUtils.isNotEmpty(message) ? message : "message";
     return new CreatePost().withFrom(USER.getName()).withMessage(message);
   }
 
-  public static Thread getThread(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread getThread(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/" + id);
     return TestUtils.get(target, Thread.class, authHeaders);
   }
 
-  public static Thread getTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
+  public Thread getTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id);
     return TestUtils.get(target, Thread.class, authHeaders);
   }
 
-  public static void resolveTask(int id, ResolveTask resolveTask, Map<String, String> authHeaders)
+  public void resolveTask(int id, ResolveTask resolveTask, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id + "/resolve");
     TestUtils.put(target, resolveTask, Status.OK, authHeaders);
   }
 
-  public static void closeTask(int id, String comment, Map<String, String> authHeaders) throws HttpResponseException {
+  public void closeTask(int id, String comment, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id + "/close");
     TestUtils.put(target, new CloseTask().withComment(comment), Status.OK, authHeaders);
   }
 
-  public static ThreadList listTasks(
+  public ThreadList listTasks(
       String entityLink,
       String userId,
       String filterType,
@@ -1415,7 +1416,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null);
   }
 
-  public static ThreadList listAnnouncements(
+  public ThreadList listAnnouncements(
       String entityLink, Integer limitPosts, Boolean activeAnnouncement, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
@@ -1432,7 +1433,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null);
   }
 
-  public static ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
+  public ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
         entityLink,
@@ -1448,7 +1449,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null);
   }
 
-  public static ThreadList listThreads(
+  public ThreadList listThreads(
       String entityLink,
       Integer limitPosts,
       Map<String, String> authHeaders,
@@ -1475,13 +1476,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
-  public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
     TestUtils.put(target, userId, OK, authHeaders);
   }
 
-  public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
+  public ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
     target = target.queryParam("type", ThreadType.Conversation);
@@ -1490,20 +1490,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
-  public static PostList listPosts(String threadId, Map<String, String> authHeaders) throws HttpResponseException {
+  public PostList listPosts(String threadId, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(String.format("feed/%s/posts", threadId));
     return TestUtils.get(target, PostList.class, authHeaders);
   }
 
-  public static ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = target.queryParam("type", ThreadType.Conversation);
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
-  public static ThreadCount listTasksCount(String entityLink, TaskStatus taskStatus, Map<String, String> authHeaders)
+  public ThreadCount listTasksCount(String entityLink, TaskStatus taskStatus, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;

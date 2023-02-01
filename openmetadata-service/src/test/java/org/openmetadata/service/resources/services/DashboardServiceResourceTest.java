@@ -51,10 +51,12 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
+@ParallelizeTest
 public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
   public DashboardServiceResourceTest() {
     super(
@@ -265,7 +267,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   public void setupDashboardServices(TestInfo test) throws HttpResponseException, URISyntaxException {
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
-        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Metabase);
+        dashboardResourceTest
+            .createRequest(getEntityName("superset"), "", "", null)
+            .withServiceType(DashboardServiceType.Metabase);
     DashboardConnection dashboardConnection =
         new DashboardConnection()
             .withConfig(
@@ -279,7 +283,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     METABASE_REFERENCE = dashboardService.getEntityReference();
 
     CreateDashboardService lookerDashboardService =
-        dashboardResourceTest.createRequest("looker", "", "", null).withServiceType(DashboardServiceType.Looker);
+        dashboardResourceTest
+            .createRequest(getEntityName("looker"), "", "", null)
+            .withServiceType(DashboardServiceType.Looker);
     DashboardConnection lookerConnection =
         new DashboardConnection()
             .withConfig(

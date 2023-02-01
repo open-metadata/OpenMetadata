@@ -84,6 +84,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -141,6 +142,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
 
@@ -1449,10 +1451,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(3, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1"));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName()));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEquals(1, getGlossaryUsageCount("g2"));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName()));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));

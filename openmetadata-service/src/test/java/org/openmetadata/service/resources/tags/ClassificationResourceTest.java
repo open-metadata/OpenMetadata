@@ -46,11 +46,13 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResource.ClassificationList;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ParallelizeTest
 public class ClassificationResourceTest extends EntityResourceTest<Classification, CreateClassification> {
   public ClassificationResourceTest() {
     super(
