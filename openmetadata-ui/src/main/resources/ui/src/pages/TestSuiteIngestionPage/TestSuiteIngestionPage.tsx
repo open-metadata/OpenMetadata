@@ -70,7 +70,7 @@ const TestSuiteIngestionPage = () => {
       });
       setSlashedBreadCrumb([
         {
-          name: 'Test Suites',
+          name: t('label.test-suite-plural'),
           url: ROUTES.TEST_SUITES,
         },
         {
@@ -78,7 +78,9 @@ const TestSuiteIngestionPage = () => {
           url: getTestSuitePath(response.fullyQualifiedName || ''),
         },
         {
-          name: `${ingestionFQN ? 'Edit' : 'Add'} Ingestion`,
+          name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
+            'label.ingestion'
+          )}`,
           url: '',
         },
       ]);

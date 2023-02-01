@@ -152,7 +152,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         ) : (
           <div className="tw-w-80">
             {isEmpty(userData) ? (
-              <span>{t('label.no-data-available')}</span>
+              <span>{t('message.no-data-available')}</span>
             ) : (
               <Fragment>
                 <UserTeams />

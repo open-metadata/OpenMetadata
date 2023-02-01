@@ -96,7 +96,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
             <>
               {' '}
               <Typography.Text className="tw-text-sm">
-                {t('label.no-data-available')}
+                {t('message.no-data-available')}
               </Typography.Text>
               <Typography.Text className="tw-text-sm">
                 {t('message.add-service-connection')}

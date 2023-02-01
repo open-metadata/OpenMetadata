@@ -239,7 +239,7 @@ const GlossaryV1 = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.import-glossary-terms')}
+                        {t('label.import-glossary-term-plural')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>

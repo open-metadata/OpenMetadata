@@ -71,7 +71,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
         url: getGlossaryPath(glossaryName),
       },
       {
-        name: t('label.import-glossary-terms'),
+        name: t('label.import-glossary-term-plural'),
         url: '',
         activeTitle: true,
       },
@@ -175,7 +175,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       <Col span={24}>
         <Space className="w-full justify-between">
           <Title data-testid="title" level={5}>
-            {isPreview ? glossaryName : t('label.import-glossary-terms')}
+            {isPreview ? glossaryName : t('label.import-glossary-term-plural')}
           </Title>
           {isPreview && !isUndefined(csvImportResult) && (
             <>
