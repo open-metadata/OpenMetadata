@@ -85,7 +85,9 @@ public class SearchResource {
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
+  private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
+  private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
@@ -570,13 +572,23 @@ public class SearchResource {
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(DISPLAY_NAME, 5.0f).field(NAME, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(DISPLAY_NAME, 5.0f)
+            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(NAME, 2.0f)
+            .field(NAME_KEYWORD, 3.0f)
+            .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(DISPLAY_NAME, 5.0f).field(NAME, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(DISPLAY_NAME, 5.0f)
+            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(NAME, 2.0f)
+            .field(NAME_KEYWORD, 3.0f)
+            .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
 

@@ -126,12 +126,12 @@ const UserPage = () => {
       setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
+          '',
+          entity.currPage,
+          PAGE_SIZE,
           fetchOwnedEntities
             ? `owner.id:${userData.id}`
             : `followers:${userData.id}`,
-          entity.currPage,
-          PAGE_SIZE,
-          ``,
           '',
           '',
           myDataSearchIndex

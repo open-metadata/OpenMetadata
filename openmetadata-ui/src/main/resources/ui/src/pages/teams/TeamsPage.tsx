@@ -500,10 +500,10 @@ const TeamsPage = () => {
 
   const fetchAssets = () => {
     searchData(
-      `owner.id:${selectedTeam.id}`,
+      ``,
       assets.currPage,
       LIST_SIZE,
-      ``,
+      `owner.id:${selectedTeam.id}`,
       '',
       '',
       myDataSearchIndex

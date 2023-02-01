@@ -88,7 +88,7 @@
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$"
+      "pattern": "^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$"
     },
     "entityName": {
       "description": "Name that identifies a entity.",

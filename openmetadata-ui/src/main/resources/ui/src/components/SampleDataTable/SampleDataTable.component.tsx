@@ -51,10 +51,14 @@ type SampleData = {
 };
 
 interface Props {
+  isTableDeleted?: boolean;
   tableId: string;
 }
 
-const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
+const SampleDataTable: FunctionComponent<Props> = ({
+  isTableDeleted,
+  tableId,
+}: Props) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const [sampleData, setSampleData] = useState<SampleData>();
@@ -123,7 +127,11 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (tableId && !location.pathname.includes(ROUTES.TOUR)) {
+    if (
+      !isTableDeleted &&
+      tableId &&
+      !location.pathname.includes(ROUTES.TOUR)
+    ) {
       fetchSampleData();
     } else {
       setIsLoading(false);

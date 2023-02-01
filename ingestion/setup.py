@@ -123,7 +123,12 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
         "dagster_graphql~=1.1",
     },
-    "dbt": {"google-cloud", VERSIONS["boto3"], VERSIONS["google-cloud-storage"]},
+    "dbt": {
+        "google-cloud",
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        "dbt-artifacts-parser",
+    },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
@@ -177,6 +182,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
+    "quicksight": {VERSIONS["boto3"]},
     "redash": {"redash-toolbelt~=0.1"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
@@ -224,7 +230,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.13.2.0.beta0",
+    version="0.13.2.1",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
