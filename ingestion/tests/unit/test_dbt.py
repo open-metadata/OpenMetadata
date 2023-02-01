@@ -1,5 +1,5 @@
 """
-Test Domo Dashboard using the topology
+Test dbt
 """
 
 import json
@@ -589,7 +589,7 @@ MOCK_OWNER = EntityReference(
 class DbtUnitTest(TestCase):
     """
     Implements the necessary methods to extract
-    Domo Database Unit Test
+    dbt Unit Test
     """
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
