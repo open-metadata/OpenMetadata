@@ -292,7 +292,7 @@ export const getEntityCount = async (
 };
 
 export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/util/entities/count');
+  const response = await APIClient.get<EntitiesCount>('/system/entities/count');
 
   return response.data;
 };

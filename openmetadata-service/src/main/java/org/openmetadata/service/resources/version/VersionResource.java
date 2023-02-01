@@ -28,7 +28,7 @@ import org.openmetadata.service.resources.Collection;
 
 @Slf4j
 @Path("/v1/version")
-@Api(value = "Catalog version", tags = "Catalog version related operations")
+@Api(value = "System software version", tags = "System version related operations")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "version")
 public class VersionResource {
@@ -55,7 +55,7 @@ public class VersionResource {
   @Operation(
       operationId = "getCatalogVersion",
       summary = "Get version of metadata service",
-      tags = "catalog",
+      tags = "system",
       description = "Get the build version of OpenMetadata service and build timestamp.")
   public OpenMetadataServerVersion getCatalogVersion() {
     return OPEN_METADATA_SERVER_VERSION;

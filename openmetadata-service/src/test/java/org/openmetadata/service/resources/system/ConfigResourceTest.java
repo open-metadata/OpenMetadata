@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.config;
+package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

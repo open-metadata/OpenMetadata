@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.config;
+package org.openmetadata.service.resources.system;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,8 +32,8 @@ import org.openmetadata.service.sandbox.SandboxConfiguration;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
-@Path("/v1/config")
-@Api(value = "Get configuration")
+@Path("/v1/system/config")
+@Api(value = "System configuration APIs")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
@@ -53,7 +53,7 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "config",
+      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -76,7 +76,7 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "config",
+      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -99,7 +99,7 @@ public class ConfigResource {
   @Operation(
       operationId = "getSandboxConfiguration",
       summary = "Get sandbox mode",
-      tags = "config",
+      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -120,7 +120,7 @@ public class ConfigResource {
   @Operation(
       operationId = "getSlackChatConfiguration",
       summary = "Get Slack Chat Configuration",
-      tags = "config",
+      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -143,7 +143,7 @@ public class ConfigResource {
   @Operation(
       operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
-      tags = "config",
+      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -167,7 +167,7 @@ public class ConfigResource {
   @Operation(
       operationId = "getJWKSResponse",
       summary = "Get JWKS public key",
-      tags = "config",
+      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
