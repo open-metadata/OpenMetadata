@@ -1,0 +1,28 @@
+source:
+  type: datalake
+  serviceName: local_datalake
+  serviceConnection:
+    config:
+      type: Datalake
+      configSource:      
+        securityConfig: 
+          awsAccessKeyId: aws access key id
+          awsSecretAccessKey: aws secret access key
+          awsRegion: aws region
+      bucketName: bucket name
+      prefix: prefix
+  sourceConfig:
+    config:
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJpbmdlc3Rpb24tYm90IiwiaXNCb3QiOnRydWUsImlzcyI6Im9wZW4tbWV0YWRhdGEub3JnIiwiaWF0IjoxNjc0NTQwNTc2LCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyJ9.Z6B0wUObhgZrnMHuTp8wt-2DJxFQ-ZEi6sJ59Hx4Gmv134O3_Koqqq-OgC42kuJZmIl0PKMvHpa_VaVwkMFM0DH67Wp81RmlaWtj11cxaWNtfybtKDn1ryb3WXy2ZLhVESwRpsA_D3fxRTIv4L8tK7We25IXU7ygpCdGyLD8snhzJdOpqQ3Ge0VlBLmjX0Nf_I-nwo4DWDeMm5GcSPM-6q0_jcSEx_sqh44OfJOFIa4e0ZC2LF8D11lgQHLosFplj3FLQFi89i9yfXXMnN2qoxJDYVWv8mK-Z6axvb-ZxT5fVezBKwsyqTC5lSEfp98frgvL5qY0aFeGvnDYONktww"
+  
