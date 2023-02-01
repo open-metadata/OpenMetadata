@@ -26,7 +26,7 @@ import {
   Table,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -133,7 +133,7 @@ const DatasetDetailsProps = {
   tableType: TableType.Regular,
   tier: {} as TagLabel,
   unfollowTableHandler: jest.fn(),
-  usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,
+  usageSummary: {} as UsageDetails,
   users: [],
   versionHandler: jest.fn(),
   loadNodeHandler: jest.fn(),
