@@ -78,11 +78,11 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 ```
 
-add `http://{your domain}:8585/api/v1/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
+add `http://{your domain}:8585/api/v1/system/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
 your SSO and JWTToken auth verification will work. 
 
 ```yaml
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, http://{your domain}:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, http://{your domain}:8585/api/v1/system/config/jwks]}
 ```
 
 Once you configure the above settings, restart OpenMetadata server .

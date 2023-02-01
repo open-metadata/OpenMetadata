@@ -19,7 +19,7 @@ The following configuration controls the auth mechanism for OpenMetadata. Update
 ```yaml
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-ldap}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-false}
   ldapConfiguration:
@@ -43,7 +43,7 @@ For the LDAP auth we need to set:
 OpenMetadata Specific Configuration :
  
 - `provider`: ldap
-- `publicKeyUrls`: {http|https}://{your_domain}:{port}}/api/v1/config/jwks
+- `publicKeyUrls`: {http|https}://{your_domain}:{port}}/api/v1/system/config/jwks
 - `authority`: {your_domain}
 - `enableSelfSignup`: This has to be false for Ldap.
 

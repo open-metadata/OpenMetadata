@@ -27,7 +27,7 @@ import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
-@Path("/v1/version")
+@Path("/v1/system/version")
 @Api(value = "System software version", tags = "System version related operations")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "version")
