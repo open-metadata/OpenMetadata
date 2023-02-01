@@ -99,12 +99,10 @@ queryDate varchar(200) path '$.queryDate')) as j where extension = "table.tableQ
 INSERT INTO query_entity(json)
 select json from temp_query_migration;
 
-
 INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
 select tableId,queryId,"table","query",10 from temp_query_migration;
 
-delete from openmetadata_db.entity_extension where id in
+delete from entity_extension where id in
  (select DISTINCT tableId from temp_query_migration) and extension = "table.tableQueries";
-
 
 drop table temp_query_migration;
