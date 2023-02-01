@@ -28,7 +28,7 @@ Upgrading from 0.13.1 to 0.13.2 can be done easily as version 0.13.1 compose fil
 
 Let's go through the required steps:
 
-### 1. Backup 0.12.3 data
+### 1. Backup 0.13.1 data
 
 1. Make sure your instance is connected to the Database server
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
