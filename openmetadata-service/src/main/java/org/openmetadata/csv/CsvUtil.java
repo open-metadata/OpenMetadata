@@ -13,7 +13,9 @@
 
 package org.openmetadata.csv;
 
-import static org.openmetadata.common.utils.CommonUtil.*;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
 import java.io.StringWriter;
