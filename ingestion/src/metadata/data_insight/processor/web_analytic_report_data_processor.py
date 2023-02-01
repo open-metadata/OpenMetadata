@@ -64,8 +64,8 @@ ENTITIES = {
 }
 
 CACHED_EVENTS = []
-START_TS = str(get_beginning_of_day_timestamp_mill(days=1))
-END_TS = str(get_end_of_day_timestamp_mill(days=1))
+START_TS = str(get_beginning_of_day_timestamp_mill(days=0))
+END_TS = str(get_end_of_day_timestamp_mill(days=0))
 
 
 class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
@@ -250,7 +250,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             user_entity: Optional[User] = self.metadata.get_by_id(
                 User,
                 user_id,
-                fields=["*"],
+                fields=["teams"],
             )
         except Exception as exc:
             logger.warning(f"Could not get user details - {exc}")
