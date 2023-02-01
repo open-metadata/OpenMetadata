@@ -22,6 +22,10 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
 
 permissions:
   contents: read

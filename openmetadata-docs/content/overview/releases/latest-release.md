@@ -3,27 +3,36 @@ title: Latest Release
 slug: /overview/latest-release
 ---
 
+# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Jan 30th 2022 🎉
 
-# [0.13.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) - Dec 20th 2022 🎉
-## Profiler and Data Quality
-- Freshness Metric has been introduced. Data freshness shows DML operations performed against a table and the number of rows affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
-- Support has been added for data quality tests on Data Lake.
-- UI has been improved to show table and column profile data on seperate page. Legend is now selectable to filter for specific metrics
+## Improved SQL Lineage
+- We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
+    to improve the parsing capabilities of `sqllineage`. We'll continue to collaborate to ship further improvements in new releases.
 
-## Alerts and Notification
-The logic for Notification Support has been improved. Users can define Alerts based on a Trigger (all data assets or a specific entity), Filters (events to consider), and Action (Slack, MS Teams, Email, Webhook) on where to send the alert.
+## New Glossary UI
+- Moved from a tree view in the left panel to an easy to navigate list of the terms sorted alphabetically.
+- The term list shows the tags and descriptions in the cards.
 
-## Ingestion
-- Now, dbt has its own workflow. Previously, dbt  was a part of metadata ingestion workflow.
-- Airflow Lineage Operator and the OpenMetadata Hook are now part of the ingestion package. Send Airflow metadata from your DAGs and safely store the OpenMetadata server connection directly in Airflow.
-- Multiple Databases (catalog) is now supported for the Databricks connector
-- Azure blob is now supported to backup your metadata into
+## Glossary Import & Export
+- You can now export your Glossary data as a CSV file.
+- In the same way, you can now bulk upload terms to a Glossary by adding their details in a CSV file.
+- The import utility will validate the file and show you a preview of the elements that are going to be imported to OpenMetadata.
 
-## New Connectors
-- OpenMetadata now supports Azure Datalake Storage Gen 2
+## Unified Tag Category API
+- Renamed Tag Categories to Classification, a more widely used term.
+- Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).
 
-## General Improvements
-- Users can update the description and tags for Topic Schema. Previously, the topic schemas were read-only. We now support Avro/Protobuf parsing and field level details for topic schemas.
-- The layout for the Data Insight  Report has been improved. We now display a line graph instead of a bar graph. The Most Viewed Data Assets are clickable to view the asset details page.
-- Improvements have been made to Advanced Search. Now, when a filter is applied, the details of the filter selected are displayed for clarity.
-- On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
+## Mutually Exclusive Tags
+- When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive.
+- If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.
+
+## EntityName
+- Special characters
+
+## Ingestion Framework
+- Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
+- The Oracle connector now ships with the Thick mode enabled.
+- AWS QuickSight fixes
+- DB2 constraints and profiler improvements
+- Added support for Postgres Foreign Tables
+- Added support for Datalake profiler row-based sampling
