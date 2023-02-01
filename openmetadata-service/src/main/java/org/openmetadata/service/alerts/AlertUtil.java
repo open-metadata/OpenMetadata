@@ -19,6 +19,7 @@ import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.entity.alerts.TriggerConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
@@ -99,6 +100,11 @@ public class AlertUtil {
           List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
           break;
+        case matchIngestionPipelineState:
+          List<String> ingestionPipelineState =
+              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).collect(Collectors.toList());
+          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
+          break;
         case matchTestResult:
           List<String> testResultStatus =
               Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).collect(Collectors.toList());
@@ -159,11 +165,11 @@ public class AlertUtil {
     List<TriggerConfig> triggerConfigs = new ArrayList<>();
     TriggerConfig allMetadataTrigger = new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);
     TriggerConfig specificDataAsset = new TriggerConfig().withType(TriggerConfig.AlertTriggerType.SPECIFIC_DATA_ASSET);
-    Set<String> entitites = new HashSet<>(Entity.getEntityList());
+    Set<String> entities = new HashSet<>(Entity.getEntityList());
     // Alert and Alert Action should be removed from entities list
-    entitites.remove(ALERT);
-    entitites.remove(ALERT_ACTION);
-    specificDataAsset.setEntities(entitites);
+    entities.remove(ALERT);
+    entities.remove(ALERT_ACTION);
+    specificDataAsset.setEntities(entities);
 
     triggerConfigs.add(allMetadataTrigger);
     triggerConfigs.add(specificDataAsset);
