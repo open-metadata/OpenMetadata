@@ -11,6 +11,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 
 <Table>
+
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
 | global.authentication.provider | string | `basic` |
@@ -93,6 +94,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 ## Chart Values
 
 <Table>
+
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
 | affinity | object | `{}` |

@@ -5,14 +5,19 @@ slug: /connectors/database/postgres/cli
 
 # Run Postgres using the metadata CLI
 <Table>
+
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  Postgres>=11  |
+
 </Table>
+
 <Table>
+
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
 | ✅ | ✅ | ✅ |
+
 </Table>
 
 In this section, we provide guides and references to use the Postgres connector.
