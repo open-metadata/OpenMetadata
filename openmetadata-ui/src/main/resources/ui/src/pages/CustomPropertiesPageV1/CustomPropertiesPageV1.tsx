@@ -142,7 +142,7 @@ const CustomEntityDetailV1 = () => {
     }
   };
 
-  const getCustomPageHeader = useMemo(() => {
+  const customPageHeader = useMemo(() => {
     switch (tabAttributePath) {
       case ENTITY_PATH.tables:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
@@ -195,7 +195,7 @@ const CustomEntityDetailV1 = () => {
       data-testid="custom-entity-container"
       gutter={[16, 16]}>
       <Col span={24}>
-        <PageHeader data={getCustomPageHeader} />
+        <PageHeader data={customPageHeader} />
       </Col>
       <Col className="global-settings-tabs" span={24}>
         <TabsPane
@@ -223,7 +223,7 @@ const CustomEntityDetailV1 = () => {
                     title={
                       editPermission
                         ? t('label.add-custom-entity-property', {
-                            entity: getCustomPageHeader.header,
+                            entity: customPageHeader.header,
                           })
                         : NO_PERMISSION_FOR_ACTION
                     }>
@@ -253,7 +253,7 @@ const CustomEntityDetailV1 = () => {
                   title={
                     editPermission
                       ? t('label.add-custom-entity-property', {
-                          entity: getCustomPageHeader.header,
+                          entity: customPageHeader.header,
                         })
                       : NO_PERMISSION_FOR_ACTION
                   }>
