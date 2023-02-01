@@ -17,12 +17,15 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEST_CASE;
 
 import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -45,6 +48,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -278,6 +282,10 @@ public final class ChangeEventParser {
         messages.put(link, message);
       } else if (link.getEntityType().equals(KPI) && link.getFieldName().equals("kpiResult")) {
         String message = handleKpiResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        messages.put(link, message);
+      } else if (link.getEntityType().equals(INGESTION_PIPELINE) && link.getFieldName().equals("pipelineStatus")) {
+        String message =
+            handleIngestionPipelineResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
         messages.put(link, message);
       } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
@@ -555,6 +563,20 @@ public final class ChangeEventParser {
               EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
               testCaseEntity.getTestSuite().getName());
       return String.format(format, testCaseName);
+    }
+  }
+
+  public static String handleIngestionPipelineResult(
+      PUBLISH_TO publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+    String ingestionPipelineName = entity.getName();
+    PipelineStatus status = (PipelineStatus) newValue;
+    if (status != null) {
+      String date = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
+      String format = String.format("Ingestion Pipeline %s %s at %s", getBold(publishTo), getBold(publishTo), date);
+      return String.format(format, ingestionPipelineName, status.getPipelineState());
+    } else {
+      String format = String.format("Ingestion Pipeline %s is updated", getBold(publishTo));
+      return String.format(format, ingestionPipelineName);
     }
   }
 

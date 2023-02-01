@@ -5,14 +5,32 @@ slug: /connectors/database/bigquery
 
 # BigQuery
 
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
+
+
 In this section, we provide guides and references to use the BigQuery connector.
 
 Configure and schedule BigQuery metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -269,12 +287,12 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
 <Tile
 icon="manage_accounts"
 title="Usage Workflow"
-text="Learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI."
+text="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
 link="/connectors/ingestion/workflows/usage"
 />
 
@@ -294,6 +312,15 @@ icon="air"
 title="Data Quality Workflow"
 text="Learn more about how to configure the Data Quality tests from the UI."
 link="/connectors/ingestion/workflows/data-quality"
+/>
+
+## Lineage
+
+<Tile
+icon="air"
+title="Lineage Workflow"
+text="Learn more about how to configure the Lineage from the UI."
+link="/connectors/ingestion/workflows/lineage"
 />
 
 ## dbt Integration

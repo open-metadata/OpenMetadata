@@ -143,9 +143,9 @@ jobs:
             if ${{ github.event_name == 'release' }}; then
                 echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
             elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
-                echo "tags=openmetadata/server:${{inputs.tag}},openmetadata/server:latest" >> $GITHUB_OUTPUT
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
             else
-                echo "tags=openmetadata/server:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }}" >> $GITHUB_OUTPUT
             fi
 
       - name: Build and push if event is workflow_dispatch and input is checked

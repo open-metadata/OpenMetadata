@@ -4,14 +4,30 @@ slug: /connectors/database/redshift/cli
 ---
 
 # Run Redshift using the metadata CLI
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Redshift connector.
 
 Configure and schedule Redshift metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 ## Requirements
@@ -309,9 +325,9 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
-To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same.
+To ingest the Query Usage, the `serviceConnection` configuration will remain the same.
 However, the `sourceConfig` is now modeled after this JSON Schema.
 
 ### 1. Define the YAML Config
@@ -567,6 +583,11 @@ There are couple of types of SSL modes that Redshift supports which can be added
 - **verify-full**: SSL must be used. The server certificate must be verified and the server hostname must match the hostname attribute on the certificate.
 
 For more information, you can visit [Redshift SSL documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html)
+
 ## dbt Integration
 
 You can learn more about how to ingest dbt models' definitions and their lineage from [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).

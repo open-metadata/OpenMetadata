@@ -182,18 +182,18 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
-      @PathParam("id") UUID id)
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
   @GET
-  @Path("/name/{fqn}")
+  @Path("/name/{name}")
   @Operation(
       operationId = "getBotByFQN",
       summary = "Get a bot by name",
       tags = "bots",
-      description = "Get a bot by name.",
+      description = "Get a bot by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -204,8 +204,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Bot getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the table", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn,
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -213,7 +212,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, fqn, "", include);
+    return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
   @GET
@@ -232,7 +231,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "bot Id", schema = @Schema(type = "uuid")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -256,7 +255,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Bot getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "bot Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "bot version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -316,7 +315,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -348,21 +347,21 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
-  @Path("/name/{fqn}")
+  @Path("/name/{name}")
   @Operation(
       operationId = "deleteBotByFQN",
       summary = "Delete a bot",
       tags = "bots",
-      description = "Delete a bot by `fullyQualifiedName`.",
+      description = "Delete a bot by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Bot for instance {fqn} is not found")
+        @ApiResponse(responseCode = "404", description = "Bot for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -371,9 +370,9 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the Bot", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, true, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
   }
 
   @PUT

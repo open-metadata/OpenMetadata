@@ -204,7 +204,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Policy get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -232,11 +232,13 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
             responseCode = "200",
             description = "The policy",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Policy for instance {fqn} is not found")
       })
   public Policy getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -269,7 +271,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -293,7 +295,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Policy getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "policy Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "policy version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -357,7 +359,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -414,7 +416,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Policy Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     PolicyCache.getInstance().invalidatePolicy(id);
@@ -439,7 +441,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the policy", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
       throws IOException {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
@@ -475,7 +479,11 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(responseCode = "400", description = "Invalid expression")
       })
   public void validateCondition(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Expression of validating rule", schema = @Schema(type = "string"))
+          @PathParam("expression")
+          String expression) {
     CompiledRule.validateExpression(expression, Boolean.class);
   }
 
