@@ -13,6 +13,8 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
+To ingest tableau metadata, minimum `Site Role: Viewer` is requried for the tableau user.
+
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
@@ -219,7 +221,7 @@ workflowConfig:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
 
 ```yaml

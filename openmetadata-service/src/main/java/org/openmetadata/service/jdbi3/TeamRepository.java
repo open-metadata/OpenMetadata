@@ -194,17 +194,15 @@ public class TeamRepository extends EntityRepository<Team> {
     SubjectCache.getInstance().invalidateTeam(team.getId());
   }
 
-  /** Export team as CSV */
   @Override
   public String exportToCsv(String parentTeam, String user) throws IOException {
-    Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate glossary name
-    return new TeamCsv(team, user).exportCsv(this);
+    Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate team name
+    return new TeamCsv(team, user).exportCsv();
   }
 
-  /** Load CSV provided for bulk upload */
   @Override
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user) throws IOException {
-    Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
+    Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
   }
@@ -610,7 +608,7 @@ public class TeamRepository extends EntityRepository<Team> {
         throws IOException {
       // Export the entire hierarchy of teams
       final ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
-      List<Team> list = repository.listAfter(null, fields, filter, 10000, null).getData();
+      List<Team> list = repository.listAll(fields, filter);
       if (nullOrEmpty(list)) {
         return teams;
       }
@@ -621,7 +619,8 @@ public class TeamRepository extends EntityRepository<Team> {
       return teams;
     }
 
-    public String exportCsv(TeamRepository repository) throws IOException {
+    public String exportCsv() throws IOException {
+      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owner,defaultRoles,parents,policies");
       return exportCsv(listTeams(repository, team.getName(), new ArrayList<>(), fields));
     }

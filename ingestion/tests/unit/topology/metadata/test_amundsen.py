@@ -149,7 +149,6 @@ EXPECTED_SERVICE = [
                 awsConfig=AWSCredentials(awsRegion="aws_region"),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
-                supportsProfiler=True,
             )
         ),
         pipelines=None,

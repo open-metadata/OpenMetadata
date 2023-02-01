@@ -74,7 +74,8 @@ public class CsvUtilTest {
     // Break a csv text into records, sort it and compare
     List<String> expectedCsvRecords = listOf(expectedCsv.split(CsvUtil.LINE_SEPARATOR));
     List<String> actualCsvRecords = listOf(actualCsv.split(CsvUtil.LINE_SEPARATOR));
-    assertEquals(expectedCsvRecords.size(), actualCsvRecords.size());
+    assertEquals(
+        expectedCsvRecords.size(), actualCsvRecords.size(), "Expected " + expectedCsv + " actual " + actualCsv);
     Collections.sort(expectedCsvRecords);
     Collections.sort(actualCsvRecords);
     for (int i = 0; i < expectedCsvRecords.size(); i++) {

@@ -28,9 +28,10 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.CollectionRegistry.CollectionDetails;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -49,8 +50,8 @@ import org.openmetadata.service.util.EntityUtil;
 public class SecretsManagerUpdateService {
   private final SecretsManager secretManager;
   private final SecretsManager oldSecretManager;
-  private final EntityRepository<User> userRepository;
-  private final EntityRepository<IngestionPipeline> ingestionPipelineRepository;
+  private final UserRepository userRepository;
+  private final IngestionPipelineRepository ingestionPipelineRepository;
 
   private final Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
       connectionTypeRepositoriesMap;
@@ -58,8 +59,9 @@ public class SecretsManagerUpdateService {
   public SecretsManagerUpdateService(SecretsManager secretsManager, String clusterName) {
     this.secretManager = secretsManager;
     this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
-    this.userRepository = Entity.getEntityRepository(Entity.USER);
-    this.ingestionPipelineRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     // by default, it is going to be non-managed secrets manager since decrypt is the same for all of them
     this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
   }

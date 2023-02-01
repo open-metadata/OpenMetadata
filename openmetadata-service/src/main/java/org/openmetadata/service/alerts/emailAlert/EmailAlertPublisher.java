@@ -20,8 +20,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertsActionPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.ChangeEventParser;
@@ -74,7 +74,7 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
 
   private Set<String> sendToAdmins() {
     Set<String> emailList = new HashSet<>();
-    EntityRepository<User> userEntityRepository = Entity.getEntityRepository(USER);
+    UserRepository userEntityRepository = (UserRepository) Entity.getEntityRepository(USER);
     ResultList<User> result;
     ListFilter listFilter = new ListFilter(Include.ALL);
     listFilter.addQueryParam("isAdmin", "true");

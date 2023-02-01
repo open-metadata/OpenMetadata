@@ -29,8 +29,8 @@
   <version>0.13.2-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
-    <module>common</module>
     <module>openmetadata-spec</module>
+    <module>common</module>
     <module>openmetadata-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>

@@ -4,13 +4,27 @@ slug: /connectors/database/dynamodb/cli
 ---
 
 # Run DynamoDB using the metadata CLI
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    ❌    |  ❌  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the DynamoDB connector.
 
-Configure and schedule DynamoDB metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -294,7 +308,3 @@ metadata ingest -c <path-to-yaml>
 
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
-
-## dbt Integration
-
-You can learn more about how to ingest dbt models' definitions and their lineage [here](https://docs.open-metadata.org/connectors/ingestion/workflows/dbt).
