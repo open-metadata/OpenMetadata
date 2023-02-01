@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS temp_query_migration (
     json JSONB NOT NULL
 );
 
+CREATE EXTENSION pgcrypto;
+
 insert into temp_query_migration(tableId,json)
 select id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT(checksum, '.', 'table'),'updatedAt',
 floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) as json from entity_extension as ee , jsonb_to_recordset(ee.json) as x (vote decimal,query varchar,users json,
