@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql']
+        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql', 'vertica']
     environment: test
 
     steps:
@@ -101,6 +101,9 @@ jobs:
         E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
         E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
         E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
+        E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
+        E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
+        E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py

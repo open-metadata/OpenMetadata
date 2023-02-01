@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Stack;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +67,7 @@ public class SubjectContext {
     return isInTeam(parentTeam, user.getTeams());
   }
 
+  /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {
@@ -82,16 +82,7 @@ public class SubjectContext {
 
   /** Return true if given list of teams is part of the hierarchy of parentTeam */
   private boolean isInTeam(String parentTeam, List<EntityReference> teams) {
-    Stack<EntityReference> stack = new Stack<>();
-    listOrEmpty(teams).forEach(stack::push);
-    while (!stack.empty()) {
-      Team parent = SubjectCache.getInstance().getTeam(stack.pop().getId());
-      if (parent.getName().equals(parentTeam)) {
-        return true;
-      }
-      listOrEmpty(parent.getParents()).forEach(stack::push);
-    }
-    return false;
+    return SubjectCache.getInstance().isInTeam(parentTeam, teams);
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to

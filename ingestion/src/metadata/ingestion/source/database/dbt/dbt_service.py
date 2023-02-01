@@ -15,6 +15,8 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable
 
+from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -32,7 +34,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.utils.dbt_config import DbtFiles, get_dbt_details
+from metadata.utils.dbt_config import DbtFiles, DbtObjects, get_dbt_details
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -55,7 +57,17 @@ class DbtServiceTopology(ServiceTopology):
                 processor="validate_dbt_files",
                 ack_sink=False,
                 nullable=True,
-            ),
+            )
+        ],
+        children=[
+            "process_dbt_data_model",
+            "process_dbt_entities",
+            "process_dbt_tests",
+        ],
+    )
+    process_dbt_data_model = TopologyNode(
+        producer="get_dbt_objects",
+        stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
                 context="tags",
@@ -71,7 +83,6 @@ class DbtServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        children=["process_dbt_entities", "process_dbt_tests"],
     )
     process_dbt_entities = TopologyNode(
         producer="get_data_model",
@@ -134,7 +145,21 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         dbt_files = get_dbt_details(
             self.source_config.dbtConfigSource  # pylint: disable=no-member
         )
+
+        self.context.dbt_files = dbt_files
         yield dbt_files
+
+    def get_dbt_objects(self) -> DbtObjects:
+        dbt_objects = DbtObjects(
+            dbt_catalog=parse_catalog(self.context.dbt_files.dbt_catalog)
+            if self.context.dbt_files.dbt_catalog
+            else None,
+            dbt_manifest=parse_manifest(self.context.dbt_files.dbt_manifest),
+            dbt_run_results=parse_run_results(self.context.dbt_files.dbt_run_results)
+            if self.context.dbt_files.dbt_run_results
+            else None,
+        )
+        yield dbt_objects
 
     @abstractmethod
     def validate_dbt_files(self, dbt_files: DbtFiles):
@@ -144,14 +169,14 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_dbt_tags(
-        self, dbt_files: DbtFiles
+        self, dbt_objects: DbtObjects
     ) -> Iterable[OMetaTagAndClassification]:
         """
         Create and yeild tags from DBT
         """
 
     @abstractmethod
-    def yield_data_models(self, dbt_files: DbtFiles) -> DataModelLink:
+    def yield_data_models(self, dbt_objects: DbtObjects) -> DataModelLink:
         """
         Yield the data models
         """

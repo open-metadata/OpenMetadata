@@ -9,6 +9,7 @@ source:
       consumerConfig: {}
       schemaRegistryConfig: {}
   sourceConfig:
+    type: MessagingMetadata
     config:
       generateSampleData: true
 sink:

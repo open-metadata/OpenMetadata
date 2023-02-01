@@ -21,9 +21,12 @@ import { DELETE_TERM, DESTINATION, TEST_CASE } from '../../constants/constants';
 
 const alertForAllAssets = `Alert-ct-test-${uuid()}`;
 const description = 'This is alert description';
+const teamSearchTerm = 'Applications';
 
 describe('Alerts page should work properly', () => {
   beforeEach(() => {
+    interceptURL('POST', '/api/v1/alerts', 'createAlert');
+    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
@@ -40,7 +43,6 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for all data assets', () => {
-    interceptURL('POST', '/api/v1/alerts', 'createAlert');
     // Click on create alert button
     cy.get('[data-testid="create-alert"]').should('be.visible').click();
     // Enter alert name
@@ -60,8 +62,9 @@ describe('Alerts page should work properly', () => {
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Engineering');
-    cy.get('[title="Engineering"]').should('be.visible').click();
+      .type(teamSearchTerm);
+    verifyResponseStatusCode('@getSearchResult', 200);
+    cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
     cy.get('#description').should('be.visible').click();
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
@@ -141,16 +144,17 @@ describe('Alerts page should work properly', () => {
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Engineering');
-    cy.get('[title="Engineering"]').should('be.visible').click();
+      .type(teamSearchTerm);
+    verifyResponseStatusCode('@getSearchResult', 200);
+    cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
     cy.get('#name').should('be.visible').click();
 
     // Select second owner
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Applications');
-    cy.get('[title="Applications"]').should('be.visible').click();
+      .type('Marketplace');
+    cy.get('[title="Marketplace"]').should('be.visible').click();
     cy.get('#name').should('be.visible').click();
 
     // Select include/exclude
@@ -287,7 +291,6 @@ describe('Alerts page should work properly', () => {
 
   Object.values(DESTINATION).forEach((destination) => {
     it(`Create alert for ${destination.locator}`, () => {
-      interceptURL('POST', '/api/v1/alerts', 'createAlert');
       // Click on create alert button
       cy.get('[data-testid="create-alert"]').should('be.visible').click();
       // Enter alert name
@@ -305,8 +308,9 @@ describe('Alerts page should work properly', () => {
       cy.get('[data-testid="matchAnyOwnerName-select"]')
         .should('be.visible')
         .click()
-        .type('Engineering');
-      cy.get('[title="Engineering"]').should('be.visible').click();
+        .type(teamSearchTerm);
+      verifyResponseStatusCode('@getSearchResult', 200);
+      cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
       cy.get('#description').should('be.visible').click();
       // Select include/exclude
       cy.get('[title="Include"]').should('be.visible').click();

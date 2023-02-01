@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -160,7 +160,7 @@ public class NotificationHandler {
   }
 
   private void handleEmailNotifications(HashSet<UUID> userList, Thread thread) {
-    EntityRepository<User> repository = Entity.getEntityRepository(USER);
+    UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
     URI urlInstance = thread.getHref();
     userList.forEach(
         (id) -> {

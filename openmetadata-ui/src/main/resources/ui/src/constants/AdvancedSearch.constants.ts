@@ -457,3 +457,5 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 };
 
 export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
+
+export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';

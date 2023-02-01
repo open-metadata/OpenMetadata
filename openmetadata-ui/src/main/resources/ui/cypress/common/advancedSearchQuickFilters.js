@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
+import { COMMON_DROPDOWN_ITEMS } from '../constants/advancedSearchQuickFilters.constants';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const openFilterDropdown = (asset, filter) => {
-  interceptURL(
-    'GET',
-    `http://localhost:8585/api/v1/search/aggregate?index=${asset.searchIndex}&field=${filter.key}`,
-    'aggregateAPI'
-  );
+  let aggregateAPIURL =
+    filter.key === COMMON_DROPDOWN_ITEMS[0].key
+      ? `/api/v1/search/aggregate?index=${filter.filterSearchIndex}&field=${filter.aggregateKey}`
+      : `/api/v1/search/aggregate?index=${asset.searchIndex}&field=${filter.key}`;
+
+  interceptURL('GET', aggregateAPIURL, 'aggregateAPI');
 
   // Click on desired dropdown
   cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
@@ -37,11 +39,20 @@ export const searchAndClickOnOption = (
   checkedAfterClick
 ) => {
   // Search for filter
+
+  interceptURL(
+    'GET',
+    `/api/v1/search/suggest?*q=${encodeURI(optionName)}*`,
+    'suggestAPI'
+  );
+
   cy.get('[data-testid="search-input"]')
     .should('exist')
     .and('be.visible')
     .clear()
     .type(optionName);
+
+  verifyResponseStatusCode('@suggestAPI', 200);
 
   cy.get(`[data-testid="${optionTestId}"]`)
     .should('exist')
