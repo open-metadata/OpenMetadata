@@ -55,12 +55,10 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-@ParallelizeTest
 public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService, CreateDatabaseService> {
   public DatabaseServiceResourceTest() {
     super(
@@ -85,21 +83,21 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     SNOWFLAKE_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
-        .withName(getEntityName("redshiftDB"))
+        .withName("redshiftDB")
         .withServiceType(DatabaseServiceType.Redshift)
         .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     REDSHIFT_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
-        .withName(getEntityName("bigQueryDB"))
+        .withName("bigQueryDB")
         .withServiceType(DatabaseServiceType.BigQuery)
         .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     BIGQUERY_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
-        .withName(getEntityName("mysqlDB"))
+        .withName("mysqlDB")
         .withServiceType(DatabaseServiceType.Mysql)
         .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);

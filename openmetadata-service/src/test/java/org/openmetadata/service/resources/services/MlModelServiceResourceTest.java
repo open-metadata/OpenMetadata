@@ -53,7 +53,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
     CreateMlModelService createMlModelService =
         mlModelResourceTest
             .createRequest(test, 1)
-            .withName(getEntityName("mlflow"))
+            .withName("mlflow")
             .withServiceType(MlModelServiceType.Mlflow)
             .withConnection(TestUtils.MLFLOW_CONNECTION);
 

@@ -267,9 +267,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   public void setupDashboardServices(TestInfo test) throws HttpResponseException, URISyntaxException {
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
-        dashboardResourceTest
-            .createRequest(getEntityName("superset"), "", "", null)
-            .withServiceType(DashboardServiceType.Metabase);
+        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Metabase);
     DashboardConnection dashboardConnection =
         new DashboardConnection()
             .withConfig(
@@ -283,9 +281,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     METABASE_REFERENCE = dashboardService.getEntityReference();
 
     CreateDashboardService lookerDashboardService =
-        dashboardResourceTest
-            .createRequest(getEntityName("looker"), "", "", null)
-            .withServiceType(DashboardServiceType.Looker);
+        dashboardResourceTest.createRequest("looker", "", "", null).withServiceType(DashboardServiceType.Looker);
     DashboardConnection lookerConnection =
         new DashboardConnection()
             .withConfig(

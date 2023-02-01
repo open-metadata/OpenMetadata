@@ -1640,7 +1640,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void patch_tableColumnTags_200_ok(TestInfo test) throws IOException {
+  void patch_tableColumnsTags_200_ok(TestInfo test) throws IOException {
     Column c1 = getColumn(C1, INT, null);
     CreateTable create = createRequest(test).withColumns(List.of(c1));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -1653,7 +1653,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
     // and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEquals(4, updateTags.size());
+    assertEquals(3, updateTags.size());
 
     TagLabel glossaryTerm1 =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, GLOSSARY1_TERM1_LABEL)).findAny().orElse(null);

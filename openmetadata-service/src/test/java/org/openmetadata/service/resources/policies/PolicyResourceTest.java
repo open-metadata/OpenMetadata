@@ -91,8 +91,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   public void setupPolicies() throws IOException {
-    POLICY1 = createEntity(createRequest(getEntityName("policy1")).withOwner(null), ADMIN_AUTH_HEADERS);
-    POLICY2 = createEntity(createRequest(getEntityName("policy2")).withOwner(null), ADMIN_AUTH_HEADERS);
+    POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
+    POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY = getEntityByName("TeamOnlyPolicy", "", ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY_RULES = TEAM_ONLY_POLICY.getRules();
   }

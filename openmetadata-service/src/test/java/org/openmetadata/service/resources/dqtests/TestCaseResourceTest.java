@@ -81,7 +81,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName(getEntityName("testCase'_ Table"))
+            .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withOwner(USER1_REF)
             .withColumns(
@@ -96,7 +96,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName(getEntityName("testCaseTable"))
+            .withName("testCaseTable")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withColumns(
                 List.of(

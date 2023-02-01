@@ -43,12 +43,12 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     // Create AWS storage service, S3
     StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
     CreateStorageService createService =
-        new CreateStorageService().withName(getEntityName("s3")).withServiceType(StorageServiceType.S3);
+        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
     StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     AWS_STORAGE_SERVICE_REFERENCE = service.getEntityReference();
 
     // Create GCP storage service, GCS
-    createService.withName(getEntityName("gs")).withServiceType(StorageServiceType.GCS);
+    createService.withName("gs").withServiceType(StorageServiceType.GCS);
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE = service.getEntityReference();
   }

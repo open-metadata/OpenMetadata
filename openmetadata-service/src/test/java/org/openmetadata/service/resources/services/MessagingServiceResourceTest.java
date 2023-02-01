@@ -42,12 +42,10 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-@ParallelizeTest
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
@@ -76,7 +74,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
     CreateMessagingService createMessaging =
         new CreateMessagingService()
-            .withName(getEntityName("kafka"))
+            .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
             .withConnection(TestUtils.KAFKA_CONNECTION);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
@@ -84,7 +82,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
     // Create Pulsar messaging service
     createMessaging
-        .withName(getEntityName("pulsar"))
+        .withName("pulsar")
         .withServiceType(MessagingServiceType.Pulsar)
         .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
 

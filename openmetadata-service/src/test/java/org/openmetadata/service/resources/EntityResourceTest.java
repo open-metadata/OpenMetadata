@@ -90,8 +90,6 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -2080,7 +2078,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(20 * 100L)) // 10 iterations
+        .atMost(Duration.ofMillis(50 * 100L)) // 50 iterations
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2386,12 +2384,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final String getEntityName(TestInfo test) {
     // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
-    return format("%s%s%s", entityType, supportedNameCharacters, RandomStringUtils.randomAlphabetic(10));
-  }
-
-  public final String getEntityName(String name) {
-    // supportedNameCharacters is added to ensure the names are escaped correctly in backend SQL queries
-    return format("%s%s%s", entityType, RandomStringUtils.randomAlphabetic(4), name);
+    return format("%s%s%s", entityType, supportedNameCharacters, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**

@@ -79,7 +79,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
     TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
-    USER_TAG_CATEGORY = createClassification(getEntityName("User"));
+    USER_TAG_CATEGORY = createClassification("User");
 
     ADDRESS_TAG =
         createTag(

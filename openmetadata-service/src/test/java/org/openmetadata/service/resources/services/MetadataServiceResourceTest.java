@@ -49,7 +49,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
     MetadataServiceResourceTest metadataServiceResourceTest = new MetadataServiceResourceTest();
     CreateMetadataService createMetadata =
         new CreateMetadataService()
-            .withName(getEntityName("amundsen"))
+            .withName("amundsen")
             .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
             .withConnection(TestUtils.AMUNDSEN_CONNECTION);
     MetadataService metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
@@ -57,7 +57,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
     // Create Atlas Service
     createMetadata
-        .withName(getEntityName("atlas"))
+        .withName("atlas")
         .withServiceType(CreateMetadataService.MetadataServiceType.Atlas)
         .withConnection(TestUtils.ATLAS_CONNECTION);
 

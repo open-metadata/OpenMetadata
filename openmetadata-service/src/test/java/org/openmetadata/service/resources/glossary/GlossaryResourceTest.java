@@ -88,18 +88,18 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   public void setupGlossaries() throws IOException {
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest(getEntityName("g1"), "", "", null);
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
     GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
     GLOSSARY1_REF = GLOSSARY1.getEntityReference();
 
-    createGlossary = glossaryResourceTest.createRequest(getEntityName("g2"), "", "", null);
+    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
     GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
     GLOSSARY2_REF = GLOSSARY2.getEntityReference();
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest(getEntityName("g1t1"), "", "", null)
+            .createRequest("g1t1", "", "", null)
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1_REF)
             .withReviewers(GLOSSARY1.getReviewers());
@@ -110,7 +110,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest(getEntityName("g1t2"), "", "", null)
+            .createRequest("g1t2", "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
             .withGlossary(GLOSSARY2_REF)
             .withReviewers(GLOSSARY1.getReviewers());

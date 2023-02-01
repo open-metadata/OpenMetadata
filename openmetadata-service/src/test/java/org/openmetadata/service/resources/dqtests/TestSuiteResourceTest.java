@@ -45,7 +45,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     TEST_SUITE1 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
-    createTestSuite = testSuiteResourceTest.createRequest(getEntityName("testSuite2"));
+    createTestSuite = testSuiteResourceTest.createRequest("testSuite2");
     TEST_SUITE2 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
   }
 

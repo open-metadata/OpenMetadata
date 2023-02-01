@@ -146,12 +146,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER2 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
 
-    create =
-        createRequest(getEntityName("user-data-steward"), "", "", null).withRoles(List.of(DATA_STEWARD_ROLE.getId()));
+    create = createRequest("user-data-steward", "", "", null).withRoles(List.of(DATA_STEWARD_ROLE.getId()));
     USER_WITH_DATA_STEWARD_ROLE = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    create =
-        createRequest(getEntityName("user-data-consumer"), "", "", null).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    create = createRequest("user-data-consumer", "", "", null).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     USER_WITH_DATA_CONSUMER_ROLE = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // USER_TEAM21 is part of TEAM21
@@ -173,7 +171,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
     CreateUser create = createRequest(test).withEmail(null);
@@ -193,7 +190,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_validUser_200_ok_without_login(TestInfo test) {
     CreateUser create =
         createRequest(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
@@ -203,7 +199,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     CreateUser create = createRequest(test, 1);
@@ -232,7 +227,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void put_validUser_200_ok() throws IOException {
     // Create user with different optional fields
     CreateUser create = createRequest("user.xyz", null, null, null);
@@ -256,7 +250,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_validAdminUser_Non_Admin_401(TestInfo test) {
     CreateUser create =
         createRequest(test, 6)
@@ -269,7 +262,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_validAdminUser_200_ok(TestInfo test) throws IOException {
     CreateUser create =
         createRequest(test, 6)
@@ -282,7 +274,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -300,7 +291,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_validUserWithRoles_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     RoleResourceTest roleResourceTest = new RoleResourceTest();
@@ -318,7 +308,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_listUsersWithTeams_200_ok(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
@@ -362,7 +351,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_listUsersWithAdminFilter_200_ok(TestInfo test) throws IOException {
     ResultList<User> users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
     int initialUserCount = users.getPaging().getTotal();
@@ -405,7 +393,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_listUsersWithBotFilter_200_ok(TestInfo test) throws IOException {
     ResultList<User> users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
     int initialUserCount = users.getPaging().getTotal();
@@ -446,7 +433,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_listUsersWithFalseBotFilterPagination(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
@@ -494,7 +480,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_listUsersWithTeamsPagination(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
@@ -583,7 +568,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void patch_makeAdmin_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
@@ -596,7 +580,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure username can't be changed using patch
     User user =
@@ -634,7 +617,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
@@ -732,7 +714,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
@@ -763,7 +744,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
@@ -807,7 +787,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_generateRandomPassword() throws HttpResponseException {
     String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
     assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
@@ -871,7 +850,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void post_createUser_BasicAuth_SignUp_200_ok() throws HttpResponseException {
     // Create a user with Auth and Try Logging in
     RegistrationRequest newRegistrationRequest =
