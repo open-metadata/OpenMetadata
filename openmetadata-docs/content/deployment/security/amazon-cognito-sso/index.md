@@ -86,14 +86,3 @@ After the applying these steps, you can update the configuration of your deploym
 ## Configure Ingestion
 
 The ingestion can be configured by [Enabling JWT Tokens](/deployment/security/enable-jwt-tokens).
-
-When setting up the YAML config for the connector, update the `workflowConfig` as follows:
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: jwt_token
-```

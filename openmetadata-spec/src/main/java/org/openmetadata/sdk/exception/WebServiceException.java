@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.exception;
+package org.openmetadata.sdk.exception;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
 import javax.ws.rs.core.MediaType;

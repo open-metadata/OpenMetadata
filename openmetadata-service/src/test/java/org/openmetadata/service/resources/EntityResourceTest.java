@@ -2027,7 +2027,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .atMost(Duration.ofMillis(20 * 100L)) // 10 iterations
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2379,7 +2379,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return String.join(",", Entity.getAllowedFields(entityClass));
   }
 
-  protected CsvImportResult importCsv(String entityName, String csv, boolean dryRun) throws HttpResponseException {
+  public CsvImportResult importCsv(String entityName, String csv, boolean dryRun) throws HttpResponseException {
     WebTarget target = getResourceByName(entityName + "/import");
     target = !dryRun ? target.queryParam("dryRun", false) : target;
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);

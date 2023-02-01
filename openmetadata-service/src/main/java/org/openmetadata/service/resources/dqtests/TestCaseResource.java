@@ -191,7 +191,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
 
@@ -215,7 +215,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public TestCase get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -238,22 +238,24 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @GET
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "getTestCaseByName",
-      summary = "Get a testCase by name",
+      summary = "Get a testCase by fully qualified name",
       tags = "TestCases",
-      description = "Get a testCase by `name`.",
+      description = "Get a testCase by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The TestCase",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
-        @ApiResponse(responseCode = "404", description = "Test for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "Test for instance {fqn} is not found")
       })
   public TestCase getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -271,8 +273,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(name).build();
-    return getByNameInternal(uriInfo, securityContext, name, fields, include, operationContext, resourceContext);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fields, include, operationContext, resourceContext);
   }
 
   @GET
@@ -294,7 +296,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public TestCase getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Test version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -345,7 +347,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -411,7 +413,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     // Override OperationContext to change the entity to table and operation from DELETE to EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
@@ -423,15 +425,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTestCaseByName",
       summary = "Delete a testCase",
       tags = "TestCases",
-      description = "Delete a testCase by `name`.",
+      description = "Delete a testCase by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "TestCase for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "TestCase for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -440,10 +442,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the TestCase", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
+      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -481,7 +484,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response addTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
@@ -512,7 +517,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -545,7 +552,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response deleteTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the test case", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)

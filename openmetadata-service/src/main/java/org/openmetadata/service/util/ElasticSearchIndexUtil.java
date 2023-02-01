@@ -257,10 +257,10 @@ public class ElasticSearchIndexUtil {
           indexType);
     } else {
       // Start fetching a list of Entities and pushing them to ES
-      EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(entityType);
+      EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(entityType);
       List<String> allowedFields = entityRepository.getAllowedFields();
       String fields = String.join(",", allowedFields);
-      ResultList<EntityInterface> result;
+      ResultList<? extends EntityInterface> result;
       String after = null;
       try {
         do {
@@ -309,7 +309,7 @@ public class ElasticSearchIndexUtil {
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
       BulkProcessor bulkProcessor,
       String entityType,
-      List<EntityInterface> entities) {
+      List<? extends EntityInterface> entities) {
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));

@@ -90,7 +90,7 @@ public class EntityCsvTest {
       int expectedRowsProcessed,
       int expectedRowsPassed,
       int expectedRowsFailed) {
-    assertEquals(expectedStatus, importResult.getStatus(), importResult.getImportResultsCsv());
+    assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
     assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed());
     assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed());
     assertEquals(expectedRowsFailed, importResult.getNumberOfRowsFailed());

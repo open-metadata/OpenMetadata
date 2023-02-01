@@ -44,7 +44,10 @@ Follow the sections in this guide to set up OneLogin SSO.
 
 - Copy the Issuer URL
 
-## Create Service Account
+## Create Service Account (optional)
+
+This step is optional if you configure the ingestion-bot with the JWT Token, you can follow the documentation of 
+[Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Create Secret Key
 

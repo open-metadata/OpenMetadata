@@ -244,7 +244,12 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "404", description = "Thread for instance {id} is not found")
       })
-  public Thread get(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+  public Thread get(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the Thread", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Type of the Entity", schema = @Schema(type = "string")) @PathParam("entityType")
+          String entityType)
+      throws IOException {
     return addHref(uriInfo, dao.get(id));
   }
 
@@ -262,7 +267,10 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
       })
-  public Thread getTask(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+  public Thread getTask(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
     return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
   }
 
@@ -283,7 +291,7 @@ public class FeedResource {
   public Response resolveTask(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid ResolveTask resolveTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
@@ -308,7 +316,7 @@ public class FeedResource {
   public Response closeTask(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid CloseTask closeTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
@@ -366,7 +374,7 @@ public class FeedResource {
   public Response updateThread(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -459,7 +467,7 @@ public class FeedResource {
   public Response addPost(
       @Context SecurityContext securityContext,
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid CreatePost createPost)
       throws IOException {
     Post post = getPost(createPost);
@@ -483,8 +491,9 @@ public class FeedResource {
   public Response patchPost(
       @Context SecurityContext securityContext,
       @Context UriInfo uriInfo,
-      @PathParam("threadId") String threadId,
-      @PathParam("postId") String postId,
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("threadId")
+          String threadId,
+      @Parameter(description = "Id of the post", schema = @Schema(type = "string")) @PathParam("postId") String postId,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -575,7 +584,10 @@ public class FeedResource {
             description = "The posts of the given thread.",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostList.class))),
       })
-  public PostList getPosts(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+  public PostList getPosts(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
     return new PostList(dao.listPosts(id));
   }
 

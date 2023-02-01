@@ -219,7 +219,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -242,7 +242,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Team get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -276,7 +276,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Team getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -311,7 +311,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Team getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Team version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -371,7 +371,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -407,7 +407,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Team Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -457,7 +457,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation", tags = "glossaries")
+  @Operation(
+      operationId = "getCsvDocumentation",
+      summary = "Get CSV documentation for team import/export",
+      tags = "teams")
   public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
