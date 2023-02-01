@@ -65,7 +65,7 @@ import {
   TableData,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
@@ -140,10 +140,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     {} as EntityLineage
   );
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
-  const [usageSummary, setUsageSummary] =
-    useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
-      {} as TypeUsedToReturnUsageDetailsOfAnEntity
-    );
+  const [usageSummary, setUsageSummary] = useState<UsageDetails>(
+    {} as UsageDetails
+  );
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
     id: undefined,
@@ -359,9 +358,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setColumns(columns || []);
           setSampleData(sampleData as TableData);
           setTableTags(getTagsWithoutTier(tags || []));
-          setUsageSummary(
-            usageSummary as TypeUsedToReturnUsageDetailsOfAnEntity
-          );
+          setUsageSummary(usageSummary as UsageDetails);
           setJoins(joins as TableJoins);
         } else {
           showErrorToast(

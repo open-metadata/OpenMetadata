@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/type/usageDetails.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Type used to return usage details of an entity",
+  "title": "UsageDetails",
   "description": "This schema defines the type for usage details. Daily, weekly, and monthly aggregation of usage is computed along with the percentile rank based on the usage for a given day.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.UsageDetails",
