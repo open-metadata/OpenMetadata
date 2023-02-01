@@ -77,3 +77,28 @@ CREATE TABLE IF NOT EXISTS query_entity (
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     UNIQUE (fullyQualifiedName)
 );
+
+CREATE TABLE IF NOT EXISTS temp_query_migration (
+    tableId VARCHAR(36) NOT NULL,
+    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    json JSONB NOT NULL
+);
+
+insert into temp_query_migration(tableId,json)
+select id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT(checksum, '.', 'table'),'updatedAt',
+'1674566180730','updatedBy','admin','deleted',false) as json from entity_extension as ee , jsonb_to_recordset(ee.json) as x (vote decimal,query varchar,users json,
+checksum varchar,duration decimal,queryDate varchar)
+where ee.extension = 'table.tableQueries';
+
+INSERT INTO query_entity(json)
+select json from temp_query_migration;
+
+
+
+INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
+select tableId,queryId,'table','query',10 from temp_query_migration;
+
+delete from entity_extension where id in
+(select DISTINCT tableId from temp_query_migration) and extension = 'table.tableQueries';
+
+drop table temp_query_migration;
