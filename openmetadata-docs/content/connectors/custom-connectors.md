@@ -50,11 +50,11 @@ If you want to use the connector from the UI, the Python environment running the
 the new code you just created. For example, if running via Docker, the `openmetadata-ingestion` image should be 
 aware of your new package.
 
-We will be running the demo against the OpenMetadata version `0.12.2`, therefore, our Dockerfile looks like:
+We will be running the demo against the OpenMetadata version `0.13.2`, therefore, our Dockerfile looks like:
 
 ```Dockerfile
 # Base image from the right version
-FROM openmetadata/ingestion:0.13.1
+FROM openmetadata/ingestion:0.13.2
 
 # Let's use the same workdir as the ingestion image
 WORKDIR ingestion
