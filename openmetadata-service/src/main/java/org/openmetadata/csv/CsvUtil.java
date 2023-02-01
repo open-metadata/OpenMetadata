@@ -13,9 +13,7 @@
 
 package org.openmetadata.csv;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.*;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -54,11 +52,19 @@ public final class CsvUtil {
     return writer.toString();
   }
 
-  /** Get headers from CsvHeaders */
+  /**
+   * Get headers from CsvHeaders
+   *
+   * @param csvHeaders list of csv Headers of type CsvHeader
+   * @return list of actual CsvHeader Type String
+   */
   public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {
-      String headerString = header.getRequired() ? String.format("%s*", header.getName()) : header.getName();
+      String headerString = header.getName();
+      if (header.getRequired()) {
+        headerString = String.format("%s*", headerString);
+      }
       headers.add(headerString);
     }
     return headers;
@@ -97,9 +103,7 @@ public final class CsvUtil {
   }
 
   public static List<String> addField(List<String> record, Boolean field) {
-    if (field != null) {
-      record.add(field.toString());
-    }
+    record.add(field == null ? "" : field.toString());
     return record;
   }
 
