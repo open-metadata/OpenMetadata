@@ -384,6 +384,31 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteQueryByFQN",
+      summary = "Delete a query",
+      tags = "query",
+      description = "Delete a query by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Query for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Fully qualified name of the location", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
   private Query getQuery(CreateQuery create, String user) throws IOException {
     return copy(new Query(), create, user)
         .withChecksum(create.getChecksum())
