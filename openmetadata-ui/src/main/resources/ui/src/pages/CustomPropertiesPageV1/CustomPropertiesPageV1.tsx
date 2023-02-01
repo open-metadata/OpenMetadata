@@ -56,9 +56,6 @@ const CustomEntityDetailV1 = () => {
   const [isError, setIsError] = useState<boolean>(false);
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
-  const [pageHeader, setPageHeader] = useState(
-    PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES
-  );
 
   const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
 
@@ -145,35 +142,25 @@ const CustomEntityDetailV1 = () => {
     }
   };
 
-  const getCustomPageHeader = () => {
-    let header = PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+  const getCustomPageHeader = useMemo(() => {
     switch (tabAttributePath) {
       case ENTITY_PATH.tables:
-        header = PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+        return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
 
-        break;
       case ENTITY_PATH.topics:
-        header = PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES;
+        return PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES;
 
-        break;
       case ENTITY_PATH.dashboards:
-        header = PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
+        return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
 
-        break;
       case ENTITY_PATH.pipelines:
-        header = PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
+        return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
-        break;
       case ENTITY_PATH.mlmodels:
-        header = PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
-
-        break;
+        return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
+      default:
+        return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
-    setPageHeader(header);
-  };
-
-  useEffect(() => {
-    getCustomPageHeader();
   }, [tabAttributePath]);
 
   useEffect(() => {
@@ -208,7 +195,7 @@ const CustomEntityDetailV1 = () => {
       data-testid="custom-entity-container"
       gutter={[16, 16]}>
       <Col span={24}>
-        <PageHeader data={pageHeader} />
+        <PageHeader data={getCustomPageHeader} />
       </Col>
       <Col className="global-settings-tabs" span={24}>
         <TabsPane
@@ -236,7 +223,7 @@ const CustomEntityDetailV1 = () => {
                     title={
                       editPermission
                         ? t('label.add-custom-entity-property', {
-                            entity: pageHeader.header,
+                            entity: getCustomPageHeader.header,
                           })
                         : NO_PERMISSION_FOR_ACTION
                     }>
@@ -266,7 +253,7 @@ const CustomEntityDetailV1 = () => {
                   title={
                     editPermission
                       ? t('label.add-custom-entity-property', {
-                          entity: pageHeader.header,
+                          entity: getCustomPageHeader.header,
                         })
                       : NO_PERMISSION_FOR_ACTION
                   }>
