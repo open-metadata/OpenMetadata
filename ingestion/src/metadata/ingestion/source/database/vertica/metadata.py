@@ -200,14 +200,14 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
                     + match.group(3)
                 )
 
-    column_info = dict(
-        name=name,
-        type=coltype,
-        nullable=nullable,
-        default=default,
-        autoincrement=autoincrement,
-        comment=comment,
-    )
+    column_info = {
+        "name": name,
+        "type": coltype,
+        "nullable": nullable,
+        "default": default,
+        "autoincrement": autoincrement,
+        "comment": comment,
+    }
     return column_info
 
 
