@@ -74,7 +74,7 @@ const TreeViewTab = ({
       {isEmpty(viewData) ? (
         <Empty
           className="my-4"
-          description={t('label.no-execution-runs-found')}
+          description={t('message.no-execution-runs-found')}
         />
       ) : (
         <Row className="w-full">

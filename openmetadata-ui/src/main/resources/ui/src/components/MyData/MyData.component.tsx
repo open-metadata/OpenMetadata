@@ -251,7 +251,9 @@ const MyData: React.FC<MyDataProps> = ({
                 onFeedFiltersUpdate={handleFeedFilterChange}
                 onRefreshFeeds={onRefreshFeeds}
               />
-              {filtersApplied && feedData?.length <= 0 ? <Onboarding /> : null}
+              {filtersApplied && feedData?.length <= 0 && !isFeedLoading ? (
+                <Onboarding />
+              ) : null}
             </>
           ) : (
             !isFeedLoading && <Onboarding />

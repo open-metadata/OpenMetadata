@@ -182,6 +182,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
+    "quicksight": {VERSIONS["boto3"]},
     "redash": {"redash-toolbelt~=0.1"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
@@ -212,18 +213,15 @@ dev = {
 }
 
 test = {
+    # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
     "coverage",
-    VERSIONS["google-cloud-storage"],
+    # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto==4.0.8",
-    VERSIONS["neo4j"],
-    VERSIONS["pandas"],
-    VERSIONS["pydomo"],
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    VERSIONS["scikit-learn"],
 }
 
 build_options = {"includes": ["_cffi_backend"]}

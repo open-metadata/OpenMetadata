@@ -234,10 +234,10 @@ const GlossaryPage = () => {
       <ErrorPlaceHolder
         buttons={
           <Button
-            ghost
-            className="tw-h-8 tw-rounded tw-my-3"
+            className="rounded-4 m-y-md"
             data-testid="add-new-glossary"
             disabled={!createGlossaryPermission}
+            size="middle"
             type="primary"
             onClick={handleAddGlossaryClick}>
             {t('label.add-new-entity', { entity: t('label.glossary') })}

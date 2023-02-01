@@ -4,6 +4,21 @@ slug: /connectors/database/glue
 ---
 
 # Glue
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ❌       |       ❌      |    ❌    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the Glue connector.
 
@@ -40,6 +55,8 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest the basic metadata.
 
 ## Metadata Ingestion
 

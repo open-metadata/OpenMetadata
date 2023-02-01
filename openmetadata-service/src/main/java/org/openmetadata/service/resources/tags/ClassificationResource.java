@@ -144,7 +144,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public Classification get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "classification Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -175,12 +175,13 @@ public class ClassificationResource extends EntityResource<Classification, Class
             description = "The user ",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Classification.class))),
-        @ApiResponse(responseCode = "404", description = "Classification for instance {category} is not found")
+        @ApiResponse(responseCode = "404", description = "Classification for instance {name} is not found")
       })
   public Classification getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Classification name", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -212,7 +213,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "classification Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -237,7 +238,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public Classification getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "classification Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "classification version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -327,7 +328,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Classification id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
