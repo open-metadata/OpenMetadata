@@ -133,12 +133,9 @@ section, add `jwtToken` and its value from the ingestion bot page.
 
 <Important>
 
-<h4> Security Note </h4>
-
-<br/>
-
-For **production** environment, please:
+Security requirements for your **production** environment:
 - **DELETE** de admin default account shipped by OM in case you have [Basic Authentication](/deployment/security/basic-auth) enabled.
-- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens).
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide 
+by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
 
 </Important>

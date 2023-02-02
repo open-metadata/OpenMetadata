@@ -101,11 +101,7 @@ Following are valid value for transportation strategy:
 
 <Important>
 
-<h4> Security Note </h4>
-
-<br/>
-
-For **production** environment, please:
+Security requirements for your **production** environment:
 - **DELETE** de admin default account shipped by OM.
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is enabled.
 
