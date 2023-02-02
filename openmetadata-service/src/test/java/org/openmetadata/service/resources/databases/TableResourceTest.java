@@ -1647,13 +1647,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Add a primary tag and derived tag both. The tag list must include derived tags only once.
     String json = JsonUtils.pojoToJson(table);
-    table.getColumns().get(0).withTags(List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    table
+        .getColumns()
+        .get(0)
+        .withTags(
+            List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
     // and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEquals(3, updateTags.size());
+    assertEquals(4, updateTags.size());
 
     TagLabel glossaryTerm1 =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, GLOSSARY1_TERM1_LABEL)).findAny().orElse(null);
@@ -1673,7 +1677,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TagLabel piiSensitive =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL)).findAny().orElse(null);
     assertNotNull(piiSensitive);
-    assertEquals(LabelType.DERIVED, piiSensitive.getLabelType());
+    assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
   }
 
   @Test
