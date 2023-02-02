@@ -18,9 +18,44 @@ Below we have highlighted the steps needed to upgrade to the latest version with
 
 <Warning>
 
-It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release) before starting the upgrade process.
+It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release) before starting the upgrade process.
 
 </Warning>
+
+## Upgrade from 0.13.1 to 0.13.2
+
+Upgrading from 0.13.1 to 0.13.2 can be done easily as version 0.13.1 compose files already provided volumes for the databases.
+
+Let's go through the required steps:
+
+### 1. Backup 0.12.3 data
+
+1. Make sure your instance is connected to the Database server
+2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
+    1. `python -m venv venv`
+    2. `source venv/bin/activate`
+    3. `pip install openmetadata-ingestion~=0.13.2`
+3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
+   indeed at 0.13.2. Notice the `python -m metadata` vs. `metadata`.
+4. Run the backup using the updated `metadata` CLI:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
+    ```
+   if using Postgres:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
+    ```
+5. This will generate the .sql file which can be used for the backup
+   In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
+   command output.
+
+### 2. Update the docker compose file
+
+1. Stop the running compose deployment with `docker compose down`.
+2. On the compose file we ran the 0.13.1 version, update the image tag in the `ingestion` and
+   `openmetadata-server` to 0.13.2. E.g., `image: openmetadata/server:0.13.2`.
+3. Start the updated compose file.
+4. Run the reindex from the UI.
 
 ## Upgrade from 0.12.3 to 0.13.1
 
@@ -82,7 +117,7 @@ This step is only required if you have not done that yet.
     ```
     mysql:
       container_name: openmetadata_mysql
-      image: openmetadata/db:0.12.3
+      image: openmetadata/db:0.13.1
       restart: always
       environment:
         MYSQL_ROOT_PASSWORD: password
@@ -139,6 +174,40 @@ We will now use the backup generated in the previous step to repopulate the data
 3. Run the reindex from the UI.
 
 Now you should still have all your data with OpenMetadata version 0.13.1.
+
+## Upgrade ingestion patch versions
+
+During the release lifespan we may publish new patch versions of `openmetadata-ingestion`. If you deployed
+the ingestion container and require one of the fixes or improvements from a new patch release, there's usually no need
+to re-deploy the full ingestion container.
+
+<Note>
+
+Note that this process will only work if we are moving from PATCH versions. For example: `0.13.1.1` -> `0.13.1.2`.
+
+This method won't work when upgrading from `0.13.1.X` -> `0.13.2.X`, as that will also require to upgrade the
+server version.
+
+</Note>
+
+The steps to follow are:
+
+1. Connect to the ingestion container. If using our docker compose files or `metadata docker` CLI, this translates
+    to `docker exec -it openmetadata_ingestion bash`.
+2. Validate your `metadata` version via `metadata --version`. You will get back something like:
+   ```bash
+   metadata 0.13.1.5 from /home/airflow/.local/lib/python3.9 (python 3.9)
+   ```
+3. Upgrade the `openmetadata-ingestion` package via `pip install "openmetadata-ingestion==0.13.1.X"`, for example,
+   `pip install "openmetadata-ingestion==0.13.1.7"`. You can find the list of all released versions of
+   the `openmetadata-ingestion` package [here](https://pypi.org/project/openmetadata-ingestion/#history).
+4. Exit the container by typing `exit`.
+5. Restart the ingestion container with `docker restart openmetadata_ingestion`. This will need a few minutes to
+   to stop the container and start it again. Now, Airflow will start with the upgraded `metadata` version.
+6. Connect to the ingestion container and validate the `metadata` version:
+   1. `docker exec -it openmetadata_ingestion bash`
+   2. `metadata version`: where we expect to get the same version that was previously installed.
+
 
 ### Troubleshooting
 

@@ -45,15 +45,13 @@ MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT obj.name AS table_name,
         ep.value AS table_comment,
-        s.name AS schema_name
+        s.name AS "schema"
 FROM sys.tables AS obj
 LEFT JOIN sys.extended_properties AS ep
     ON obj.object_id = ep.major_id AND ep.minor_id = 0
 JOIN sys.schemas AS s
     ON obj.schema_id = s.schema_id
 WHERE ep.name = 'MS_Description'
- 	AND obj.name = '{table_name}'
-	And s.name  = '{schema_name}';
 """
 )
 
@@ -71,5 +69,20 @@ JOIN sys.schemas AS s
 WHERE ep.name = 'MS_Description'
   AND obj.name = '{table_name}'
   	And s.name  = '{schema_name}';
+"""
+)
+
+MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
+    """
+select
+	definition view_def,
+	views.name view_name,
+	sch.name "schema"
+from sys.sql_modules as mod,
+sys.views as views,
+sys.schemas as sch
+ where
+mod.object_id=views.object_id and
+views.schema_id=sch.schema_id
 """
 )

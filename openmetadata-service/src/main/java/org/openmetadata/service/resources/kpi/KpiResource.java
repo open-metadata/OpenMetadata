@@ -19,7 +19,6 @@ import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
-import javax.ws.rs.Encoded;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -152,7 +151,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Kpi Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the Kpi", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -172,7 +171,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       })
   public Kpi get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Kpi", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -195,17 +194,17 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       operationId = "getKpiByName",
       summary = "Get a Kpi by name",
       tags = "kpi",
-      description = "Get a Kpi by  name.",
+      description = "Get a Kpi by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The Kpi",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
-        @ApiResponse(responseCode = "404", description = "Kpi for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Kpi for instance {name} is not found")
       })
   public Kpi getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the Kpi", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -241,7 +240,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Kpi getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Kpi Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Kpi", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Kpi version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -284,7 +283,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response patchKpi(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Kpi", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -326,6 +325,29 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteKpiByName",
+      summary = "Delete a Kpi",
+      tags = "kpi",
+      description = "Delete a Kpi by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Kpi for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the Kpi", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteKpi",
@@ -347,7 +369,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Kpi Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the Kpi", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -372,7 +394,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @PUT
-  @Path("/{fqn}/kpiResult")
+  @Path("/{name}/kpiResult")
   @Operation(
       operationId = "addKpiResult",
       summary = "Add kpi result data",
@@ -387,15 +409,14 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response addKpiResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Encoded @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn,
+      @Parameter(description = "Name of the Kpi", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Valid KpiResult kpiResult)
       throws IOException {
-    return dao.addKpiResult(uriInfo, fqn, kpiResult).toResponse();
+    return dao.addKpiResult(uriInfo, name, kpiResult).toResponse();
   }
 
   @GET
-  @Path("/{fqn}/kpiResult")
+  @Path("/{name}/kpiResult")
   @Operation(
       operationId = "listKpiResults",
       summary = "List of kpi results",
@@ -415,7 +436,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       })
   public ResultList<KpiResult> listKpiResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Name of the Kpi", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(description = "Filter kpi results after the given start timestamp", schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("startTs")
@@ -430,11 +451,11 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @DefaultValue("DESC")
           CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
       throws IOException {
-    return dao.getKpiResults(fqn, startTs, endTs, orderBy);
+    return dao.getKpiResults(name, startTs, endTs, orderBy);
   }
 
   @GET
-  @Path("/{fqn}/latestKpiResult")
+  @Path("/{name}/latestKpiResult")
   @Operation(
       operationId = "getLatestKpiResults",
       summary = "Get a latest Kpi Result",
@@ -451,13 +472,13 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       })
   public KpiResult listKpiResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      @Parameter(description = "Name of the Kpi", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return dao.getKpiResult(fqn);
+    return dao.getKpiResult(name);
   }
 
   @DELETE
-  @Path("/{fqn}/kpiResult/{timestamp}")
+  @Path("/{name}/kpiResult/{timestamp}")
   @Operation(
       operationId = "deleteKpiResult",
       summary = "Delete kpi result.",
@@ -472,11 +493,11 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response deleteKpiResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Name of the Kpi", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(description = "Timestamp of the kpi result", schema = @Schema(type = "long")) @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    return dao.deleteKpiResult(fqn, timestamp).toResponse();
+    return dao.deleteKpiResult(name, timestamp).toResponse();
   }
 
   private Kpi getKpi(CreateKpiRequest create, String user) throws IOException {

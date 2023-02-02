@@ -14,7 +14,7 @@ Hosts the singledispatch to get DBT files
 import json
 import traceback
 from functools import singledispatch
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import requests
 from pydantic import BaseModel
@@ -34,8 +34,8 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -46,8 +46,14 @@ DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
 
 class DbtFiles(BaseModel):
     dbt_catalog: Optional[dict]
-    dbt_manifest: Optional[dict]
+    dbt_manifest: dict
     dbt_run_results: Optional[dict]
+
+
+class DbtObjects(BaseModel):
+    dbt_catalog: Optional[Any]
+    dbt_manifest: Any
+    dbt_run_results: Optional[Any]
 
 
 class DBTConfigException(Exception):
@@ -130,7 +136,7 @@ def _(config: DbtHttpConfig):
                 config.dbtCatalogHttpPath
             )
         if not dbt_manifest:
-            raise DBTConfigException("Menifest file not found in file server")
+            raise DBTConfigException("Manifest file not found in file server")
         return DbtFiles(
             dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
             dbt_manifest=dbt_manifest.json(),
@@ -157,7 +163,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
-            base_url="https://cloud.getdbt.com",
+            base_url=config.dbtCloudUrl,
             api_version="api/v2",
             auth_token=lambda: auth_token,
             auth_header="Authorization",
@@ -189,7 +195,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
             )
         if not dbt_manifest:
-            raise DBTConfigException("Menifest file not found in DBT Cloud")
+            raise DBTConfigException("Manifest file not found in DBT Cloud")
 
         return DbtFiles(
             dbt_catalog=dbt_catalog,
@@ -236,7 +242,7 @@ def _(config: DbtS3Config):
                     logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
                     dbt_run_results = bucket_object.get()["Body"].read().decode()
         if not dbt_manifest:
-            raise DBTConfigException("Menifest file not found in s3")
+            raise DBTConfigException("Manifest file not found in s3")
         return DbtFiles(
             dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
             dbt_manifest=json.loads(dbt_manifest),
@@ -280,7 +286,7 @@ def _(config: DbtGcsConfig):
                     logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
                     dbt_run_results = blob.download_as_string().decode()
         if not dbt_manifest:
-            raise DBTConfigException("Menifest file not found in gcs")
+            raise DBTConfigException("Manifest file not found in gcs")
         return DbtFiles(
             dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
             dbt_manifest=json.loads(dbt_manifest),

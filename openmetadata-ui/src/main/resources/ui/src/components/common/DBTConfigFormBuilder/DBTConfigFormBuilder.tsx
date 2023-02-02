@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Input, Select } from 'antd';
 import React, {
   Fragment,
   FunctionComponent,
@@ -55,7 +55,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         ingestionName: data.ingestionName,
         gcsConfigType: data.gcsConfigType,
         dbtConfigSourceType: data.dbtConfigSourceType,
-        dbtConfigSource: data.dbtConfigSource,
+        dbtConfigSource: {
+          ...data.dbtConfigSource,
+          dbtClassificationName: data.dbtClassificationName,
+          dbtUpdateDescriptions: data.dbtUpdateDescriptions,
+        },
       }),
       [
         data.ingestionName,
@@ -81,9 +85,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTCloudConfig
         cancelText={cancelText}
+        dbtClassificationName={dbtConfig?.dbtClassificationName}
         dbtCloudAccountId={dbtConfig?.dbtCloudAccountId}
         dbtCloudAuthToken={dbtConfig?.dbtCloudAuthToken}
         dbtCloudProjectId={dbtConfig?.dbtCloudProjectId}
+        dbtCloudUrl={dbtConfig.dbtCloudUrl}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         handleCloudAccountIdChange={(val) => {
           updateDbtConfig('dbtCloudAccountId', val);
@@ -93,6 +99,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleDbtCloudProjectId={(val) => {
           updateDbtConfig('dbtCloudProjectId', val);
+        }}
+        handleDbtCloudUrl={(val) => updateDbtConfig('dbtCloudUrl', val)}
+        handleUpdateDBTClassification={(val) => {
+          updateDbtConfig('dbtClassificationName', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
@@ -109,6 +119,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       <DBTLocalConfig
         cancelText={cancelText}
         dbtCatalogFilePath={dbtConfig?.dbtCatalogFilePath}
+        dbtClassificationName={dbtConfig?.dbtClassificationName}
         dbtManifestFilePath={dbtConfig?.dbtManifestFilePath}
         dbtRunResultsFilePath={dbtConfig?.dbtRunResultsFilePath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
@@ -120,6 +131,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleRunResultsFilePathChange={(val) => {
           updateDbtConfig('dbtRunResultsFilePath', val);
+        }}
+        handleUpdateDBTClassification={(val) => {
+          updateDbtConfig('dbtClassificationName', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
@@ -136,6 +150,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       <DBTHttpConfig
         cancelText={cancelText}
         dbtCatalogHttpPath={dbtConfig?.dbtCatalogHttpPath}
+        dbtClassificationName={dbtConfig?.dbtClassificationName}
         dbtManifestHttpPath={dbtConfig?.dbtManifestHttpPath}
         dbtRunResultsHttpPath={dbtConfig?.dbtRunResultsHttpPath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
@@ -147,6 +162,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleRunResultsHttpPathChange={(val) => {
           updateDbtConfig('dbtRunResultsHttpPath', val);
+        }}
+        handleUpdateDBTClassification={(val) => {
+          updateDbtConfig('dbtClassificationName', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
@@ -162,6 +180,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTS3Config
         cancelText={cancelText}
+        dbtClassificationName={dbtConfig?.dbtClassificationName}
         dbtPrefixConfig={dbtConfig?.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
@@ -170,6 +189,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
+        }}
+        handleUpdateDBTClassification={(val) => {
+          updateDbtConfig('dbtClassificationName', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
@@ -191,11 +213,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       ingestionName: event.target.value,
     });
 
-  const handleDbtConfigSourceType = (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleDbtConfigSourceType = (value: DBT_SOURCES) => {
     onChange({
-      dbtConfigSourceType: event.target.value as DBT_SOURCES,
+      dbtConfigSourceType: value as DBT_SOURCES,
     });
   };
 
@@ -203,6 +223,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTGCSConfig
         cancelText={cancelText}
+        dbtClassificationName={dbtConfig?.dbtClassificationName}
         dbtPrefixConfig={dbtConfig?.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
@@ -213,6 +234,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
+        }}
+        handleUpdateDBTClassification={(val) => {
+          updateDbtConfig('dbtClassificationName', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
@@ -284,13 +308,12 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.instance-identifier')}
         </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="name"
+        <Input
+          className="w-full"
+          data-testid="profile-sample"
           disabled={formType === FormSubmitType.EDIT}
           id="name"
           name="name"
-          type="text"
           value={ingestionName}
           onChange={handleOnchange}
         />
@@ -303,22 +326,17 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.fetch-dbt-files')}
         </p>
-        <select
-          className="tw-form-inputs tw-form-inputs-padding"
+        <Select
+          className="w-full"
           data-testid="dbt-source"
           id="dbt-source"
-          name="dbt-source"
+          options={DBTSources}
           placeholder={t('label.select-field', {
             field: t('label.dbt-source'),
           })}
           value={dbtConfigSourceType}
-          onChange={handleDbtConfigSourceType}>
-          {DBTSources.map((option, i) => (
-            <option key={i} value={option.value}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+          onChange={handleDbtConfigSourceType}
+        />
       </Field>
       {getSeparator('')}
       {getFields()}

@@ -14,6 +14,7 @@
 import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
@@ -27,15 +28,23 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   entityDetails,
   handleExtensionUpdate,
   entityType,
+  hasEditAccess,
 }) => {
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
+  const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
+    useState<boolean>(false);
 
-  const fetchTypeDetail = () => {
-    getTypeByFQN(entityType)
-      .then((res) => {
-        setEntityTypeDetail(res);
-      })
-      .catch((err: AxiosError) => showErrorToast(err));
+  const fetchTypeDetail = async () => {
+    setEntityTypeDetailLoading(true);
+    try {
+      const res = await getTypeByFQN(entityType);
+
+      setEntityTypeDetail(res);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setEntityTypeDetailLoading(false);
+    }
   };
 
   const onExtensionUpdate = async (
@@ -63,6 +72,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         render: (_, record) => (
           <PropertyValue
             extension={entityDetails.extension}
+            hasEditPermissions={hasEditAccess}
             propertyName={record.name}
             propertyType={record.propertyType}
             onExtensionUpdate={onExtensionUpdate}
@@ -70,11 +80,15 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         ),
       },
     ];
-  }, [entityDetails.extension]);
+  }, [entityDetails.extension, hasEditAccess]);
 
   useEffect(() => {
     fetchTypeDetail();
   }, []);
+
+  if (entityTypeDetailLoading) {
+    return <Loader />;
+  }
 
   return (
     <>

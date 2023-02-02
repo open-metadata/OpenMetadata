@@ -40,11 +40,10 @@ const service_name = MYSQL.serviceName;
 describe('Advance search should work properly for all fields', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
 
   it('Pre-requisite for advance search', () => {
-    addOwner(FIELDS.Owner.searchCriteriaFirstGroup);
+    addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
     addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
     addTag(FIELDS.Tags.searchCriteriaFirstGroup);
   });
@@ -115,12 +114,15 @@ describe('Advance search should work properly for all fields', () => {
       });
     });
   });
+
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
+  });
 });
 
 describe('Advance search should work properly for Add Group functionality', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
 
   Object.values(OPERATOR).forEach((operator) => {
@@ -173,9 +175,6 @@ describe('Advance search should work properly for Add Group functionality', () =
     it(`Verify Add group functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.contains.name} and ${CONDITIONS_MUST_NOT.notContains.name} `, () => {
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
-        if (field.owner) {
-          val = field.searchCriteriaSecondGroup.split(' ')[0];
-        }
 
         checkAddGroupWithOperator(
           CONDITIONS_MUST.contains.name,
@@ -194,12 +193,14 @@ describe('Advance search should work properly for Add Group functionality', () =
       });
     });
   });
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
+  });
 });
 
 describe('Advance search should work properly for Add Rule functionality', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-explore"]').and('be.visible').click();
   });
 
   Object.values(OPERATOR).forEach((operator) => {
@@ -252,9 +253,6 @@ describe('Advance search should work properly for Add Rule functionality', () =>
     it(`Verify Add Rule functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.contains.name} and ${CONDITIONS_MUST_NOT.notContains.name} `, () => {
       Object.values(FIELDS).forEach((field) => {
         let val = field.searchCriteriaSecondGroup;
-        if (field.owner) {
-          val = field.searchCriteriaSecondGroup.split(' ')[0];
-        }
         checkAddRuleWithOperator(
           CONDITIONS_MUST.contains.name,
           CONDITIONS_MUST_NOT.notContains.name,
@@ -279,5 +277,9 @@ describe('Advance search should work properly for Add Rule functionality', () =>
       service_name,
       API_SERVICE.databaseServices
     );
+  });
+
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
   });
 });

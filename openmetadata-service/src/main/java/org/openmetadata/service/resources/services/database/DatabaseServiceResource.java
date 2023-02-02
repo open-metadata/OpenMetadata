@@ -162,7 +162,7 @@ public class DatabaseServiceResource
   public DatabaseService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -192,12 +192,13 @@ public class DatabaseServiceResource
             description = "Database service instance",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
-        @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Database service for instance {name} is not found")
       })
   public DatabaseService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the database service", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -230,7 +231,7 @@ public class DatabaseServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -270,7 +271,7 @@ public class DatabaseServiceResource
   public DatabaseService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "database service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -339,7 +340,7 @@ public class DatabaseServiceResource
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -376,10 +377,37 @@ public class DatabaseServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id)
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteDatabaseServiceByName",
+      summary = "Delete a database service",
+      tags = "databaseServices",
+      description =
+          "Delete a database services by `name`. If databases (and tables) belong the service, it can't be "
+              + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DatabaseService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the database service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

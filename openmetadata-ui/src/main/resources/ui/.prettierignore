@@ -47,3 +47,10 @@ src/antlr/generated
 
 # Generated TS
 src/generated/
+
+
+# Assets
+*.svg
+*.png
+*.ico
+*.ttf

@@ -146,7 +146,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public StorageService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -175,12 +175,13 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
             description = "Storage service instance",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
-        @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Storage service for instance {name} is not found")
       })
   public StorageService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the storage service", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -212,7 +213,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -237,7 +238,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public StorageService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "storage service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -314,6 +315,31 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteStorageServiceByName",
+      summary = "Delete a storage service",
+      tags = "storageServices",
+      description =
+          "Delete a storage services by `name`. If storages (and tables) belong the service, it can't be " + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "StorageService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the storage service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

@@ -39,6 +39,7 @@ source:
       s3StagingDir: s3 directory for datasource
       workgroup: workgroup name
   sourceConfig:
+    type: DatabaseMetadata
     config:
       markDeletedTables: true
       includeTables: true
@@ -60,6 +61,7 @@ source:
   serviceName: my_athena_service
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true

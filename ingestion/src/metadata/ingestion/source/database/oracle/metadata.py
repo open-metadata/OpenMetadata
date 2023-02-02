@@ -9,6 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Oracle source module"""
+from sqlalchemy.dialects.oracle.base import OracleDialect
+from sqlalchemy.engine import reflection
+
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
@@ -20,6 +23,48 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_ALL_TABLE_COMMENTS,
+    ORACLE_ALL_VIEW_DEFINITIONS,
+)
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_view_definitions,
+    get_table_comment_wrapper,
+    get_view_definition_wrapper,
+)
+
+
+@reflection.cache
+def get_table_comment(
+    self, connection, table_name, schema=None, resolve_synonyms=False, dblink="", **kw
+):  # pylint: disable=unused-argument
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=ORACLE_ALL_TABLE_COMMENTS,
+    )
+
+
+@reflection.cache
+def get_view_definition(
+    self, connection, view_name, schema=None, resolve_synonyms=False, dblink="", **kw
+):  # pylint: disable=unused-argument
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=view_name,
+        schema=schema,
+        query=ORACLE_ALL_VIEW_DEFINITIONS,
+    )
+
+
+OracleDialect.get_table_comment = get_table_comment
+OracleDialect.get_view_definition = get_view_definition
+OracleDialect.get_all_view_definitions = get_all_view_definitions
+OracleDialect.get_all_table_comments = get_all_table_comments
 
 
 class OracleSource(CommonDbSourceService):

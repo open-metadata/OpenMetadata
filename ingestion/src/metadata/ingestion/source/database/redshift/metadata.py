@@ -25,7 +25,11 @@ from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_name
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
-from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
+from sqlalchemy_redshift.dialect import (
+    RedshiftDialect,
+    RedshiftDialectMixin,
+    RelationKey,
+)
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -51,10 +55,15 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
+    REDSHIFT_TABLE_COMMENTS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_table_comment_wrapper,
+)
 
 sa_version = Version(sa.__version__)
 
@@ -215,14 +224,14 @@ def _update_column_info(  # pylint: disable=too-many-arguments
                     + match.group(2)
                     + match.group(3)
                 )
-    column_info = dict(
-        name=name,
-        type=coltype,
-        nullable=nullable,
-        default=default,
-        autoincrement=autoincrement or identity is not None,
-        comment=comment,
-    )
+    column_info = {
+        "name": name,
+        "type": coltype,
+        "nullable": nullable,
+        "default": default,
+        "autoincrement": autoincrement or identity is not None,
+        "comment": comment,
+    }
     if computed is not None:
         column_info["computed"] = computed
     if identity is not None:
@@ -244,7 +253,10 @@ def _update_coltype(coltype, args, kwargs, attype, name, is_array):
 def _update_computed_and_default(generated, default):
     computed = None
     if generated not in (None, "", b"\x00"):
-        computed = dict(sqltext=default, persisted=generated in ("s", b"s"))
+        computed = {
+            "sqltext": default,
+            "persisted": generated in ("s", b"s"),
+        }
         default = None
     return computed, default
 
@@ -348,6 +360,23 @@ STANDARD_TABLE_TYPES = {
 }
 
 
+@reflection.cache
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=REDSHIFT_TABLE_COMMENTS,
+    )
+
+
+RedshiftDialect.get_all_table_comments = get_all_table_comments
+RedshiftDialect.get_table_comment = get_table_comment
+
+
 class RedshiftSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
@@ -386,7 +415,7 @@ class RedshiftSource(CommonDbSourceService):
 
         result = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
-            dict(schema=schema_name),
+            {"schema": schema_name},
         )
 
         return [

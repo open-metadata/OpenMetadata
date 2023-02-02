@@ -79,3 +79,5 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   TestSuite: 'test-suite',
   usage: 'usage',
 };
+
+export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';

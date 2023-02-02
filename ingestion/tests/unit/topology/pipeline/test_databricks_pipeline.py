@@ -38,7 +38,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
-from metadata.utils.ansi import print_ansi_encoded_string
+from metadata.utils.logger import log_ansi_encoded_string
 
 mock_file_path = (
     Path(__file__).parent.parent.parent
@@ -228,7 +228,7 @@ class DatabricksPipelineTests(TestCase):
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
-        print_ansi_encoded_string(message="init")
+        log_ansi_encoded_string(message="init")
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
 

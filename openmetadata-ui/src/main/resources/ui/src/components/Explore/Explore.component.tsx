@@ -175,7 +175,7 @@ const Explore: React.FC<ExploreProps> = ({
       isEmpty(terms)
         ? undefined
         : {
-            query: { bool: { must: terms } },
+            query: { bool: { should: terms } },
           }
     );
   };
@@ -227,6 +227,9 @@ const Explore: React.FC<ExploreProps> = ({
         searchResults?.hits?.hits[0]._source as EntityDetailsType,
         tab
       );
+    } else {
+      setShowSummaryPanel(false);
+      setEntityDetails(undefined);
     }
   }, [tab, searchResults]);
 
@@ -333,7 +336,7 @@ const Explore: React.FC<ExploreProps> = ({
                       onChangePage(Number.parseInt(value));
                     }
                   }}
-                  selectedEntityName={entityDetails?.details.name || ''}
+                  selectedEntityId={entityDetails?.details.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                 />
               ) : (

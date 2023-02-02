@@ -24,7 +24,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -64,7 +63,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     List<EntityReference> testCases2 = new ArrayList<>();
     CreateTestSuite createTestSuite1 = createRequest(test);
     TestSuite testSuite1 = createAndCheckEntity(createTestSuite1, ADMIN_AUTH_HEADERS);
-    CreateTestSuite createTestSuite2 = createRequest(test.getDisplayName() + UUID.randomUUID());
+    CreateTestSuite createTestSuite2 = createRequest(test, 1);
     TestSuite testSuite2 = createAndCheckEntity(createTestSuite2, ADMIN_AUTH_HEADERS);
 
     for (int i = 0; i < 5; i++) {
@@ -103,7 +102,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testSuite");
+    WebTarget target = getResource("testSuite");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);

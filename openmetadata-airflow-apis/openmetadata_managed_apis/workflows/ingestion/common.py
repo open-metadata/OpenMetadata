@@ -32,14 +32,13 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import set_loggers_level
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from openmetadata_managed_apis.utils.logger import workflow_logger
+from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
@@ -68,6 +67,8 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.utils import model_str
 
 logger = workflow_logger()
+
+# logging.getLogger("airflow.task.operators").setLevel(logging.WARNING)
 
 
 class InvalidServiceException(Exception):
@@ -214,7 +215,9 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    set_operator_logger(workflow_config)
+
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = Workflow.create(config)
 

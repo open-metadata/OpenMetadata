@@ -14,7 +14,6 @@
 import { Card } from 'antd';
 import { observer } from 'mobx-react';
 import React, {
-  Fragment,
   RefObject,
   useCallback,
   useEffect,
@@ -218,8 +217,17 @@ const MyData: React.FC<MyDataProps> = ({
 
   // Check if feedFilter or ThreadType filter is applied or not
   const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.OWNER && !threadType,
+    () => feedFilter === FeedFilter.ALL && !threadType,
     [feedFilter, threadType]
+  );
+
+  const showActivityFeedList = useMemo(
+    () =>
+      feedData?.length > 0 ||
+      !filtersApplied ||
+      newFeedsLength ||
+      isFeedLoading,
+    [feedData, filtersApplied, newFeedsLength, isFeedLoading]
   );
 
   return (
@@ -227,21 +235,25 @@ const MyData: React.FC<MyDataProps> = ({
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
-        <Fragment>
-          {feedData?.length > 0 || !filtersApplied || newFeedsLength ? (
+        <>
+          {showActivityFeedList ? (
             <>
               <ActivityFeedList
                 stickyFilter
                 withSidePanel
+                appliedFeedFilter={feedFilter}
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
+                isFeedLoading={isFeedLoading}
                 postFeedHandler={postFeedHandler}
                 refreshFeedCount={newFeedsLength}
                 updateThreadHandler={updateThreadHandler}
                 onFeedFiltersUpdate={handleFeedFilterChange}
                 onRefreshFeeds={onRefreshFeeds}
               />
-              {filtersApplied && feedData?.length <= 0 ? <Onboarding /> : null}
+              {filtersApplied && feedData?.length <= 0 && !isFeedLoading ? (
+                <Onboarding />
+              ) : null}
             </>
           ) : (
             !isFeedLoading && <Onboarding />
@@ -254,7 +266,7 @@ const MyData: React.FC<MyDataProps> = ({
           />
           {/* Add spacer to work infinite scroll smoothly */}
           <div className="tw-p-4" />
-        </Fragment>
+        </>
       )}
     </PageLayoutV1>
   );

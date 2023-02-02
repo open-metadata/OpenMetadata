@@ -128,9 +128,10 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="list-item"]').contains('Add dbt Ingestion').click();
     // Add DBT ingestion
     cy.contains('Add dbt Ingestion').should('be.visible');
-    cy.get('[data-testid="dbt-source"]')
-      .should('be.visible')
-      .select('HTTP Config Source');
+    cy.get('[data-testid="dbt-source"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('HTTP Config Source')
+      .click();
     cy.get('[data-testid="catalog-url"]')
       .scrollIntoView()
       .should('be.visible')

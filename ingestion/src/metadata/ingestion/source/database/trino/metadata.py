@@ -38,9 +38,8 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import ANSI, ingestion_logger, log_ansi_encoded_string
 
 logger = ingestion_logger()
 ROW_DATA_TYPE = "row"
@@ -110,9 +109,12 @@ def _get_columns(
     columns = []
     for record in res:
         col_type = datatype.parse_sqltype(record.Type)
-        column = dict(
-            name=record.Column, type=col_type, nullable=True, comment=record.Comment
-        )
+        column = {
+            "name": record.Column,
+            "type": col_type,
+            "nullable": True,
+            "comment": record.Comment,
+        }
         type_str = record.Type.strip().lower()
         type_name, type_opts = get_type_name_and_opts(type_str)
         if type_opts and type_name == ROW_DATA_TYPE:
@@ -140,7 +142,7 @@ class TrinoSource(CommonDbSourceService):
                 dbapi,
             )
         except ModuleNotFoundError:
-            print_ansi_encoded_string(
+            log_ansi_encoded_string(
                 color=ANSI.BRIGHT_RED,
                 bold=False,
                 message="Trino source dependencies are missing. Please run\n"
@@ -182,27 +184,28 @@ class TrinoSource(CommonDbSourceService):
         else:
             results = self.connection.execute("SHOW CATALOGS")
             for res in results:
-                new_catalog = res[0]
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=new_catalog,
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
-                    continue
-
-                try:
-                    self.set_inspector(database_name=new_catalog)
-                    yield new_catalog
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error trying to connect to database {new_catalog}: {exc}"
+                if res:
+                    new_catalog = res[0]
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=new_catalog,
                     )
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog,
+                    ):
+                        self.status.filter(database_fqn, "Database Filtered Out")
+                        continue
+
+                    try:
+                        self.set_inspector(database_name=new_catalog)
+                        yield new_catalog
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error trying to connect to database {new_catalog}: {exc}"
+                        )

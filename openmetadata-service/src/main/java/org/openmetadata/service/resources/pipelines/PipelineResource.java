@@ -170,7 +170,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -192,7 +192,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -220,11 +220,13 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
             responseCode = "200",
             description = "The pipeline",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Pipeline for instance {fqn} is not found")
       })
   public Pipeline getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -260,7 +262,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Pipeline version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -302,7 +304,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -384,7 +386,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public ResultList<PipelineStatus> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "FQN of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(
               description = "Filter pipeline statues after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -417,7 +421,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline deletePipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)
@@ -493,9 +499,34 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deletePipelineByFQN",
+      summary = "Delete a Pipeline",
+      tags = "pipelines",
+      description = "Delete a pipeline by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Pipeline for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT

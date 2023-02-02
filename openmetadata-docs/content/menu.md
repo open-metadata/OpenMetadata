@@ -344,40 +344,23 @@ site_menu:
     url: /connectors/database/vertica/airflow
   - category: Connectors / Database / Vertica / CLI
     url: /connectors/database/vertica/cli
+  - category: Connectors / Database / Vertica / Troubleshooting
+    url: /connectors/database/vertica/troubleshooting
   - category: Connectors / Dashboard
     url: /connectors/dashboard
+
+  - category: Connectors / Dashboard / Domo Dashboard
+    url: /connectors/dashboard/domo-dashboard
+  - category: Connectors / Dashboard / Domo Dashboard / Airflow
+    url: /connectors/dashboard/domo-dashboard/airflow
+  - category: Connectors / Dashboard / Domo Dashboard / CLI
+    url: /connectors/dashboard/domo-dashboard/cli
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Airflow
     url: /connectors/dashboard/looker/airflow
   - category: Connectors / Dashboard / Looker / CLI
     url: /connectors/dashboard/looker/cli
-  - category: Connectors / Dashboard / Redash
-    url: /connectors/dashboard/redash
-  - category: Connectors / Dashboard / Redash / Airflow
-    url: /connectors/dashboard/redash/airflow
-  - category: Connectors / Dashboard / Redash / CLI
-    url: /connectors/dashboard/redash/cli
-  - category: Connectors / Dashboard / Tableau
-    url: /connectors/dashboard/tableau
-  - category: Connectors / Dashboard / Tableau / Airflow
-    url: /connectors/dashboard/tableau/airflow
-  - category: Connectors / Dashboard / Tableau / CLI
-    url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / PowerBI
-    url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
-  - category: Connectors / Dashboard / PowerBI / Airflow
-    url: /connectors/dashboard/powerbi/airflow
-  - category: Connectors / Dashboard / PowerBI / CLI
-    url: /connectors/dashboard/powerbi/cli
-  - category: Connectors / Dashboard / Superset
-    url: /connectors/dashboard/superset
-  - category: Connectors / Dashboard / Superset / Airflow
-    url: /connectors/dashboard/superset/airflow
-  - category: Connectors / Dashboard / Superset / CLI
-    url: /connectors/dashboard/superset/cli
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Airflow
@@ -390,14 +373,40 @@ site_menu:
     url: /connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
     url: /connectors/dashboard/mode/cli
-  - category: Connectors / Dashboard
-  - category: Connectors / Dashboard / Domo Dashboard
-    url: /connectors/dashboard/domo-dashboard
-  - category: Connectors / Dashboard / Domo Dashboard / Airflow
-    url: /connectors/dashboard/domo-dashboard/airflow
-  - category: Connectors / Dashboard / Domo Dashboard / CLI
-    url: /connectors/dashboard/domo-dashboard/cli
-
+  - category: Connectors / Dashboard / PowerBI
+    url: /connectors/dashboard/powerbi
+  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
+    url: /connectors/dashboard/powerbi/powerbi-account-setup
+  - category: Connectors / Dashboard / PowerBI / Airflow
+    url: /connectors/dashboard/powerbi/airflow
+  - category: Connectors / Dashboard / PowerBI / CLI
+    url: /connectors/dashboard/powerbi/cli
+  - category: Connectors / Dashboard / Redash
+    url: /connectors/dashboard/redash
+  - category: Connectors / Dashboard / Redash / Airflow
+    url: /connectors/dashboard/redash/airflow
+  - category: Connectors / Dashboard / Redash / CLI
+    url: /connectors/dashboard/redash/cli
+  - category: Connectors / Dashboard / Superset
+    url: /connectors/dashboard/superset
+  - category: Connectors / Dashboard / Superset / Airflow
+    url: /connectors/dashboard/superset/airflow
+  - category: Connectors / Dashboard / Superset / CLI
+    url: /connectors/dashboard/superset/cli
+  - category: Connectors / Dashboard / Superset / SSO
+    url: /connectors/dashboard/superset/sso
+  - category: Connectors / Dashboard / Tableau
+    url: /connectors/dashboard/tableau
+  - category: Connectors / Dashboard / Tableau / Airflow
+    url: /connectors/dashboard/tableau/airflow
+  - category: Connectors / Dashboard / Tableau / CLI
+    url: /connectors/dashboard/tableau/cli
+  - category: Connectors / Dashboard / Quicksight
+    url: /connectors/dashboard/quicksight
+  - category: Connectors / Dashboard / Quicksight / Airflow
+    url: /connectors/dashboard/quicksight/airflow
+  - category: Connectors / Dashboard / Quicksight / CLI
+    url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
   - category: Connectors / Messaging / Kafka
@@ -406,6 +415,8 @@ site_menu:
     url: /connectors/messaging/kafka/airflow
   - category: Connectors / Messaging / Kafka / CLI
     url: /connectors/messaging/kafka/cli
+  - category: Connectors / Messaging / Kafka / Troubleshooting
+    url: /connectors/messaging/kafka/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Airflow
@@ -512,6 +523,10 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
+  - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
+    url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics

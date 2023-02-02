@@ -210,6 +210,13 @@ export const NEW_GLOSSARY = {
   reviewer: 'Aaron Johnson',
   tag: 'PII.None',
 };
+export const NEW_GLOSSARY_1 = {
+  name: 'Product Glossary',
+  description: 'This is the Product glossary',
+  reviewer: 'Brandy Miller',
+  tag: 'PII.None',
+};
+
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
     name: 'Purchase',
@@ -220,6 +227,19 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+  },
+};
+
+export const NEW_GLOSSARY_1_TERMS = {
+  term_1: {
+    name: 'Features',
+    description: 'This is the Features',
+    synonyms: 'data,collect,time',
+  },
+  term_2: {
+    name: 'Uses',
+    description: 'This is the Uses',
+    synonyms: 'home,business,adventure',
   },
 };
 

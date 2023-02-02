@@ -72,9 +72,10 @@ After selecting the **Application Type**, name your project and give the authori
 - You will find the **Client ID** and **Client Secret** in the top right corner
 <Image src="/images/deployment/security/google/find-clientid-and-secret.png" alt="find-clientid-and-secret"/>
 
-## Create Service Account
+## Create Service Account (optional)
 
-This is a guide to create ingestion bot service account.
+This is a guide to create ingestion bot service account. This step is optional if you configure the ingestion-bot with 
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Create Service-Account
 - Navigate to your project dashboard

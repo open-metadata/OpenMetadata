@@ -197,7 +197,7 @@ class Profiler(Generic[TMetric]):
                 if attrs not in {"timestamp", "name"} and val:
                     return profile
 
-        raise Exception(
+        raise RuntimeError(
             f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
         )
 

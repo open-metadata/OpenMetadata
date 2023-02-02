@@ -90,6 +90,13 @@ def _(elements, compiler, **kwargs):
     return f"DATEADD({interval_unit}, -{interval}, {func.current_date()})"
 
 
+@compiles(DateAddFn, Dialects.SQLite)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    interval = elements.clauses.clauses[0].value
+    interval_unit = elements.clauses.clauses[1].text
+    return f"DATE({func.current_date()}, '-{interval} {interval_unit}')"
+
+
 class DatetimeAddFn(FunctionElement):
     inherit_cache = CACHE
 
@@ -101,6 +108,16 @@ def _(elements, compiler, **kwargs):
     interval_unit = compiler.process(elements.clauses.clauses[1], **kwargs)
     return (
         f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS TIMESTAMP)"
+    )
+
+
+@compiles(DatetimeAddFn, Dialects.MySQL)
+def _(elements, compiler, **kwargs):
+    """MySQL date and datetime function"""
+    interval = elements.clauses.clauses[0].value
+    interval_unit = compiler.process(elements.clauses.clauses[1], **kwargs)
+    return (
+        f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS DATETIME)"
     )
 
 
@@ -141,3 +158,10 @@ def _(elements, compiler, **kwargs):
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
     return f"DATEADD({interval_unit}, -{interval}, {func.current_timestamp()})"
+
+
+@compiles(DatetimeAddFn, Dialects.SQLite)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    interval = elements.clauses.clauses[0].value
+    interval_unit = elements.clauses.clauses[1].text
+    return f"DATE({func.current_timestamp()}, '-{interval} {interval_unit}')"

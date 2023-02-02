@@ -85,16 +85,22 @@
       "type": "string",
       "format": "time"
     },
+    "timezone": {
+      "description": "Timezone of the user in the format `America/Los_Angeles`, `Brazil/East`, etc.",
+      "type": "string",
+      "format": "timezone"
+    },
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E::\\S+::\\S+>$"
+      "pattern": "^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$"
     },
     "entityName": {
       "description": "Name that identifies a entity.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^[\\w'\\- .&]+$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.",

@@ -67,6 +67,8 @@ const UserPage = () => {
   const [isError, setIsError] = useState(false);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
+    useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(
     (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
@@ -121,14 +123,15 @@ const UserPage = () => {
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
     if (userData.id) {
+      setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
+          '',
+          entity.currPage,
+          PAGE_SIZE,
           fetchOwnedEntities
             ? `owner.id:${userData.id}`
             : `followers:${userData.id}`,
-          entity.currPage,
-          PAGE_SIZE,
-          ``,
           '',
           '',
           myDataSearchIndex
@@ -159,6 +162,8 @@ const UserPage = () => {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
+      } finally {
+        setIsUserEntitiesLoading(false);
       }
     }
   };
@@ -316,6 +321,7 @@ const UserPage = () => {
           isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}
           isLoggedinUser={isLoggedinUser(username)}
+          isUserEntitiesLoading={isUserEntitiesLoading}
           ownedEntities={ownedEntities}
           paging={paging}
           postFeedHandler={postFeedHandler}

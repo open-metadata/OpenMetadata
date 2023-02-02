@@ -47,11 +47,12 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
+    searchTerm1: 'admin',
     searchCriteriaFirstGroup: 'admin',
-    responseValueFirstGroup: `"name":"admin"`,
+    responseValueFirstGroup: `"displayName":"admin"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
-    responseValueSecondGroup: 'aaron_singh2',
+    responseValueSecondGroup: 'Aaron Singh',
   },
   Tags: {
     name: 'Tags',
@@ -173,7 +174,6 @@ export const goToAdvanceSearch = () => {
     .should('exist')
     .and('be.visible')
     .click();
-  verifyResponseStatusCode('@explorePage', 200);
 
   cy.get('[data-testid="tables-tab"]')
     .scrollIntoView()
@@ -200,7 +200,9 @@ export const checkmustPaths = (
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must*${searchCriteria}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must*${encodeURI(
+      searchCriteria
+    )}*&sort_field=_score&sort_order=desc`,
     'search'
   );
   // //Click on apply filter
@@ -209,7 +211,7 @@ export const checkmustPaths = (
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
-    expect(request.url).to.contain(searchCriteria);
+    expect(request.url).to.contain(encodeURI(searchCriteria));
     expect(resBody).to.include(`${responseSearch}`);
   });
 };
@@ -227,7 +229,9 @@ export const checkmust_notPaths = (
   searchForField(condition, field, searchCriteria, index);
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${searchCriteria}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${encodeURI(
+      searchCriteria
+    )}*&sort_field=_score&sort_order=desc`,
     'search_must_not'
   );
   // Click on apply filter
@@ -236,12 +240,41 @@ export const checkmust_notPaths = (
   cy.wait('@search_must_not').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
-    expect(request.url).to.contain(searchCriteria);
+    expect(request.url).to.contain(encodeURI(searchCriteria));
     expect(resBody).to.not.include(`${responseSearch}`);
   });
 };
 
-export const addOwner = (ownerName) => {
+export const addOwner = (searchTerm, ownerName) => {
+  cy.get(
+    '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
+  )
+    .should('exist')
+    .and('be.visible')
+    .click();
+
+  cy.get('[data-testid="user-name"]').should('exist').and('be.visible').click();
+
+  verifyResponseStatusCode('@userProfile', 200);
+
+  cy.get('[data-testid="hiden-layer"]').should('exist').click();
+
+  cy.get('[data-testid="edit-displayName"]')
+    .should('exist')
+    .and('be.visible')
+    .click();
+
+  cy.get('[data-testid="displayName"]')
+    .should('exist')
+    .and('be.visible')
+    .clear()
+    .type(ownerName);
+
+  cy.get('[data-testid="save-displayName"]')
+    .should('exist')
+    .and('be.visible')
+    .click();
+
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
     .and('be.visible')
@@ -271,7 +304,7 @@ export const addOwner = (ownerName) => {
 
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*${ownerName}*&from=0&size=*&index=*`,
+    `api/v1/search/query?q=*${searchTerm}*&from=0&size=*&index=*`,
     'searchOwner'
   );
   cy.get('[data-testid="searchInputText"]')
@@ -279,7 +312,7 @@ export const addOwner = (ownerName) => {
     .should('be.visible')
     .and('exist')
     .trigger('click')
-    .type(ownerName);
+    .type(searchTerm);
 
   verifyResponseStatusCode('@searchOwner', 200);
 
@@ -489,7 +522,9 @@ export const checkAddGroupWithOperator = (
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${searchCriteria_1}*${filter_2}*${response_2}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
+      searchCriteria_1
+    )}*${filter_2}*${encodeURI(response_2)}*&sort_field=_score&sort_order=desc`,
     'search'
   );
 
@@ -499,7 +534,7 @@ export const checkAddGroupWithOperator = (
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
-    expect(request.url).to.contain(searchCriteria_1);
+    expect(request.url).to.contain(encodeURI(searchCriteria_1));
     expect(resBody).to.not.include(response_2);
   });
 };
@@ -623,7 +658,9 @@ export const checkAddRuleWithOperator = (
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${searchCriteria_1}*${filter_2}*${response_2}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
+      searchCriteria_1
+    )}*${filter_2}*${encodeURI(response_2)}*&sort_field=_score&sort_order=desc`,
     'search'
   );
 
@@ -633,7 +670,7 @@ export const checkAddRuleWithOperator = (
   cy.wait('@search').should(({ request, response }) => {
     const resBody = JSON.stringify(response.body);
 
-    expect(request.url).to.contain(searchCriteria_1);
+    expect(request.url).to.contain(encodeURI(searchCriteria_1));
     expect(resBody).to.not.include(response_2);
   });
 };

@@ -115,7 +115,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public Report get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))

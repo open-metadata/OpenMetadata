@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Clickhouse source module"""
 import enum
-import traceback
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
@@ -30,8 +29,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_TABLE_COMMENTS,
+    CLICKHOUSE_VIEW_DEFINITIONS,
+)
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_view_definitions,
+    get_table_comment_wrapper,
+    get_view_definition_wrapper,
+)
 
 logger = ingestion_logger()
 
@@ -156,20 +165,28 @@ def get_pk_constraint(
 
 @reflection.cache
 def get_view_definition(
-    self, connection, view_name, schema=None, **kw  # pylint: disable=unused-argument
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
-    query = (
-        "select create_table_query from system.tables where engine = 'View'"
-        f"and name='{view_name}' and database='{schema}'"
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=CLICKHOUSE_VIEW_DEFINITIONS,
     )
-    try:
-        result = connection.execute(query)
-        view_definition = result.fetchone()
-        return view_definition[0] if view_definition else ""
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception getting view with query [{query}]: {exc}")
-        return ""
+
+
+@reflection.cache
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_table_comment_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=CLICKHOUSE_TABLE_COMMENTS,
+    )
 
 
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
@@ -179,6 +196,9 @@ ClickHouseDialect._get_column_type = (  # pylint: disable=protected-access
 )
 RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
+ClickHouseDialect.get_table_comment = get_table_comment
+ClickHouseDialect.get_all_view_definitions = get_all_view_definitions
+ClickHouseDialect.get_all_table_comments = get_all_table_comments
 
 
 class ClickhouseSource(CommonDbSourceService):

@@ -62,7 +62,7 @@ public final class UserUtil {
   }
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
       List<String> fields = userRepository.getAllowedFieldsCopy();
@@ -97,7 +97,7 @@ public final class UserUtil {
   }
 
   public static User addOrUpdateUser(User user) {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS

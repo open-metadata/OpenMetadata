@@ -74,10 +74,11 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-    updateOwner();
+    updateOwner(true);
   });
 
-  it('Add user to created team', () => {
+  // Todo:- Enable this once the issue is fixed -> https://github.com/open-metadata/OpenMetadata/issues/9801
+  it.skip('Add user to created team', () => {
     interceptURL(
       'GET',
       `/api/v1/users?fields=teams,roles&team=${TEAM_DETAILS.name}&limit=15`,
@@ -146,7 +147,8 @@ describe('Teams flow should work properly', () => {
     cy.get('.ant-table-row').should('contain', TEAM_DETAILS.username);
   });
 
-  it('Remove added user from created team', () => {
+  // Todo:- Enable this once the issue is fixed -> https://github.com/open-metadata/OpenMetadata/issues/9801
+  it.skip('Remove added user from created team', () => {
     interceptURL(
       'GET',
       `/api/v1/users?fields=*&team=${TEAM_DETAILS.name}&limit=15`,

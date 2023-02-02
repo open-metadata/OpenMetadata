@@ -4,6 +4,21 @@ slug: /connectors/database/oracle/airflow
 ---
 
 # Run Oracle using the Airflow SDK
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |       ❌      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| Partially via Views | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Oracle connector.
 
@@ -23,6 +38,26 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Co
 custom Airflow plugins to handle the workflow deployment.
 
 Note: To fetch metadata from oracle db we use python-oracledb and this support 12c, 18c, 19c and 21c versions! 
+
+
+To ingest metadata from oracle user must have `CREATE SESSION` privilege for the user.
+
+```sql
+
+-- CREATE USER
+CREATE USER user_name IDENTIFIED BY admin_password;
+
+-- CREATE ROLE
+CREATE ROLE new_role;
+
+-- GRANT ROLE TO USER 
+GRANT new_role TO user_name;
+
+-- GRANT CREATE SESSION PRIVILEGE TO USER
+GRANT CREATE SESSION TO new_role;
+
+```
+
 
 ### Python Requirements
 
@@ -65,6 +100,7 @@ source:
         # databaseSchema: schema
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -90,43 +126,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #      -----BEGIN PRIVATE KEY-----
-      #      Super secret key
-      #      -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}
@@ -145,6 +144,10 @@ workflowConfig:
 - **oracleConnectionType** :
   - **oracleServiceName**: The Oracle Service name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
   - **databaseSchema**: The name of the database schema available in Oracle that you want to connect with.
+- **Oracle instant client directory**: The directory pointing to where the `instantclient` binaries for Oracle are located. In the ingestion Docker image we
+    provide them by default at `/instantclient`. If this parameter is informed (it is by default), we will run the [thick oracle client](https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#initializing-python-oracledb).
+    We are shipping the binaries for ARM and AMD architectures from [here](https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html)
+    and [here](https://www.oracle.com/database/technologies/instant-client/linux-arm-aarch64-downloads.html) for the instant client version 19.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`

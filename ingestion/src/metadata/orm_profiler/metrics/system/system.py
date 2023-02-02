@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 from sqlparse.sql import Identifier
 
+from metadata.generated.schema.entity.data.table import DmlOperationType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -77,7 +78,7 @@ def _(
     """Compute system metrics for bigquery
 
     Args:
-        dialect (str): bigqeury
+        dialect (str): bigquery
         session (Session): session Object
         table (DeclarativeMeta): orm table
 
@@ -258,6 +259,8 @@ def _(
                 token.value
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML
+                and token.value.upper()
+                in DmlOperationType._member_names_  # pylint: disable=protected-access
             ),
             None,
         )
