@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Transi18next } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
 
 interface SendButtonProp {
   editorValue: string;
@@ -32,25 +34,32 @@ export const SendButton: FC<SendButtonProp> = ({
   buttonClass,
   onSaveHandler,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div
       className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end"
       onClick={(e) => e.stopPropagation()}>
-      <PopOver
-        html={
+      <Popover
+        content={
           <Fragment>
-            <strong>Send now</strong>
+            <strong>{t('label.send-now')}</strong>
             <p>
-              Press{' '}
-              <kbd className="tw-bg-white tw-text-grey-body tw-rounded-sm tw-px-1 tw-py-0.5">
-                Return
-              </kbd>
+              {t('label.press')}
+              <Transi18next
+                i18nKey="message.tour-step-discover-all-assets-at-one-place"
+                renderElement={
+                  <kbd className="tw-bg-white tw-text-grey-body tw-rounded-sm tw-px-1 tw-py-0.5" />
+                }
+                values={{
+                  text: t('label.return'),
+                }}
+              />
             </p>
           </Fragment>
         }
-        position="top"
-        size="small"
-        trigger="mouseenter">
+        placement="top"
+        trigger="hover">
         <Button
           className={classNames(
             'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
@@ -67,7 +76,7 @@ export const SendButton: FC<SendButtonProp> = ({
             width="18px"
           />
         </Button>
-      </PopOver>
+      </Popover>
     </div>
   );
 };

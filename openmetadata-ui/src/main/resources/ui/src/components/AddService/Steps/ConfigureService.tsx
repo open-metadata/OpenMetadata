@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { EditorContentRef } from 'Models';
 import React, { useRef } from 'react';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import { Field } from '../../Field/Field';
 import { ConfigureServiceProps } from './Steps.interface';
 

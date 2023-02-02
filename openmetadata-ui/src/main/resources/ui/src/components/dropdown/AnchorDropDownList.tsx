@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,9 +14,9 @@
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons from '../../utils/SvgUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import './AnchorDropDownList.style.less';
 import { DropDownListItem, DropDownListProp } from './types';
 

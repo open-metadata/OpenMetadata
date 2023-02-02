@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,19 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TabsPane from 'components/common/TabsPane/TabsPane';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import TestCasesTab from 'components/TestCasesTab/TestCasesTab.component';
+import TestSuiteDetails from 'components/TestSuiteDetails/TestSuiteDetails.component';
+import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -23,20 +36,7 @@ import {
   getTestSuiteByName,
   ListTestCaseParams,
   updateTestSuiteById,
-} from '../../axiosAPIs/testAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../../components/containers/PageContainer';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TestCasesTab from '../../components/TestCasesTab/TestCasesTab.component';
-import TestSuiteDetails from '../../components/TestSuiteDetails/TestSuiteDetails.component';
-import TestSuitePipelineTab from '../../components/TestSuitePipelineTab/TestSuitePipelineTab.component';
+} from 'rest/testAPI';
 import {
   getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -306,8 +306,8 @@ const TestSuiteDetailsPage = () => {
   return (
     <>
       {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
-        <PageContainer>
-          <Row className="tw-px-6 tw-w-full">
+        <PageContainerV1>
+          <Row className="tw-pt-4 tw-px-6 tw-w-full">
             <Col span={24}>
               <TestSuiteDetails
                 descriptionHandler={descriptionHandler}
@@ -345,7 +345,7 @@ const TestSuiteDetailsPage = () => {
               </div>
             </Col>
           </Row>
-        </PageContainer>
+        </PageContainerV1>
       ) : (
         <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
       )}

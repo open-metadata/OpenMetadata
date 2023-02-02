@@ -24,11 +24,8 @@ from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
 )
-from metadata.utils.connections import (
-    SourceConnectionException,
-    get_connection,
-    test_connection,
-)
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = operations_logger()
@@ -52,7 +49,10 @@ def test_source_connection(
     connection = get_connection(test_service_connection.connection.config)
 
     try:
-        test_connection(connection)
+        test_connection_fn = get_test_connection_fn(
+            test_service_connection.connection.config
+        )
+        test_connection_fn(connection)
 
     except SourceConnectionException as exc:
         msg = f"Connection error from [{connection}]: {exc}"

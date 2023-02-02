@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { getRoleByName } from '../../../axiosAPIs/rolesAPIV1';
+import { getRoleByName } from 'rest/rolesAPIV1';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
@@ -25,27 +25,24 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getRoleByName: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));
 
-jest.mock('../../../components/common/description/Description', () =>
+jest.mock('components/common/description/Description', () =>
   jest.fn().mockReturnValue(<div data-testid="description">Description</div>)
 );
 
-jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -63,7 +60,7 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -88,8 +85,8 @@ describe('Test Roles Details Page', () => {
 
     const tabs = await screen.findByTestId('tabs');
 
-    const policiesTab = await screen.findByText('label.policies');
-    const teamsTab = await screen.findByText('label.teams');
+    const policiesTab = await screen.findByText('label.policy-plural');
+    const teamsTab = await screen.findByText('label.team-plural');
     const usersTab = await screen.findByText('label.users');
 
     expect(container).toBeInTheDocument();

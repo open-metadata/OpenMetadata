@@ -5,14 +5,31 @@ slug: /connectors/database/bigquery/airflow
 
 # Run BigQuery using the Airflow SDK 
 
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
+
 In this section, we provide guides and references to use the BigQuery connector.
 
 Configure and schedule BigQuery metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [Lineage](#lineage)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -40,6 +57,7 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 <h4>GCP Permissions</h4>
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
+<Table>
 
 | # | GCP Permission | GCP Role | Required For |
 | :---------- | :---------- | :---------- | :---------- |
@@ -54,6 +72,8 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 | 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
 | 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
 | 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+
+</Table>
 
 
 ## Metadata Ingestion
@@ -97,6 +117,7 @@ source:
           clientX509CertUrl: https://cert.url
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -122,43 +143,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #       -----BEGIN PRIVATE KEY-----
-      #       Super secret key
-      #       -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}
@@ -197,7 +181,7 @@ credentials:
 ```
 
 - **Enable Policy Tag Import (Optional)**: Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.
-- **Tag Category Name (Optional)**: If the Tag import is enabled, the name of the Tag Category will be created at OpenMetadata.
+- **Classification Name (Optional)**: If the Tag import is enabled, the name of the Classification will be created at OpenMetadata.
 - **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
@@ -440,9 +424,9 @@ with DAG(
 Note that from connector to connector, this recipe will always be the same.
 By updating the YAML configuration, you will be able to extract metadata from different sources.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
-To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same.
+To ingest the Query Usage, the `serviceConnection` configuration will remain the same.
 However, the `sourceConfig` is now modeled after this JSON Schema.
 
 ### 1. Define the YAML Config
@@ -716,6 +700,10 @@ with DAG(
    )
 ```
 
-## DBT Integration
+## Lineage
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+
+## dbt Integration
+
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

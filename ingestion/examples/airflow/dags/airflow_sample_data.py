@@ -34,12 +34,14 @@ default_args = {
 
 config = """
 source:
-  type: sample_data
-  serviceName: sample_data_ingestion
+  type: custom-database
+  serviceName: sample_data
   serviceConnection:
     config:
-      type: SampleData
-      sampleDataFolder: "/home/airflow/ingestion/examples/sample_data"
+      type: CustomDatabase
+      sourcePythonClass: metadata.ingestion.source.database.sample_data.SampleDataSource
+      connectionOptions:
+        sampleDataFolder: "/home/airflow/ingestion/examples/sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest

@@ -344,40 +344,23 @@ site_menu:
     url: /connectors/database/vertica/airflow
   - category: Connectors / Database / Vertica / CLI
     url: /connectors/database/vertica/cli
+  - category: Connectors / Database / Vertica / Troubleshooting
+    url: /connectors/database/vertica/troubleshooting
   - category: Connectors / Dashboard
     url: /connectors/dashboard
+
+  - category: Connectors / Dashboard / Domo Dashboard
+    url: /connectors/dashboard/domo-dashboard
+  - category: Connectors / Dashboard / Domo Dashboard / Airflow
+    url: /connectors/dashboard/domo-dashboard/airflow
+  - category: Connectors / Dashboard / Domo Dashboard / CLI
+    url: /connectors/dashboard/domo-dashboard/cli
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Airflow
     url: /connectors/dashboard/looker/airflow
   - category: Connectors / Dashboard / Looker / CLI
     url: /connectors/dashboard/looker/cli
-  - category: Connectors / Dashboard / Redash
-    url: /connectors/dashboard/redash
-  - category: Connectors / Dashboard / Redash / Airflow
-    url: /connectors/dashboard/redash/airflow
-  - category: Connectors / Dashboard / Redash / CLI
-    url: /connectors/dashboard/redash/cli
-  - category: Connectors / Dashboard / Tableau
-    url: /connectors/dashboard/tableau
-  - category: Connectors / Dashboard / Tableau / Airflow
-    url: /connectors/dashboard/tableau/airflow
-  - category: Connectors / Dashboard / Tableau / CLI
-    url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / PowerBI
-    url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
-  - category: Connectors / Dashboard / PowerBI / Airflow
-    url: /connectors/dashboard/powerbi/airflow
-  - category: Connectors / Dashboard / PowerBI / CLI
-    url: /connectors/dashboard/powerbi/cli
-  - category: Connectors / Dashboard / Superset
-    url: /connectors/dashboard/superset
-  - category: Connectors / Dashboard / Superset / Airflow
-    url: /connectors/dashboard/superset/airflow
-  - category: Connectors / Dashboard / Superset / CLI
-    url: /connectors/dashboard/superset/cli
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Airflow
@@ -390,14 +373,40 @@ site_menu:
     url: /connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
     url: /connectors/dashboard/mode/cli
-  - category: Connectors / Dashboard
-  - category: Connectors / Dashboard / Domo Dashboard
-    url: /connectors/dashboard/domo-dashboard
-  - category: Connectors / Dashboard / Domo Dashboard / Airflow
-    url: /connectors/dashboard/domo-dashboard/airflow
-  - category: Connectors / Dashboard / Domo Dashboard / CLI
-    url: /connectors/dashboard/domo-dashboard/cli
-
+  - category: Connectors / Dashboard / PowerBI
+    url: /connectors/dashboard/powerbi
+  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
+    url: /connectors/dashboard/powerbi/powerbi-account-setup
+  - category: Connectors / Dashboard / PowerBI / Airflow
+    url: /connectors/dashboard/powerbi/airflow
+  - category: Connectors / Dashboard / PowerBI / CLI
+    url: /connectors/dashboard/powerbi/cli
+  - category: Connectors / Dashboard / Redash
+    url: /connectors/dashboard/redash
+  - category: Connectors / Dashboard / Redash / Airflow
+    url: /connectors/dashboard/redash/airflow
+  - category: Connectors / Dashboard / Redash / CLI
+    url: /connectors/dashboard/redash/cli
+  - category: Connectors / Dashboard / Superset
+    url: /connectors/dashboard/superset
+  - category: Connectors / Dashboard / Superset / Airflow
+    url: /connectors/dashboard/superset/airflow
+  - category: Connectors / Dashboard / Superset / CLI
+    url: /connectors/dashboard/superset/cli
+  - category: Connectors / Dashboard / Superset / SSO
+    url: /connectors/dashboard/superset/sso
+  - category: Connectors / Dashboard / Tableau
+    url: /connectors/dashboard/tableau
+  - category: Connectors / Dashboard / Tableau / Airflow
+    url: /connectors/dashboard/tableau/airflow
+  - category: Connectors / Dashboard / Tableau / CLI
+    url: /connectors/dashboard/tableau/cli
+  - category: Connectors / Dashboard / Quicksight
+    url: /connectors/dashboard/quicksight
+  - category: Connectors / Dashboard / Quicksight / Airflow
+    url: /connectors/dashboard/quicksight/airflow
+  - category: Connectors / Dashboard / Quicksight / CLI
+    url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
   - category: Connectors / Messaging / Kafka
@@ -406,6 +415,8 @@ site_menu:
     url: /connectors/messaging/kafka/airflow
   - category: Connectors / Messaging / Kafka / CLI
     url: /connectors/messaging/kafka/cli
+  - category: Connectors / Messaging / Kafka / Troubleshooting
+    url: /connectors/messaging/kafka/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Airflow
@@ -489,15 +500,6 @@ site_menu:
   - category: Connectors / Ingestion / Workflows / Metadata
     url: /connectors/ingestion/workflows/metadata
 
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT
-    url: /connectors/ingestion/workflows/metadata/dbt
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-owner
-
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns
     url: /connectors/ingestion/workflows/metadata/filter-patterns
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns / Database
@@ -511,6 +513,20 @@ site_menu:
     url: /connectors/ingestion/workflows/lineage
   - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
     url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
+  - category: Connectors / Ingestion / Workflows / dbt
+    url: /connectors/ingestion/workflows/dbt
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
+  - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
+    url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
@@ -884,8 +900,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/storageservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags
     url: /main-concepts/metadata-standard/schemas/entity/tags
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / TagCategory
-    url: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / Classification
+    url: /main-concepts/metadata-standard/schemas/entity/classification/classification
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn / GenerateToken
     url: /main-concepts/metadata-standard/schemas/entity/teams/authn/generatetoken
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn
@@ -1099,7 +1115,7 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / DBT
+  - category: SDK / Python SDK / Ingestion / dbt
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage

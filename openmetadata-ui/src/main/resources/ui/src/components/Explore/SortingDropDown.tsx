@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Dropdown, Menu } from 'antd';
+import { Dropdown } from 'antd';
 import React from 'react';
 import { normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
@@ -39,15 +39,15 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
     'data-testid': 'dropdown-menu-item',
   }));
 
-  const menu = <Menu data-testid="dropdown-menu" items={items} />;
-
   const label = fieldList.find((field) => field.value === sortField)?.name;
 
   return (
     <Dropdown
       className="tw-self-end tw-mr-2 tw-cursor-pointer"
       data-testid="dropdown"
-      overlay={menu}
+      menu={{
+        items,
+      }}
       trigger={['click']}>
       <div className="tw-text-primary" data-testid="dropdown-label">
         <span className="tw-mr-2">{label}</span>

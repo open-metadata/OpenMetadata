@@ -28,6 +28,10 @@ from requests_aws4auth import AWS4Auth
 from metadata.config.common import ConfigModel
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -39,7 +43,6 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -210,10 +213,7 @@ class ElasticsearchSink(Sink[Entity]):
         if self.config.use_AWS_credentials:
             credentials = boto3.Session().get_credentials()
             # We are initializing the Session() here and letting it pick up host creds.
-            # Not marked as a callable function, but a class.
-            region_from_boto3 = (
-                boto3.Session().region_name()  # pylint: disable=not-callable
-            )
+            region_from_boto3 = boto3.Session().region_name
             http_auth = AWS4Auth(
                 region=self.config.region_name
                 if self.config.region_name
@@ -402,7 +402,7 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
 
-            if isinstance(record, TagCategory):
+            if isinstance(record, Classification):
                 tag_docs = self._create_tag_es_doc(record)
                 for tag_doc in tag_docs:
                     self.elasticsearch_client.index(
@@ -553,7 +553,8 @@ class ElasticsearchSink(Sink[Entity]):
             deleted=topic.deleted,
             service=topic.service,
             serviceType=str(topic.serviceType.name),
-            messageSchema=topic.messageSchema,
+            schemaText=topic.messageSchema.schemaText if topic.messageSchema else None,
+            schemaType=topic.messageSchema.schemaType if topic.messageSchema else None,
             cleanupPolicies=[str(policy.name) for policy in topic.cleanupPolicies],
             replicationFactor=topic.replicationFactor,
             maximumMessageSize=topic.maximumMessageSize,
@@ -568,9 +569,12 @@ class ElasticsearchSink(Sink[Entity]):
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
+        display_name = (
+            dashboard.displayName if dashboard.displayName else dashboard.name.__root__
+        )
         suggest = [
             {"input": [dashboard.fullyQualifiedName.__root__], "weight": 10},
-            {"input": [dashboard.displayName], "weight": 5},
+            {"input": [display_name], "weight": 5},
         ]
         service_suggest = []
         chart_suggest = []
@@ -587,16 +591,15 @@ class ElasticsearchSink(Sink[Entity]):
                 tags.append(dashboard_tag)
 
         for chart in dashboard.charts:
-            chart_suggest.append({"input": [chart.displayName], "weight": 5})
+            chart_display_name = chart.displayName if chart.displayName else chart.name
+            chart_suggest.append({"input": [chart_display_name], "weight": 5})
 
         service_suggest.append({"input": [dashboard.service.name], "weight": 5})
 
         dashboard_doc = DashboardESDocument(
             id=str(dashboard.id.__root__),
-            name=dashboard.displayName
-            if dashboard.displayName
-            else dashboard.name.__root__,
-            displayName=dashboard.displayName if dashboard.displayName else "",
+            name=display_name,
+            displayName=display_name,
             description=dashboard.description.__root__ if dashboard.description else "",
             fullyQualifiedName=dashboard.fullyQualifiedName.__root__,
             version=dashboard.version.__root__,
@@ -621,9 +624,12 @@ class ElasticsearchSink(Sink[Entity]):
         return dashboard_doc
 
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
+        display_name = (
+            pipeline.displayName if pipeline.displayName else pipeline.name.__root__
+        )
         suggest = [
             {"input": [pipeline.fullyQualifiedName.__root__], "weight": 10},
-            {"input": [pipeline.displayName], "weight": 5},
+            {"input": [display_name], "weight": 5},
         ]
         service_suggest = []
         task_suggest = []
@@ -648,9 +654,7 @@ class ElasticsearchSink(Sink[Entity]):
         pipeline_doc = PipelineESDocument(
             id=str(pipeline.id.__root__),
             name=pipeline.name.__root__,
-            displayName=pipeline.displayName
-            if pipeline.displayName
-            else pipeline.name.__root__,
+            displayName=display_name,
             description=pipeline.description.__root__ if pipeline.description else "",
             fullyQualifiedName=pipeline.fullyQualifiedName.__root__,
             version=pipeline.version.__root__,
@@ -674,7 +678,10 @@ class ElasticsearchSink(Sink[Entity]):
         return pipeline_doc
 
     def _create_ml_model_es_doc(self, ml_model: MlModel):
-        suggest = [{"input": [ml_model.displayName], "weight": 10}]
+        display_name = (
+            ml_model.displayName if ml_model.displayName else ml_model.name.__root__
+        )
+        suggest = [{"input": [display_name], "weight": 10}]
         tags = []
         ml_model_followers = []
         if ml_model.followers:
@@ -705,9 +712,7 @@ class ElasticsearchSink(Sink[Entity]):
         ml_model_doc = MlModelESDocument(
             id=str(ml_model.id.__root__),
             name=ml_model.name.__root__,
-            displayName=ml_model.displayName
-            if ml_model.displayName
-            else ml_model.name.__root__,
+            displayName=display_name,
             description=ml_model.description.__root__ if ml_model.description else "",
             fullyQualifiedName=ml_model.fullyQualifiedName.__root__,
             version=ml_model.version.__root__,
@@ -742,7 +747,7 @@ class ElasticsearchSink(Sink[Entity]):
         user_doc = UserESDocument(
             id=str(user.id.__root__),
             name=user.name.__root__,
-            displayName=user.displayName if user.displayName else user.name.__root__,
+            displayName=display_name,
             description=user.description.__root__ if user.description else "",
             fullyQualifiedName=user.fullyQualifiedName.__root__,
             version=user.version.__root__,
@@ -761,14 +766,15 @@ class ElasticsearchSink(Sink[Entity]):
         return user_doc
 
     def _create_team_es_doc(self, team: Team):
+        display_name = team.displayName if team.displayName else team.name.__root__
         suggest = [
-            {"input": [team.displayName], "weight": 5},
+            {"input": [display_name], "weight": 5},
             {"input": [team.name], "weight": 10},
         ]
         team_doc = TeamESDocument(
             id=str(team.id.__root__),
             name=team.name.__root__,
-            displayName=team.displayName if team.displayName else team.name.__root__,
+            displayName=display_name,
             description=team.description.__root__ if team.description else "",
             teamType=team.teamType.name,
             fullyQualifiedName=team.fullyQualifiedName.__root__,
@@ -787,16 +793,19 @@ class ElasticsearchSink(Sink[Entity]):
         return team_doc
 
     def _create_glossary_term_es_doc(self, glossary_term: GlossaryTerm):
+        display_name = (
+            glossary_term.displayName
+            if glossary_term.displayName
+            else glossary_term.name.__root__
+        )
         suggest = [
-            {"input": [glossary_term.displayName], "weight": 5},
+            {"input": [display_name], "weight": 5},
             {"input": [glossary_term.name], "weight": 10},
         ]
         glossary_term_doc = GlossaryTermESDocument(
             id=str(glossary_term.id.__root__),
             name=str(glossary_term.name.__root__),
-            displayName=glossary_term.displayName
-            if glossary_term.displayName
-            else glossary_term.name.__root__,
+            displayName=display_name,
             description=glossary_term.description.__root__
             if glossary_term.description
             else "",
@@ -821,9 +830,13 @@ class ElasticsearchSink(Sink[Entity]):
 
         return glossary_term_doc
 
-    def _create_tag_es_doc(self, tag_category: TagCategory):
+    def _create_tag_es_doc(self, classification: Classification):
         tag_docs = []
-        for tag in tag_category.children:
+
+        tag_list = self.metadata.list_entities(
+            entity=Tag, params={"parent": classification.name.__root__}
+        )
+        for tag in tag_list.entities or []:
             suggest = [
                 {"input": [tag.name.__root__], "weight": 5},
                 {"input": [tag.fullyQualifiedName], "weight": 10},

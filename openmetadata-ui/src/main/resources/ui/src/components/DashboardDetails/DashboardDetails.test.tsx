@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,33 +18,25 @@ import {
   fireEvent,
   render,
 } from '@testing-library/react';
-import { flatten } from 'lodash';
-import { LeafNodes, LoadingNodeState, TagOption } from 'Models';
+import { mockGlossaryList } from 'mocks/Glossary.mock';
+import { mockTagList } from 'mocks/Tags.mock';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { fetchGlossaryTerms } from '../../utils/GlossaryUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
+import { getClassifications } from '../../utils/TagsUtils';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import DashboardDetails from './DashboardDetails.component';
 import { ChartType } from './DashboardDetails.interface';
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 const mockUserTeam = [
   {
@@ -72,6 +64,7 @@ const DashboardDetailsProps = {
       chartType: 'Area',
       displayName: 'Test chart',
       id: '1',
+      deleted: false,
     },
   ] as ChartType[],
   serviceType: '',
@@ -122,56 +115,6 @@ const DashboardDetailsProps = {
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
 
-const mockTagList = [
-  {
-    id: 'tagCatId1',
-    name: 'TagCat1',
-    description: '',
-    children: [
-      {
-        id: 'tagId1',
-        name: 'Tag1',
-        fullyQualifiedName: 'TagCat1.Tag1',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-  {
-    id: 'tagCatId2',
-    name: 'TagCat2',
-    description: '',
-    children: [
-      {
-        id: 'tagId2',
-        name: 'Tag2',
-        fullyQualifiedName: 'TagCat2.Tag2',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-];
-
-const mockGlossaryList = [
-  {
-    name: 'Tag1',
-    displayName: 'Tag1',
-    fullyQualifiedName: 'Glossary.Tag1',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId1',
-  },
-  {
-    name: 'Tag2',
-    displayName: 'Tag2',
-    fullyQualifiedName: 'Glossary.Tag2',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId2',
-  },
-];
-
 window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: mockObserve,
   unobserve: mockunObserve,
@@ -184,7 +127,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
     return (
       <>
@@ -196,7 +139,7 @@ jest.mock('../tags-container/tags-container', () => {
   });
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 
@@ -248,18 +191,10 @@ jest.mock('../../utils/GlossaryUtils', () => ({
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
-      return category.children || [];
-    });
-    const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-      return tag?.fullyQualifiedName || '';
-    });
-
-    return tagList;
-  }),
+  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
+  getTaglist: jest.fn(() =>
+    Promise.resolve(['PersonalData.Personal', 'PersonalData.SpecialCategory'])
+  ),
 }));
 
 describe('Test DashboardDetails component', () => {
@@ -360,12 +295,11 @@ describe('Test DashboardDetails component', () => {
     );
 
     const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(tagWrapper);
+    });
 
-    const tag1 = await findByText('TagCat1.Tag1');
+    const tag1 = await findByText('PersonalData.Personal');
     const glossaryTerm1 = await findByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
@@ -384,12 +318,11 @@ describe('Test DashboardDetails component', () => {
     );
 
     const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(tagWrapper);
+    });
 
-    const tag1 = await findByText('TagCat1.Tag1');
+    const tag1 = await findByText('PersonalData.Personal');
     const glossaryTerm1 = queryByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
@@ -397,7 +330,7 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check if only glossary terms are present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+    (getClassifications as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
     const { getByTestId, findByText, queryByText } = render(
@@ -422,7 +355,7 @@ describe('Test DashboardDetails component', () => {
 
   it('Check that tags and glossary terms are not present', async () => {
     await act(async () => {
-      (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+      (getClassifications as jest.Mock).mockImplementationOnce(() =>
         Promise.reject()
       );
       (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>

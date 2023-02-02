@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
+import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
+import { LeafNodes } from 'components/EntityLineage/EntityLineage.interface';
+import Explore from 'components/Explore/Explore.component';
+import MyData from 'components/MyData/MyData.component';
+import { MyDataProps } from 'components/MyData/MyData.interface';
+import NavBar from 'components/nav-bar/NavBar';
+import Tour from 'components/tour/Tour';
 import { noop } from 'lodash';
 import { observer } from 'mobx-react';
-import { LeafNodes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
-import Explore from '../../components/Explore/Explore.component';
-import MyData from '../../components/MyData/MyData.component';
-import { MyDataProps } from '../../components/MyData/MyData.interface';
-import NavBar from '../../components/nav-bar/NavBar';
-import Tour from '../../components/tour/Tour';
 import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
@@ -39,7 +39,7 @@ import {
   Table,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -119,16 +119,18 @@ const TourPage = () => {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
-            entityCounts={{
-              tableCount: 21,
-              topicCount: 20,
-              dashboardCount: 10,
-              pipelineCount: 8,
-              mlmodelCount: 2,
-              servicesCount: 4,
-              userCount: 100,
-              teamCount: 7,
-              testSuiteCount: 2,
+            data={{
+              entityCounts: {
+                tableCount: 21,
+                topicCount: 20,
+                dashboardCount: 10,
+                pipelineCount: 8,
+                mlmodelCount: 2,
+                servicesCount: 4,
+                userCount: 100,
+                teamCount: 7,
+                testSuiteCount: 2,
+              },
             }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
@@ -220,7 +222,7 @@ const TourPage = () => {
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
             usageSummary={
-              mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
+              mockDatasetData.usageSummary as unknown as UsageDetails
             }
             versionHandler={handleCountChange}
           />

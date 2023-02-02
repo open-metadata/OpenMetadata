@@ -48,13 +48,12 @@ public class SettingsRepository {
   }
 
   public Settings getConfigWithKey(String key) {
-    Settings settings = null;
     try {
-      settings = dao.getSettingsDAO().getConfigWithKey(key);
+      return dao.getSettingsDAO().getConfigWithKey(key);
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings " + ex.getMessage());
     }
-    return settings;
+    return null;
   }
 
   public Response createOrUpdate(Settings setting) {

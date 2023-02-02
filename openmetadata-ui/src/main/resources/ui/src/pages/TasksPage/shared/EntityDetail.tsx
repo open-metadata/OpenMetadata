@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';

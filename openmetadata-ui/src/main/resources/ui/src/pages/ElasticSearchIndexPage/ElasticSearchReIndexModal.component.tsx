@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -50,8 +50,8 @@ const ReIndexAllModal = ({
         htmlType: 'submit',
       }}
       okText="Submit"
+      open={visible}
       title={t('label.re-index-elastic-search')}
-      visible={visible}
       width={650}
       onCancel={onCancel}>
       <Form
@@ -61,7 +61,7 @@ const ReIndexAllModal = ({
         onFinish={onSave}>
         <Form.Item
           initialValue
-          label={t('label.recreate-indexes')}
+          label={t('label.recreate-index-plural')}
           name="recreateIndex">
           <Select
             data-testid="re-index-selector"
@@ -71,7 +71,7 @@ const ReIndexAllModal = ({
 
         <Form.Item
           initialValue={entities}
-          label={t('label.entities-plural')}
+          label={t('label.entity-plural')}
           name="entities">
           <Checkbox.Group
             onChange={(values) => setEntities(values as string[])}>
@@ -91,7 +91,7 @@ const ReIndexAllModal = ({
           <Input
             data-testid="flush-interval-in-sec"
             placeholder={t('label.enter-entity', {
-              entity: t('label.seconds-plural'),
+              entity: t('label.second-plural'),
             })}
           />
         </Form.Item>

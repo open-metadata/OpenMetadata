@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements ElasticSearchIndex {
-  final List<String> excludeTopicFields = List.of("sampleData", "changeDescription");
+  final List<String> excludeTopicFields = List.of("sampleData", "changeDescription", "messageSchema");
   final Topic topic;
 
   public TopicIndex(Topic topic) {
@@ -37,6 +37,8 @@ public class TopicIndex implements ElasticSearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
+    doc.put("schemaText", topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaText() : null);
+    doc.put("schemaType", topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaType() : null);
     return doc;
   }
 }

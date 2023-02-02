@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,11 +25,9 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
-import { getListTestSuites } from '../../../axiosAPIs/testAPI';
+import { getListTestSuites } from 'rest/testAPI';
 import {
   API_RES_MAX_SIZE,
   getTableTabPath,
@@ -39,7 +37,9 @@ import { useAuth } from '../../../hooks/authHooks';
 import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import {
   SelectTestSuiteProps,
   SelectTestSuiteType,
@@ -225,7 +225,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   <SVGIcons
                     alt="plus"
                     className="w-4 m-r-xss"
-                    icon={Icons.ICON_PLUS_PRIMERY}
+                    icon={Icons.ICON_PLUS_PRIMARY}
                   />
                 }
                 onClick={() => setIsNewTestSuite(true)}>

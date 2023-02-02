@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,9 +15,14 @@ import { findAllByText, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ProfileSampleType } from '../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-import { ConfigureIngestionProps } from '../addIngestion.interface';
+import {
+  PipelineType,
+  ProfileSampleType,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  AddIngestionState,
+  ConfigureIngestionProps,
+} from '../addIngestion.interface';
 import ConfigureIngestion from './ConfigureIngestion';
 
 jest.mock('../../common/FilterPattern/FilterPattern', () => {
@@ -31,86 +36,74 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 });
 
 const mockConfigureIngestion: ConfigureIngestionProps = {
-  ingestionName: '',
-  databaseFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  dashboardFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  chartFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  schemaFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  tableFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  topicFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  pipelineFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  mlModelFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
-  includeLineage: false,
-  includeView: false,
-  includeTags: false,
   pipelineType: PipelineType.Metadata,
   formType: FormSubmitType.EDIT,
-  queryLogDuration: 1,
-  resultLimit: 100,
-  stageFileLocation: '',
-  markDeletedTables: false,
-  showDashboardFilter: false,
-  showDatabaseFilter: false,
-  showSchemaFilter: false,
-  showTableFilter: false,
-  showTopicFilter: false,
-  showChartFilter: false,
-  showPipelineFilter: false,
-  showMlModelFilter: false,
-  handleIncludeLineage: jest.fn(),
-  handleIncludeView: jest.fn(),
-  handleIncludeTags: jest.fn(),
-  handleIngestionName: jest.fn(),
-  handleMarkDeletedTables: jest.fn(),
-  handleProfileSample: jest.fn(),
-  handleQueryLogDuration: jest.fn(),
-  handleResultLimit: jest.fn(),
-  handleStageFileLocation: jest.fn(),
   getIncludeValue: jest.fn(),
   getExcludeValue: jest.fn(),
   handleShowFilter: jest.fn(),
   onCancel: jest.fn(),
   onNext: jest.fn(),
-  handleProfileSampleType: jest.fn(),
-  profileSample: 1,
-  profileSampleType: ProfileSampleType.Percentage,
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
-  enableDebugLog: false,
-  handleEnableDebugLog: jest.fn(),
-  ingestSampleData: false,
-  handleIngestSampleData: jest.fn(),
-  databaseServiceNames: [''],
-  handleDatasetServiceName: jest.fn(),
-  threadCount: 5,
-  handleThreadCount: jest.fn(),
-  timeoutSeconds: 43200,
-  handleTimeoutSeconds: jest.fn(),
-  useFqnFilter: false,
-  onUseFqnFilterClick: jest.fn(),
+  onChange: jest.fn(),
+  data: {
+    ingestionName: '',
+    databaseFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    dashboardFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    chartFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    schemaFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    tableFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    topicFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    pipelineFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    mlModelFilterPattern: {
+      includes: [],
+      excludes: [],
+    },
+    includeLineage: false,
+    includeView: false,
+    includeTags: false,
+
+    queryLogDuration: 1,
+    resultLimit: 100,
+    stageFileLocation: '',
+    markDeletedTables: false,
+    showDashboardFilter: false,
+    showDatabaseFilter: false,
+    showSchemaFilter: false,
+    showTableFilter: false,
+    showTopicFilter: false,
+    showChartFilter: false,
+    showPipelineFilter: false,
+    showMlModelFilter: false,
+    profileSample: 1,
+    profileSampleType: ProfileSampleType.Percentage,
+    enableDebugLog: false,
+    ingestSampleData: false,
+    databaseServiceNames: [''],
+    threadCount: 5,
+    timeoutSeconds: 43200,
+    useFqnFilter: false,
+  } as unknown as AddIngestionState,
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -138,7 +131,7 @@ describe('Test ConfigureIngestion component', () => {
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(filterPatternComponents.length).toBe(3);
-    expect(toggleSwitchs.length).toBe(5);
+    expect(filterPatternComponents).toHaveLength(3);
+    expect(toggleSwitchs).toHaveLength(5);
   });
 });

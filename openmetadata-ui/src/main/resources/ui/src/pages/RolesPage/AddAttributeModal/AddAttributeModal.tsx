@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,10 +15,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
-import { getPolicies, getRoles } from '../../../axiosAPIs/rolesAPIV1';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '../../../components/Loader/Loader';
+import { getPolicies, getRoles } from 'rest/rolesAPIV1';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -129,15 +129,15 @@ const AddAttributeModal: FC<Props> = ({
       confirmLoading={isModalLoading}
       data-testid="modal-container"
       okText="Submit"
+      open={isOpen}
       title={
         <span data-testid="modal-title">
           {title}{' '}
-          <span className="tw-text-grey-muted tw-text-sm">
+          <span className="text-grey-muted text-sm">
             ({selectedValues.length}/{data.length} selected)
           </span>
         </span>
       }
-      visible={isOpen}
       width={750}
       onCancel={onCancel}
       onOk={() => onSave(selectedValues)}>
@@ -175,7 +175,7 @@ const AddAttributeModal: FC<Props> = ({
               </Col>
               <Col span={2}>
                 {selectedValues.includes(option.id) && (
-                  <FontAwesomeIcon className="tw-text-primary" icon="check" />
+                  <FontAwesomeIcon className="text-primary" icon="check" />
                 )}
               </Col>
             </Row>

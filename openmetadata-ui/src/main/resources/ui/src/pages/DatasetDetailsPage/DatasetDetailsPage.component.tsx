@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,45 +12,40 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import {
-  addFollower,
-  getTableDetailsByFQN,
-  patchTableDetails,
-  removeFollower,
-} from '../../axiosAPIs/tableAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import {
   Edge,
   EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'components/EntityLineage/EntityLineage.interface';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
+import { observer } from 'mobx-react';
+import { EntityTags } from 'Models';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import {
+  addFollower,
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+  patchTableDetails,
+  removeFollower,
+} from 'rest/tableAPI';
+import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -70,13 +65,14 @@ import {
   TableData,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
@@ -101,6 +97,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
@@ -109,6 +106,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isTableQueriesLoading, setIsTableQueriesLoading] =
     useState<boolean>(false);
   const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+  const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -141,10 +140,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     {} as EntityLineage
   );
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
-  const [usageSummary, setUsageSummary] =
-    useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
-      {} as TypeUsedToReturnUsageDetailsOfAnEntity
-    );
+  const [usageSummary, setUsageSummary] = useState<UsageDetails>(
+    {} as UsageDetails
+  );
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
     id: undefined,
@@ -295,7 +293,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
             joins,
             tags,
             sampleData,
-            profile,
             tableType,
             version,
             service,
@@ -360,11 +357,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setDescription(description ?? '');
           setColumns(columns || []);
           setSampleData(sampleData as TableData);
-          setTableProfile(profile);
           setTableTags(getTagsWithoutTier(tags || []));
-          setUsageSummary(
-            usageSummary as TypeUsedToReturnUsageDetailsOfAnEntity
-          );
+          setUsageSummary(usageSummary as UsageDetails);
           setJoins(joins as TableJoins);
         } else {
           showErrorToast(
@@ -386,6 +380,29 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const fetchTableProfileDetails = async () => {
+    if (!isEmpty(tableDetails)) {
+      setIsTableProfileLoading(true);
+      try {
+        const { profile } = await getLatestTableProfileByFqn(
+          tableDetails.fullyQualifiedName ?? ''
+        );
+
+        setTableProfile(profile);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.table'),
+            entityName: tableDetails.displayName ?? tableDetails.name,
+          })
+        );
+      } finally {
+        setIsTableProfileLoading(false);
+      }
+    }
   };
 
   const fetchTabSpecificData = (tabField = '') => {
@@ -805,6 +822,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [tablePermissions]);
 
   useEffect(() => {
+    !tableDetails.deleted && fetchTableProfileDetails();
+  }, [tableDetails]);
+
+  useEffect(() => {
     fetchResourcePermission(tableFQN);
   }, [tableFQN]);
 
@@ -857,6 +878,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}
               isSampleDataLoading={isSampleDataLoading}
+              isTableProfileLoading={isTableProfileLoading}
               isentityThreadLoading={isentityThreadLoading}
               joins={joins}
               lineageLeafNodes={leafNodes}

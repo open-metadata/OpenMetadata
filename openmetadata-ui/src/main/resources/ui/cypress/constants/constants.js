@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,7 +16,8 @@ const id = uuid();
 
 export const BASE_URL = location.origin;
 
-export const LOGIN_ERROR_MESSAGE = 'You have entered an invalid username or password.';
+export const LOGIN_ERROR_MESSAGE =
+  'You have entered an invalid username or password.';
 
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
@@ -42,9 +43,9 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
-  testSuiteName: "critical_metrics_suite",
-  sqlTestCase: "tableCustomSQLQuery",
-  sqlQuery: "Select * from dim_address"
+  testSuiteName: 'critical_metrics_suite',
+  sqlTestCase: 'tableCustomSQLQuery',
+  sqlQuery: 'Select * from dim_address',
 };
 
 export const SEARCH_ENTITY_TABLE = {
@@ -207,8 +208,15 @@ export const NEW_GLOSSARY = {
   name: 'Business Glossary',
   description: 'This is the Business glossary',
   reviewer: 'Aaron Johnson',
-  tag: 'PII.None'
+  tag: 'PII.None',
 };
+export const NEW_GLOSSARY_1 = {
+  name: 'Product Glossary',
+  description: 'This is the Product glossary',
+  reviewer: 'Brandy Miller',
+  tag: 'PII.None',
+};
+
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
     name: 'Purchase',
@@ -219,6 +227,19 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+  },
+};
+
+export const NEW_GLOSSARY_1_TERMS = {
+  term_1: {
+    name: 'Features',
+    description: 'This is the Features',
+    synonyms: 'data,collect,time',
+  },
+  term_2: {
+    name: 'Uses',
+    description: 'This is the Uses',
+    synonyms: 'home,business,adventure',
   },
 };
 
@@ -254,15 +275,15 @@ export const ENTITIES = {
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
-// commenting the dashboard test for not, need to make changes in dynamic data-test side
-//   entity_dashboard: {
-//     name: 'dashboard',
-//     description: 'This is Dashboard custom property',
-//     integerValue: '14',
-//     stringValue: 'This is string propery',
-//     markdownValue: 'This is markdown value',
-//     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-//   },
+  // commenting the dashboard test for not, need to make changes in dynamic data-test side
+  //   entity_dashboard: {
+  //     name: 'dashboard',
+  //     description: 'This is Dashboard custom property',
+  //     integerValue: '14',
+  //     stringValue: 'This is string propery',
+  //     markdownValue: 'This is markdown value',
+  //     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+  //   },
   entity_pipeline: {
     name: 'pipeline',
     description: 'This is Pipeline custom property',
@@ -279,7 +300,11 @@ export const LOGIN = {
 };
 
 // For now skipping the dashboard entity "SEARCH_ENTITY_DASHBOARD.dashboard_1"
-export const ANNOUNCEMENT_ENTITIES = [SEARCH_ENTITY_TABLE.table_1, SEARCH_ENTITY_TOPIC.topic_1, SEARCH_ENTITY_PIPELINE.pipeline_1]
+export const ANNOUNCEMENT_ENTITIES = [
+  SEARCH_ENTITY_TABLE.table_1,
+  SEARCH_ENTITY_TOPIC.topic_1,
+  SEARCH_ENTITY_PIPELINE.pipeline_1,
+];
 
 export const HTTP_CONFIG_SOURCE = {
   DBT_CATALOG_HTTP_PATH:
@@ -291,7 +316,7 @@ export const HTTP_CONFIG_SOURCE = {
 };
 
 export const DBT = {
-  tagCategory: 'DBTTags',
+  classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
@@ -304,4 +329,32 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
-}
+};
+
+export const TEST_CASE = {
+  testCaseAlert: `TestCaseAlert-ct-test-${uuid()}`,
+  testCaseDescription: 'This is test case alert description',
+  dataAsset: 'Test Case',
+  filters: 'Test Results === Failed',
+};
+
+export const DESTINATION = {
+  webhook: {
+    name: `webhookAlert-ct-test-${uuid()}`,
+    locator: 'Webhook',
+    description: 'This is webhook description',
+    url: 'http://localhost:8585',
+  },
+  slack: {
+    name: `slackAlert-ct-test-${uuid()}`,
+    locator: 'Slack',
+    description: 'This is slack description',
+    url: 'http://localhost:8585',
+  },
+  msteams: {
+    name: `msteamsAlert-ct-test-${uuid()}`,
+    locator: 'MS Teams',
+    description: 'This is ms teams description',
+    url: 'http://localhost:8585',
+  },
+};

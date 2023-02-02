@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,6 +16,7 @@ import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
 import {
   REACTION_LIST,
@@ -39,6 +40,7 @@ interface ReactionsProps {
 }
 
 const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   const hide = () => {
@@ -107,12 +109,12 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         <Popover
           align={{ targetOffset: [0, -10] }}
           content={reactionList}
+          open={visible}
           overlayClassName="ant-popover-feed-reactions"
           placement="topLeft"
           trigger="click"
-          visible={visible}
           zIndex={9999}
-          onVisibleChange={handleVisibleChange}>
+          onOpenChange={handleVisibleChange}>
           <Button
             className="ant-btn-reaction ant-btn-add-reactions"
             data-testid="add-reactions"
@@ -121,8 +123,9 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
             <SVGIcons
               alt="add-reaction"
               icon={Icons.ADD_REACTION}
-              // style={{ verticalAlign: 'text-bottom' }}
-              title="Add reactions"
+              title={t('label.add-entity', {
+                entity: t('label.reaction-lowercase-plural'),
+              })}
               width="18px"
             />
           </Button>

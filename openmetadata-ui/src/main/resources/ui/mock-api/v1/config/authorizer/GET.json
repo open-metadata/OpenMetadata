@@ -1,8 +1,0 @@
-{
-  "className": "org.openmetadata.service.security.NoopAuthorizer",
-  "containerRequestFilter": "org.openmetadata.service.security.NoopFilter",
-  "adminPrincipals": [
-    "admin"
-  ],
-  "principalDomain": ""
-}

@@ -36,8 +36,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension";
-  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension";
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -60,11 +60,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
-    dashboard.setUsageSummary(
+    return dashboard.withUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
             : null);
-    return dashboard;
   }
 
   @Override

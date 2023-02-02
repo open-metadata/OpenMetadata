@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.nifi import (
+from metadata.ingestion.source.pipeline.nifi.metadata import (
     NifiPipelineDetails,
     NifiProcessor,
     NifiProcessorConnections,
@@ -163,9 +163,11 @@ MOCK_PIPELINE = Pipeline(
 
 
 class NifiUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
     @patch(
-        "metadata.ingestion.source.pipeline.nifi.NifiClient.token",
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
         new_callable=PropertyMock,
     )
     def __init__(self, methodName, nifi_token_prop, test_connection) -> None:

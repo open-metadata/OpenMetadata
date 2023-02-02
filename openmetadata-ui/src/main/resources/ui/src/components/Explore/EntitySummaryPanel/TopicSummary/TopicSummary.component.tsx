@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,16 +12,21 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { isArray } from 'lodash';
-import React, { useMemo } from 'react';
+import { isArray, isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTopicByFqn } from 'rest/topicsAPI';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Topic } from '../../../../generated/entity/data/topic';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
-import SchemaEditor from '../../../schema-editor/SchemaEditor';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface TopicSummaryProps {
   entityDetails: Topic;
@@ -29,15 +34,49 @@ interface TopicSummaryProps {
 
 function TopicSummary({ entityDetails }: TopicSummaryProps) {
   const { t } = useTranslation();
+  const [topicDetails, setTopicDetails] = useState<Topic>(entityDetails);
 
   const topicConfig = useMemo(() => {
-    const configs = getConfigObject(entityDetails);
+    const configs = getConfigObject(topicDetails);
 
     return {
       ...configs,
       'Retention Size': bytesToSize(configs['Retention Size'] ?? 0),
       'Max Message Size': bytesToSize(configs['Max Message Size'] ?? 0),
     };
+  }, [topicDetails]);
+
+  const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        topicDetails.messageSchema?.schemaFields
+      ),
+    [topicDetails]
+  );
+
+  const fetchExtraTopicInfo = async () => {
+    try {
+      const res = await getTopicByFqn(
+        entityDetails.fullyQualifiedName ?? '',
+        ''
+      );
+
+      const { partitions, messageSchema } = res;
+
+      setTopicDetails({ ...entityDetails, partitions, messageSchema });
+    } catch {
+      showErrorToast(
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.topic-lowercase'),
+          entityName: entityDetails.name,
+        })
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchExtraTopicInfo();
   }, [entityDetails]);
 
   return (
@@ -56,14 +95,19 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
               const value =
                 topicConfig[fieldName as keyof TopicConfigObjectInterface];
 
+              const fieldValue = isArray(value) ? value.join(', ') : value;
+
               return (
                 <Col key={fieldName} span={24}>
                   <Row gutter={16}>
-                    <Col className="text-gray" span={10}>
+                    <Col
+                      className="text-gray"
+                      data-testid={`${fieldName}-label`}
+                      span={10}>
                       {fieldName}
                     </Col>
-                    <Col span={12}>
-                      {isArray(value) ? value.join(', ') : value}
+                    <Col data-testid={`${fieldName}-value`} span={12}>
+                      {fieldValue ? fieldValue : '-'}
                     </Col>
                   </Row>
                 </Col>
@@ -73,24 +117,25 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
         </Col>
       </Row>
       <Divider className="m-0" />
-      <Row className="m-md">
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {entityDetails.messageSchema?.schemaText ? (
-            <SchemaEditor
-              editorClass="summary-schema-editor"
-              value={entityDetails.messageSchema.schemaText}
-            />
-          ) : (
+          {isEmpty(topicDetails.messageSchema?.schemaFields) ? (
             <div className="m-y-md">
-              <Typography.Text className="text-gray">
-                {t('label.no-data-available')}
+              <Typography.Text
+                className="text-gray"
+                data-testid="no-data-message">
+                {t('message.no-data-available')}
               </Typography.Text>
             </div>
+          ) : (
+            <SummaryList formattedEntityData={formattedSchemaFieldsData} />
           )}
         </Col>
       </Row>

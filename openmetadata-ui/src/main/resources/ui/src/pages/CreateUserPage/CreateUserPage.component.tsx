@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,19 +12,15 @@
  */
 
 import { AxiosError } from 'axios';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import CreateUserComponent from 'components/CreateUser/CreateUser.component';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { createBotWithPut } from '../../axiosAPIs/botsAPI';
-import { getRoles } from '../../axiosAPIs/rolesAPIV1';
-import {
-  createUser,
-  createUserWithPut,
-  getBotByName,
-} from '../../axiosAPIs/userAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
+import { createBotWithPut } from 'rest/botsAPI';
+import { getRoles } from 'rest/rolesAPIV1';
+import { createUser, createUserWithPut, getBotByName } from 'rest/userAPI';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
   GlobalSettingOptions,

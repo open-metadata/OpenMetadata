@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import {
   diffWordsWithSpace,
 } from 'diff';
 import { t } from 'i18next';
-import { isUndefined, uniqueId } from 'lodash';
+import { isUndefined, toString, uniqueId } from 'lodash';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { EntityField } from '../constants/Feeds.constants';
@@ -82,39 +82,39 @@ export const getDescriptionDiff = (
   newDescription: string | undefined,
   latestDescription: string | undefined
 ) => {
-  if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
-    const diffArr = diffWords(oldDescription ?? '', newDescription ?? '');
-
-    const result = diffArr.map((diff) => {
-      if (diff.added) {
-        return ReactDOMServer.renderToString(
-          <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
-            {diff.value}
-          </ins>
-        );
-      }
-      if (diff.removed) {
-        return ReactDOMServer.renderToString(
-          <del
-            data-testid="diff-removed"
-            key={uniqueId()}
-            style={{ color: 'grey', textDecoration: 'line-through' }}>
-            {diff.value}
-          </del>
-        );
-      }
-
-      return ReactDOMServer.renderToString(
-        <span data-testid="diff-normal" key={uniqueId()}>
-          {diff.value}
-        </span>
-      );
-    });
-
-    return result.join('');
-  } else {
+  if (isUndefined(newDescription) || isUndefined(oldDescription)) {
     return latestDescription || '';
   }
+
+  const diffArr = diffWords(toString(oldDescription), toString(newDescription));
+
+  const result = diffArr.map((diff) => {
+    if (diff.added) {
+      return ReactDOMServer.renderToString(
+        <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
+          {diff.value}
+        </ins>
+      );
+    }
+    if (diff.removed) {
+      return ReactDOMServer.renderToString(
+        <del
+          data-testid="diff-removed"
+          key={uniqueId()}
+          style={{ color: 'grey', textDecoration: 'line-through' }}>
+          {diff.value}
+        </del>
+      );
+    }
+
+    return ReactDOMServer.renderToString(
+      <span data-testid="diff-normal" key={uniqueId()}>
+        {diff.value}
+      </span>
+    );
+  });
+
+  return result.join('');
 };
 
 export const getTagsDiff = (
@@ -181,10 +181,10 @@ export const getSummary = (
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
-                ? t('label.data-asset-has-been-action-type', {
+                ? t('message.data-asset-has-been-action-type', {
                     actionType: t('label.deleted-lowercase'),
                   })
-                : t('label.data-asset-has-been-action-type', {
+                : t('message.data-asset-has-been-action-type', {
                     actionType: t('label.restored-lowercase'),
                   });
             })

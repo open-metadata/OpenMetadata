@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 
 import java.io.IOException;
@@ -50,7 +49,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void setFullyQualifiedName(Database database) {
-    database.setFullyQualifiedName(FullyQualifiedName.add(database.getService().getName(), database.getName()));
+    database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
   }
 
   @Transaction
@@ -98,12 +97,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getContainer(database.getId()));
-    database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    database.setLocation(fields.contains("location") ? getLocation(database) : null);
-    return database;
+    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
   }
 
   @Override

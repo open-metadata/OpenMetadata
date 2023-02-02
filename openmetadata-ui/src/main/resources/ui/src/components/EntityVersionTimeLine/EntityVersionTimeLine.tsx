@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { getSummary, isMajorVersion } from '../../utils/EntityVersionUtils';
 
@@ -33,6 +34,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   versionHandler,
   onBack,
 }: Props) => {
+  const { t } = useTranslation();
   const [versionType] = useState<VersionType>('all');
   const getVersionList = () => {
     let versionTypeList = [];
@@ -122,7 +124,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   <span>v{parseFloat(currV?.version).toFixed(1)}</span>
                   {majorVersionChecks() ? (
                     <span className="tw-ml-2 tw-text-xs tw-font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
-                      Major
+                      {t('label.major')}
                     </span>
                   ) : null}
                 </p>
@@ -138,7 +140,10 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 </div>
                 <p className="tw-text-xs tw-italic">
                   <span className="tw-font-medium">{currV?.updatedBy}</span>
-                  <span className="tw-text-grey-muted"> updated on </span>
+                  <span className="tw-text-grey-muted">
+                    {' '}
+                    {t('label.updated-on')}{' '}
+                  </span>
                   <span className="tw-font-medium">
                     {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
                       hour: 'numeric',
@@ -153,7 +158,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
       })
     ) : (
       <p className="tw-text-grey-muted tw-flex tw-justify-center tw-items-center tw-mt-10">
-        {`No ${capitalize(versionType)} versions available`}
+        {t('message.no-version-type-available', {
+          type: capitalize(versionType),
+        })}
       </p>
     );
   };
@@ -161,7 +168,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   return (
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
-        <p className="tw-font-medium tw-mr-2">Versions History</p>
+        <p className="tw-font-medium tw-mr-2">{t('label.versions-history')}</p>
         <div className="tw-flex" onClick={onBack}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"

@@ -1,10 +1,22 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosError } from 'axios';
 import { debounce, isEqual, lowerCase } from 'lodash';
-import { Status } from 'Models';
+import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getGroupTypeTeams } from 'rest/userAPI';
 import { default as AppState, default as appState } from '../../../AppState';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
-import { getGroupTypeTeams } from '../../../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -16,6 +28,7 @@ import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
 } from '../../../utils/UserDataUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import DropDownList from '../../dropdown/DropDownList';
 import './OwnerWidgetWrapper.style.less';
 
@@ -41,7 +54,7 @@ const OwnerWidgetWrapper = ({
 }: OwnerWidgetWrapperProps) => {
   const { isAuthDisabled } = useAuthContext();
   const { isAdminUser } = useAuth();
-  const [statusOwner, setStatusOwner] = useState<Status>('initial');
+  const [statusOwner, setStatusOwner] = useState<LoadingState>('initial');
 
   const [listOwners, setListOwners] = useState<
     {
@@ -191,9 +204,9 @@ const OwnerWidgetWrapper = ({
     }
   }, [searchText]);
 
-  const getOwnerGroup = () => {
+  const ownerGroupList = useMemo(() => {
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
-  };
+  }, [allowTeamOwner]);
 
   const handleSearchOwnerDropdown = (text: string) => {
     setSearchText(text);
@@ -224,9 +237,9 @@ const OwnerWidgetWrapper = ({
       controlledSearchStr={searchText}
       dropDownList={listOwners}
       getTotalCountForGroup={handleTotalCountForGroup}
-      groupType="tab"
+      groupType={ownerGroupList.length > 1 ? 'tab' : 'label'}
       isLoading={isUserLoading}
-      listGroups={getOwnerGroup()}
+      listGroups={ownerGroupList}
       removeOwner={handleRemoveOwner}
       showSearchBar={isCurrentUserAdmin()}
       value={owner?.id || ''}

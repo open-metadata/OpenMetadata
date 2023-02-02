@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Row, Space, Tag, Typography } from 'antd';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageHeader from 'components/header/PageHeader.component';
+import { HeaderProps } from 'components/header/PageHeader.interface';
 import { isArray } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,15 +42,13 @@ import {
   getFunctionDisplayName,
 } from '../../../utils/Alerts/AlertsUtil';
 import { getHostNameFromURL } from '../../../utils/CommonUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
 
 interface AlertDetailsComponentProps {
   alerts: Alerts;
   alertActions: AlertAction[];
   onDelete: () => void;
-  breadcrumb: TitleBreadcrumbProps['titleLinks'];
+  pageHeaderData?: HeaderProps['data'];
+  breadcrumb?: TitleBreadcrumbProps['titleLinks'];
   allowDelete?: boolean;
   allowEdit?: boolean;
 }
@@ -54,8 +57,9 @@ export const AlertDetailsComponent = ({
   alerts,
   alertActions,
   onDelete,
-  breadcrumb,
+  pageHeaderData,
   allowDelete = true,
+  breadcrumb,
   allowEdit = true,
 }: AlertDetailsComponentProps) => {
   const { t } = useTranslation();
@@ -64,7 +68,9 @@ export const AlertDetailsComponent = ({
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
         <div className="d-flex items-center justify-between">
-          <TitleBreadcrumb titleLinks={breadcrumb} />
+          {breadcrumb ? <TitleBreadcrumb titleLinks={breadcrumb} /> : null}
+
+          {pageHeaderData ? <PageHeader data={pageHeaderData} /> : null}
           <Space size={16}>
             {allowEdit && (
               <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
@@ -85,13 +91,6 @@ export const AlertDetailsComponent = ({
       </Col>
       <Col span={24}>
         <Card>
-          {alerts.description && (
-            <>
-              <RichTextEditorPreviewer markdown={alerts?.description ?? ''} />
-              <Divider />
-            </>
-          )}
-
           <Space direction="vertical" size={8}>
             <Typography.Title className="m-0" level={5}>
               {t('label.trigger')}
@@ -102,14 +101,16 @@ export const AlertDetailsComponent = ({
               )}
               :
             </Typography.Text>
-            <Typography.Text>
+            <Typography.Text data-testid="display-name-entities">
               {alerts?.triggerConfig.entities
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
             </Typography.Text>
           </Space>
           <Divider />
-          <Typography.Title level={5}>{t('label.filter')}</Typography.Title>
+          <Typography.Title level={5}>
+            {t('label.filter-plural')}
+          </Typography.Title>
           <Typography.Paragraph>
             {alerts?.filteringRules?.map((filter) => {
               const conditions = isArray(filter.condition)
@@ -146,7 +147,18 @@ export const AlertDetailsComponent = ({
                     )}
                   </Space>
                 ) : (
-                  <Card className="h-full" title={<Space size={8} />}>
+                  <Card
+                    className="h-full"
+                    title={
+                      <Space size={16}>
+                        {getAlertsActionTypeIcon(action.alertActionType)}
+
+                        {getAlertActionTypeDisplayName(
+                          action.alertActionType ??
+                            AlertActionType.GenericWebhook
+                        )}
+                      </Space>
+                    }>
                     <Space direction="vertical" size={8}>
                       {action.alertActionType === AlertActionType.Email && (
                         <>

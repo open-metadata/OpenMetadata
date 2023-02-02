@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,20 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, mySqlConnectionInput, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { API_SERVICE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import {
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  mySqlConnectionInput,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
+} from '../../common/common';
+import {
+  API_SERVICE,
+  SERVICE_TYPE,
+  TEAM_ENTITY,
+} from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -23,12 +35,16 @@ describe('MySQL Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });
+
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
       // cy.get('[data-testid="filter-pattern-container"]').first().scrollIntoView().should('be.visible');
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]').invoke('show').trigger('mouseover').check();
+      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
+        .invoke('show')
+        .trigger('mouseover')
+        .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
         .type(Cypress.env('mysqlDatabaseSchema'));
@@ -61,6 +77,10 @@ describe('MySQL Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 });

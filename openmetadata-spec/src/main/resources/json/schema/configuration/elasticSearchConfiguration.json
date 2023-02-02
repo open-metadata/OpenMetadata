@@ -4,7 +4,19 @@
   "title": "ElasticSearchConfiguration",
   "description": "This schema defines the Elastic Search Configuration.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration",
+  "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration",
+  "definitions": {
+    "searchIndexMappingLanguage": {
+      "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+      "description": "This schema defines the language options available for search index mappigns.",
+      "type": "string",
+      "enum": [
+        "EN",
+        "JP"
+      ],
+      "default": "EN"
+    }
+  },
   "properties": {
     "host": {
       "description": "Elastic Search Host",
@@ -48,8 +60,11 @@
       "description": "Batch Size for Requests",
       "type": "integer",
       "default": 10
+    },
+    "searchIndexMappingLanguage": {
+      "$ref": "#/definitions/searchIndexMappingLanguage"
     }
   },
-  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize"],
+  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

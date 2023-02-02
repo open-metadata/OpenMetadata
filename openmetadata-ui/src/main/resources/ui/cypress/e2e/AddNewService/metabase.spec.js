@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import {
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
+} from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Metabase';
@@ -23,6 +30,7 @@ describe('Metabase Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });
+
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Dashboard);
 
@@ -41,11 +49,12 @@ describe('Metabase Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
-      .invoke('show').trigger('mouseover')
-      .check();
+        .invoke('show')
+        .trigger('mouseover')
+        .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
-      .should('be.visible')
-      .type(tableName);
+        .should('be.visible')
+        .type(tableName);
     };
 
     testServiceCreationAndIngestion(
@@ -76,6 +85,10 @@ describe('Metabase Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName, API_SERVICE.dashboardServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Dashboard,
+      serviceName,
+      API_SERVICE.dashboardServices
+    );
   });
 });

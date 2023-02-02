@@ -14,14 +14,14 @@ Python API REST wrapper and helpers
 import datetime
 import time
 import traceback
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -101,6 +101,7 @@ class ClientConfig(ConfigModel):
     access_token: Optional[str] = None
     expires_in: Optional[int] = None
     auth_header: Optional[str] = None
+    extra_headers: Optional[dict] = None
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
     auth_token_mode: Optional[str] = "Bearer"
@@ -135,6 +136,7 @@ class REST:
         api_version: str = None,
         headers: dict = None,
     ):
+        # pylint: disable=too-many-locals
         if not headers:
             headers = {"Content-type": "application/json"}
         base_url = base_url or self._base_url
@@ -156,6 +158,17 @@ class REST:
         headers[
             self.config.auth_header
         ] = f"{self._auth_token_mode} {self.config.access_token}"
+
+        # Merge extra headers if provided.
+        # If a header value is provided in modulo string format and matches an existing header,
+        # the value will be set to that value.
+        # Example: "Proxy-Authorization": "%(Authorization)s"
+        # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
+        if self.config.extra_headers:
+            extra_headers: Dict[str, str] = self.config.extra_headers
+            extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
+            logger.debug("Extra headers provided '%s'", extra_headers)
+            headers = {**headers, **extra_headers}
 
         opts = {
             "headers": headers,
@@ -215,7 +228,13 @@ class REST:
                 f"Unexpected error calling [{url}] with method [{method}]: {exc}"
             )
         if resp.text != "":
-            return resp.json()
+            try:
+                return resp.json()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error while returing response {resp} in json format - {exc}"
+                )
         return None
 
     def get(self, path, data=None):

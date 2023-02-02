@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/tableUsageCount.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table Usage Count",
-  "description": "This model is the linking between the usage stage and bulksink steps",
+  "description": "This model is the linking between the usage stage and bulk sink steps",
   "type": "object",
   "definitions": {
     "tableColumn": {

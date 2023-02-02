@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,30 +12,30 @@
  */
 
 import { AxiosError } from 'axios';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { AssetsDataType, FormattedTableData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { searchData } from 'rest/miscAPI';
 import {
   createTeam,
   getTeamByName,
   getTeams,
   patchTeamDetail,
-} from '../../axiosAPIs/teamsAPI';
-import { getUsers, updateUserDetail } from '../../axiosAPIs/userAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
+} from 'rest/teamsAPI';
+import { getUsers, updateUserDetail } from 'rest/userAPI';
+import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,
@@ -500,10 +500,10 @@ const TeamsPage = () => {
 
   const fetchAssets = () => {
     searchData(
-      `owner.id:${selectedTeam.id}`,
+      ``,
       assets.currPage,
       LIST_SIZE,
-      ``,
+      `owner.id:${selectedTeam.id}`,
       '',
       '',
       myDataSearchIndex
@@ -576,7 +576,7 @@ const TeamsPage = () => {
   return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
     <>
       {isEmpty(selectedTeam) ? (
-        <ErrorPlaceHolder>{t('label.no-team-found')}</ErrorPlaceHolder>
+        <ErrorPlaceHolder>{t('message.no-team-found')}</ErrorPlaceHolder>
       ) : (
         <TeamDetailsV1
           afterDeleteAction={afterDeleteAction}

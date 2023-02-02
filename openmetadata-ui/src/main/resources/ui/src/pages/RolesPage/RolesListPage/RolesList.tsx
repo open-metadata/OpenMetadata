@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,13 +13,13 @@
 
 import { Button, Popover, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -73,7 +73,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         key: 'name',
         render: (_, record) => (
           <Link
-            className="hover:tw-underline tw-cursor-pointer"
+            className="link-hover"
             data-testid="role-name"
             to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
             {getEntityName(record)}
@@ -114,7 +114,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
               )}
               {hasMore && (
                 <Popover
-                  className="tw-cursor-pointer"
+                  className="cursor-pointer"
                   content={
                     <Space wrap size={4}>
                       {record.policies.slice(LIST_CAP).map((policy) =>
@@ -136,9 +136,9 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                       )}
                     </Space>
                   }
-                  overlayClassName="tw-w-40 tw-text-center"
+                  overlayClassName="w-40 text-center"
                   trigger="click">
-                  <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
                     listLength - LIST_CAP
                   } more`}</Tag>
                 </Popover>

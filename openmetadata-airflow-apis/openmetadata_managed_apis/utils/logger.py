@@ -4,6 +4,11 @@ from logging.handlers import RotatingFileHandler
 
 from airflow.configuration import conf
 
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.utils.logger import set_loggers_level
+
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 )
@@ -27,6 +32,8 @@ def build_logger(logger_name: str) -> logging.Logger:
     )
     rotating_log_handler.setFormatter(log_format)
     logger.addHandler(rotating_log_handler)
+    # We keep the log level as DEBUG to have all the traces in case anything fails
+    # during a deployment of a DAG
     logger.setLevel(logging.DEBUG)
     return logger
 
@@ -49,3 +56,12 @@ def workflow_logger():
 
 def utils_logger():
     return build_logger(Loggers.UTILS.value)
+
+
+def set_operator_logger(workflow_config: OpenMetadataWorkflowConfig) -> None:
+    """
+    Handle logging for the Python Operator that
+    will execute the ingestion
+    """
+    logging.getLogger().setLevel(logging.WARNING)
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)

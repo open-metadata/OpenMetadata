@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -164,7 +164,7 @@ import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
-import IconPlusPrimery from '../assets/svg/plus-primery.svg';
+import IconPlusPrimary from '../assets/svg/plus-primary.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconPolicies from '../assets/svg/policies.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
@@ -309,7 +309,7 @@ export const Icons = {
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
-  ICON_PLUS_PRIMERY: 'icon-plus-primary',
+  ICON_PLUS_PRIMARY: 'icon-plus-primary',
   ICON_PLUS_PRIMARY_OUTLINED: 'icon-plus-primary-outlined',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
@@ -402,6 +402,11 @@ export const Icons = {
   ARROW_DOWN_LIGHT: 'arrow-down-light',
   DRAG: 'drag',
 };
+
+/**
+ * @deprecated SVGIcons is deprecated, Please use SVG image as ReactComponent wherever it is required
+ * e.g import { ReactComponent as Icon } from '<PATH_NAME>';
+ */
 
 const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
   let IconComponent;
@@ -771,8 +776,8 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconPlus;
 
       break;
-    case Icons.ICON_PLUS_PRIMERY:
-      IconComponent = IconPlusPrimery;
+    case Icons.ICON_PLUS_PRIMARY:
+      IconComponent = IconPlusPrimary;
 
       break;
     case Icons.ICON_MINUS:

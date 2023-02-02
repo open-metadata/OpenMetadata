@@ -23,9 +23,9 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
+from metadata.utils.logger import ANSI, log_ansi_encoded_string
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
@@ -67,7 +67,7 @@ def print_more_info(workflow_type: WorkflowType) -> None:
     """
     Print more information message
     """
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         message=f"\nFor more information, please visit: {URLS[workflow_type]}"
         "\nOr join us in Slack: https://slack.open-metadata.org/"
     )
@@ -77,7 +77,7 @@ def print_error_msg(msg: str) -> None:
     """
     Print message with error style
     """
-    print_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
+    log_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
 
 
 def print_sink_status(workflow) -> None:
@@ -85,11 +85,11 @@ def print_sink_status(workflow) -> None:
     Common prints for Sink status
     """
 
-    print_ansi_encoded_string(bold=True, message="Processor Status:")
-    print_ansi_encoded_string(message=workflow.status.as_string())
+    log_ansi_encoded_string(bold=True, message="Processor Status:")
+    log_ansi_encoded_string(message=workflow.status.as_string())
     if hasattr(workflow, "sink"):
-        print_ansi_encoded_string(bold=True, message="Sink Status:")
-        print_ansi_encoded_string(message=workflow.sink.get_status().as_string())
+        log_ansi_encoded_string(bold=True, message="Sink Status:")
+        log_ansi_encoded_string(message=workflow.sink.get_status().as_string())
 
 
 def calculate_ingestion_type(source_type_name: str) -> WorkflowType:
@@ -128,13 +128,13 @@ def print_file_example(source_type_name: str, workflow_type: WorkflowType):
         if not example_path.exists():
             example_file = DEFAULT_EXAMPLE_FILE[workflow_type]
             example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             message=f"\nMake sure you are following the following format e.g. '{example_file}':"
         )
-        print_ansi_encoded_string(message="------------")
+        log_ansi_encoded_string(message="------------")
         with open(example_path, encoding=UTF_8) as file:
-            print_ansi_encoded_string(message=file.read())
-        print_ansi_encoded_string(message="------------")
+            log_ansi_encoded_string(message=file.read())
+        log_ansi_encoded_string(message="------------")
 
 
 def print_init_error(
@@ -174,27 +174,27 @@ def print_status(workflow) -> None:
     """
     Print the workflow results
     """
-    print_ansi_encoded_string(bold=True, message="Source Status:")
-    print_ansi_encoded_string(message=workflow.source.get_status().as_string())
+    log_ansi_encoded_string(bold=True, message="Source Status:")
+    log_ansi_encoded_string(message=workflow.source.get_status().as_string())
     if hasattr(workflow, "stage"):
-        print_ansi_encoded_string(bold=True, message="Stage Status:")
-        print_ansi_encoded_string(message=workflow.stage.get_status().as_string())
+        log_ansi_encoded_string(bold=True, message="Stage Status:")
+        log_ansi_encoded_string(message=workflow.stage.get_status().as_string())
     if hasattr(workflow, "sink"):
-        print_ansi_encoded_string(bold=True, message="Sink Status:")
-        print_ansi_encoded_string(message=workflow.sink.get_status().as_string())
+        log_ansi_encoded_string(bold=True, message="Sink Status:")
+        log_ansi_encoded_string(message=workflow.sink.get_status().as_string())
     if hasattr(workflow, "bulk_sink"):
-        print_ansi_encoded_string(bold=True, message="Bulk Sink Status:")
-        print_ansi_encoded_string(message=workflow.bulk_sink.get_status().as_string())
+        log_ansi_encoded_string(bold=True, message="Bulk Sink Status:")
+        log_ansi_encoded_string(message=workflow.bulk_sink.get_status().as_string())
 
     if workflow.source.get_status().source_start_time:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
             message="Workflow finished in time: "
             f"{pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)}",
         )
 
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
             message=f"Success %: "
@@ -202,7 +202,7 @@ def print_status(workflow) -> None:
         )
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED,
             bold=True,
             message=WORKFLOW_FAILURE_MESSAGE,
@@ -210,11 +210,11 @@ def print_status(workflow) -> None:
     elif workflow.source.get_status().warnings or (
         hasattr(workflow, "sink") and workflow.sink.get_status().warnings
     ):
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.YELLOW, bold=True, message=WORKFLOW_WARNING_MESSAGE
         )
     else:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
 
@@ -223,12 +223,12 @@ def print_profiler_status(workflow) -> None:
     """
     Print the profiler workflow results
     """
-    print_ansi_encoded_string(bold=True, message="Source Status:")
-    print_ansi_encoded_string(message=workflow.source_status.as_string())
+    log_ansi_encoded_string(bold=True, message="Source Status:")
+    log_ansi_encoded_string(message=workflow.source_status.as_string())
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED, bold=True, message=WORKFLOW_FAILURE_MESSAGE
         )
     elif (
@@ -236,11 +236,11 @@ def print_profiler_status(workflow) -> None:
         or workflow.status.failures
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.YELLOW, bold=True, message=WORKFLOW_WARNING_MESSAGE
         )
     else:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
 
@@ -252,11 +252,11 @@ def print_test_suite_status(workflow) -> None:
     print_sink_status(workflow)
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED, bold=True, message=WORKFLOW_FAILURE_MESSAGE
         )
     else:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )
 
@@ -267,25 +267,25 @@ def print_data_insight_status(workflow) -> None:
     Args:
         workflow (DataInsightWorkflow): workflow object
     """
-    print_ansi_encoded_string(message="Processor Status:")
-    print_ansi_encoded_string(message=workflow.data_processor.get_status().as_string())
+    log_ansi_encoded_string(message="Processor Status:")
+    log_ansi_encoded_string(message=workflow.data_processor.get_status().as_string())
     print_sink_status(workflow)
 
     if workflow.data_processor.get_status().source_start_time:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             message=f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
         )
 
     if workflow.result_status() == 1:
-        print_ansi_encoded_string(message=WORKFLOW_FAILURE_MESSAGE)
+        log_ansi_encoded_string(message=WORKFLOW_FAILURE_MESSAGE)
     elif (
         workflow.data_processor.get_status().warnings
         or workflow.status.warnings
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
-        print_ansi_encoded_string(message=WORKFLOW_WARNING_MESSAGE)
+        log_ansi_encoded_string(message=WORKFLOW_WARNING_MESSAGE)
     else:
-        print_ansi_encoded_string(message=WORKFLOW_SUCCESS_MESSAGE)
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(message=WORKFLOW_SUCCESS_MESSAGE)
+        log_ansi_encoded_string(
             color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )

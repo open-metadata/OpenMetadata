@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -29,3 +29,8 @@ export const mockLongOptionsArray = [
   { key: 'string3', label: 'string3' },
   { key: 'string4', label: 'string4' },
 ];
+
+export const mockItemLabel = 'Aaron Warren and Aaron Warner';
+
+export const highlightedItemLabel =
+  'Aaron <mark>Wa</mark>rren and Aaron <mark>Wa</mark>rner';

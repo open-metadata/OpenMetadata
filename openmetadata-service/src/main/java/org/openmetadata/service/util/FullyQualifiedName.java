@@ -56,16 +56,33 @@ public class FullyQualifiedName {
   }
 
   public static String getParent(String fqn) {
-    // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
+    // Split fqn of format a.b.c.d and return the parent a.b.c
+    String[] split = split(fqn);
+    return getParent(split);
+  }
+
+  public static String getParent(String... fqnParts) {
+    // Fqn parts a b c d are given from fqn a.b.c.d
+    if (fqnParts.length <= 1) {
+      return null;
+    }
+    if (fqnParts.length == 2) {
+      return unquoteName(fqnParts[0]); // The root name is not quoted and only the unquoted name is returned
+    }
+    String parent = build(fqnParts[0]);
+    for (int i = 1; i < fqnParts.length - 1; i++) {
+      parent = add(parent, fqnParts[i]);
+    }
+    return parent;
+  }
+
+  public static String getRoot(String fqn) {
+    // Split fqn of format a.b.c.d and return the root a
     String[] split = split(fqn);
     if (split.length <= 1) {
       return null;
     }
-    String parent = build(split[0]);
-    for (int i = 1; i < split.length - 1; i++) {
-      parent = add(parent, split[i]);
-    }
-    return parent;
+    return split[0];
   }
 
   private static class SplitListener extends FqnBaseListener {
@@ -132,10 +149,6 @@ public class FullyQualifiedName {
     }
     // Return table FQN of format databaseService.tableName
     return build(split[0], split[1], split[2], split[3]);
-  }
-
-  public static String getServiceName(String fqn) {
-    return split(fqn)[0];
   }
 
   public static String getColumnName(String columnFQN) {

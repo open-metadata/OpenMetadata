@@ -31,16 +31,13 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.converter.service.ServiceConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
-import org.openmetadata.service.util.JsonUtils;
 
 public abstract class SecretsManager {
-
   @Getter private final String clusterPrefix;
-
   @Getter private final SecretsManagerProvider secretsManagerProvider;
-
   private Fernet fernet;
 
   private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES = Set.of(OpenMetadataJWTClientConfig.class);
@@ -55,7 +52,7 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     try {
       Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
-      Object newConnectionConfig = JsonUtils.convertValue(connectionConfig, clazz);
+      Object newConnectionConfig = ServiceConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
       return encryptOrDecryptPasswordFields(
           newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), encrypt);
     } catch (Exception e) {

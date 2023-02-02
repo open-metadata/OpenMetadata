@@ -16,16 +16,17 @@ package org.openmetadata.client.interceptors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CustomRequestInterceptor<K> implements RequestInterceptor {
-  private final Class<K> type;
+  @Getter private final Class<K> type;
   final ObjectMapper mapper;
 
-  public CustomRequestInterceptor(ObjectMapper iMapper, Class<K> type) {
+  public CustomRequestInterceptor(ObjectMapper mapper, Class<K> type) {
     this.type = type;
-    mapper = iMapper;
+    this.mapper = mapper;
   }
 
   @Override
@@ -38,9 +39,5 @@ public class CustomRequestInterceptor<K> implements RequestInterceptor {
     } catch (Exception ex) {
       LOG.error("[CustomInterceptor] Failed in transforming request with exception {}", ex.getMessage());
     }
-  }
-
-  public Class<K> getType() {
-    return this.type;
   }
 }

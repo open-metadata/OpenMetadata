@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,12 @@
  */
 
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
@@ -51,11 +51,15 @@ const BasicSignUp = () => {
   }, [authConfig]);
 
   const handleSubmit = async (data: SignUpFormData) => {
-    if (data.confirmPassword) delete data['confirmPassword'];
+    if (data.confirmPassword) {
+      delete data['confirmPassword'];
+    }
 
     const request = data;
 
-    if (request) handleRegister(request);
+    if (request) {
+      handleRegister(request);
+    }
   };
 
   const handleLogin = () => history.push(ROUTES.SIGNIN);
@@ -69,14 +73,12 @@ const BasicSignUp = () => {
   };
 
   return (
-    <div className="tw-flex tw-flex-col tw-h-full">
-      <div
-        className="tw-flex tw-bg-body-main tw-flex-grow"
-        data-testid="signin-page">
-        <div className="tw-w-5/12">
-          <div className="mt-4 tw-text-center flex-center flex-col">
+    <div className="d-flex flex-col h-full">
+      <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
+        <div className="w-5/12">
+          <div className="mt-4 text-center flex-center flex-col">
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text className="mt-8 w-80 tw-text-xl font-medium tw-text-grey-muted">
+            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               Centralized Metadata Store, Discover, Collaborate and get your
               Data Right
             </Typography.Text>
@@ -160,7 +162,7 @@ const BasicSignUp = () => {
                           <Typography.Text type="secondary">or</Typography.Text>
                         </Divider>
 
-                        <div className="mt-4 flex flex-center">
+                        <div className="mt-4 d-flex flex-center">
                           <Typography.Text className="mr-4">
                             Already a user?
                           </Typography.Text>
@@ -180,17 +182,17 @@ const BasicSignUp = () => {
             ) : null}
           </div>
         </div>
-        <div className="tw-w-7/12 tw-relative">
-          <div className="tw-absolute tw-inset-0">
+        <div className="w-7/12 relative">
+          <div className="absolute inset-0">
             <img
               alt="bg-image"
-              className="tw-w-full tw-h-full"
+              className="w-full h-full"
               data-testid="bg-image"
               src={loginBG}
             />
           </div>
-          <div className="tw-relative">
-            <div className="tw-flex tw-justify-center tw-mt-44 tw-mb-10">
+          <div className="relative">
+            <div className="d-flex justify-center mt-44 mb-10">
               <LoginCarousel />
             </div>
           </div>

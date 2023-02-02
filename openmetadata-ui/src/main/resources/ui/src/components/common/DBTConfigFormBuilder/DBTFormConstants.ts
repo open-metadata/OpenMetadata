@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,34 +24,34 @@ import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [
   {
-    name: 'Local Config Source',
+    label: 'Local Config Source',
     value: DBT_SOURCES.local,
   },
   {
-    name: 'HTTP Config Source',
+    label: 'HTTP Config Source',
     value: DBT_SOURCES.http,
   },
   {
-    name: 'Cloud Config Source',
+    label: 'Cloud Config Source',
     value: DBT_SOURCES.cloud,
   },
   {
-    name: 'S3 Config Source',
+    label: 'S3 Config Source',
     value: DBT_SOURCES.s3,
   },
   {
-    name: 'GCS Config Source',
+    label: 'GCS Config Source',
     value: DBT_SOURCES.gcs,
   },
 ];
 
 export const GCSCreds: Array<DropDownListItem> = [
   {
-    name: 'GCS Credentials Values',
+    label: 'GCS Credentials Values',
     value: GCS_CONFIG.GCSValues,
   },
   {
-    name: 'GCS Credentials Path',
+    label: 'GCS Credentials Path',
     value: GCS_CONFIG.GCSCredentialsPath,
   },
 ];

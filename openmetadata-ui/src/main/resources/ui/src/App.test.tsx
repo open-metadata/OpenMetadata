@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,21 +12,21 @@
  */
 
 import { render } from '@testing-library/react';
+import { AuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import App from './App';
-import { AuthContext } from './authentication/auth-provider/AuthProvider';
 
 const authContext = jest.fn();
 
-jest.mock('./router/AppRouter', () => {
+jest.mock('components/router/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('./components/app-bar/Appbar', () => {
+jest.mock('components/app-bar/Appbar', () => {
   return jest.fn().mockReturnValue(<p>AppBar</p>);
 });
 
-jest.mock('./authentication/auth-provider/AuthProvider', () => {
+jest.mock('components/authentication/auth-provider/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()

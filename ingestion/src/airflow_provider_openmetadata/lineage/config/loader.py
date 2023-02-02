@@ -86,7 +86,9 @@ def get_lineage_config() -> AirflowLineageConfig:
     a JSON file path configures as env in OPENMETADATA_LINEAGE_CONFIG
     or return a default config.
     """
-    from airflow.configuration import conf
+
+    # Import conf settings at call time
+    from airflow.configuration import conf  # pylint: disable=import-outside-toplevel
 
     airflow_service_name = conf.get(LINEAGE, "airflow_service_name", fallback=None)
     if airflow_service_name:

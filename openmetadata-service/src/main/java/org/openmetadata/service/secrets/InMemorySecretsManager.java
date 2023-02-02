@@ -26,12 +26,12 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
 
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
-  protected InMemorySecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
-    super(secretsManagerProvider, clusterPrefix, 0);
+  protected InMemorySecretsManager(String clusterPrefix) {
+    super(SecretsManagerProvider.IN_MEMORY, clusterPrefix, 0);
   }
 
   public static InMemorySecretsManager getInstance(String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new InMemorySecretsManager(SecretsManagerProvider.IN_MEMORY, clusterPrefix);
+    if (INSTANCE == null) INSTANCE = new InMemorySecretsManager(clusterPrefix);
     return INSTANCE;
   }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,10 +17,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
-import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getServiceById } from 'rest/serviceAPI';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -34,7 +34,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
-import TagsViewer from '../tags-viewer/tags-viewer';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.less';
 

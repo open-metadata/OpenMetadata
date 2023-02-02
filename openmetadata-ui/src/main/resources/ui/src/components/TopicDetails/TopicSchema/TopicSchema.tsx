@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -28,8 +28,8 @@ import {
 } from '../../../utils/TopicSchema.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../tags-container/tags-container';
-import TagsViewer from '../../tags-viewer/tags-viewer';
+import TagsContainer from '../../Tag/TagsContainer/tags-container';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import { CellRendered, TopicSchemaFieldsProps } from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
@@ -125,7 +125,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             <RichTextEditorPreviewer markdown={description} />
           ) : (
             <Typography.Text className="tw-no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </Typography.Text>
           )}
         </>
@@ -170,7 +172,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             direction={styleFlag ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
-              className="w-max-256"
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}
@@ -224,7 +225,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        width: 272,
+        width: 350,
         render: renderFieldTags,
       },
     ],

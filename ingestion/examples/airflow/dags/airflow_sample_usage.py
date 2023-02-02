@@ -35,19 +35,22 @@ default_args = {
 config = """
 {
   "source": {
-    "type": "sample-usage",
-    "serviceName": "sample_data_usage",
+    "type": "custom-database",
+    "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "/home/airflow/ingestion/examples/sample_data"
+        "type": "CustomDatabase",
+        "sourcePythonClass": "metadata.ingestion.source.database.sample_usage.SampleUsageSource",
+        "connectionOptions": {
+          "sampleDataFolder": "./examples/sample_data"
+        }
       }
     },
     "sourceConfig": {
-        "config":{
-          "type": "DatabaseUsage"
-        }
+      "config":{
+        "type": "DatabaseUsage"
       }
+    }
   },
   "processor": {
     "type": "query-parser",

@@ -16,9 +16,32 @@ Table Column Count Metric definition
 
 import sqlalchemy
 from sqlalchemy import inspect, literal
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.orm_profiler.orm.registry import Dialects
+
+
+class ColunNameFn(FunctionElement):
+    name = __qualname__
+    inherit_cache = CACHE
+
+
+@compiles(ColunNameFn)
+def _(element, compiler, **kw):
+    return compiler.process(element.clauses, **kw)
+
+
+@compiles(ColunNameFn, Dialects.IbmDbSa)
+@compiles(ColunNameFn, Dialects.Db2)
+def _(element, compiler, **kw):
+    """Returns column names for db2 database and handles casting variables.
+    If casting is not provided for variables, db2 throws error.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"CAST({proc} AS VARCHAR)"
 
 
 class ColumnNames(StaticMetric):
@@ -57,7 +80,7 @@ class ColumnNames(StaticMetric):
             )
 
         col_names = ",".join(inspect(self.table).c.keys())
-        return literal(col_names, type_=sqlalchemy.types.String)
+        return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
 
     @_label
     def dl_fn(self, data_frame=None):

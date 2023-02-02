@@ -25,7 +25,6 @@ from pydantic import ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
@@ -52,15 +51,17 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.datalake import ometa_to_dataframe
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.interfaces.datalake.datalake_test_suite_interface import (
     DataLakeTestSuiteInterface,
 )
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
-from metadata.utils.connections import get_connection
+from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
@@ -107,7 +108,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 sink_type=self.config.sink.type,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
-                _from="test_suite",
+                from_="test_suite",
             )
 
     @classmethod
@@ -193,7 +194,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return self.metadata.get_by_name(
             entity=Table,
             fqn=entity_fqn,
-            fields=["profile"],
+            fields=["tableProfilerConfig"],
         )
 
     def _get_profile_sample(self, entity: Table) -> Optional[float]:
@@ -202,8 +203,16 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         Args:
             entity: table entity
         """
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileSample
+        if (
+            hasattr(entity, "tableProfilerConfig")
+            and hasattr(entity.tableProfilerConfig, "profileSample")
+            and entity.tableProfilerConfig.profileSample
+        ):
+            return ProfileSampleConfig(
+                profile_sample=entity.tableProfilerConfig.profileSample,
+                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+            )
+
         return None
 
     def _get_profile_query(self, entity: Table) -> Optional[str]:

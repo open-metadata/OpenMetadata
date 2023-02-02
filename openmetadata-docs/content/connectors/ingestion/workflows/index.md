@@ -35,6 +35,14 @@ OpenMetadata uses workflows to ingest different kinds of metadata:
   <InlineCallout
     color="violet-70"
     icon="fit_screen"
+    bold="dbt Ingestion"
+    href="/connectors/ingestion/workflows/dbt"
+  >
+    Configure dbt metadata
+  </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    icon="fit_screen"
     bold="Data Profiler"
     href="/connectors/ingestion/workflows/profiler"
   >

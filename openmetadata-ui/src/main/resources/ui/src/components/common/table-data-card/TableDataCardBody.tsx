@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import React, { FunctionComponent } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTagValue } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import TagsViewer from '../../tags-viewer/tags-viewer';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 

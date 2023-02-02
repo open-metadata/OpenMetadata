@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,12 +14,12 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { capitalize } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';

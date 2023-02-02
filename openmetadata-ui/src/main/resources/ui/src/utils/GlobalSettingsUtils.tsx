@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,10 @@
 
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  ResourceEntity,
+  UIPermission,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import i18next from 'i18next';
 import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';
@@ -31,10 +35,6 @@ import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../components/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
@@ -162,7 +162,7 @@ export const getGlobalSettingsMenuWithPermission = (
       isBeta: true,
       items: [
         {
-          label: i18next.t('label.activity-feeds'),
+          label: i18next.t('label.activity-feed-plural'),
           isProtected: Boolean(isAdminUser),
           icon: <AllActivityIcon className="side-panel-icons" />,
         },
@@ -278,7 +278,12 @@ export const getGlobalSettingMenuItem = (
     icon,
     children: subItems,
     label: isBeta ? (
-      <Badge color="#7147e8" count="beta" offset={[30, 8]} size="small">
+      <Badge
+        className="text-xs text-grey-muted"
+        color="#7147e8"
+        count="beta"
+        offset={[30, 8]}
+        size="small">
         {label}
       </Badge>
     ) : (

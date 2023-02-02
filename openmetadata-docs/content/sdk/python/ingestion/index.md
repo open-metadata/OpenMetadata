@@ -11,10 +11,10 @@ Snippets and knowledge specific to ingesting metadata using Python.
   <InlineCallout
     color="violet-70"
     icon="source"
-    bold="DBT"
+    bold="dbt"
     href="/sdk/python/ingestion/dbt"
   >
-    Example of the integration of DBT with the Python SDK.
+    Example of the integration of dbt with the Python SDK.
   </InlineCallout>
   <InlineCallout
     color="violet-70"

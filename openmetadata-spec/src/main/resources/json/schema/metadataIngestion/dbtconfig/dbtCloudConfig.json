@@ -2,32 +2,34 @@
   "$id": "https://open-metadata.org/schema/metadataIngestion/dbtconfig/dbtCloudConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DBT Cloud Config",
-  "description": "DBT Cloud configuration.",
+  "description": "dbt Cloud configuration.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig",
   "type": "object",
   "properties": {
     "dbtCloudAuthToken": {
-      "title": "DBT Cloud Authentication Token",
-      "description": "DBT cloud account authentication token",
+      "title": "dbt Cloud Authentication Token",
+      "description": "dbt cloud account authentication token",
       "type": "string",
       "format": "password"
     },
     "dbtCloudAccountId": {
-      "title": "DBT Cloud Account Id",
-      "description": "DBT cloud account Id",
+      "title": "dbt Cloud Account Id",
+      "description": "dbt cloud account Id",
       "type": "string"
     },
     "dbtCloudProjectId": {
-      "title": "DBT Cloud Project Id",
-      "description": "In case of multiple projects in a DBT cloud account, specify the project's id from which you want to extract the DBT run artifacts",
+      "title": "dbt Cloud Project Id",
+      "description": "In case of multiple projects in a dbt cloud account, specify the project's id from which you want to extract the dbt run artifacts",
       "type": "string"
     },
-    "dbtUpdateDescriptions": {
-      "description": "Optional configuration to update the description from DBT or not",
-      "type": "boolean",
-      "default": false
+    "dbtCloudUrl": {
+      "title": "dbt Cloud URL",
+      "description": "URL to connect to your dbt cloud instance. E.g., https://cloud.getdbt.com or https://emea.dbt.com/",
+      "type": "string",
+      "format": "uri",
+      "default": "https://cloud.getdbt.com"
     }
   },
   "additionalProperties": false,
-  "required": ["dbtCloudAuthToken", "dbtCloudAccountId"]
+  "required": ["dbtCloudAuthToken", "dbtCloudAccountId", "dbtCloudUrl"]
 }

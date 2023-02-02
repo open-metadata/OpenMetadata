@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
+import { Carousel } from 'antd';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import Slider from 'react-slick';
 import {
+  LOGIN_CAROUSEL_SETTINGS,
   LOGIN_SLIDE,
-  LOGIN_SLIDER_SETTINGS,
 } from '../../constants/Login.constants';
 
 const LoginCarousel = () => {
   return (
     <div data-testid="carousel-container" style={{ width: '85%' }}>
-      <Slider {...LOGIN_SLIDER_SETTINGS}>
+      <Carousel {...LOGIN_CAROUSEL_SETTINGS}>
         {LOGIN_SLIDE.map((data) => (
           <div data-testid="slider-container" key={uniqueId()}>
             <div>
@@ -43,7 +43,7 @@ const LoginCarousel = () => {
             </div>
           </div>
         ))}
-      </Slider>
+      </Carousel>
     </div>
   );
 };

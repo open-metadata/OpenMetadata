@@ -43,8 +43,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension";
-  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension";
+  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension,followers";
+  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension,followers";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
   public PipelineRepository(CollectionDAO dao) {
@@ -65,17 +65,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
-    pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setService(getContainer(pipeline.getId()));
-    pipeline.setPipelineUrl(pipeline.getPipelineUrl());
-    pipeline.setStartDate(pipeline.getStartDate());
-    pipeline.setConcurrency(pipeline.getConcurrency());
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);
     }
-    pipeline.setPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
-    return pipeline;
+    return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) throws IOException {

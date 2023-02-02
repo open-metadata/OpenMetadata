@@ -42,7 +42,7 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
@@ -216,6 +216,7 @@ public final class TablesInitializer {
         .cleanOnValidationError(false)
         .locations(location)
         .dataSource(url, user, password)
+        .cleanDisabled(false)
         .load();
   }
 
@@ -281,11 +282,11 @@ public final class TablesInitializer {
         break;
       case ES_CREATE:
         esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
-        esIndexDefinition.createIndexes();
+        esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
         esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
-        esIndexDefinition.updateIndexes();
+        esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
         esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { camelCase, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
-  checkAirflowStatus,
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
-} from '../../axiosAPIs/ingestionPipelineAPI';
+} from 'rest/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -81,7 +81,6 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       </span>
     );
   }, [ingestionData, showDeployButton]);
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const handleIngestionDeploy = (id?: string) => {
     setShowDeployModal(true);
@@ -195,24 +194,6 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy();
   };
 
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return checkAirflowStatus()
-      .then((res) => {
-        if (res.status === 200) {
-          setIsAirflowRunning(true);
-        } else {
-          setIsAirflowRunning(false);
-        }
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-      });
-  };
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
-
   return (
     <Row className="tw-form-container" gutter={[16, 16]}>
       <Col span={24}>
@@ -228,14 +209,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewTestSuiteClick}
-            isAirflowSetup={isAirflowRunning}
             name={`${testSuite?.name}_${PipelineType.TestSuite}`}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={FormSubmitType.ADD}
             successMessage={getSuccessMessage}
             viewServiceText="View Test Suite"
-            onCheckAirflowStatus={handleAirflowStatusCheck}
           />
         ) : (
           <TestSuiteScheduler

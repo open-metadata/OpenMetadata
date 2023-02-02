@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,14 +12,15 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getEntityFieldDisplay,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
@@ -30,12 +31,15 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   threadType,
   entityFQN = '',
 }) => {
+  const { t } = useTranslation();
+
   return (
     <header className={className}>
       <div className="tw-flex tw-justify-between tw-py-3">
         <p data-testid="header-title">
           <span data-testid="header-noun">
-            {noun ? noun : getFeedPanelHeaderText(threadType)} on{' '}
+            {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
+            {t('label.on-lowercase')}{' '}
           </span>
           <span className="tw-heading" data-testid="entity-attribute">
             {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
@@ -43,10 +47,12 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
         </p>
         <div className="tw-flex">
           {onShowNewConversation ? (
-            <PopOver
-              position="bottom"
-              title="Start conversation"
-              trigger="mouseenter">
+            <Tooltip
+              placement="bottom"
+              title={t('label.start-entity', {
+                entity: t('label.conversation-lowercase'),
+              })}
+              trigger="hover">
               <Button
                 className={classNames('tw-h-7 tw-px-2')}
                 data-testid="add-new-conversation"
@@ -58,7 +64,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
                 }}>
                 <FontAwesomeIcon icon="plus" />
               </Button>
-            </PopOver>
+            </Tooltip>
           ) : null}
           <svg
             className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"

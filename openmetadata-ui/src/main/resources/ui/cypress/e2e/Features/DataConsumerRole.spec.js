@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,13 +12,18 @@
  */
 
 import {
-    interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage
+  interceptURL,
+  login,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
 } from '../../common/common';
 import {
-    BASE_URL, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE,
-    SEARCH_ENTITY_TOPIC
+  BASE_URL,
+  SEARCH_ENTITY_DASHBOARD,
+  SEARCH_ENTITY_PIPELINE,
+  SEARCH_ENTITY_TABLE,
+  SEARCH_ENTITY_TOPIC,
 } from '../../constants/constants';
-
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 
 const CREDENTIALS = {
@@ -109,47 +114,47 @@ const ID = {
     button: 'add-bot',
   },
 };
-// Todo:- Need to fix flaky test
-describe.skip('DataConsumer Edit policy should work properly', () => {
+
+describe('DataConsumer Edit policy should work properly', () => {
   it('Create a new account and assign Data consumer role to the user', () => {
     interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
-    //Click on create account button
+    // Click on create account button
     cy.get('[data-testid="signup"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Enter first name
+    // Enter first name
     cy.get('[id="firstName"]').should('be.visible').type(CREDENTIALS.firstName);
     cy.get('[id="firstName"]').should('have.value', CREDENTIALS.firstName);
-    //Enter last name
+    // Enter last name
     cy.get('[id="lastName"]').should('be.visible').type(CREDENTIALS.lastName);
     cy.get('[id="lastName"]').should('have.value', CREDENTIALS.lastName);
-    //Enter email
+    // Enter email
     cy.get('[id="email"]').should('be.visible').type(CREDENTIALS.email);
     cy.get('[id="email"]').should('have.value', CREDENTIALS.email);
-    //Enter password
+    // Enter password
     cy.get('[id="password"]').should('be.visible').type(CREDENTIALS.password);
     cy.get('[id="password"]')
       .should('have.attr', 'type')
       .should('eq', 'password');
 
-    //Confirm password
+    // Confirm password
     cy.get('[id="confirmPassword"]')
       .should('be.visible')
       .type(CREDENTIALS.password);
-    //Click on create account button
+    // Click on create account button
     cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
     cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
 
-    //Login with the created user
+    // Login with the created user
 
     login(CREDENTIALS.email, CREDENTIALS.password);
     cy.goToHomePage();
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
-    //Verify user profile
+    // Verify user profile
     cy.get('[data-testid="avatar"]')
       .first()
       .should('be.visible')
@@ -182,7 +187,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
 
     Object.values(ENTITIES).forEach((entity) => {
       visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
-      //Check Edit description
+      // Check Edit description
       cy.get('[data-testid="edit-description"]')
         .should('be.visible')
         .should('not.be.disabled')
@@ -190,14 +195,14 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       cy.get('[data-testid="header"]')
         .should('be.visible')
         .invoke('text')
-        .should('eq', `Edit description for ${entity.displayName}`);
+        .should('eq', `Edit Description for ${entity.displayName}`);
 
       cy.get('[data-testid="cancel"]').should('be.visible').click();
 
-      //Navigate to lineage tab
+      // Navigate to lineage tab
       cy.get('[data-testid="Lineage"]').should('be.visible').click();
 
-      //Check if edit lineage button is disabled
+      // Check if edit lineage button is disabled
       cy.get('[data-testid="edit-lineage"]')
         .should('be.visible')
         .and('be.disabled');
@@ -205,7 +210,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       cy.get('[id="openmetadata_logo"]').scrollIntoView().click();
     });
 
-    //Check if tags is editable for table
+    // Check if tags is editable for table
     visitEntityDetailsPage(
       ENTITIES.table.term,
       ENTITIES.table.serviceName,
@@ -217,9 +222,9 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       .should('not.be.disabled')
       .first()
       .click();
-    cy.get('[class*="-control"]').should('be.visible');
+    cy.get('[data-testid="tag-selector"]').should('be.visible');
 
-    //Check if tags is editable for dashboard
+    // Check if tags is editable for dashboard
     visitEntityDetailsPage(
       ENTITIES.dashboard.term,
       ENTITIES.dashboard.serviceName,
@@ -231,7 +236,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       .should('not.be.disabled')
       .first()
       .click();
-    cy.get('[class*="-control"]').should('be.visible');
+    cy.get('[data-testid="tag-selector"]').should('be.visible');
   });
 
   it('Check for CRUD operations to be disabled for the user for glossary and tags', () => {
@@ -239,7 +244,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
     cy.goToHomePage();
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
-    //Check CRUD for Glossary
+    // Check CRUD for Glossary
     cy.get(glossary.testid)
       .should('be.visible')
       .click({ animationDistanceThreshold: 10 });
@@ -254,7 +259,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
 
     cy.clickOnLogo();
 
-    //Check CRUD for Tags
+    // Check CRUD for Tags
     cy.get(tag.testid)
       .should('be.visible')
       .click({ animationDistanceThreshold: 10 });
@@ -267,7 +272,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       .should('be.visible')
       .should('be.disabled');
 
-    cy.get('[data-testid="delete-tag-category-button"]')
+    cy.get('[data-testid="delete-classification-or-tag"]')
       .should('be.visible')
       .should('be.disabled');
   });
@@ -276,7 +281,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
     cy.goToHomePage();
     cy.url().should('eq', `${BASE_URL}/my-data`);
-    //Navigate to settings
+    // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(ID).forEach((id) => {
       cy.get(id.testid).should('be.visible').click();

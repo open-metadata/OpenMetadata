@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,15 +12,19 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { startCase } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getDashboardDetailsPath } from '../../../../constants/constants';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { getEntityName } from '../../../../utils/CommonUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;
@@ -55,6 +59,15 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
     [entityDetails]
   );
 
+  const formattedFeaturesData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.MLFEATURE,
+        entityDetails.mlFeatures
+      ),
+    [entityDetails]
+  );
+
   return (
     <>
       <Row className="m-md" gutter={[0, 4]}>
@@ -70,22 +83,22 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
             {Object.keys(basicMlModelInfo).map((fieldName) => {
               const value =
                 basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
-              if (value) {
-                return (
-                  <Col key={fieldName} span={24}>
-                    <Row gutter={16}>
-                      <Col className="text-gray" span={10}>
-                        {fieldName}
-                      </Col>
-                      <Col span={12}>
-                        {basicMlModelInfo[fieldName as keyof BasicMlModelInfo]}
-                      </Col>
-                    </Row>
-                  </Col>
-                );
-              } else {
-                return null;
-              }
+
+              return (
+                <Col key={fieldName} span={24}>
+                  <Row gutter={16}>
+                    <Col
+                      className="text-gray"
+                      data-testid={`${fieldName}-label`}
+                      span={10}>
+                      {startCase(fieldName)}
+                    </Col>
+                    <Col data-testid={`${fieldName}-value`} span={12}>
+                      {value ? value : '-'}
+                    </Col>
+                  </Row>
+                </Col>
+              );
             })}
           </Row>
         </Col>
@@ -93,12 +106,14 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
       <Divider className="m-0" />
       <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="features-header">
             {t('label.feature-plural')}
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <SummaryList mlFeatures={entityDetails.mlFeatures || []} />
+          <SummaryList formattedEntityData={formattedFeaturesData} />
         </Col>
       </Row>
     </>

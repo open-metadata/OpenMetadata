@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import {
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
+} from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Snowflake';
@@ -24,6 +31,7 @@ describe('Snowflake Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });
+
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
@@ -35,7 +43,10 @@ describe('Snowflake Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]').invoke('show').trigger('mouseover').check();
+      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
+        .invoke('show')
+        .trigger('mouseover')
+        .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
         .type(schema);
@@ -68,6 +79,10 @@ describe('Snowflake Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 });

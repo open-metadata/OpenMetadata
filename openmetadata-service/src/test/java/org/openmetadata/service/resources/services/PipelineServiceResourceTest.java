@@ -70,7 +70,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         "services/pipelineServices",
         "owner");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupPipelineServices(TestInfo test) throws HttpResponseException {

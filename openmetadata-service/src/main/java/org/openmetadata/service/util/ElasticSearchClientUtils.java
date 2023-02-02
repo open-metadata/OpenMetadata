@@ -23,7 +23,7 @@ import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 
 @Slf4j
 public final class ElasticSearchClientUtils {

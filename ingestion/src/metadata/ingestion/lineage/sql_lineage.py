@@ -22,6 +22,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -135,8 +136,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_name,
-        database_schema=database_schema,
+        database=database_query,
+        database_schema=schema_query,
         table=table,
     )
 
@@ -146,8 +147,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_query,
-        database_schema=schema_query,
+        database=database_name,
+        database_schema=database_schema,
         table=table,
     )
 
@@ -180,6 +181,13 @@ def get_column_lineage(
     if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(
         to_table_raw_name
     ).get(from_table_raw_name):
+        # Select all
+        if "*" in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name)[0]:
+            column_lineage_map[to_table_raw_name][from_table_raw_name] = [
+                (c.name.__root__, c.name.__root__) for c in from_entity.columns
+            ]
+
+        # Other cases
         for to_col, from_col in column_lineage_map.get(to_table_raw_name).get(
             from_table_raw_name
         ):
@@ -288,9 +296,11 @@ def populate_column_lineage_map(raw_column_lineage):
         raw_column_lineage (_type_): raw column lineage
     """
     lineage_map = {}
-    if not raw_column_lineage or len(raw_column_lineage[0]) != 2:
+    if not raw_column_lineage:
         return lineage_map
-    for source, target in raw_column_lineage:
+    for column_lineage in raw_column_lineage:
+        source = column_lineage[0]
+        target = column_lineage[-1]
         for parent in source._parent:  # pylint: disable=protected-access
             if lineage_map.get(str(target.parent)):
                 ele = lineage_map.get(str(target.parent))
@@ -316,6 +326,7 @@ def get_lineage_by_query(
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
+    dialect: Dialect,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -325,7 +336,7 @@ def get_lineage_by_query(
 
     try:
         logger.debug(f"Running lineage with query: {query}")
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(query, dialect)
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -378,6 +389,7 @@ def get_lineage_via_table_entity(
     schema_name: str,
     service_name: str,
     query: str,
+    dialect: Dialect,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """Get lineage from table entity
 
@@ -388,6 +400,7 @@ def get_lineage_via_table_entity(
         schema_name (str): name of the schema
         service_name (str): name of the service
         query (str): query used for lineage
+        dialect (str): dialect used for lineage
 
     Returns:
         Optional[Iterator[AddLineageRequest]]
@@ -399,7 +412,7 @@ def get_lineage_via_table_entity(
 
     try:
         logger.debug(f"Getting lineage via table entity using query: {query}")
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(query, dialect)
         to_table_name = table_entity.name.__root__
 
         for from_table_name in lineage_parser.source_tables:

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -40,8 +40,8 @@ const DeployIngestionLoaderModal = ({
       closable={false}
       data-testid="deploy-modal"
       footer={null}
-      visible={visible}>
-      <div className="p-y-lg flex flex-col" data-testid="body-text">
+      open={visible}>
+      <div className="p-y-lg d-flex flex-col" data-testid="body-text">
         <div className={classNames('ingestion-content relative', className)}>
           <Fragment>
             <Typography.Text

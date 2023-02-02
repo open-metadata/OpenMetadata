@@ -35,18 +35,6 @@
     "queryLogFilePath": {
       "description": "Configuration to set the file path for query logs",
       "type": "string"
-    },
-    "schemaFilterPattern": {
-      "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
-    },
-    "tableFilterPattern": {
-      "description": "Regex exclude tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
-    },
-    "databaseFilterPattern": {
-      "description": "Regex to only fetch databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     }
   },
   "additionalProperties": false

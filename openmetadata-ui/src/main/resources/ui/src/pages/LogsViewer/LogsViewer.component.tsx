@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,10 @@
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { CopyToClipboardButton } from 'components/buttons/CopyToClipboardButton/CopyToClipboardButton';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
+import Loader from 'components/Loader/Loader';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import React, {
   Fragment,
@@ -27,11 +31,7 @@ import { useParams } from 'react-router-dom';
 import {
   getIngestionPipelineByName,
   getIngestionPipelineLogById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import Loader from '../../components/Loader/Loader';
+} from 'rest/ingestionPipelineAPI';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
@@ -187,7 +187,9 @@ const LogsViewer = () => {
     )[0] as HTMLInputElement;
 
     if (lazyLogSearchBarInput) {
-      lazyLogSearchBarInput.placeholder = `${t('label.search-logs')}...`;
+      lazyLogSearchBarInput.placeholder = `${t('label.search-entity', {
+        entity: t('label.log-plural'),
+      })}...`;
     }
   });
 

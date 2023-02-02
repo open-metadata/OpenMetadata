@@ -61,8 +61,8 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.entity.policies.policy import Policy
-from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
-    SampleDataConnection,
+from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
+    CustomDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -200,16 +200,24 @@ class SampleDataSource(
         self.metadata = OpenMetadata(metadata_config)
         self.list_policies = []
 
+        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+            "sampleDataFolder"
+        )
+        if not sample_data_folder:
+            raise InvalidSampleDataException(
+                "Cannot get sampleDataFolder from connection options"
+            )
+
         self.storage_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/locations/service.json",
+                sample_data_folder + "/locations/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.locations = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/locations/locations.json",
+                sample_data_folder + "/locations/locations.json",
                 "r",
                 encoding="utf-8",
             )
@@ -220,36 +228,35 @@ class SampleDataSource(
         )
         self.glue_storage_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/glue/storage_service.json",
+                sample_data_folder + "/glue/storage_service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.glue_database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder
-                + "/glue/database_service.json",
+                sample_data_folder + "/glue/database_service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.glue_database = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/glue/database.json",
+                sample_data_folder + "/glue/database.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.glue_database_schema = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/glue/database_schema.json",
+                sample_data_folder + "/glue/database_schema.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.glue_tables = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/glue/tables.json",
+                sample_data_folder + "/glue/tables.json",
                 "r",
                 encoding="utf-8",
             )
@@ -264,36 +271,35 @@ class SampleDataSource(
         )
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/datasets/service.json",
+                sample_data_folder + "/datasets/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.database = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/datasets/database.json",
+                sample_data_folder + "/datasets/database.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.database_schema = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder
-                + "/datasets/database_schema.json",
+                sample_data_folder + "/datasets/database_schema.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.tables = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/datasets/tables.json",
+                sample_data_folder + "/datasets/tables.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/datasets/service.json",
+                sample_data_folder + "/datasets/service.json",
                 "r",
                 encoding="utf-8",
             )
@@ -304,14 +310,14 @@ class SampleDataSource(
 
         self.kafka_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/topics/service.json",
+                sample_data_folder + "/topics/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.topics = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/topics/topics.json",
+                sample_data_folder + "/topics/topics.json",
                 "r",
                 encoding="utf-8",
             )
@@ -323,22 +329,21 @@ class SampleDataSource(
 
         self.dashboard_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/dashboards/service.json",
+                sample_data_folder + "/dashboards/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.charts = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/dashboards/charts.json",
+                sample_data_folder + "/dashboards/charts.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.dashboards = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder
-                + "/dashboards/dashboards.json",
+                sample_data_folder + "/dashboards/dashboards.json",
                 "r",
                 encoding="utf-8",
             )
@@ -350,14 +355,14 @@ class SampleDataSource(
 
         self.pipeline_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/pipelines/service.json",
+                sample_data_folder + "/pipelines/service.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.pipelines = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/pipelines/pipelines.json",
+                sample_data_folder + "/pipelines/pipelines.json",
                 "r",
                 encoding="utf-8",
             )
@@ -367,28 +372,28 @@ class SampleDataSource(
         )
         self.lineage = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/lineage/lineage.json",
+                sample_data_folder + "/lineage/lineage.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.teams = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/teams/teams.json",
+                sample_data_folder + "/teams/teams.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.users = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/users/users.json",
+                sample_data_folder + "/users/users.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.model_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/models/service.json",
+                sample_data_folder + "/models/service.json",
                 "r",
                 encoding="utf-8",
             )
@@ -399,7 +404,7 @@ class SampleDataSource(
         )
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/models/models.json",
+                sample_data_folder + "/models/models.json",
                 "r",
                 encoding="utf-8",
             )
@@ -407,38 +412,35 @@ class SampleDataSource(
         self.user_entity = {}
         self.table_tests = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/datasets/tableTests.json",
+                sample_data_folder + "/datasets/tableTests.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.pipeline_status = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder
-                + "/pipelines/pipelineStatus.json",
+                sample_data_folder + "/pipelines/pipelineStatus.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.profiles = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder
-                + "/profiler/tableProfile.json",
+                sample_data_folder + "/profiler/tableProfile.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.tests_suites = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder + "/tests/testSuites.json",
+                sample_data_folder + "/tests/testSuites.json",
                 "r",
                 encoding="utf-8",
             )
         )
         self.tests_case_results = json.load(
             open(  # pylint: disable=consider-using-with
-                self.service_connection.sampleDataFolder
-                + "/tests/testCaseResults.json",
+                sample_data_folder + "/tests/testCaseResults.json",
                 "r",
                 encoding="utf-8",
             )
@@ -448,10 +450,10 @@ class SampleDataSource(
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SampleDataConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, SampleDataConnection):
+        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
-                f"Expected SampleDataConnection, but got {connection}"
+                f"Expected CustomDatabaseConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -593,6 +595,7 @@ class SampleDataSource(
                 database_name=db.name.__root__,
                 schema_name=schema.name.__root__,
                 table_name=table_request.name.__root__,
+                skip_es_search=True,
             )
 
             location_fqn = fqn.build(
@@ -999,19 +1002,22 @@ class SampleDataSource(
                 f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
                 fields=["testSuite", "testDefinition"],
             )
-            for days, result in enumerate(test_case_results["results"]):
-                yield OMetaTestCaseResultsSample(
-                    test_case_results=TestCaseResult(
-                        timestamp=(datetime.now() - timedelta(days=days)).timestamp(),
-                        testCaseStatus=result["testCaseStatus"],
-                        result=result["result"],
-                        testResultValue=[
-                            TestResultValue.parse_obj(res_value)
-                            for res_value in result["testResultValues"]
-                        ],
-                    ),
-                    test_case_name=case.fullyQualifiedName.__root__,
-                )
+            if case:
+                for days, result in enumerate(test_case_results["results"]):
+                    yield OMetaTestCaseResultsSample(
+                        test_case_results=TestCaseResult(
+                            timestamp=(
+                                datetime.now() - timedelta(days=days)
+                            ).timestamp(),
+                            testCaseStatus=result["testCaseStatus"],
+                            result=result["result"],
+                            testResultValue=[
+                                TestResultValue.parse_obj(res_value)
+                                for res_value in result["testResultValues"]
+                            ],
+                        ),
+                        test_case_name=case.fullyQualifiedName.__root__,
+                    )
 
     def close(self):
         pass

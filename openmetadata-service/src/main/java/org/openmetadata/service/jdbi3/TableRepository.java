@@ -93,9 +93,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension";
+  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
   // Table fields that can be updated in a PUT request
-  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension";
+  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -514,15 +514,14 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table getQueries(UUID tableId) throws IOException {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    Table table = setFieldsInternal(dao.findEntityById(tableId), Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
   }
 
   public ResultList<SQLQuery> getQueriesForPagination(UUID id, int limit, String before, String after) {
     RestUtil.validateCursors(before, after);
     int total = daoCollection.entityExtensionDAO().getTotalQueriesCount(id.toString());
-    List<SQLQuery> tableQueries = null;
+    List<SQLQuery> tableQueries;
     if (before != null) {
       tableQueries =
           daoCollection
@@ -1119,7 +1118,7 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if (nullOrEmpty(addedColumn.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+          if (nullOrEmpty(addedColumn.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
           if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {

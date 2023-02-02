@@ -4,6 +4,21 @@ slug: /connectors/database/mariadb
 ---
 
 # MariaDB
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| Partially via Views | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the MariaDB connector.
 
@@ -12,7 +27,7 @@ Configure and schedule MariaDB metadata and profiler workflows from the OpenMeta
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -246,12 +261,12 @@ text="Learn more about how to configure the Data Quality tests from the UI."
 link="/connectors/ingestion/workflows/data-quality"
 />
 
-## DBT Integration
+## dbt Integration
 
 <Tile
 icon="mediation"
-title="DBT Integration"
-text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/connectors/ingestion/workflows/metadata/dbt"
+title="dbt Integration"
+text="Learn more about how to ingest dbt models' definitions and their lineage."
+link="/connectors/ingestion/workflows/dbt"
 />
 

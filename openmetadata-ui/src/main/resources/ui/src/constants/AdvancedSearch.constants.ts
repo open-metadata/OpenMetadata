@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
+import { t } from 'i18next';
 import { isUndefined, uniq } from 'lodash';
 import {
   BasicConfig,
@@ -21,8 +21,8 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { getAdvancedFieldDefaultOptions } from '../axiosAPIs/miscAPI';
-import { suggestQuery } from '../axiosAPIs/searchAPI';
+import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
+import { suggestQuery } from 'rest/searchAPI';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
@@ -31,45 +31,45 @@ const BaseConfig = AntdConfig as BasicConfig;
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
-    label: i18next.t('label.owner'),
-    key: 'owner.name',
+    label: t('label.owner'),
+    key: 'owner.displayName',
   },
   {
-    label: i18next.t('label.tag'),
+    label: t('label.tag'),
     key: 'tags.tagFQN',
   },
   {
-    label: i18next.t('label.service'),
+    label: t('label.service'),
     key: 'service.name',
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
-    label: i18next.t('label.column'),
+    label: t('label.column'),
     key: 'columns.name',
   },
 
   {
-    label: i18next.t('label.schema'),
+    label: t('label.schema'),
     key: 'databaseSchema.name',
   },
   {
-    label: i18next.t('label.database'),
+    label: t('label.database'),
     key: 'database.name',
   },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
-    label: i18next.t('label.chart'),
+    label: t('label.chart'),
     key: 'charts.name',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
-    label: i18next.t('label.task'),
+    label: t('label.task'),
     key: 'tasks.name',
   },
 ];
@@ -103,7 +103,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.name',
+            field: 'owner.displayName',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -144,15 +144,19 @@ export const autocomplete: (args: {
         fetchSource: isUserAndTeamSearchIndex,
       }).then((resp) => {
         return {
-          values: uniq(resp).map(({ text, _source }) => ({
-            value: text,
-            title:
-              // set displayName or name if index is type of user or team and both.
-              // else set the text
+          values: uniq(resp).map(({ text, _source }) => {
+            // set displayName or name if index is type of user or team and both.
+            // else set the text
+            const name =
               isUserAndTeamSearchIndex && !isUndefined(_source)
                 ? _source?.displayName || _source.name
-                : text,
-          })),
+                : text;
+
+            return {
+              value: name,
+              title: name,
+            };
+          }),
           hasMore: false,
         };
       });
@@ -178,7 +182,7 @@ export const autocomplete: (args: {
 
 const mainWidgetProps = {
   fullWidth: true,
-  valueLabel: i18next.t('label.criteria') + ':',
+  valueLabel: t('label.criteria') + ':',
 };
 
 /**
@@ -189,13 +193,13 @@ const getCommonQueryBuilderFields = (
 ) => {
   const commonQueryBuilderFields: Fields = {
     deleted: {
-      label: 'Deleted',
+      label: t('label.deleted'),
       type: 'boolean',
       defaultValue: true,
     },
 
-    'owner.name': {
-      label: 'Owner',
+    'owner.displayName': {
+      label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -208,7 +212,7 @@ const getCommonQueryBuilderFields = (
     },
 
     'tags.tagFQN': {
-      label: 'Tags',
+      label: t('label.tag-plural'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -221,7 +225,7 @@ const getCommonQueryBuilderFields = (
     },
 
     'tier.tagFQN': {
-      label: 'Tier',
+      label: t('label.tier'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -243,7 +247,7 @@ const getCommonQueryBuilderFields = (
 const getServiceQueryBuilderFields = (index: SearchIndex) => {
   const serviceQueryBuilderFields: Fields = {
     'service.name': {
-      label: 'Service',
+      label: t('label.service'),
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
@@ -265,7 +269,7 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
  */
 const tableQueryBuilderFields: Fields = {
   'database.name': {
-    label: 'Database',
+    label: t('label.database'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
@@ -279,7 +283,7 @@ const tableQueryBuilderFields: Fields = {
   },
 
   'databaseSchema.name': {
-    label: 'Database Schema',
+    label: t('label.database-schema'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
@@ -293,7 +297,7 @@ const tableQueryBuilderFields: Fields = {
   },
 
   'columns.name': {
-    label: 'Column',
+    label: t('label.column'),
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
@@ -378,10 +382,10 @@ const getInitialConfigWithoutFields = () => {
       showLabels: true,
       canReorder: false,
       renderSize: 'medium',
-      fieldLabel: i18next.t('label.field-plural') + ':',
-      operatorLabel: i18next.t('label.condition') + ':',
+      fieldLabel: t('label.field-plural') + ':',
+      operatorLabel: t('label.condition') + ':',
       showNot: false,
-      valueLabel: i18next.t('label.criteria') + ':',
+      valueLabel: t('label.criteria') + ':',
       renderButton: renderAdvanceSearchButtons,
     },
   };
@@ -452,4 +456,6 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
   }
 };
 
-export const MISC_FIELDS = ['owner.name', 'tags.tagFQN'];
+export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
+
+export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';

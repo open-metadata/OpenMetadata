@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Menu, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
+import { CookieStorage } from 'cookie-storage';
+import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +35,10 @@ import {
   prepareFeedLink,
 } from '../../utils/FeedUtils';
 import {
+  languageSelectOptions,
+  SupportedLocales,
+} from '../../utils/i18next/i18nextUtil';
+import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
@@ -44,12 +50,14 @@ import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import PopOver from '../common/popover/PopOver';
 import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
+
+const cookieStorage = new CookieStorage();
+
 const NavBar = ({
   supportDropdown,
   profileDropdown,
@@ -79,17 +87,23 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
+  const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
 
   const profilePicture = useMemo(
     () => currentUser?.profile?.images?.image512,
     [currentUser]
   );
 
+  const [language, setLanguage] = useState(
+    cookieStorage.getItem('i18next') || SupportedLocales.English
+  );
+
   const { socket } = useWebSocketConnector();
 
   const navStyle = (value: boolean) => {
-    if (value) return { color: activeLink };
+    if (value) {
+      return { color: activeLink };
+    }
 
     return { color: normalLink };
   };
@@ -113,27 +127,30 @@ const NavBar = ({
     setHasMentionNotification(false);
   };
 
-  const handleBellClick = (visible: boolean) => {
-    if (visible) {
-      switch (activeTab) {
-        case 'Task':
-          hasTaskNotification &&
-            setTimeout(() => {
-              handleTaskNotificationRead();
-            }, NOTIFICATION_READ_TIMER);
+  const handleBellClick = useCallback(
+    (visible: boolean) => {
+      if (visible) {
+        switch (activeTab) {
+          case 'Task':
+            hasTaskNotification &&
+              setTimeout(() => {
+                handleTaskNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
 
-          break;
+            break;
 
-        case 'Conversation':
-          hasMentionNotification &&
-            setTimeout(() => {
-              handleMentionsNotificationRead();
-            }, NOTIFICATION_READ_TIMER);
+          case 'Conversation':
+            hasMentionNotification &&
+              setTimeout(() => {
+                handleMentionsNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
 
-          break;
+            break;
+        }
       }
-    }
-  };
+    },
+    [hasTaskNotification]
+  );
 
   const handleActiveTab = (key: string) => {
     setActiveTab(key);
@@ -178,40 +195,36 @@ const NavBar = ({
     };
   };
 
-  const governanceMenu = (
-    <Menu
-      items={[
-        {
-          key: 'glossary',
-          label: (
-            <NavLink
-              className="focus:no-underline"
-              data-testid="appbar-item-glossary"
-              style={navStyle(pathname.startsWith('/glossary'))}
-              to={{
-                pathname: ROUTES.GLOSSARY,
-              }}>
-              {t('label.glossary')}
-            </NavLink>
-          ),
-        },
-        {
-          key: 'tags',
-          label: (
-            <NavLink
-              className="focus:no-underline"
-              data-testid="appbar-item-tags"
-              style={navStyle(pathname.startsWith('/tags'))}
-              to={{
-                pathname: ROUTES.TAGS,
-              }}>
-              {t('label.tag-plural')}
-            </NavLink>
-          ),
-        },
-      ]}
-    />
-  );
+  const governanceMenu = [
+    {
+      key: 'glossary',
+      label: (
+        <NavLink
+          className="focus:no-underline"
+          data-testid="appbar-item-glossary"
+          style={navStyle(pathname.startsWith('/glossary'))}
+          to={{
+            pathname: ROUTES.GLOSSARY,
+          }}>
+          {t('label.glossary')}
+        </NavLink>
+      ),
+    },
+    {
+      key: 'tags',
+      label: (
+        <NavLink
+          className="focus:no-underline"
+          data-testid="appbar-item-tags"
+          style={navStyle(pathname.startsWith('/tags'))}
+          to={{
+            pathname: ROUTES.TAGS,
+          }}>
+          {t('label.tag-plural')}
+        </NavLink>
+      ),
+    },
+  ];
 
   useEffect(() => {
     if (shouldRequestPermission()) {
@@ -256,9 +269,27 @@ const NavBar = ({
 
   useEffect(() => {
     if (profilePicture) {
-      SetIsImgUrlValid(true);
+      setIsImgUrlValid(true);
     }
   }, [profilePicture]);
+
+  const handleLanguageChange = useCallback((langCode: string) => {
+    setLanguage(langCode);
+    i18next.changeLanguage(langCode);
+  }, []);
+
+  const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
+
+  const handleOnImageError = useCallback(() => {
+    setIsImgUrlValid(false);
+  }, []);
+
+  const handleSelectOption = useCallback(
+    (text) => {
+      AppState.inPageSearchText = text;
+    },
+    [AppState]
+  );
 
   return (
     <>
@@ -299,11 +330,11 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.insights')}
+                {t('label.insight-plural')}
               </NavLink>
               <Dropdown
                 className="cursor-pointer"
-                overlay={governanceMenu}
+                menu={{ items: governanceMenu }}
                 trigger={['click']}>
                 <Space data-testid="governance" size={2}>
                   {t('label.govern')}
@@ -320,7 +351,7 @@ const NavBar = ({
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder={t('label.search-global')}
+              placeholder={t('message.search-for-entity-types')}
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',
@@ -358,9 +389,7 @@ const NavBar = ({
                   isOpen={isSearchBoxOpen}
                   options={inPageSearchOptions(pathname)}
                   searchText={searchValue}
-                  selectOption={(text) => {
-                    AppState.inPageSearchText = text;
-                  }}
+                  selectOption={handleSelectOption}
                   setIsOpen={handleSearchBoxOpen}
                 />
               ) : (
@@ -372,7 +401,13 @@ const NavBar = ({
               ))}
           </div>
           <Space className="tw-ml-auto">
-            <Space size={24}>
+            <Space size={16}>
+              <Select
+                bordered={false}
+                options={languageSelectOptions}
+                value={language}
+                onChange={handleLanguageChange}
+              />
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-settings"
@@ -380,12 +415,12 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.SETTINGS,
                 }}>
-                {t('label.settings')}
+                {t('label.setting-plural')}
               </NavLink>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown
                   destroyPopupOnHide
-                  overlay={
+                  dropdownRender={() => (
                     <NotificationBox
                       hasMentionNotification={hasMentionNotification}
                       hasTaskNotification={hasTaskNotification}
@@ -395,7 +430,7 @@ const NavBar = ({
                       onMarkTaskNotificationRead={handleTaskNotificationRead}
                       onTabChange={handleActiveTab}
                     />
-                  }
+                  )}
                   overlayStyle={{
                     zIndex: 9999,
                     width: '425px',
@@ -403,7 +438,7 @@ const NavBar = ({
                   }}
                   placement="bottomRight"
                   trigger={['click']}
-                  onVisibleChange={handleBellClick}>
+                  onOpenChange={handleBellClick}>
                   <Badge dot={hasTaskNotification || hasMentionNotification}>
                     <SVGIcons
                       alt="Alert bell icon"
@@ -435,10 +470,7 @@ const NavBar = ({
               <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
-                  <PopOver
-                    position="bottom"
-                    title="Profile"
-                    trigger="mouseenter">
+                  <Tooltip placement="bottom" title="Profile" trigger="hover">
                     {isImgUrlValid ? (
                       <div className="profile-image square tw--mr-2">
                         <Image
@@ -446,15 +478,13 @@ const NavBar = ({
                           preview={false}
                           referrerPolicy="no-referrer"
                           src={profilePicture || ''}
-                          onError={() => {
-                            SetIsImgUrlValid(false);
-                          }}
+                          onError={handleOnImageError}
                         />
                       </div>
                     ) : (
                       <Avatar name={username} width="30" />
                     )}
-                  </PopOver>
+                  </Tooltip>
                 }
                 isDropDownIconVisible={false}
                 type="link"
@@ -465,7 +495,7 @@ const NavBar = ({
         <WhatsNewModal
           header={`${t('label.whats-new')}!`}
           visible={isFeatureModalOpen}
-          onCancel={() => handleFeatureModal(false)}
+          onCancel={handleModalCancel}
         />
       </div>
     </>

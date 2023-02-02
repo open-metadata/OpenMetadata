@@ -13,12 +13,12 @@ name: docker-openmetadata-server release app
 on:
   workflow_dispatch:
     inputs:
-      GITHUB_RELEASE_TAG:
-        description: "Github Release Tag"
-        required: true
       DOCKER_RELEASE_TAG:
         description: "Docker Release Tag"
         required: true
+      push_latest_tag_to_release:
+        description: "Do you want to update docker image latest tag as well ?"
+        type: boolean
   release:
     types: [published]
 jobs:
@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Check trigger type
         id: check_trigger
-        run: echo "GITHUB_RELEASE_TAG=0.13.0" >> $GITHUB_OUTPUT
+        run: echo "DOCKER_RELEASE_TAG=0.13.1" >> $GITHUB_OUTPUT
         
       - name: Download application from Artifiact
         uses: actions/download-artifact@v2
@@ -77,8 +77,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}.tar.gz
-          asset_name: openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}.tar.gz
+          asset_path: ./openmetadata-${{ steps.check_trigger.outputs.DOCKER_RELEASE_TAG }}.tar.gz
+          asset_name: openmetadata-${{ steps.check_trigger.outputs.DOCKER_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
           
   release-project-event-workflow_dispatch:
@@ -93,7 +93,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: attach_release
         run: |
-          echo "UPLOAD_URL=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/open-metadata/OpenMetadata/releases/tags/${{ inputs.GITHUB_RELEASE_TAG }}  | jq .upload_url | tr -d '"' )" >> $GITHUB_OUTPUT
+          echo "UPLOAD_URL=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/open-metadata/OpenMetadata/releases/tags/${{ inputs.DOCKER_RELEASE_TAG }}-release | jq .upload_url | tr -d '"' )" >> $GITHUB_OUTPUT
 
       - name: Download application from Artifact
         uses: actions/download-artifact@v2
@@ -105,9 +105,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_path: ./openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}.tar.gz
+          asset_path: ./openmetadata-${{ inputs.DOCKER_RELEASE_TAG }}.tar.gz
           upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_name: openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}.tar.gz
+          asset_name: openmetadata-${{ inputs.DOCKER_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
 
   push_to_docker_hub:
@@ -120,7 +120,7 @@ jobs:
       - name: Check trigger type
         id: check_trigger
         if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
-        run: echo "DOCKER_RELEASE_TAG=0.13.0" >> $GITHUB_ENV
+        run: echo "DOCKER_RELEASE_TAG=0.13.1" >> $GITHUB_ENV
 
       - name: Check out the Repo
         uses: actions/checkout@v3
@@ -136,13 +136,23 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
-      
-      - name: Build and push
+
+      - name: Process Docker Tags
+        id:  input_check
+        run: |
+            if ${{ github.event_name == 'release' }}; then
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
+            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
+            else
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }}" >> $GITHUB_OUTPUT
+            fi
+
+      - name: Build and push if event is workflow_dispatch and input is checked
         uses: docker/build-push-action@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
-
-          tags: 'openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest'
+          tags: ${{ steps.input_check.outputs.tags }}
           file: ./docker/metadata/Dockerfile

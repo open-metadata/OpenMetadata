@@ -13,12 +13,13 @@
 OpenMetadata Airflow Provider Lineage Runner
 """
 from itertools import groupby
-from typing import List, Set
+from typing import List, Optional
 
 from airflow.configuration import conf
 from pydantic import BaseModel
 
-from airflow_provider_openmetadata.lineage.utils import STATUS_MAP, get_xlets
+from airflow_provider_openmetadata.lineage.status import STATUS_MAP
+from airflow_provider_openmetadata.lineage.xlets import XLets
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
@@ -47,15 +48,6 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
-
-
-class XLets(BaseModel):
-    """
-    Group inlets and outlets from all tasks in a DAG
-    """
-
-    inlets: Set[str]
-    outlets: Set[str]
 
 
 class SimpleEdge(BaseModel):
@@ -89,7 +81,7 @@ class AirflowLineageRunner:
         metadata: OpenMetadata,
         service_name: str,
         dag: "DAG",
-        context: "Context",
+        xlets: Optional[XLets] = None,
         only_keep_dag_lineage: bool = False,
         max_status: int = 10,
     ):
@@ -99,7 +91,7 @@ class AirflowLineageRunner:
         self.max_status = max_status
 
         self.dag = dag
-        self.context = context
+        self.xlets = xlets
 
     def get_or_create_pipeline_service(self) -> PipelineService:
         """
@@ -113,24 +105,23 @@ class AirflowLineageRunner:
         if service_entity:
             return service_entity
 
-        else:
-            pipeline_service: PipelineService = self.metadata.create_or_update(
-                CreatePipelineServiceRequest(
-                    name=self.service_name,
-                    serviceType=PipelineServiceType.Airflow,
-                    connection=PipelineConnection(
-                        config=AirflowConnection(
-                            hostPort=conf.get("webserver", "base_url"),
-                            connection=BackendConnection(),
-                        ),
+        pipeline_service: PipelineService = self.metadata.create_or_update(
+            CreatePipelineServiceRequest(
+                name=self.service_name,
+                serviceType=PipelineServiceType.Airflow,
+                connection=PipelineConnection(
+                    config=AirflowConnection(
+                        hostPort=conf.get("webserver", "base_url"),
+                        connection=BackendConnection(),
                     ),
-                )
+                ),
             )
+        )
 
-            if pipeline_service is None:
-                raise RuntimeError("Failed to create Airflow service.")
+        if pipeline_service is None:
+            raise RuntimeError("Failed to create Airflow service.")
 
-            return pipeline_service
+        return pipeline_service
 
     def get_task_url(self, task: "Operator"):
         return f"/taskinstance/list/?flt1_dag_id_equals={self.dag.dag_id}&_flt_3_task_id={task.task_id}"
@@ -252,20 +243,6 @@ class AirflowLineageRunner:
                 fqn=pipeline.fullyQualifiedName.__root__, status=status
             )
 
-    def get_xlets(self) -> XLets:
-        """
-        Fill the inlets and outlets of the Pipeline by iterating
-        over all its tasks
-        """
-        _inlets = set()
-        _outlets = set()
-
-        for task in self.dag.tasks:
-            _inlets.update(get_xlets(operator=task, xlet_mode="_inlets") or [])
-            _outlets.update(get_xlets(operator=task, xlet_mode="_outlets") or [])
-
-        return XLets(inlets=_inlets, outlets=_outlets)
-
     def add_lineage(self, pipeline: Pipeline, xlets: XLets) -> None:
         """
         Add the lineage from inlets and outlets
@@ -366,10 +343,11 @@ class AirflowLineageRunner:
         pipeline = self.create_pipeline_entity(pipeline_service)
         self.add_all_pipeline_status(pipeline)
 
-        xlets = self.get_xlets()
-        self.add_lineage(pipeline, xlets)
-        if self.only_keep_dag_lineage:
-            self.dag.log.info(
-                "`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets..."
-            )
-            self.clean_lineage(pipeline, xlets)
+        if self.xlets:
+            self.dag.log.info("Got some xlet data. Processing lineage...")
+            self.add_lineage(pipeline, self.xlets)
+            if self.only_keep_dag_lineage:
+                self.dag.log.info(
+                    "`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets..."
+                )
+                self.clean_lineage(pipeline, self.xlets)

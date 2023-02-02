@@ -33,7 +33,7 @@
       "type": "string"
     },
     "sslEnabled": {
-      "description": "Ldaps or Ldap",
+      "description": "LDAPS (secure LDAP) or LDAP",
       "type": "boolean",
       "default": false
     },

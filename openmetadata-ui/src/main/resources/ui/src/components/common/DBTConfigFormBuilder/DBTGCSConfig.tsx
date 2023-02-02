@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
+import { Button, Input, Select } from 'antd';
 import { isEmpty, isObject, isString } from 'lodash';
 import React, {
   Fragment,
@@ -28,8 +28,8 @@ import {
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import jsonData from '../../../jsons/en';
 import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
-import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import DBTCommonFields from './DBTCommonFields.component';
 import {
   DbtConfigS3GCS,
   DBTFormCommonProps,
@@ -37,7 +37,6 @@ import {
 } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
-import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
@@ -45,6 +44,7 @@ interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value?: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
   handleUpdateDescriptions: (value: boolean) => void;
+  handleUpdateDBTClassification: (value: string) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
@@ -60,6 +60,8 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleSecurityConfigChange,
   handlePrefixConfigChange,
   handleUpdateDescriptions,
+  dbtClassificationName,
+  handleUpdateDBTClassification,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
@@ -116,6 +118,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       dbtSecurityConfig,
       dbtPrefixConfig,
       dbtUpdateDescriptions,
+      dbtClassificationName,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -375,23 +378,17 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           Available sources to fetch dbt catalog and manifest files.
         </p>
-        <select
-          className="tw-form-inputs tw-form-inputs-padding"
+        <Select
+          className="tw-form-inputs"
           data-testid="gcs-config"
           id="gcs-config"
-          name="gcs-config"
+          options={GCSCreds}
           placeholder="Select GCS Config Type"
           value={gcsType}
-          onChange={(e) => {
-            handleGcsTypeChange &&
-              handleGcsTypeChange(e.target.value as GCS_CONFIG);
-          }}>
-          {GCSCreds.map((option, i) => (
-            <option key={i} value={option.value}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => {
+            handleGcsTypeChange && handleGcsTypeChange(value as GCS_CONFIG);
+          }}
+        />
       </Field>
       {gcsType === GCS_CONFIG.GCSValues
         ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
@@ -437,32 +434,31 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
 
       {getSeparator('')}
 
-      <SwitchField
+      <DBTCommonFields
+        dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
+        descriptionId="gcs-update-description"
+        handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
-        id="gcs-update-description"
       />
 
       {getSeparator('')}
 
-      <Field className="tw-flex tw-justify-end">
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>{cancelText}</span>
+          {cancelText}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleSubmit}>
-          <span>{okText}</span>
+          {okText}
         </Button>
       </Field>
     </Fragment>

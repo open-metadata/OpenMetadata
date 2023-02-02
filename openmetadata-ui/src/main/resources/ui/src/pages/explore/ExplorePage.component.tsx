@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,31 +11,30 @@
  *  limitations under the License.
  */
 
-import { isNil, isString } from 'lodash';
-import Qs from 'qs';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Explore from '../../components/Explore/Explore.component';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Explore from 'components/Explore/Explore.component';
 import {
   ExploreProps,
   ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
-} from '../../components/Explore/explore.interface';
-import { SearchIndex } from '../../enums/search.enum';
-import { SearchResponse } from '../../interface/search.interface';
-
+} from 'components/Explore/explore.interface';
+import { isNil, isString } from 'lodash';
+import Qs from 'qs';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
+import AppState from '../../AppState';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   filterObjectToElasticsearchQuery,

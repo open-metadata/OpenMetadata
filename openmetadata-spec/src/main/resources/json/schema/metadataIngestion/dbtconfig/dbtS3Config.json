@@ -12,11 +12,6 @@
     "dbtPrefixConfig": {
       "title": "DBT Prefix Config",
       "$ref": "./dbtBucketDetails.json"
-    },
-    "dbtUpdateDescriptions": {
-      "description": "Optional configuration to update the description from DBT or not",
-      "type": "boolean",
-      "default": false
     }
   }
 }

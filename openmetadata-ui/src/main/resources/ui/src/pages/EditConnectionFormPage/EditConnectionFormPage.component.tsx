@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,18 +13,18 @@
 
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import Loader from 'components/Loader/Loader';
+import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
 import { startCase } from 'lodash';
-import { ServiceOption, ServicesData, ServiceTypes } from 'Models';
+import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import Loader from '../../components/Loader/Loader';
-import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
+import { getServiceByFQN, updateService } from 'rest/serviceAPI';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { OPENMETADATA } from '../../constants/Services.constant';
@@ -70,8 +70,7 @@ function EditConnectionFormPage() {
       connection: {
         config: updatedData,
       },
-      // TODO: fix type issue here
-    } as unknown as ServiceOption;
+    } as ServicesUpdateRequest;
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceCategory, serviceDetails?.id ?? '', configData)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -26,7 +27,6 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -180,14 +180,13 @@ export const getConstraintIcon = (
   }
 
   return (
-    <PopOver
+    <Tooltip
       className={classNames(className)}
-      position="bottom"
-      size="small"
+      placement="bottom"
       title={title}
-      trigger="mouseenter">
+      trigger="hover">
       <SVGIcons alt={title} icon={icon} width={width} />
-    </PopOver>
+    </Tooltip>
   );
 };
 

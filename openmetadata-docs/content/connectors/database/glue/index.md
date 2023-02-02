@@ -4,13 +4,28 @@ slug: /connectors/database/glue
 ---
 
 # Glue
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ❌       |       ❌      |    ❌    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the Glue connector.
 
 Configure and schedule Glue metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -40,6 +55,8 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest the basic metadata.
 
 ## Metadata Ingestion
 
@@ -217,11 +234,11 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-p## DBT Integration
+p## dbt Integration
 
 <Tile
 icon="mediation"
-title="DBT Integration"
-text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/connectors/ingestion/workflows/metadata/dbt"
+title="dbt Integration"
+text="Learn more about how to ingest dbt models' definitions and their lineage."
+link="/connectors/ingestion/workflows/dbt"
 />

@@ -10,7 +10,7 @@ import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 
-public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterface<TotalEntitiesByTier> {
+public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterface {
   public TotalEntitiesByTierAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
@@ -18,15 +18,14 @@ public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterfac
 
   @Override
   public DataInsightChartResult process() throws ParseException {
-    List data = this.aggregate();
-    DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
-    return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
+    List<Object> data = this.aggregate();
+    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<TotalEntitiesByTier> aggregate() throws ParseException {
+  List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<TotalEntitiesByTier> data = new ArrayList<>();
+    List<Object> data = new ArrayList<>();
 
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       List<TotalEntitiesByTier> timestampData = new ArrayList<>();

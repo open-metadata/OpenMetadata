@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -32,24 +32,12 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 jest.mock('../../utils/FilterUtils', () => ({
   getFilterString: jest.fn().mockImplementation(() => 'user.address'),
   getFilterCount: jest.fn().mockImplementation(() => 10),
 }));
 
-jest.mock('../../components/searched-data/SearchedData', () => {
+jest.mock('components/searched-data/SearchedData', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -91,10 +79,12 @@ describe('Test Explore component', () => {
     );
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, /tab/i);
+    // Here regular expression '/-tab/i' is used to match all the tabs
+    // Example, Tab for Table assets will have data-testid='tables-tab'
+    const tabs = await findAllByTestId(container, /-tab/i);
 
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs.length).toBe(5);
+    expect(tabs).toHaveLength(5);
   });
 });

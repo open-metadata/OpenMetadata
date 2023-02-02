@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,6 +15,7 @@ import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
@@ -44,6 +45,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   feedType,
   taskDetails,
 }) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const onTitleClickHandler = (name: string) => {
     history.push(getUserPath(name));
@@ -53,7 +55,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const getFeedLinkElement = entityCheck && (
     <span className="tw-font-normal" data-testid="headerText">
-      <span className="tw-mx-1">posted on</span>
+      <span className="tw-mx-1">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
         <span className="tw-heading" data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
@@ -76,7 +78,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const getTaskLinkElement = entityCheck && (
     <span className="tw-font-normal">
-      <span className="tw-mx-1">created a task</span>
+      <span className="tw-mx-1">{t('label.created-a-task-lowercase')}</span>
       <Link
         data-testid="tasklink"
         to={getTaskDetailPath(toString(taskDetails?.id)).pathname}
@@ -86,7 +88,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           {taskDetails?.type}
         </span>
       </Link>
-      <span className="tw-mx-1">for</span>
+      <span className="tw-mx-1">{t('label.for-lowercase')}</span>
       {isEntityFeed ? (
         <span className="tw-heading" data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
@@ -110,7 +112,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const getAnnouncementLinkElement = entityCheck && (
     <span className="tw-mx-1">
-      made an announcement for {entityType}{' '}
+      {t('message.made-announcement-for-entity', { entity: entityType })}{' '}
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
         <Link
           className="tw-break-all"

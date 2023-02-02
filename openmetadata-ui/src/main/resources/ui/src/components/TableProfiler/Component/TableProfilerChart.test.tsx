@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,11 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import {
-  getSystemProfileList,
-  getTableProfilesList,
-} from '../../../axiosAPIs/tableAPI';
+import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   getPastDatesTimeStampFromCurrentDate,
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
-
 import TableProfilerChart from './TableProfilerChart';
 
 const mockFQN = 'testFQN';
@@ -49,7 +45,7 @@ jest.mock('../../../utils/TimeUtils', () => ({
     .fn()
     .mockImplementation(() => mockTimeValue.startMilli),
 }));
-jest.mock('../../../axiosAPIs/tableAPI');
+jest.mock('rest/tableAPI');
 jest.mock('../../ProfilerDashboard/component/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
 });
@@ -79,14 +75,14 @@ describe('TableProfilerChart component test', () => {
     expect(
       await screen.findByTestId('operation-date-metrics')
     ).toBeInTheDocument();
-    expect((await screen.findAllByText('ProfilerLatestValue')).length).toBe(2);
+    expect(await screen.findAllByText('ProfilerLatestValue')).toHaveLength(2);
     expect(
       await screen.findByText('OperationDateBarChart')
     ).toBeInTheDocument();
     expect(await screen.findByText('CustomBarChart')).toBeInTheDocument();
     expect(await screen.findByText('ProfilerDetailsCard')).toBeInTheDocument();
-    expect(mockGetSystemProfileList.mock.instances.length).toBe(1);
-    expect(mockGetTableProfilesList.mock.instances.length).toBe(1);
+    expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
+    expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
   });
 
   it('Api call should done as per proper data', async () => {
@@ -97,8 +93,8 @@ describe('TableProfilerChart component test', () => {
     });
 
     // API should be call once
-    expect(mockGetSystemProfileList.mock.instances.length).toBe(1);
-    expect(mockGetTableProfilesList.mock.instances.length).toBe(1);
+    expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
+    expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
     // API should be call with FQN value
     expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual(mockFQN);
     expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual(mockFQN);

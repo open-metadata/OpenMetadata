@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,10 @@
  */
 
 import {
-    addTeam,
-    interceptURL, uuid,
-    verifyResponseStatusCode
+  addTeam,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
 } from '../../common/common';
 
 const buTeamName = `bu-${uuid()}`;
@@ -53,11 +54,15 @@ describe('Add nested teams and test TeamsSelectable', () => {
       addTeam(getTeam(teamName));
 
       cy.reload();
-      interceptURL('GET','/api/v1/search/query?q=*&from=*&size=*&index=*', 'getCreatedTeam')
+      interceptURL(
+        'GET',
+        '/api/v1/search/query?q=*&from=*&size=*&index=*',
+        'getCreatedTeam'
+      );
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
 
-      verifyResponseStatusCode('@getCreatedTeam', 200)
+      verifyResponseStatusCode('@getCreatedTeam', 200);
     });
 
     verifyResponseStatusCode('@getPermissions', 200);
@@ -73,7 +78,8 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-    cy.get('.ant-select-selector')
+    // Enter team name
+    cy.get('#create-user-bot-form .ant-select-selector')
       .should('exist')
       .scrollIntoView()
       .should('be.visible')
@@ -87,7 +93,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     });
 
     teamNames.forEach((teamName) => {
-      cy.get('.ant-select-selector')
+      cy.get('#create-user-bot-form .ant-select-selector')
         .should('exist')
         .scrollIntoView()
         .should('be.visible')

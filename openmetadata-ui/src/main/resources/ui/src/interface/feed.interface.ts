@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,3 +19,15 @@ export type ThreadUpdatedFunc = (
   isThread: boolean,
   data: Operation[]
 ) => void;
+
+export interface EntityFieldThreadCount {
+  count: number;
+  entityLink: string;
+}
+
+export type EntityThreadField = 'description' | 'columns' | 'tags' | 'tasks';
+export interface EntityFieldThreads {
+  entityLink: string;
+  count: number;
+  entityField: string;
+}

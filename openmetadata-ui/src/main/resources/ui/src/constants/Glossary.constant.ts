@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { AddGlossaryError } from 'components/AddGlossary/AddGlossary.interface';
 import { t } from 'i18next';
-import { AddGlossaryError } from '../components/AddGlossary/AddGlossary.interface';
+import { startCase } from 'lodash';
 import { errorMsg } from '../utils/CommonUtils';
 
 export const ADD_GLOSSARY_ERROR = {
@@ -32,3 +33,18 @@ export const ADD_GLOSSARY_ERROR = {
     }) + '.'
   ),
 };
+
+export const STEPS_FOR_IMPORT_GLOSSARY_TERMS = [
+  {
+    name: startCase(t('label.upload-file')),
+    step: 1,
+  },
+  {
+    name: startCase(t('label.preview-uploaded-data')),
+    step: 2,
+  },
+  {
+    name: startCase(t('label.import')),
+    step: 3,
+  },
+];

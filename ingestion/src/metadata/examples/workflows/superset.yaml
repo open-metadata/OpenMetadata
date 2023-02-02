@@ -1,14 +1,22 @@
 source:
   type: superset
-  serviceName: local_superset
+  serviceName: local_superset_12
   serviceConnection:
     config:
-      hostPort: http://localhost:8080
-      username: admin
-      password: admin
+      hostPort: http://localhost:8088
+      connection:
+        type: Postgres
+        username: superset
+        password: superset
+        hostPort: localhost:5432
+        database: superset
+        # username: admin
+        # password: admin
+        # provider: db
       type: Superset
   sourceConfig:
     config:
+      type: DashboardMetadata
       chartFilterPattern: {}
       dashboardFilterPattern: {}
 sink:

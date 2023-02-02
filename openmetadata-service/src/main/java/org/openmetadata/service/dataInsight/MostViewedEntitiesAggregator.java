@@ -8,7 +8,7 @@ import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
-public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface<MostViewedEntities> {
+public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface {
 
   public MostViewedEntitiesAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
@@ -17,15 +17,14 @@ public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface
 
   @Override
   public DataInsightChartResult process() {
-    List data = this.aggregate();
-    DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
-    return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
+    List<Object> data = this.aggregate();
+    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<MostViewedEntities> aggregate() {
+  List<Object> aggregate() {
     MultiBucketsAggregation entityFqnBuckets = this.aggregations.get("entityFqn");
-    List<MostViewedEntities> data = new ArrayList();
+    List<Object> data = new ArrayList<>();
     for (MultiBucketsAggregation.Bucket entityFqnBucket : entityFqnBuckets.getBuckets()) {
       String tableFqn = entityFqnBucket.getKeyAsString();
       Sum sumPageViews = entityFqnBucket.getAggregations().get("pageViews");

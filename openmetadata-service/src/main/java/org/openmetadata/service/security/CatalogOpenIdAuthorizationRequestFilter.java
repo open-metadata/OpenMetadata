@@ -13,7 +13,8 @@
 
 package org.openmetadata.service.security;
 
-import com.google.common.base.Strings;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import javax.annotation.Priority;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -28,7 +29,6 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 @Priority(100)
 public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequestFilter {
   public static final String X_AUTH_PARAMS_EMAIL_HEADER = "X-Auth-Params-Email";
-  public static final String EMAIL_ADDRESS = "emailAddress";
   private static final String HEALTH_END_POINT = "health";
 
   @SuppressWarnings("unused")
@@ -61,19 +61,10 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     LOG.debug("Request Headers:{}", headers);
 
     String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
-    if (Strings.isNullOrEmpty(openIdEmail)) {
+    if (nullOrEmpty(openIdEmail)) {
       throw new AuthenticationException("Not authorized; User's Email is not present");
     }
     String[] openIdEmailParts = openIdEmail.split("@");
     return openIdEmailParts[0];
-  }
-
-  protected String extractAuthorizedEmailAddress(MultivaluedMap<String, String> headers) {
-    LOG.debug("Request Headers:{}", headers);
-    String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
-    if (Strings.isNullOrEmpty(openIdEmail)) {
-      throw new AuthenticationException("Not authorized; User's Email is not present");
-    }
-    return openIdEmail;
   }
 }

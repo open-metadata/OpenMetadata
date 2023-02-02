@@ -1,0 +1,241 @@
+#
+# Copyright 2022 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+---
+env:
+  browser: true
+  es6: true
+  jest: true
+
+extends:
+  - eslint:recommended
+  - plugin:react/recommended
+  - plugin:jest/recommended
+  - plugin:jest/style
+  - plugin:jest-formatting/recommended
+  - plugin:cypress/recommended
+  - plugin:@typescript-eslint/recommended
+  - plugin:prettier/recommended
+  - prettier
+  - 'plugin:cypress/recommended'
+
+parser: '@typescript-eslint/parser'
+
+parserOptions:
+  ecmaVersion: 2018
+  sourceType: module
+  ecmaFeatures:
+    jsx: true
+
+plugins:
+  - react
+  - react-hooks
+  - eslint-plugin-jsonc
+  - jest
+  - jest-formatting
+  - '@typescript-eslint'
+  - 'cypress'
+
+rules:
+  # ESLint rules
+
+  # Require type-safe equality operators
+  eqeqeq:
+    - error
+    - smart
+
+  # Require a whitespace at the beginning of a comment
+  spaced-comment:
+    - error
+    - always
+
+  # Maximum line length for comments except trailing comments
+  max-len:
+    - error
+    - comments: 120
+      code: 200 # Set to not conflict with Prettier
+      ignoreTrailingComments: true
+      ignoreUrls: true
+
+  # Require braces around blocks
+  curly:
+    - error
+    - all
+
+  # Require parentheses around arrow function arguments
+  arrow-parens:
+    - error
+    - always
+
+  # Require blank line before certain statements
+  padding-line-between-statements:
+    - error
+    - blankLine: always
+      prev: '*'
+      next: function
+    - blankLine: always
+      prev: '*'
+      next: class
+    - blankLine: always
+      prev: '*'
+      next: export
+    # Ignore consecutive export statements
+    - blankLine: any
+      prev: export
+      next: export
+    - blankLine: always
+      prev: '*'
+      next: return
+    - blankLine: always
+      prev: '*'
+      next: break
+    - blankLine: always
+      prev: '*'
+      next: continue
+    - blankLine: always
+      prev: '*'
+      next: throw
+
+  # eslint-plugin-react rules
+
+  # Require props to be sorted
+  react/jsx-sort-props:
+    - error
+    - callbacksLast: true
+      shorthandFirst: true
+
+  # Omit boolean prop value when set to true
+  react/jsx-boolean-value:
+    - error
+    - never
+
+  # Require self closing tags in JSX/HTML
+  react/self-closing-comp:
+    - error
+    - component: true
+      html: true
+
+  # Require PascalCase for user-defined JSX components
+  react/jsx-pascal-case:
+    - error
+
+  # Disallow unnecessary curly braces in JSX
+  react/jsx-curly-brace-presence:
+    - error
+    - never
+
+  # eslint-plugin-react-hooks rules
+
+  # Enforce rules of hooks
+  react-hooks/rules-of-hooks: error
+
+  # eslint-plugin-jsonc rules
+
+  # Require keys to be sorted
+  jsonc/sort-keys:
+    - error
+    - pathPattern: '.*'
+      order:
+        type: asc
+
+  # eslint-plugin-jest rules
+
+  # Prefer "it" over "test"
+  jest/consistent-test-it:
+    - error
+    - fn: it
+      withinDescribe: it
+
+  # Warn for skipped/disabled tests
+  jest/no-disabled-tests: warn
+
+  # eslint-plugin-jest-formatting rules
+
+  # Require blank line before certain statements (ESLint rules don't work with Jest)
+  jest-formatting/padding-around-all: error
+
+  # @typescript-eslint rules
+
+  # Require explicit return type on functions and class methods
+  '@typescript-eslint/explicit-function-return-type':
+    - off
+
+  # disable the rule for all files
+  '@typescript-eslint/explicit-module-boundary-types':
+    - off
+
+  # React rules
+
+  react/display-name:
+    - off
+
+  # React rules
+
+  # Cypress rules
+
+  cypress/no-unnecessary-waiting: warn
+
+  # Cypress rules
+
+overrides:
+  # eslint-plugin-jsonc requires its own parser
+  - files:
+      - '*.json'
+    parser: jsonc-eslint-parser
+
+  # disable rules on generated files
+  - files:
+      - src/generated/**/*.ts
+    rules:
+      max-len:
+        - off
+
+  # Certain rules not required for JSON files
+  - files:
+      - '*.json'
+    rules:
+      max-len:
+        - off
+      jsonc/sort-keys:
+        - off
+  - files:
+      - src/locale/**/*.json
+    rules:
+      jsonc/sort-keys:
+        - error
+
+  # Explicit assertions not required in most Cypress tests
+  - files:
+      - cypress/**
+    rules:
+      jest/expect-expect:
+        - off
+      jest/valid-expect-in-promise:
+        - off
+      jest/valid-expect:
+        - off
+
+globals:
+  cypress: true
+
+settings:
+  import/resolver:
+    babel-module:
+      root:
+        - './src'
+      extensions:
+        - '.js'
+        - '.jsx'
+        - '.png'
+        - '.svg'
+  react:
+    version: detect

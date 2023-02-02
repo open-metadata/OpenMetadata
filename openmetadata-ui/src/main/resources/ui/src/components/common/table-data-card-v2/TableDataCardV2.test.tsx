@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,6 +48,7 @@ describe('Test TableDataCard Component', () => {
         id="1"
         searchIndex={SearchIndex.TABLE}
         source={{
+          id: '1',
           name: 'Name1',
         }}
       />,
@@ -65,6 +66,7 @@ describe('Test TableDataCard Component', () => {
         id="1"
         searchIndex={SearchIndex.TABLE}
         source={{
+          id: '2',
           name: 'Name2',
           deleted: true,
         }}

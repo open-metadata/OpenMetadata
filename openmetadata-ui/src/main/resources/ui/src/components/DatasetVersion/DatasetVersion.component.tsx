@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,12 @@
  */
 
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
+
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { FqnPart } from '../../enums/entity.enum';
@@ -37,7 +40,6 @@ import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import VersionTable from '../VersionTable/VersionTable.component';
@@ -56,6 +58,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   backHandler,
   versionHandler,
 }: DatasetVersionProp) => {
+  const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -354,7 +357,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',

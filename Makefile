@@ -61,6 +61,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
+	rm -rf ingestion/src/metadata/generated
 	mkdir -p ingestion/src/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
@@ -119,16 +120,6 @@ publish:  ## Publish the ingestion module to PyPI
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
 	  twine upload dist/*
-
-.PHONY: build_docker_connectors
-build_docker_connectors:  ## Build all Ingestion Framework Sources Images to be used as Docker Operators in Airflow
-	@echo "Building Docker connectors. Make sure to run build_docker_base first"
-	python ingestion/connectors/docker-cli.py build
-
-.PHONY: push_docker_connectors
-push_docker_connectors:  ## Push all Sources Docker Images to DockerHub
-	@echo "Pushing Docker connectors. Make sure to run build_docker_connectors first"
-	python ingestion/connectors/docker-cli.py push
 
 ## Yarn
 .PHONY: yarn_install_cache

@@ -31,6 +31,10 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -58,7 +62,6 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -85,7 +88,6 @@ from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
-from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
@@ -95,7 +97,8 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
+from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
@@ -132,7 +135,6 @@ class OpenMetadata(
     OMetaTableMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
-    OMetaTagMixin,
     GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
@@ -164,7 +166,7 @@ class OpenMetadata(
     policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
-    tags_path = "tags"
+    classifications_path = "classification"
     tests_path = "tests"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
@@ -193,6 +195,7 @@ class OpenMetadata(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
+            extra_headers=self.config.extraHeaders,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
         )
@@ -282,12 +285,21 @@ class OpenMetadata(
                 Union[
                     Tag,
                     self.get_create_entity_type(Tag),
-                    TagCategory,
-                    self.get_create_entity_type(TagCategory),
                 ]
             ),
         ):
             return "/tags"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    Classification,
+                    self.get_create_entity_type(Classification),
+                ]
+            ),
+        ):
+            return "/classifications"
 
         if issubclass(
             entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
@@ -420,8 +432,11 @@ class OpenMetadata(
         if "service" in entity.__name__.lower():
             return self.services_path
 
-        if "tag" in entity.__name__.lower():
-            return self.tags_path
+        if (
+            "tag" in entity.__name__.lower()
+            or "classification" in entity.__name__.lower()
+        ):
+            return self.classifications_path
 
         if "test" in entity.__name__.lower():
             return self.tests_path
@@ -476,7 +491,6 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
-            .replace("tagcategory", "tagCategory")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
@@ -717,13 +731,6 @@ class OpenMetadata(
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
-
-    def list_tags_by_category(self, category: str) -> List[Tag]:
-        """
-        List all tags
-        """
-        resp = self.client.get(f"{self.get_suffix(Tag)}/{category}")
-        return [Tag(**d) for d in resp["children"]]
 
     def health_check(self) -> bool:
         """

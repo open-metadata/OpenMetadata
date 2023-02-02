@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,13 +14,14 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getAdvancedFieldDefaultOptions } from '../../axiosAPIs/miscAPI';
+import { getAdvancedFieldOptions } from 'rest/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
   mockAdvancedFieldDefaultOptions,
+  mockAdvancedFieldDuplicateOptions,
   mockAdvancedFieldOptions,
   mockTagSuggestions,
   mockUserSuggestions,
@@ -50,7 +51,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           ))}
           <div
             data-testid={`onSearch-${searchKey}`}
-            onClick={() => onSearch('', searchKey)}>
+            onClick={() => onSearch('e', searchKey)}>
             onSearch
           </div>
           <div
@@ -67,7 +68,7 @@ jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   getAdvancedFieldDefaultOptions: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),
@@ -101,7 +102,7 @@ const mockFields: ExploreQuickFilterField[] = [
   },
   {
     label: 'Owner',
-    key: 'owner.name',
+    key: 'owner.displayName',
     value: undefined,
   },
   {
@@ -159,7 +160,7 @@ describe('Test ExploreQuickFilters component', () => {
 
     fireEvent.click(advanceSearchButton);
 
-    expect(onAdvanceSearch).toBeCalled();
+    expect(onAdvanceSearch).toHaveBeenCalled();
   });
 
   it('All options should be passed to SearchDropdown component for proper API response', async () => {
@@ -178,8 +179,8 @@ describe('Test ExploreQuickFilters component', () => {
     const options = await findAllByTestId('option-database.name');
 
     expect(options).toHaveLength(
-      mockAdvancedFieldDefaultOptions.data.aggregations['sterms#database.name']
-        .buckets.length
+      mockAdvancedFieldOptions.data.suggest['metadata-suggest'][0].options
+        .length
     );
   });
 
@@ -199,11 +200,11 @@ describe('Test ExploreQuickFilters component', () => {
     let options = await findAllByTestId('option-database.name');
 
     expect(options).toHaveLength(
-      mockAdvancedFieldDefaultOptions.data.aggregations['sterms#database.name']
-        .buckets.length
+      mockAdvancedFieldOptions.data.suggest['metadata-suggest'][0].options
+        .length
     );
 
-    (getAdvancedFieldDefaultOptions as jest.Mock).mockImplementationOnce(() =>
+    (getAdvancedFieldOptions as jest.Mock).mockImplementationOnce(() =>
       Promise.reject('not done')
     );
 
@@ -214,5 +215,30 @@ describe('Test ExploreQuickFilters component', () => {
     options = queryAllByTestId('option-database.name');
 
     expect(options).toHaveLength(0);
+  });
+
+  it('No duplicate options should be sent to SearchDropdown component', async () => {
+    const { findByTestId, findAllByTestId } = render(
+      <ExploreQuickFilters {...mockProps} />
+    );
+
+    const databaseFieldOnSearch = await findByTestId('onSearch-database.name');
+
+    expect(databaseFieldOnSearch).toBeInTheDocument();
+
+    (getAdvancedFieldOptions as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockAdvancedFieldDuplicateOptions)
+    );
+
+    await act(async () => {
+      userEvent.click(databaseFieldOnSearch);
+    });
+
+    const options = await findAllByTestId('option-database.name');
+
+    expect(options).toHaveLength(
+      mockAdvancedFieldDuplicateOptions.data.suggest['metadata-suggest'][0]
+        .options.length - 1 // expected value reduced by 1 as one option in response is duplicated
+    );
   });
 });

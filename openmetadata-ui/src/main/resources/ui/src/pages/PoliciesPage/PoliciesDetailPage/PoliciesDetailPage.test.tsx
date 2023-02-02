@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,7 +21,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
 }));
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getPolicyByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(POLICY_DATA)),
@@ -30,38 +30,34 @@ jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../axiosAPIs/teamsAPI', () => ({
+jest.mock('rest/teamsAPI', () => ({
   getTeamByName: jest.fn().mockImplementation(() => Promise.resolve()),
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/description/Description', () =>
+jest.mock('components/common/description/Description', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
 );
 
-jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
 );
 
-jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -126,9 +122,9 @@ describe('Test Policy details page', () => {
 
     const rulesTab = await screen.findByText('label.rules');
 
-    const rolesTab = await screen.findByText('label.roles');
+    const rolesTab = await screen.findByText('label.role-plural');
 
-    const teamsTab = await screen.findByText('label.teams');
+    const teamsTab = await screen.findByText('label.team-plural');
 
     expect(container).toBeInTheDocument();
 

@@ -226,7 +226,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             responseCode = "200",
             description = "table",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
-        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Table for instance {fqn} is not found")
       })
   public Table getByName(
       @Context UriInfo uriInfo,
@@ -264,7 +264,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Table Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -288,9 +288,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Table getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "table Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Table Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "table version number in the form `major`.`minor`",
+              description = "Table version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -923,8 +923,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    ResultList<SQLQuery> getTableQueryList = dao.getQueriesForPagination(id, limitParam, before, after);
-    return getTableQueryList;
+    return dao.getQueriesForPagination(id, limitParam, before, after);
   }
 
   @PUT

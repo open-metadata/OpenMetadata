@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -193,12 +194,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelAddInvalidDashboard_200(TestInfo test) {
     CreateMlModel request = createRequest(test);
     // Create a made up dashboard reference by picking up a random UUID
-    EntityReference dashboard = new EntityReference().withId(USER1.getId()).withType("dashboard");
+    EntityReference dashboard = new EntityReference().withId(UUID.randomUUID()).withType("dashboard");
 
     assertResponse(
         () -> createEntity(request.withDashboard(dashboard), ADMIN_AUTH_HEADERS),
         Status.NOT_FOUND,
-        String.format("dashboard instance for %s not found", USER1.getId()));
+        String.format("dashboard instance for %s not found", dashboard.getId()));
   }
 
   @Test
@@ -284,7 +285,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test);
 
     // Create a made up table reference by picking up a random UUID
-    EntityReference invalid_table = new EntityReference().withId(USER1.getId()).withType("table");
+    EntityReference invalid_table = new EntityReference().withId(UUID.randomUUID()).withType("table");
 
     MlFeature newMlFeature =
         new MlFeature()
@@ -301,7 +302,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     assertResponse(
         () -> createEntity(request.withMlFeatures(newFeatures), ADMIN_AUTH_HEADERS),
         Status.NOT_FOUND,
-        String.format("table instance for %s not found", USER1.getId()));
+        String.format("table instance for %s not found", invalid_table.getId()));
   }
 
   @Test

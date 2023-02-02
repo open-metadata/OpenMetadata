@@ -12,10 +12,15 @@
 """
 sql lineage utils tests
 """
+import uuid
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import populate_column_lineage_map
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_lineage,
+    populate_column_lineage_map,
+)
 
 QUERY = [
     "CREATE TABLE MYTABLE2 AS SELECT * FROM MYTABLE1;",
@@ -43,3 +48,98 @@ class SqlLineageTest(TestCase):
             raw_column_lineage = lineage_parser.column_lineage
             lineage_map = populate_column_lineage_map(raw_column_lineage)
             self.assertEqual(lineage_map, EXPECTED_LINEAGE_MAP[i])
+
+    def test_get_column_lineage_select_all(self):
+        # Given
+        column_lineage_map = {
+            "testdb.public.target": {"testdb.public.users": [("*", "*")]}
+        }
+        to_entity = Table(
+            id=uuid.uuid4(),
+            name="target",
+            fullyQualifiedName="testdb.public.target",
+            columns=[
+                {
+                    "name": "id",
+                    "dataType": "NUMBER",
+                    "fullyQualifiedName": "testdb.public.target.id",
+                },
+                {
+                    "name": "otherCol",
+                    "dataType": "NUMBER",
+                    "fullyQualifiedName": "testdb.public.target.otherCol",
+                },
+            ],
+        )
+        from_entity = Table(
+            id=uuid.uuid4(),
+            name="users",
+            fullyQualifiedName="testdb.public.users",
+            columns=[
+                {
+                    "name": "id",
+                    "dataType": "NUMBER",
+                    "fullyQualifiedName": "testdb.public.users.id",
+                }
+            ],
+        )
+        # When
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.users",
+            column_lineage_map=column_lineage_map,
+        )
+        # Then
+        assert len(col_lineage) == 1
+
+    def test_populate_column_lineage_map_select_all(self):
+        # Given
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS  
+        SELECT * FROM TESTDB.PUBLIC.USERS
+        ;
+        """
+        lineage_parser = LineageParser(query)
+        raw_column_lineage = lineage_parser.column_lineage
+        # When
+        lineage_map = populate_column_lineage_map(raw_column_lineage)
+        # Then
+        self.assertEqual(
+            lineage_map, {"testdb.public.target": {"testdb.public.users": [("*", "*")]}}
+        )
+
+    def test_populate_column_lineage_map_ctes(self):
+        # Given
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+         WITH cte_table AS (
+           SELECT
+             USERS.ID,
+             USERS.NAME
+           FROM TESTDB.PUBLIC.USERS
+        ),
+        cte_table2 AS (
+           SELECT
+              ID,
+              NAME
+           FROM cte_table
+        )        
+        SELECT 
+          ID,
+          NAME
+        FROM cte_table2
+        ;
+        """
+        lineage_parser = LineageParser(query)
+        raw_column_lineage = lineage_parser.column_lineage
+        # When
+        lineage_map = populate_column_lineage_map(raw_column_lineage)
+        # Then
+        self.assertEqual(
+            lineage_map,
+            {
+                "testdb.public.target": {
+                    "testdb.public.users": [("ID", "ID"), ("NAME", "NAME")]
+                }
+            },
+        )

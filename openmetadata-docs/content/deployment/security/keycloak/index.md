@@ -45,6 +45,14 @@ Follow the sections in this guide to set up Keycloak SSO.
 
 - Click on `Save` button.
 
+
+<Note>
+
+Configuring a service account in Keycloak is optional if you configure the ingestion-bot with
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
+
+</Note>
+
 ### Step 5: Where to Find the Credentials
 
 - Navigate to the `Credentials` tab.

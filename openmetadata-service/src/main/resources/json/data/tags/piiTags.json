@@ -1,23 +1,22 @@
 {
-  "name": "PII",
-  "description": "Personally Identifiable Information information that, when used alone or with other relevant data, can identify an individual.<br/><br/>_Note to Legal - This tag category is provided as a starting point. Please review and update the tags based on your company policy. Also, add a reference to your PII policy document in this description._",
-  "provider": "system",
-  "mutuallyExclusive": "true",
-  "children": [
+  "createClassification": {
+    "name": "PII",
+    "description": "Personally Identifiable Information information that, when used alone or with other relevant data, can identify an individual.<br/><br/>_Note to Legal - This tag category is provided as a starting point. Please review and update the tags based on your company policy. Also, add a reference to your PII policy document in this description._",
+    "provider": "system",
+    "mutuallyExclusive": "true"
+  },
+  "createTags": [
     {
       "name": "None",
-      "description": "Non PII",
-      "provider": "system"
+      "description": "Non PII"
     },
     {
       "name": "NonSensitive",
-      "description": "PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.",
-      "provider": "system"
+      "description": "PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth."
     },
     {
       "name": "Sensitive",
-      "description": "PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.",
-      "provider": "system"
+      "description": "PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual."
     }
   ]
 }

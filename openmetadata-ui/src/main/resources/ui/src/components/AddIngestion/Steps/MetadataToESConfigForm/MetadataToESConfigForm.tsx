@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Button,
   Col,
@@ -86,7 +87,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={t('label.use-aws-credentials')}
+        label={t('label.use-aws-credential-plural')}
         name="useAwsCredentials">
         <Switch />
       </Form.Item>
@@ -106,7 +107,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={t('label.verify-certs')}
+        label={t('label.verify-cert-plural')}
         name="verifyCerts">
         <Switch />
       </Form.Item>

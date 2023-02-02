@@ -46,8 +46,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension";
-  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension";
+  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension,followers";
+  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension,followers";
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -73,9 +73,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
-    mlModel.setUsageSummary(
+    return mlModel.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
-    return mlModel;
   }
 
   @Override

@@ -57,8 +57,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getContainer(location.getId()));
     location.setPath(location.getPath());
-    location.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
-    return location;
+    return location.withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
   }
 
   @Override
@@ -74,7 +73,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
       throws IOException {
-    String service = FullyQualifiedName.getServiceName(fqn);
+    String service = FullyQualifiedName.getRoot(fqn);
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
         daoCollection
@@ -110,7 +109,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
       throws IOException {
-    String service = FullyQualifiedName.getServiceName(fqn);
+    String service = FullyQualifiedName.getRoot(fqn);
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
         daoCollection

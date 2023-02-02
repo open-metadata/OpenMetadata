@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
-import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { EntityTags, ExtraInfo } from 'Models';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { restoreTable } from '../../axiosAPIs/tableAPI';
+import { restoreTable } from 'rest/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -31,7 +37,8 @@ import {
   JoinedWith,
   Table,
   TableJoins,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  TableProfile,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -49,8 +56,6 @@ import {
   getTableFQNFromColumnFQN,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
@@ -67,7 +72,6 @@ import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -80,7 +84,6 @@ import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
-
 // css
 import './datasetDetails.style.less';
 
@@ -131,6 +134,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
+  isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -139,6 +143,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [isFollowing, setIsFollowing] = useState(false);
   const [usage, setUsage] = useState('');
   const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [tableJoinData, setTableJoinData] = useState<TableJoins>({
     startDate: new Date(),
     dayCount: 0,
@@ -150,7 +155,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -161,6 +165,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const { getEntityPermission } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(async () => {
+    setIsLoading(true);
     try {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
@@ -172,6 +177,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       showErrorToast(
         jsonData['api-error-messages']['fetch-entity-permissions-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
@@ -181,16 +188,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   }, [tableDetails.id]);
 
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
-
-  const setUsageDetails = (
-    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
-  ) => {
+  const setUsageDetails = (usageSummary: UsageDetails) => {
     if (!isNil(usageSummary?.weeklyStats?.percentileRank)) {
       const percentile = getUsagePercentile(
         usageSummary?.weeklyStats?.percentileRank || 0,
@@ -211,108 +209,111 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     );
     setFollowersCount(followers?.length);
   };
-  const tabs = [
-    {
-      name: t('label.schema'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
+  const tabs = useMemo(
+    () => [
+      {
+        name: t('label.schema'),
+        icon: {
+          alt: 'schema',
+          name: 'icon-schema',
+          title: 'Schema',
+          selectedName: 'icon-schemacolor',
+        },
+        isProtected: false,
+        position: 1,
       },
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: t('label.activity-feed-and-task-plural'),
-      icon: {
-        alt: 'activity_feed',
-        name: 'activity_feed',
-        title: 'Activity Feed',
-        selectedName: 'activity-feed-color',
+      {
+        name: t('label.activity-feed-and-task-plural'),
+        icon: {
+          alt: 'activity_feed',
+          name: 'activity_feed',
+          title: 'Activity Feed',
+          selectedName: 'activity-feed-color',
+        },
+        isProtected: false,
+        position: 2,
+        count: feedCount,
       },
-      isProtected: false,
-      position: 2,
-      count: feedCount,
-    },
-    {
-      name: t('label.sample-data'),
-      icon: {
-        alt: 'sample_data',
-        name: 'sample-data',
-        title: 'Sample Data',
-        selectedName: 'sample-data-color',
+      {
+        name: t('label.sample-data'),
+        icon: {
+          alt: 'sample_data',
+          name: 'sample-data',
+          title: 'Sample Data',
+          selectedName: 'sample-data-color',
+        },
+        isProtected: false,
+        isHidden: !(
+          tablePermissions.ViewAll ||
+          tablePermissions.ViewBasic ||
+          tablePermissions.ViewSampleData
+        ),
+        position: 3,
       },
-      isProtected: false,
-      isHidden: !(
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewBasic ||
-        tablePermissions.ViewSampleData
-      ),
-      position: 3,
-    },
-    {
-      name: t('label.query-plural'),
-      icon: {
-        alt: 'table_queries',
-        name: 'table_queries',
-        title: 'Table Queries',
-        selectedName: '',
+      {
+        name: t('label.query-plural'),
+        icon: {
+          alt: 'table_queries',
+          name: 'table_queries',
+          title: 'Table Queries',
+          selectedName: '',
+        },
+        isProtected: false,
+        isHidden: !(
+          tablePermissions.ViewAll ||
+          tablePermissions.ViewBasic ||
+          tablePermissions.ViewQueries
+        ),
+        position: 4,
       },
-      isProtected: false,
-      isHidden: !(
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewBasic ||
-        tablePermissions.ViewQueries
-      ),
-      position: 4,
-    },
-    {
-      name: t('label.profiler-amp-data-quality'),
-      icon: {
-        alt: 'profiler',
-        name: 'icon-profiler',
-        title: 'Profiler',
-        selectedName: 'icon-profilercolor',
+      {
+        name: t('label.profiler-amp-data-quality'),
+        icon: {
+          alt: 'profiler',
+          name: 'icon-profiler',
+          title: 'Profiler',
+          selectedName: 'icon-profilercolor',
+        },
+        isProtected: false,
+        isHidden: !(
+          tablePermissions.ViewAll ||
+          tablePermissions.ViewBasic ||
+          tablePermissions.ViewDataProfile ||
+          tablePermissions.ViewTests
+        ),
+        position: 5,
       },
-      isProtected: false,
-      isHidden: !(
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewBasic ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests
-      ),
-      position: 5,
-    },
-    {
-      name: t('label.lineage'),
-      icon: {
-        alt: 'lineage',
-        name: 'icon-lineage',
-        title: 'Lineage',
-        selectedName: 'icon-lineagecolor',
+      {
+        name: t('label.lineage'),
+        icon: {
+          alt: 'lineage',
+          name: 'icon-lineage',
+          title: 'Lineage',
+          selectedName: 'icon-lineagecolor',
+        },
+        isProtected: false,
+        position: 7,
       },
-      isProtected: false,
-      position: 7,
-    },
-    {
-      name: t('label.dbt-uppercase'),
-      icon: {
-        alt: 'dbt-model',
-        name: 'dbtmodel-light-grey',
-        title: 'DBT',
-        selectedName: 'dbtmodel-primery',
+      {
+        name: t('label.dbt-uppercase'),
+        icon: {
+          alt: 'dbt-model',
+          name: 'dbtmodel-light-grey',
+          title: 'DBT',
+          selectedName: 'dbtmodel-primery',
+        },
+        isProtected: false,
+        isHidden: !dataModel?.sql,
+        position: 8,
       },
-      isProtected: false,
-      isHidden: !dataModel?.sql,
-      position: 8,
-    },
-    {
-      name: t('label.custom-properties'),
-      isProtected: false,
-      position: 9,
-    },
-  ];
+      {
+        name: t('label.custom-property-plural'),
+        isProtected: false,
+        position: 9,
+      },
+    ],
+    [tablePermissions, dataModel, feedCount]
+  );
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
@@ -350,37 +351,62 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       .sort((a, b) => b.joinCount - a.joinCount);
   };
 
-  const prepareTableRowInfo = () => {
-    const rowData =
-      ([
-        {
-          date: new Date(tableProfile?.timestamp || 0),
-          value: tableProfile?.rowCount ?? 0,
-        },
-      ] as Array<{
-        date: Date;
-        value: number;
-      }>) ?? [];
-
-    if (!isUndefined(tableProfile)) {
+  const prepareExtraInfoValues = (
+    key: EntityInfo,
+    isTableProfileLoading?: boolean,
+    tableProfile?: TableProfile,
+    numberOfColumns?: number
+  ) => {
+    if (isTableProfileLoading) {
       return (
-        <div className="tw-flex">
-          {rowData.length > 1 && (
-            <TableProfilerGraph
-              className="tw--mt-4"
-              data={rowData}
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-          )}
-          <span
-            className={classNames({
-              'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile?.rowCount?.toLocaleString() || 0} rows`}</span>
-        </div>
+        <Skeleton active paragraph={{ rows: 1, width: 50 }} title={false} />
       );
-    } else {
-      return '';
+    }
+    switch (key) {
+      case EntityInfo.COLUMNS: {
+        const columnCount =
+          tableProfile && tableProfile?.columnCount
+            ? tableProfile?.columnCount
+            : numberOfColumns
+            ? numberOfColumns
+            : undefined;
+
+        return columnCount
+          ? `${columns.length} ${t('label.column-plural')}`
+          : null;
+      }
+
+      case EntityInfo.ROWS: {
+        const rowData =
+          ([
+            {
+              date: new Date(tableProfile?.timestamp || 0),
+              value: tableProfile?.rowCount ?? 0,
+            },
+          ] as Array<{
+            date: Date;
+            value: number;
+          }>) ?? [];
+
+        return isUndefined(tableProfile) ? null : (
+          <Space align="center">
+            {rowData.length > 1 && (
+              <TableProfilerGraph
+                data={rowData}
+                height={32}
+                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                toolTipPos={{ x: 20, y: 30 }}
+                width={120}
+              />
+            )}
+            <Typography.Paragraph className="m-0">{`${
+              tableProfile?.rowCount?.toLocaleString() || 0
+            } rows`}</Typography.Paragraph>
+          </Space>
+        );
+      }
+      default:
+        return null;
     }
   };
 
@@ -407,16 +433,21 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
     {
       key: EntityInfo.COLUMNS,
-      value:
-        tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} ${t('label.columns-plural')}`
-          : columns.length
-          ? `${columns.length} ${t('label.columns-plural')}`
-          : '',
+      localizationKey: 'column-plural',
+      value: prepareExtraInfoValues(
+        EntityInfo.COLUMNS,
+        isTableProfileLoading,
+        tableProfile,
+        columns.length
+      ),
     },
     {
       key: EntityInfo.ROWS,
-      value: prepareTableRowInfo(),
+      value: prepareExtraInfoValues(
+        EntityInfo.ROWS,
+        isTableProfileLoading,
+        tableProfile
+      ),
     },
   ];
 
@@ -602,7 +633,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     [paging]
   );
 
-  return (
+  return isLoading ? (
+    <Loader />
+  ) : (
     <PageContainerV1>
       <div className="entity-details-container">
         <EntityPageInfo
@@ -692,7 +725,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       onCancel={onCancel}
                       onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
-                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </Col>
@@ -729,9 +761,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         tablePermissions.EditAll || tablePermissions.EditTags
                       }
                       isReadOnly={deleted}
-                      joins={tableJoinData.columnJoins as ColumnJoins[]}
+                      joins={tableJoinData.columnJoins || []}
                       tableConstraints={tableDetails.tableConstraints}
-                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}
                     />
@@ -752,6 +783,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
+                    isFeedLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
                     onFeedFiltersUpdate={handleFeedFilterChange}
@@ -768,16 +800,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 3 && (
               <div className="tab-details-container" id="sampleDataDetails">
-                <SampleDataTable tableId={tableDetails.id} />
+                <SampleDataTable
+                  isTableDeleted={tableDetails.deleted}
+                  tableId={tableDetails.id}
+                />
               </div>
             )}
             {activeTab === 4 && (
               <div className="tab-details-container">
-                <TableQueries tableId={tableDetails.id} />
+                <TableQueries
+                  isTableDeleted={tableDetails.deleted}
+                  tableId={tableDetails.id}
+                />
               </div>
             )}
             {activeTab === 5 && (
               <TableProfilerV1
+                isTableDeleted={tableDetails.deleted}
                 permissions={tablePermissions}
                 tableFqn={tableDetails.fullyQualifiedName || ''}
               />
@@ -827,6 +866,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   }
                   entityType={EntityType.TABLE}
                   handleExtensionUpdate={handleExtensionUpdate}
+                  hasEditAccess={
+                    tablePermissions.EditAll ||
+                    tablePermissions.EditCustomFields
+                  }
                 />
               </div>
             )}
@@ -841,19 +884,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
-            />
-          ) : null}
-          {selectedField ? (
-            <RequestDescriptionModal
-              createThread={createThread}
-              defaultValue={getDefaultValue(owner)}
-              header="Request description"
-              threadLink={getEntityFeedLink(
-                EntityType.TABLE,
-                datasetFQN,
-                selectedField
-              )}
-              onCancel={closeRequestModal}
             />
           ) : null}
         </div>

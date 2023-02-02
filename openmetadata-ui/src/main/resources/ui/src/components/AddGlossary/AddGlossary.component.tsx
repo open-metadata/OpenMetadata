@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,10 +12,11 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space, Typography } from 'antd';
+import { Space, Switch, Typography } from 'antd';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
 import { cloneDeep } from 'lodash';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
@@ -27,11 +28,11 @@ import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
-import Tags from '../tags/tags';
 import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -59,6 +60,7 @@ const AddGlossary = ({
   const [description] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [tags, setTags] = useState<EntityTags[]>([]);
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const getDescription = () => {
@@ -128,6 +130,7 @@ const AddGlossary = ({
           type: 'user',
         },
         tags: tags,
+        mutuallyExclusive,
       };
 
       onSave(data);
@@ -244,6 +247,23 @@ const AddGlossary = ({
             </Space>
           </Field>
 
+          <Field>
+            <Space align="end">
+              <label
+                className="tw-form-label m-b-0 tw-mb-1"
+                data-testid="mutually-exclusive-label"
+                htmlFor="mutuallyExclusive">
+                {t('label.mutually-exclusive')}
+              </label>
+              <Switch
+                checked={mutuallyExclusive}
+                data-testid="mutually-exclusive-button"
+                id="mutuallyExclusive"
+                onChange={(value) => setMutuallyExclusive(value)}
+              />
+            </Space>
+          </Field>
+
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
               <span className="w-form-label tw-mr-3">
@@ -290,7 +310,9 @@ const AddGlossary = ({
           </div>
         </div>
         <ReviewerModal
-          header={t('label.add-reviewer')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

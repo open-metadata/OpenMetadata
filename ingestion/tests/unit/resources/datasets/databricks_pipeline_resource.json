@@ -1,0 +1,120 @@
+[
+  {
+    "job_id": 606358633757175,
+    "creator_user_name": "user_name",
+    "settings": {
+      "name": "OpenMetadata Databricks Workflow",
+      "email_notifications": {
+        "no_alert_for_skipped_runs": false
+      },
+      "timeout_seconds": 0,
+      "schedule": {
+        "quartz_cron_expression": "16 1/2 * * * ?",
+        "timezone_id": "UTC",
+        "pause_status": "PAUSED"
+      },
+      "max_concurrent_runs": 3,
+      "tasks": [
+        {
+          "task_key": "task_1",
+          "notebook_task": {
+            "notebook_path": "/Users/user_name/notebook",
+            "source": "WORKSPACE"
+          },
+          "job_cluster_key": "cluster_name",
+          "timeout_seconds": 0,
+          "email_notifications": {}
+        },
+        {
+          "task_key": "task_2",
+          "depends_on": [
+            {
+              "task_key": "task_1"
+            }
+          ],
+          "spark_python_task": {
+            "python_file": "dbfs:/user/python_script"
+          },
+          "job_cluster_key": "cluster_name",
+          "timeout_seconds": 0,
+          "email_notifications": {}
+        },
+        {
+          "task_key": "task_3",
+          "depends_on": [
+            {
+              "task_key": "task_1"
+            }
+          ],
+          "python_wheel_task": {
+            "package_name": "my_package",
+            "entry_point": "run_job"
+          },
+          "job_cluster_key": "cluster_name",
+          "timeout_seconds": 0,
+          "email_notifications": {}
+        },
+        {
+          "task_key": "task_4",
+          "depends_on": [
+            {
+              "task_key": "task_1"
+            }
+          ],
+          "pipeline_task": {
+            "pipeline_id": "4068beca-753c-46ed-9a64-370108ffcd8f",
+            "full_refresh": false
+          },
+          "timeout_seconds": 0,
+          "email_notifications": {}
+        },
+        {
+          "task_key": "task_5",
+          "depends_on": [
+            {
+              "task_key": "task_3"
+            },
+            {
+              "task_key": "task_4"
+            }
+          ],
+          "sql_task": {
+            "query": {
+              "query_id": "032a8806-bd62-4594-b222-43a973290210"
+            },
+            "warehouse_id": "21e75a911f658d1b"
+          },
+          "timeout_seconds": 0,
+          "email_notifications": {}
+        }
+      ],
+      "job_clusters": [
+        {
+          "job_cluster_key": "cluster_name",
+          "new_cluster": {
+            "cluster_name": "",
+            "spark_version": "11.3.x-scala2.12",
+            "spark_conf": {
+              "spark.databricks.delta.preview.enabled": "true"
+            },
+            "azure_attributes": {
+              "first_on_demand": 1,
+              "availability": "ON_DEMAND_AZURE",
+              "spot_bid_max_price": -1.0
+            },
+            "node_type_id": "Standard_DS3_v2",
+            "spark_env_vars": {
+              "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+            },
+            "enable_elastic_disk": true,
+            "data_security_mode": "SINGLE_USER",
+            "runtime_engine": "STANDARD",
+            "num_workers": 8
+          }
+        }
+      ],
+      "format": "MULTI_TASK"
+    },
+    "created_time": 1663513966931
+  }
+]

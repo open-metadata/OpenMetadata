@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/camelcase */
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -28,11 +27,10 @@ export const getSearchAPIQueryParams = (
   trackTotalHits = false
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
-  const query = queryString
-    ? queryString.includes(':')
+  const query =
+    queryString && queryString === WILD_CARD_CHAR
       ? queryString
-      : `*${queryString}*`
-    : WILD_CARD_CHAR;
+      : `*${queryString}*`;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),

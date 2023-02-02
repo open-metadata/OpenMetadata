@@ -10,6 +10,7 @@ source:
       type: Redshift
   sourceConfig:
     config:
+      type: DatabaseMetadata
       schemaFilterPattern:
         excludes:
         - information_schema.*

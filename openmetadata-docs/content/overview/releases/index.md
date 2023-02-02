@@ -212,11 +212,11 @@ and the UI. We now use the pydantic models automatically generated from the JSON
 definition. The ‘Add Service’ form is automatically generated in the UI based on the JSON schema specifications for the
 various connectors that are supported in OpenMetadata.
 
-### Download DBT Manifest Files from Amazon S3 or Google Cloud Storage
+### Download dbt Manifest Files from Amazon S3 or Google Cloud Storage
 
-Previously, when ingesting the models and lineage from DBT, we passed the path of the DBT manifest and catalog files 
-directly into the workflow. We’ve worked on improving the quality of life of DBT. Now, we can dynamically download 
-these files from Amazon S3 or Google Cloud Storage. This way we can have any other process to connect to the DBT, 
+Previously, when ingesting the models and lineage from dbt, we passed the path of the dbt manifest and catalog files 
+directly into the workflow. We’ve worked on improving the quality of life of dbt. Now, we can dynamically download 
+these files from Amazon S3 or Google Cloud Storage. This way we can have any other process to connect to the dbt, 
 extract the catalog, and put it into any cloud service. We just need the path name and workflow job details from the 
 metadata extraction to be able to ingest metadata.
 
@@ -371,7 +371,7 @@ and prepares handy methods to help us test the connection to the source before c
 
 ### Connectors
 - AWS Glue
-- DBT
+- dbt
 - MariaDB
 
 ## 0.5 Release - Oct 19th, 2021

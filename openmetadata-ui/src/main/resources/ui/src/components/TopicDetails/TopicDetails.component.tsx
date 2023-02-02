@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,7 +23,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { restoreTopic } from '../../axiosAPIs/topicsAPI';
+import { restoreTopic } from 'rest/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -43,8 +43,6 @@ import {
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
@@ -62,7 +60,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -120,7 +117,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -152,13 +148,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicDetails.id]);
 
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
-
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -170,7 +159,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     return [
       {
         key: EntityInfo.PARTITIONS,
-        value: `${partitions} ${t('label.partitions')}`,
+        value: `${partitions} ${t('label.partition-plural')}`,
       },
       {
         key: EntityInfo.REPLICATION_FACTOR,
@@ -182,11 +171,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       {
         key: EntityInfo.CLEAN_UP_POLICIES,
-        value: `${cleanupPolicies.join(', ')} ${t('label.clean-up-policies')}`,
+        value: `${cleanupPolicies.join(', ')} ${t(
+          'label.clean-up-policy-plural-lowercase'
+        )}`,
       },
       {
         key: EntityInfo.MAX_MESSAGE_SIZE,
-        value: `${bytesToSize(maximumMessageSize)} ${t('label.maximum-size')} `,
+        value: `${bytesToSize(maximumMessageSize)} ${t(
+          'label.maximum-size-lowercase'
+        )} `,
       },
     ];
   };
@@ -249,7 +242,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 6,
     },
@@ -561,7 +554,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -607,6 +599,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
+                    isFeedLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
                     onFeedFiltersUpdate={handleFeedFilterChange}
@@ -658,6 +651,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   }
                   entityType={EntityType.TOPIC}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    topicPermissions.EditAll ||
+                    topicPermissions.EditCustomFields
+                  }
                 />
               )}
               <div
@@ -678,19 +675,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
-            />
-          ) : null}
-          {selectedField ? (
-            <RequestDescriptionModal
-              createThread={createThread}
-              defaultValue={getDefaultValue(owner as EntityReference)}
-              header="Request description"
-              threadLink={getEntityFeedLink(
-                EntityType.TOPIC,
-                topicFQN,
-                selectedField
-              )}
-              onCancel={closeRequestModal}
             />
           ) : null}
         </div>

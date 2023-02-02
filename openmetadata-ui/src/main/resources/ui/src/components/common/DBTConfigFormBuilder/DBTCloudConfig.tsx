@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
+import { Button, Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
@@ -20,20 +20,21 @@ import {
   requiredField,
 } from '../../../utils/CommonUtils';
 import { validateDbtCloudConfig } from '../../../utils/DBTConfigFormUtil';
-import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import DBTCommonFields from './DBTCommonFields.component';
 import {
   DbtConfigCloud,
   DBTFormCommonProps,
   ErrorDbtCloud,
 } from './DBTConfigForm.interface';
-import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAccountIdChange: (value: string) => void;
   handleCloudAuthTokenChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleDbtCloudProjectId: (value: string) => void;
+  handleUpdateDBTClassification: (value: string) => void;
+  handleDbtCloudUrl: (value: string) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -41,6 +42,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAuthToken = '',
   dbtCloudProjectId,
   dbtUpdateDescriptions = false,
+  dbtCloudUrl = 'https://cloud.getdbt.com/',
   okText,
   cancelText,
   onCancel,
@@ -49,6 +51,9 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleCloudAuthTokenChange,
   handleUpdateDescriptions,
   handleDbtCloudProjectId,
+  dbtClassificationName,
+  handleDbtCloudUrl,
+  handleUpdateDBTClassification,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -65,6 +70,8 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtCloudAuthToken,
       dbtUpdateDescriptions,
       dbtCloudProjectId,
+      dbtClassificationName,
+      dbtCloudUrl,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -133,34 +140,52 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           onChange={(e) => handleDbtCloudProjectId(e.target.value)}
         />
       </Field>
+
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
+          {requiredField('dbt Cloud URL')}
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          URL to connect to your dbt cloud instance. E.g.,
+          https://cloud.getdbt.com or https://emea.dbt.com/
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudUrl"
+          id="dbtCloudUrl"
+          name="dbtCloudUrl"
+          type="text"
+          value={dbtCloudUrl}
+          onChange={(e) => handleDbtCloudUrl(e.target.value)}
+        />
+      </Field>
       {getSeparator('')}
 
-      <SwitchField
+      <DBTCommonFields
+        dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
+        descriptionId="cloud-update-description"
+        handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
-        id="cloud-update-description"
       />
 
       {getSeparator('')}
 
-      <Field className="tw-flex tw-justify-end">
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>{cancelText}</span>
+          {cancelText}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleSubmit}>
-          <span>{okText}</span>
+          {okText}
         </Button>
       </Field>
     </Fragment>

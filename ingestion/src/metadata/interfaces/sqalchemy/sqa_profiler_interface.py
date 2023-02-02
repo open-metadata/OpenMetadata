@@ -26,6 +26,8 @@ from sqlalchemy.engine.row import Row
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.ingestion.source.connections import get_connection
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -35,10 +37,6 @@ from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.utils.connections import (
-    create_and_bind_thread_safe_session,
-    get_connection,
-)
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -82,7 +80,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         self.profile_sample_config = profiler_interface_args.profile_sample_config
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = (
-            self.get_partition_details(profiler_interface_args.table_partition_config)
+            profiler_interface_args.table_partition_config
             if not self.profile_query
             else None
         )

@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
@@ -13,7 +14,6 @@ import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECT
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -62,7 +62,7 @@ public final class UserUtil {
   }
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
       List<String> fields = userRepository.getAllowedFieldsCopy();
@@ -97,7 +97,7 @@ public final class UserUtil {
   }
 
   public static User addOrUpdateUser(User user) {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS
@@ -238,6 +238,6 @@ public final class UserUtil {
       default:
         throw new IllegalArgumentException("No role found for the bot " + botName);
     }
-    return Arrays.asList(RoleResource.getRole(botRole));
+    return listOf(RoleResource.getRole(botRole));
   }
 }

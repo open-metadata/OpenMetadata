@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from "../../common/common";
+import {
+  descriptionBox,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
+} from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 
 const roleName = `Role-test-${uuid()}`;
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
 
-describe("Test Add role and assign it to the user", () => {
+describe('Test Add role and assign it to the user', () => {
   beforeEach(() => {
     cy.login();
-    
+
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
@@ -29,25 +35,25 @@ describe("Test Add role and assign it to the user", () => {
 
     verifyResponseStatusCode('@getRoles', 200);
 
-    cy.url().should('eq', 'http://localhost:8585/settings/access/roles');
+    cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
   });
 
-  it("Create and Assign role to user", () => {
+  it('Create and Assign role to user', () => {
     cy.get('[data-testid="add-role"]')
       .contains('Add Role')
       .should('be.visible')
       .click();
 
-    //Asserting navigation
+    // Asserting navigation
     cy.get('[data-testid="inactive-link"]')
       .should('contain', 'Add New Role')
       .should('be.visible');
-    //Entering name
+    // Entering name
     cy.get('#name').should('be.visible').type(roleName);
-    //Entering descrription
-    cy.get(descriptionBox).type("description");
-    //Select the policies
-    cy.get('.ant-select').should('be.visible').click();
+    // Entering descrription
+    cy.get(descriptionBox).type('description');
+    // Select the policies
+    cy.get('[data-testid="policies"]').should('be.visible').click();
 
     cy.get('[title="Data Consumer Policy"]')
       .scrollIntoView()
@@ -58,72 +64,86 @@ describe("Test Add role and assign it to the user", () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Save the role
+    // Save the role
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
 
-    //Verify the role is added successfully
-    cy.url().should(
-      'eq',
-      `http://localhost:8585/settings/access/roles/${roleName}`
-    );
+    // Verify the role is added successfully
+    cy.url().should('eq', `${BASE_URL}/settings/access/roles/${roleName}`);
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 
-    //Verify added description
+    // Verify added description
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .should('be.visible')
-      .should('contain', "description");
-    
+      .should('contain', 'description');
+
     // Create user and assign newly created role to the user
     cy.get('[data-menu-id*="users"]').should('be.visible').click();
 
     cy.get('[data-testid="add-user"]').contains('Add User').click();
 
     cy.get('[data-testid="email"]')
-    .scrollIntoView()
-    .should('exist')
-    .should('be.visible')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.visible')
       .type(userEmail);
-    
+
     cy.get('[data-testid="displayName"]')
-    .should('exist')
-    .should('be.visible')
+      .should('exist')
+      .should('be.visible')
       .type(userName);
-    
+
     cy.get(descriptionBox)
-    .should('exist')
-    .should('be.visible')
-    .type('Adding user');
+      .should('exist')
+      .should('be.visible')
+      .type('Adding user');
 
     interceptURL('GET', '/api/v1/users/generateRandomPwd', 'generatePassword');
-    cy.get('[data-testid="password-generator"]').scrollIntoView().should('be.visible').click();
+    cy.get('[data-testid="password-generator"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@generatePassword', 200);
-    
-    cy.get(`[id="menu-button-Roles"]`).should("exist").should("be.visible").click()
 
-    cy.get(`[data-testid="${roleName}"]`).scrollIntoView().should("be.visible").click()
+    cy.get(`[id="menu-button-Roles"]`)
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get(`[data-testid="${roleName}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="roles-dropdown"]').click();
 
     cy.wait(1000);
 
-    interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15', 'getUserPage');
+    interceptURL(
+      'GET',
+      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
+      'getUserPage'
+    );
 
     cy.get('[data-testid="save-user"]').scrollIntoView().click();
 
     verifyResponseStatusCode('@getUserPage', 200);
 
-    cy.get('[data-testid="searchbar"]').should('exist').should('be.visible').type(userName);
+    cy.get('[data-testid="searchbar"]')
+      .should('exist')
+      .should('be.visible')
+      .type(userName);
 
     cy.get(`[data-testid="${userName}"]`).should('be.visible');
 
-    interceptURL('GET', '/api/v1/users/*', 'userDetailsPage')
+    interceptURL('GET', '/api/v1/users/*', 'userDetailsPage');
     cy.get(`[data-testid="${userName}"]`).should('be.visible').click();
-    verifyResponseStatusCode('@userDetailsPage', 200)
+    verifyResponseStatusCode('@userDetailsPage', 200);
 
-    cy.get('[data-testid="left-panel"]').should('be.visible').should('contain', roleName)
-    
-  })
-})
+    cy.get('[data-testid="left-panel"]')
+      .should('be.visible')
+      .should('contain', roleName);
+  });
+});

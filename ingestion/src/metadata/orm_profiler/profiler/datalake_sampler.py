@@ -12,11 +12,14 @@
 Helper module to handle data sampling
 for the profiler
 """
+import math
+import random
 from typing import Any, Dict, Optional
 
-from metadata.generated.schema.entity.data.table import TableData
-from metadata.ingestion.source.database.datalake import DatalakeSource
+from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.orm_profiler.api.models import ProfileSampleConfig
+from metadata.utils.constants import CHUNKSIZE
 
 RANDOM_LABEL = "random"
 
@@ -31,11 +34,15 @@ class DatalakeSampler:
         self,
         session: Optional[Any],
         table,
-        profile_sample: Optional[ProfileSampleConfig] = None,
+        profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
-        self.profile_sample = profile_sample
+        self.profile_sample = None
+        self.profile_sample_type = None
+        if profile_sample_config:
+            self.profile_sample = profile_sample_config.profile_sample
+            self.profile_sample_type = profile_sample_config.profile_sample_type
         self.session = session
         self.table = table
         self._partition_details = partition_details
@@ -43,8 +50,33 @@ class DatalakeSampler:
         self.sample_limit = 100
         self._sample_rows = None
 
+    def _fetch_rows(self, data_frame):
+        from pandas import notnull  # pylint: disable=import-outside-toplevel
+
+        sampled_data_frame = data_frame.sample(
+            n=(int(self.profile_sample) or 100)
+            if self.profile_sample_type == ProfileSampleType.ROWS
+            else None,
+            frac=self.profile_sample
+            if self.profile_sample_type == ProfileSampleType.PERCENTAGE
+            else None,
+            random_state=random.randint(0, 100),
+            replace=True,
+        )
+        return (
+            sampled_data_frame.astype(object)
+            .where(
+                notnull(sampled_data_frame),
+                None,
+            )
+            .values.tolist()
+        )
+
     def get_col_row(self, data_frame):
-        from pandas import DataFrame, notnull  # pylint: disable=import-outside-toplevel
+        """
+        Fetches columns and rows from the data_frame
+        """
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         cols = []
         chunk = None
@@ -52,16 +84,17 @@ class DatalakeSampler:
             table_columns = DatalakeSource.get_columns(data_frame=data_frame)
             return (
                 [col.name.__root__ for col in table_columns],
-                data_frame.astype(object)
-                .where(notnull(data_frame), None)
-                .values.tolist()[:100],
+                self._fetch_rows(data_frame),
             )
-        for chunk in data_frame:
-            table_columns = DatalakeSource.get_columns(data_frame=chunk)
-            cols = [col.name.__root__ for col in table_columns]
-            rows = chunk.values.tolist()
-            break
-        return cols, rows, chunk
+        chunk_limit = math.ceil(self.profile_sample / CHUNKSIZE)
+        table_columns = DatalakeSource.get_columns(data_frame=data_frame[0])
+        cols = [col.name.__root__ for col in table_columns]
+        rows = []
+        for index, chunk in enumerate(data_frame):
+            if index >= chunk_limit:
+                break
+            rows.extend(self._fetch_rows(chunk))
+        return cols, rows
 
     def fetch_dl_sample_data(self) -> TableData:
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel

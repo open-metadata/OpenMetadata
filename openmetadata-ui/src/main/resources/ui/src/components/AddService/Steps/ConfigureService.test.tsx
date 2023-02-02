@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -86,8 +86,8 @@ describe('Test ConfigureService component', () => {
     expect(serviceName).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(mockConfigureServiceProps.handleValidation).toBeCalled();
-    expect(mockConfigureServiceProps.onBack).toBeCalled();
-    expect(mockConfigureServiceProps.onNext).toBeCalled();
+    expect(mockConfigureServiceProps.handleValidation).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onBack).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
   });
 });

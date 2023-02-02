@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 from sqlparse.sql import Identifier
 
+from metadata.generated.schema.entity.data.table import DmlOperationType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -63,7 +64,6 @@ def get_system_metrics_for_dialect(
             } else returns None
     """
     logger.info(f"System metrics not support for {dialect}. Skipping processing.")
-    return None
 
 
 @get_system_metrics_for_dialect.register(Dialects.BigQuery)
@@ -78,7 +78,7 @@ def _(
     """Compute system metrics for bigquery
 
     Args:
-        dialect (str): bigqeury
+        dialect (str): bigquery
         session (Session): session Object
         table (DeclarativeMeta): orm table
 
@@ -95,12 +95,12 @@ def _(
 
     jobs = dedent(
         f"""
-        SELECT 
+        SELECT
             statement_type,
             start_time,
             destination_table,
             dml_statistics
-        FROM 
+        FROM
             `{region}`.INFORMATION_SCHEMA.JOBS
         WHERE
             DATE(creation_time) = CURRENT_DATE() - 1 AND
@@ -183,7 +183,7 @@ def _(
             DATE_TRUNC('second', si.starttime) AS starttime
         FROM
             pg_catalog.stl_delete si
-            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id 
+            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id
             INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
         WHERE
             sti."database" = '{session.get_bind().url.database}' AND
@@ -207,7 +207,7 @@ def _(
             DATE_TRUNC('second', si.starttime) AS starttime
         FROM
             pg_catalog.stl_insert si
-            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id 
+            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id
             INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
         WHERE
             sti."database" = '{session.get_bind().url.database}' AND
@@ -259,6 +259,8 @@ def _(
                 token.value
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML
+                and token.value.upper()
+                in DmlOperationType._member_names_  # pylint: disable=protected-access
             ),
             None,
         )

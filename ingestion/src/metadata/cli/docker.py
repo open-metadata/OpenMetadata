@@ -35,10 +35,14 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.client_version import get_client_version
 from metadata.utils.helpers import DockerActions
-from metadata.utils.logger import cli_logger, ometa_logger
+from metadata.utils.logger import (
+    ANSI,
+    cli_logger,
+    log_ansi_encoded_string,
+    ometa_logger,
+)
 
 logger = cli_logger()
 CALC_GB = 1024 * 1024 * 1024
@@ -72,13 +76,6 @@ def docker_volume():
     # create a main directory
     if not os.path.exists(MAIN_DIR):
         os.mkdir(MAIN_DIR)
-        path_to_join = ["db-data", "es-data"]
-        final_path = []
-        for path in path_to_join:
-            temp_path = os.path.join(MAIN_DIR, path)
-            final_path.append(temp_path)
-        for path in final_path:
-            os.makedirs(path, exist_ok=True)
 
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
@@ -88,7 +85,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
 
     logger.info("Running docker compose for OpenMetadata..")
     docker_volume()
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.YELLOW, bold=False, message="It may take some time on the first run "
     )
     if file_path:
@@ -114,7 +111,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
                     entity=Table, fqn="sample_data.ecommerce_db.shopify.dim_customer"
                 )
                 if not resp:
-                    raise Exception("Error")
+                    raise RuntimeError("Error")
                 break
             except Exception:
                 sys.stdout.write(".")
@@ -123,7 +120,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
         ometa_logger().disabled = False
 
     # Wait until docker is not only running, but the server is up
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.YELLOW,
         bold=False,
         message="Waiting for server to be up at http://localhost:8585 ",
@@ -141,19 +138,19 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     logger.info(
         f"Time taken to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
     )
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         bold=False,
         message="\n✅  OpenMetadata is up and running",
     )
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.BLUE,
         bold=False,
         message="\nOpen http://localhost:8585 in your browser to access OpenMetadata."
         "\nTo checkout Ingestion via Airflow, go to http://localhost:8080 "
         "\n(username: admin, password: admin)",
     )
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.MAGENTA,
         bold=False,
         message="We are available on Slack, https://slack.open-metadata.org/."
@@ -226,13 +223,13 @@ def run_docker(  # pylint: disable=too-many-branches too-many-statements
 
         logger.info("Checking if docker compose is installed...")
         if not docker.compose.is_installed():
-            raise Exception("Docker Compose CLI is not installed on the system.")
+            raise RuntimeError("Docker Compose CLI is not installed on the system.")
 
         docker_info = docker.info()
 
         logger.info("Checking if docker service is running...")
         if not docker_info.id:
-            raise Exception("Docker Service is not up and running.")
+            raise RuntimeError("Docker Service is not up and running.")
 
         logger.info("Checking openmetadata memory constraints...")
         if docker_info.mem_total < MIN_MEMORY_LIMIT:
@@ -246,6 +243,7 @@ def run_docker(  # pylint: disable=too-many-branches too-many-statements
             compose_project_name="openmetadata",
             compose_files=[docker_compose_file_path],
             compose_env_file=env_file,
+            compose_project_directory=pathlib.Path(),
         )
 
         if docker_obj_instance.start:
@@ -291,7 +289,7 @@ def run_docker(  # pylint: disable=too-many-branches too-many-statements
 
     except MemoryError:
         logger.debug(traceback.format_exc())
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED,
             bold=False,
             message="Please Allocate More memory to Docker.\nRecommended: 6GB+\nCurrent: "
@@ -299,7 +297,7 @@ def run_docker(  # pylint: disable=too-many-branches too-many-statements
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED, bold=False, message=f"{str(exc)}"
         )
 
@@ -310,7 +308,7 @@ def reset_db_om(docker):
     """
 
     if docker.container.inspect("openmetadata_server").state.running:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED,
             bold=False,
             message="Resetting OpenMetadata.\nThis will clear out all the data",
@@ -325,7 +323,7 @@ def reset_db_om(docker):
             ],
         )
     else:
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.YELLOW,
             bold=False,
             message="OpenMetadata Instance is not up and running",

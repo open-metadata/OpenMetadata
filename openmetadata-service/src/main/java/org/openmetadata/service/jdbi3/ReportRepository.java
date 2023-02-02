@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Report;
@@ -34,12 +32,10 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) throws IOException {
+  public Report setFields(Report report, Fields fields) {
     report.setService(getService(report)); // service is a default field
-    report.setOwner(fields.contains(FIELD_OWNER) ? getOwner(report) : null);
-    report.setUsageSummary(
+    return report.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId()) : null);
-    return report;
   }
 
   @Override

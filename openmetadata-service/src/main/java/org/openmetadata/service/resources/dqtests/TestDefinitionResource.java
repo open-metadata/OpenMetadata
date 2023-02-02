@@ -77,7 +77,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find tag definitions and load tag categories from the json file, if necessary
+    // Find tag definitions and load classification from the json file, if necessary
     List<TestDefinition> testDefinitions = dao.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
     for (TestDefinition testDefinition : testDefinitions) {
       dao.initializeEntity(testDefinition);
@@ -178,7 +178,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -199,7 +199,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       })
   public TestDefinition get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -222,18 +222,20 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       operationId = "getTestDefinitionByName",
       summary = "Get a test definition by name",
       tags = "TestDefinitions",
-      description = "Get a test definition by  name.",
+      description = "Get a test definition by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The test definition",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = TestDefinition.class))),
-        @ApiResponse(responseCode = "404", description = "Test Definition for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Test Definition for instance {name} is not found")
       })
   public TestDefinition getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Name of the test definition", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -270,7 +272,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public TestDefinition getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Test Definition version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -313,7 +315,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -364,9 +366,33 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTestDefinitionByName",
+      summary = "Delete a test definition",
+      tags = "TestDefinitions",
+      description = "Delete a test definition by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Test definition for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the test definition", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

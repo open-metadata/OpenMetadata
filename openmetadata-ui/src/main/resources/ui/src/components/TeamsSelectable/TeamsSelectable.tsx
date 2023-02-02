@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { TreeSelect } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { getTeamsHierarchy } from '../../axiosAPIs/teamsAPI';
+import { getTeamsHierarchy } from 'rest/teamsAPI';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';

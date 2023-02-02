@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,7 +18,6 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -27,25 +26,17 @@ import {
   Table,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import DatasetDetails from './DatasetDetails.component';
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 jest.mock('antd', () => ({
   Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
@@ -142,7 +133,7 @@ const DatasetDetailsProps = {
   tableType: TableType.Regular,
   tier: {} as TagLabel,
   unfollowTableHandler: jest.fn(),
-  usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,
+  usageSummary: {} as UsageDetails,
   users: [],
   versionHandler: jest.fn(),
   loadNodeHandler: jest.fn(),

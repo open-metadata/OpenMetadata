@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,12 +13,12 @@
 
 import { List, Modal } from 'antd';
 import { AxiosError } from 'axios';
+import Searchbar from 'components/common/searchbar/Searchbar';
 import { isUndefined } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
-import Searchbar from '../../components/common/searchbar/Searchbar';
+import { searchData } from 'rest/miscAPI';
+import { getUsers } from 'rest/userAPI';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   PAGE_SIZE_MEDIUM,
@@ -88,7 +88,7 @@ const AddUsersModalV1 = ({
       });
   };
 
-  const searchUsers = (text: string, page: number) => {
+  const searchUsers = (text: string, page = 1) => {
     searchData(text, page, PAGE_SIZE_MEDIUM, '', '', '', SearchIndex.USER)
       .then((res) => {
         const data = getFilterUserData(
@@ -150,7 +150,7 @@ const AddUsersModalV1 = ({
     setCurrentPage(1);
     setSearchText(searchValue);
     if (searchValue) {
-      searchUsers(searchValue, currentPage);
+      searchUsers(searchValue);
     } else {
       fetchAllUsers();
     }
@@ -182,8 +182,8 @@ const AddUsersModalV1 = ({
         id: 'save-button',
       }}
       okText="Save"
+      open={isVisible}
       title={header}
-      visible={isVisible}
       width={750}
       onCancel={onCancel}
       onOk={handleSave}>

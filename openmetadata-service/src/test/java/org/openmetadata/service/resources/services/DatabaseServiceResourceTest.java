@@ -68,7 +68,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         "services/databaseServices",
         "owner,tags");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupDatabaseServices(TestInfo test) throws HttpResponseException {

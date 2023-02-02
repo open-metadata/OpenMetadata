@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/api/classification/createTag.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTagRequest",
+  "description": "Create tag API request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.classification.CreateTag",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "classification": {
+      "description": "Name of the classification that this tag is part of.",
+      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
+    },
+    "parent": {
+      "description": "Fully qualified name of the parent tag. When null, the term is at the root of the classification.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "name": {
+      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this tag.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Unique name of the classification",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "associatedTags": {
+      "description": "Fully qualified names of tags associated with this tag",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
+      "type" : "boolean",
+      "default" : "false"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

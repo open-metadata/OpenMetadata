@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,21 +12,20 @@
  */
 
 import { AxiosError } from 'axios';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import {
   Bucket,
   DynamicFormFieldType,
-  DynamicObj,
   ServicesData,
   ServiceTypes,
 } from 'Models';
 import React from 'react';
-import { getEntityCount } from '../axiosAPIs/miscAPI';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../components/PermissionProvider/PermissionProvider.interface';
+import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addDBTIngestionGuide,
@@ -97,7 +96,7 @@ import {
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
+import { ConnectionTypeEnum } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -372,7 +371,7 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getKeyValuePair = (obj: DynamicObj) => {
+export const getKeyValuePair = (obj: Record<string, string>) => {
   return Object.entries(obj).map((v) => {
     return {
       key: v[0],
@@ -382,7 +381,7 @@ export const getKeyValuePair = (obj: DynamicObj) => {
 };
 
 export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
-  const keyValuePair: DynamicObj = {};
+  const keyValuePair: Record<string, string> = {};
 
   arr.forEach((obj) => {
     if (obj.key && obj.value) {
@@ -436,7 +435,7 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
-    name: t('label.ingestions'),
+    name: t('label.ingestion-plural'),
     path: 'ingestions',
   },
   {
@@ -592,7 +591,6 @@ export const getIngestionName = (
 
 export const shouldTestConnection = (serviceType: string) => {
   return (
-    serviceType !== DatabaseServiceType.SampleData &&
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
@@ -604,14 +602,14 @@ export const shouldTestConnection = (serviceType: string) => {
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
   switch (serviceCat) {
     case ServiceCategory.MESSAGING_SERVICES:
-      return ConnectionType.Messaging;
+      return ConnectionTypeEnum.Messaging;
     case ServiceCategory.DASHBOARD_SERVICES:
-      return ConnectionType.Dashboard;
+      return ConnectionTypeEnum.Dashboard;
     case ServiceCategory.PIPELINE_SERVICES:
-      return ConnectionType.Pipeline;
+      return ConnectionTypeEnum.Pipeline;
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return ConnectionType.Database;
+      return ConnectionTypeEnum.Database;
   }
 };
 
@@ -696,7 +694,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.brokers')}:</label>
+          <label className="tw-mb-0">{t('label.broker-plural')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="brokers">
@@ -901,7 +899,7 @@ export const getServicePageTabs = (
 
   tabs.push(
     {
-      name: t('label.ingestions'),
+      name: t('label.ingestion-plural'),
       isProtected: false,
 
       position: 2,

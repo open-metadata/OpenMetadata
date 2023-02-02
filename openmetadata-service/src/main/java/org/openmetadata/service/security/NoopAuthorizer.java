@@ -25,7 +25,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -84,7 +84,7 @@ public class NoopAuthorizer implements Authorizer {
 
   private void addOrUpdateUser(User user) {
     try {
-      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added anonymous user entry: {}", addedUser);
     } catch (IOException exception) {

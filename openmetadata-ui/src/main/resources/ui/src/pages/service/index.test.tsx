@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,14 +22,6 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getCurrentServiceTab } from '../../utils/ServiceUtils';
-
-let mockParams = {
-  serviceFQN: 'bigquery_gcp',
-  serviceType: 'BigQuery',
-  serviceCategory: 'databaseServices',
-  tab: 'databases',
-};
-
 import ServicePage from './index';
 import {
   DASHBOARD_DATA,
@@ -37,6 +29,13 @@ import {
   mockDatabase,
   mockTabs,
 } from './mocks/servicePage.mock';
+
+let mockParams = {
+  serviceFQN: 'bigquery_gcp',
+  serviceType: 'BigQuery',
+  serviceCategory: 'databaseServices',
+  tab: 'databases',
+};
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -51,7 +50,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -65,7 +64,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -91,23 +90,23 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   fetchAirflowConfig: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+jest.mock('rest/mlModelAPI', () => ({
   getMlmodels: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+jest.mock('rest/pipelineAPI', () => ({
   getPipelines: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/topicsAPI', () => ({
+jest.mock('rest/topicsAPI', () => ({
   getTopics: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/dashboardAPI', () => ({
+jest.mock('rest/dashboardAPI', () => ({
   getDashboards: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: DASHBOARD_DATA,
@@ -119,7 +118,7 @@ jest.mock('../../axiosAPIs/dashboardAPI', () => ({
   ),
 }));
 
-jest.mock('../../axiosAPIs/serviceAPI', () => ({
+jest.mock('rest/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockData)),
@@ -127,18 +126,15 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
   TestConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('rest/databaseAPI', () => ({
   getDatabases: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ ...mockDatabase })),
 }));
 
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => {
-    return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
-  }
-);
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -150,7 +146,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -190,22 +186,22 @@ jest.mock('../../utils/ServiceUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  'components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
   }
 );
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
 
-jest.mock('../../components/common/TabsPane/TabsPane', () => {
+jest.mock('components/common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<div>TabsPane_component</div>);
 });
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -213,29 +209,25 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
-  () => jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
+jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () =>
+  jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
 );
 
-jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
+jest.mock('components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<div>ServiceConfig</div>);
 });
 
-jest.mock(
-  '../../components/common/entityPageInfo/ManageButton/ManageButton',
-  () => {
-    return jest.fn().mockReturnValue(<div>ManageButton</div>);
-  }
-);
-jest.mock('../../components/Ingestion/Ingestion.component', () => {
+jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () => {
+  return jest.fn().mockReturnValue(<div>ManageButton</div>);
+});
+jest.mock('components/Ingestion/Ingestion.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="ingestions">Ingestion</div>);
 });
 
 jest.mock(
-  '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component',
+  'components/ServiceConnectionDetails/ServiceConnectionDetails.component',
   () => {
     return jest
       .fn()
@@ -245,13 +237,13 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/tags-viewer/tags-viewer', () => {
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);
 });
 
-jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(({ name }) => {
     return <div data-testid={`${name}-profile`}>{name}</div>;
   });

@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.Entity.KPI;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +27,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -48,16 +48,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
   @Override
   public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) throws IOException {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : null);
-    kpi.setKpiResult(fields.contains("kpiResult") ? getKpiResult(kpi.getFullyQualifiedName()) : null);
-    kpi.setOwner(fields.contains("owner") ? getOwner(kpi) : null);
-    return kpi;
+    return kpi.withKpiResult(fields.contains("kpiResult") ? getKpiResult(kpi.getFullyQualifiedName()) : null);
   }
 
   @Override
   public void prepare(Kpi kpi) throws IOException {
     // validate targetDefinition
     Entity.getEntityReferenceById(Entity.DATA_INSIGHT_CHART, kpi.getDataInsightChart().getId(), Include.NON_DELETED);
-    EntityRepository<DataInsightChart> dataInsightChartRepository = Entity.getEntityRepository(DATA_INSIGHT_CHART);
+    DataInsightChartRepository dataInsightChartRepository =
+        (DataInsightChartRepository) Entity.getEntityRepository(DATA_INSIGHT_CHART);
     DataInsightChart chart =
         dataInsightChartRepository.get(
             null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
@@ -88,13 +87,14 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public void storeEntity(Kpi kpi, boolean update) throws IOException {
     EntityReference owner = kpi.getOwner();
     EntityReference dataInsightChart = kpi.getDataInsightChart();
+    KpiResult kpiResults = kpi.getKpiResult();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    kpi.withOwner(null).withHref(null).withDataInsightChart(null);
+    kpi.withOwner(null).withHref(null).withDataInsightChart(null).withKpiResult(null);
     store(kpi, update);
 
     // Restore the relationships
-    kpi.withOwner(owner).withDataInsightChart(dataInsightChart);
+    kpi.withOwner(owner).withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
   }
 
   @Override
@@ -174,8 +174,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   public void validateDataInsightChartOneToOneMapping(UUID chartId) {
     // Each Chart has one unique Kpi mapping
-    List<CollectionDAO.EntityRelationshipRecord> record = findFrom(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
-    if (record.size() > 0) {
+    List<EntityRelationshipRecord> record = findTo(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
+    if (record.size() > 0 && !chartId.equals(record.get(0).getId())) {
       throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
     }
   }
@@ -225,14 +225,14 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateToRelationships(
+      updateToRelationship(
           "dataInsightChart",
           KPI,
           original.getId(),
           Relationship.USES,
           DATA_INSIGHT_CHART,
-          new ArrayList<>(List.of(original.getDataInsightChart())),
-          new ArrayList<>(List.of(updated.getDataInsightChart())),
+          original.getDataInsightChart(),
+          updated.getDataInsightChart(),
           false);
       recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition());
       recordChange("startDate", original.getStartDate(), updated.getStartDate());

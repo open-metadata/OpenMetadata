@@ -4,13 +4,28 @@ slug: /connectors/database/datalake/airflow
 ---
 
 # Run Datalake using the Airflow SDK
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    ❌    |  ❌  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the Datalake connector.
 
 Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -107,6 +122,7 @@ source:
       prefix: prefix
   sourceConfig:
     config:
+      type: DatabaseMetadata
       tableFilterPattern:
         includes:
         - ''
@@ -466,6 +482,6 @@ with DAG(
 Note that from connector to connector, this recipe will always be the same.
 By updating the YAML configuration, you will be able to extract metadata from different sources.
 
-## DBT Integration
+## dbt Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

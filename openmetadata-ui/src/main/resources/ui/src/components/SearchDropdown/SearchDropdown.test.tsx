@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -32,7 +32,7 @@ const mockProps: SearchDropdownProps = {
   label: 'Owner',
   isSuggestionsLoading: false,
   options: searchOptions,
-  searchKey: 'owner.name',
+  searchKey: 'owner.displayName',
   selectedKeys: [{ key: 'User 1', label: 'User 1' }],
   onChange: mockOnChange,
   onSearch: mockOnSearch,
@@ -42,7 +42,7 @@ describe('Search DropDown Component', () => {
   it('Should render Dropdown components', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -86,7 +86,7 @@ describe('Search DropDown Component', () => {
   it('Selected keys option should be checked', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -103,7 +103,7 @@ describe('Search DropDown Component', () => {
   it('UnSelected keys option should not be checked', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -122,7 +122,7 @@ describe('Search DropDown Component', () => {
   it('Should render the clear all button after more than one options are selected and click should work', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -162,7 +162,7 @@ describe('Search DropDown Component', () => {
   it('Search should work', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -180,13 +180,13 @@ describe('Search DropDown Component', () => {
 
     expect(searchInput).toHaveValue('user');
 
-    expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.name');
+    expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.displayName');
   });
 
   it('Update button should work properly', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -214,14 +214,14 @@ describe('Search DropDown Component', () => {
         { key: 'User 1', label: 'User 1' },
         { key: 'User 2', label: 'User 2' },
       ],
-      'owner.name'
+      'owner.displayName'
     );
   });
 
   it('Selected option should unselect on next click', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -249,7 +249,7 @@ describe('Search DropDown Component', () => {
   it('Close button should work properly', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const container = await screen.findByTestId('search-dropdown');
+    const container = await screen.findByTestId('search-dropdown-Owner');
 
     expect(container).toBeInTheDocument();
 
@@ -281,7 +281,7 @@ describe('Search DropDown Component', () => {
   it('The selected options should be checked correctly each time popover renders', async () => {
     render(<SearchDropdown {...mockProps} />);
 
-    const dropdownButton = await screen.findByTestId('search-dropdown');
+    const dropdownButton = await screen.findByTestId('search-dropdown-Owner');
 
     // Dropdown menu should not be present
 

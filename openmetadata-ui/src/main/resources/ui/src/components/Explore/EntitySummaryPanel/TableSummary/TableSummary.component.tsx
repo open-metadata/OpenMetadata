@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,10 +20,11 @@ import { useTranslation } from 'react-i18next';
 import {
   getLatestTableProfileByFqn,
   getTableQueryByTableId,
-} from '../../../../axiosAPIs/tableAPI';
-import { getListTestCase } from '../../../../axiosAPIs/testAPI';
+} from 'rest/tableAPI';
+import { getListTestCase } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Table, TableType } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
@@ -32,6 +33,7 @@ import {
   formTwoDigitNmber,
 } from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
@@ -40,15 +42,18 @@ import {
   TableTestsType,
 } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({ entityDetails }: TableSummaryProps) {
   const { t } = useTranslation();
-  const [TableDetails, setTableDetails] = useState<Table>(entityDetails);
+  const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+
+  const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
 
   const fetchAllTests = async () => {
     try {
@@ -111,23 +116,27 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
   };
 
   const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
-    if (isUndefined(TableDetails.profile)) {
+    if (isUndefined(tableDetails.profile)) {
       return undefined;
     }
 
     return [
       {
         title: t('label.row-count'),
-        value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
+        value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value:
-          TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
+          tableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
-        title: `${t('label.table-sample')} %`,
-        value: `${TableDetails?.profile?.profileSample ?? 100}%`,
+        title: `${t('label.table-entity-text', {
+          entityText: t('label.sample'),
+        })} %`,
+        value: `${tableDetails?.profile?.profileSample ?? 100}%`,
       },
       {
         title: `${t('label.test-plural')} ${t('label.passed')}`,
@@ -145,9 +154,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         className: 'failed',
       },
     ];
-  }, [TableDetails, tableTests]);
+  }, [tableDetails, tableTests]);
 
-  const { tableType, columns, tableQueries } = TableDetails;
+  const { tableType, columns, tableQueries } = tableDetails;
 
   const basicTableInfo: BasicTableInfo = useMemo(
     () => ({
@@ -158,11 +167,21 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     [tableType, columns, tableQueries]
   );
 
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        columns,
+        tableDetails.tableConstraints
+      ),
+    [columns, tableDetails]
+  );
+
   useEffect(() => {
     if (!isEmpty(entityDetails)) {
       setTableDetails(entityDetails);
       fetchAllTests();
-      fetchProfilerData();
+      !isTableDeleted && fetchProfilerData();
     }
   }, [entityDetails]);
 
@@ -173,7 +192,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           <TableDataCardTitle
             dataTestId="summary-panel-title"
             searchIndex={SearchIndex.TABLE}
-            source={TableDetails}
+            source={tableDetails}
           />
         </Col>
         <Col span={24}>
@@ -181,10 +200,13 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
             {Object.keys(basicTableInfo).map((fieldName) => (
               <Col key={fieldName} span={24}>
                 <Row gutter={16}>
-                  <Col className="text-gray" span={10}>
+                  <Col
+                    className="text-gray"
+                    data-testid={`${fieldName}-label`}
+                    span={10}>
                     {fieldName}
                   </Col>
-                  <Col span={12}>
+                  <Col data-testid={`${fieldName}-value`} span={12}>
                     {basicTableInfo[fieldName as keyof BasicTableInfo]}
                   </Col>
                 </Row>
@@ -197,13 +219,15 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="profiler-header">
             {t('label.profiler-amp-data-quality')}
           </Typography.Text>
         </Col>
         <Col span={24}>
           {isUndefined(overallSummary) ? (
-            <Typography.Text>
+            <Typography.Text data-testid="no-profiler-enabled-message">
               {t('message.no-profiler-enabled-summary-message')}
             </Typography.Text>
           ) : (
@@ -212,7 +236,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
                 <Col key={field.title} span={10}>
                   <Row>
                     <Col span={24}>
-                      <Typography.Text className="text-gray">
+                      <Typography.Text
+                        className="text-gray"
+                        data-testid={`${field.title}-label`}>
                         {field.title}
                       </Typography.Text>
                     </Col>
@@ -221,7 +247,8 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
                         className={classNames(
                           'summary-panel-statistics-count',
                           field.className
-                        )}>
+                        )}
+                        data-testid={`${field.title}-value`}>
                         {field.value}
                       </Typography.Text>
                     </Col>
@@ -235,12 +262,17 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
       <Divider className="m-0" />
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="section-header">
+          <Typography.Text
+            className="section-header"
+            data-testid="schema-header">
             {t('label.schema')}
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <SummaryList columns={columns} />
+          <SummaryList
+            entityType={SummaryEntityType.COLUMN}
+            formattedEntityData={formattedColumnsData}
+          />
         </Col>
       </Row>
     </>

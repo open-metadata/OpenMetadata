@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.utils.connections import create_and_bind_session
+from metadata.ingestion.connections.session import create_and_bind_session
 
 
 def metadata_connection_object():

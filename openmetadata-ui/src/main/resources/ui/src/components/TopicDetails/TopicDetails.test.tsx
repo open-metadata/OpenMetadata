@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,26 +17,18 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import TopicDetails from './TopicDetails.component';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
   return jest
     .fn()
@@ -136,11 +128,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<p>Tag Container</p>);
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 

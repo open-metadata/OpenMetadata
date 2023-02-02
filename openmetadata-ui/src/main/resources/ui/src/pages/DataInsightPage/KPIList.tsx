@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,15 @@
 
 import { Button, Col, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getListKPIs } from '../../axiosAPIs/KpiAPI';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '../../components/Loader/Loader';
+import { getListKPIs } from 'rest/KpiAPI';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,
@@ -30,7 +30,6 @@ import {
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
-
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -87,12 +86,14 @@ const KPIList = () => {
             <RichTextEditorPreviewer markdown={description} />
           ) : (
             <span data-testid="no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </span>
           ),
       },
       {
-        title: t('label.start-date'),
+        title: t('label.start-entity', { entity: t('label.date') }),
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (

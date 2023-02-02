@@ -1,17 +1,17 @@
 ---
-title: Python SDK for DBT
+title: Python SDK for dbt
 slug: /sdk/python/ingestion/dbt
 ---
 
-# Python SDK for DBT
-We are going to show the integration of DBT with the Python SDK.
+# Python SDK for dbt
+We are going to show the integration of dbt with the Python SDK.
 
-We will be going through a series of steps on how to configure DBT in OpenMetadata and how the python SDK parses the DBT `manifest.json`, `catalog.json` and `run_results.json` files.
+We will be going through a series of steps on how to configure dbt in OpenMetadata and how the python SDK parses the dbt `manifest.json`, `catalog.json` and `run_results.json` files.
 
-## Adding DBT configuration in JSON Config
-Below is an example showing the yaml config of the Redshift connector. The below example shows how to fetch the DBT files from AWS s3 bucket.
+## Adding dbt configuration in JSON Config
+Below is an example showing the yaml config of the Redshift connector. The below example shows how to fetch the dbt files from AWS s3 bucket.
 
-For more information on getting the DBT files from other sources like gcs, file server etc. please take a look [here](/sdk/python/ingestion/dbt#locate-the-dbt-files).
+For more information on getting the dbt files from other sources like gcs, file server etc. please take a look [here](/sdk/python/ingestion/dbt#locate-the-dbt-files).
 
 ```yaml
 source:
@@ -48,7 +48,7 @@ Add the details of the AWS s3 bucket in the above config:
 - `dbtConfigSource`: Details of the AWS s3 resource
 - `dbtPrefixConfig`: Bucket name and path of the dbt files in bucket
 
-## Locate the DBT Files
+## Locate the dbt Files
 The `get_dbt_details` method takes in the source config provided in the json and detects source type (gcs, s3, local or file server) based on the fields provided in the config.
 
 ```python
@@ -62,8 +62,8 @@ self.dbt_run_results = dbt_details[2] if dbt_details else None
 
 After scanning the buckets or the path provided, the `manifest`,`catalog` and `run_results` files are fetched.
 
-## Parsing the DBT Files
-The `_parse_data_model` method parses the manifest, catalog and run_results files that are fetched and converts the DBT data into `DataModel`.
+## Parsing the dbt Files
+The `_parse_data_model` method parses the manifest, catalog and run_results files that are fetched and converts the dbt data into `DataModel`.
 
 ```python
 from metadata.ingestion.source.database.dbt_source import _parse_data_model()
@@ -71,10 +71,10 @@ from metadata.ingestion.source.database.dbt_source import _parse_data_model()
 _parse_data_model()
 ```
 
-## Extracting the DBT data
-The models which are extracted are shown in the Openmetada UI in the `DBT` tab
+## Extracting the dbt data
+The models which are extracted are shown in the Openmetada UI in the `dbt` tab
 
 <Image
 src={"/images/sdk/python/ingestion/extracting-dbt-data.png"}
-alt="Extracting DBT data"
+alt="Extracting dbt data"
 />  

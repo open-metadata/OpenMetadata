@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { TopicConfigObjectInterface } from 'components/TopicDetails/TopicDetails.interface';
 import { t } from 'i18next';
-import { TopicConfigObjectInterface } from '../components/TopicDetails/TopicDetails.interface';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 
@@ -41,7 +41,7 @@ export const topicDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: t('label.custom-properties'),
+    name: t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];
@@ -89,5 +89,6 @@ export const getConfigObject = (
     'Retention Size': topicDetails.retentionSize,
     'CleanUp Policies': topicDetails.cleanupPolicies,
     'Max Message Size': topicDetails.maximumMessageSize,
+    'Schema Type': topicDetails.messageSchema?.schemaType,
   };
 };

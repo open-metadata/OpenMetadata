@@ -4,15 +4,31 @@ slug: /connectors/database/snowflake/airflow
 ---
 
 # Run Snowflake using the Airflow SDK
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Snowflake connector.
 
 Configure and schedule Snowflake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [Lineage](#lineage)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -37,18 +53,56 @@ If you want to run the Usage Connector, you'll also need to install:
 pip3 install "openmetadata-ingestion[snowflake-usage]"
 ```
 
-<Note>
+To ingest basic metadata snowflake user must have the following priviledges:
+  - `USAGE` Privilege on Warehouse
+  - `USAGE` Privilege on Database
+  - `USAGE` Privilege on Schema
+  - `SELECT` Privilege on Tables
+```sql
+-- Create New Role
+CREATE ROLE NEW_ROLE;
 
-- To ingest basic metadata snowflake user must have at least `USAGE` privileges on required schemas.
-- While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
-  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database).
-- If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.
-  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
-- If during the ingestion you want to set the session tags, note that the user should have `ALTER SESSION` permissions.
+-- Create New User
+CREATE USER NEW_USER DEFAULT_ROLE=NEW_ROLE PASSWORD='PASSWORD';
 
-You can find more information about the Account Usage [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+-- Grant role to user
+GRANT ROLE NEW_ROLE TO USER NEW_USER;
 
-</Note>
+-- Grant USAGE Privilege on Warehouse to New Role
+GRANT USAGE ON WAREHOUSE WAREHOUSE_NAME TO ROLE NEW_ROLE;
+
+-- Grant USAGE Privilege on Database to New Role
+GRANT USAGE ON DATABASE TEST_DB TO ROLE NEW_ROLE;
+
+-- Grant USAGE Privilege on required Schemas to New Role
+GRANT USAGE ON SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+
+-- Grant SELECT Privilege on required tables & views to New Role
+GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+```
+
+
+While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
+
+```sql
+
+-- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
+GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
+
+```
+
+
+If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database
+
+```sql
+
+-- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
+GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
+
+```
+
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
 
 ## Metadata Ingestion
 
@@ -85,6 +139,7 @@ source:
       # role: <role>
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -110,43 +165,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #      -----BEGIN PRIVATE KEY-----
-      #      Super secret key
-      #      -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}
@@ -396,9 +414,9 @@ with DAG(
 Note that from connector to connector, this recipe will always be the same.
 By updating the YAML configuration, you will be able to extract metadata from different sources.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
-To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same.
+To ingest the Query Usage, the `serviceConnection` configuration will remain the same.
 However, the `sourceConfig` is now modeled after this JSON Schema.
 
 ### 1. Define the YAML Config
@@ -661,6 +679,10 @@ with DAG(
    )
 ```
 
-## DBT Integration
+## Lineage
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+
+## dbt Integration
+
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

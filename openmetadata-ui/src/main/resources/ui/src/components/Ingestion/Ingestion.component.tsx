@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,14 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Table, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
-import cronstrue from 'cronstrue';
-import { useTranslation } from 'react-i18next';
-
+import { Button, Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import cronstrue from 'cronstrue';
 import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
@@ -44,7 +43,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
@@ -272,7 +270,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         size="small"
         type="primary"
         onClick={() => handleAddIngestionClick(type)}>
-        {t('label.add-pipeline-ingestion', { pipelineType: startCase(type) })}
+        {t('label.add-workflow-ingestion', { workflow: startCase(type) })}
       </Button>
     );
   };
@@ -281,8 +279,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     let name;
     switch (type) {
       case PipelineType.ElasticSearchReindex:
-        name = t('label.add-entity', {
-          entity: t('label.elastic-search-re-index'),
+        name = t('label.add-workflow-ingestion', {
+          workflow: t('label.elastic-search-re-index'),
         });
 
         break;
@@ -307,13 +305,13 @@ const Ingestion: React.FC<IngestionProps> = ({
     return (
       <Fragment>
         <Button
-          className={classNames('h-8 rounded-4 m-b-xs flex items-center')}
+          className={classNames('h-8 rounded-4 m-b-xs d-flex items-center')}
           data-testid="add-new-ingestion-button"
           disabled={!permissions.Create}
           size="small"
           type="primary"
           onClick={() => setShowActions((pre) => !pre)}>
-          {t('label.add-pipeline-ingestion', { pipelineType: '' })}
+          {t('label.add-entity', { entity: t('label.ingestion-lowercase') })}
           {showActions ? (
             <DropdownIcon
               style={{
@@ -452,7 +450,9 @@ const Ingestion: React.FC<IngestionProps> = ({
             <Tooltip
               title={
                 permissions.ViewAll || permissions.ViewBasic
-                  ? t('label.view-dag')
+                  ? t('label.view-entity', {
+                      entity: t('label.dag'),
+                    })
                   : t('message.no-permission-to-view')
               }>
               <Button
@@ -487,8 +487,8 @@ const Ingestion: React.FC<IngestionProps> = ({
         key: 'schedule',
         render: (_, record) =>
           record.airflowConfig?.scheduleInterval ? (
-            <PopOver
-              html={
+            <Popover
+              content={
                 <div>
                   {cronstrue.toString(
                     record.airflowConfig.scheduleInterval || '',
@@ -499,17 +499,16 @@ const Ingestion: React.FC<IngestionProps> = ({
                   )}
                 </div>
               }
-              position="bottom"
-              theme="light"
-              trigger="mouseenter">
+              placement="bottom"
+              trigger="hover">
               <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-            </PopOver>
+            </Popover>
           ) : (
             <span>--</span>
           ),
       },
       {
-        title: t('label.recent-runs'),
+        title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
         width: 180,
@@ -518,7 +517,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
@@ -603,7 +602,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 onClick={() => {
                   setSelectedPipeline(record);
                 }}>
-                {t('label.logs')}
+                {t('label.log-plural')}
               </Button>
             </div>
             {isKillModalOpen &&

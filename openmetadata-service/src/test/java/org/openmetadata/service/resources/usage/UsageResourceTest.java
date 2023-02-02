@@ -298,25 +298,11 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     return new DailyCount().withCount(random.nextInt(100)).withDate(today);
   }
 
-  public static void reportUsageByNameAndCheck(
-      String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    reportUsageByName(entity, fqn, usage, authHeaders);
-    checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
-  }
-
   public static void reportUsageByNameAndCheckPut(
       String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsageByNamePut(entity, fqn, usage, authHeaders);
     checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
-  }
-
-  public static void reportUsageAndCheck(
-      String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    reportUsage(entity, id, usage, authHeaders);
-    checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
   public static void reportUsageAndCheckPut(

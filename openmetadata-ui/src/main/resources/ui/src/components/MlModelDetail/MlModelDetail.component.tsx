@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -29,8 +29,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreMlmodel } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
-import { restoreMlmodel } from '../../axiosAPIs/mlModelAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -101,6 +101,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   createThread,
   entityFieldTaskCount,
   entityFieldThreadCount,
+  version,
+  versionHandler,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -261,7 +263,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 4,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 5,
     },
@@ -384,7 +386,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         }),
         // Autoclose timer
         2000
@@ -394,7 +396,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.mlmodel'),
+          entity: t('label.ml-model'),
         })
       );
     }
@@ -433,9 +435,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlHyperParameters = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">
-          {t('label.hyper-parameters')}{' '}
+          {t('label.hyper-parameter-plural')}{' '}
         </h6>
         <div className="m-t-xs">
           {isEmpty(mlModelDetail.mlHyperParameters) ? (
@@ -458,7 +460,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">{t('label.model-store')}</h6>
         {mlModelDetail.mlStore ? (
           <div className="m-t-xs tw-table-container">
@@ -591,6 +593,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
+          version={version}
+          versionHandler={versionHandler}
           onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
         />
@@ -647,6 +651,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                       deletePostHandler={deletePostHandler}
                       entityName={mlModelDetail.name}
                       feedList={entityThread}
+                      isFeedLoading={isEntityThreadLoading}
                       postFeedHandler={postFeedHandler}
                       updateThreadHandler={updateThreadHandler}
                       onFeedFiltersUpdate={handleFeedFilterChange}
@@ -688,6 +693,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   }
                   entityType={EntityType.MLMODEL}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    mlModelPermissions.EditAll ||
+                    mlModelPermissions.EditCustomFields
+                  }
                 />
               )}
               <div

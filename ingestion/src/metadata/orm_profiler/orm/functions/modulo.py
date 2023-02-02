@@ -56,6 +56,9 @@ def _(element, compiler, **kw):
 @compiles(ModuloFn, Dialects.Oracle)
 @compiles(ModuloFn, Dialects.Presto)
 @compiles(ModuloFn, Dialects.Trino)
+@compiles(ModuloFn, Dialects.IbmDbSa)
+@compiles(ModuloFn, Dialects.Db2)
+@compiles(ModuloFn, Dialects.Vertica)
 def _(element, compiler, **kw):
     """Modulo function for specific dialect"""
     value, base = validate_and_compile(element, compiler, **kw)

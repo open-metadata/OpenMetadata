@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,21 +12,21 @@
  */
 
 import { AxiosError } from 'axios';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { Button } from 'components/buttons/Button/Button';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { createUser } from 'rest/userAPI';
+import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { UserProfile } from '../../authentication/auth-provider/AuthProvider.interface';
-import { createUser } from '../../axiosAPIs/userAPI';
-import { Button } from '../../components/buttons/Button/Button';
-import PageContainer from '../../components/containers/PageContainer';
-import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -99,7 +99,7 @@ const Signup = () => {
   return (
     <>
       {!loading && (
-        <PageContainer>
+        <PageContainerV1>
           <div className="tw-h-screen tw-flex tw-justify-center">
             <div className="tw-flex tw-flex-col tw-items-center signup-box">
               <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
@@ -215,7 +215,7 @@ const Signup = () => {
               </div>
             </div>
           </div>
-        </PageContainer>
+        </PageContainerV1>
       )}
       {loading && (
         <p

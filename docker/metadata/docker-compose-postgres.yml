@@ -14,10 +14,11 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+  es-data:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: openmetadata/postgresql:0.12.0
+    image: docker.getcollate.io/openmetadata/postgresql:0.13.1
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -49,12 +50,12 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - ./docker-volume/es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/elasticsearch/data
 
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.12.0
+    image: docker.getcollate.io/openmetadata/server:0.13.1
     environment:
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -120,14 +121,14 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.12.0
+    image: docker.getcollate.io/openmetadata/ingestion:0.13.1
     depends_on:
       elasticsearch:
         condition: service_started
       postgresql:
         condition: service_healthy
       openmetadata-server:
-        condition: service_healthy
+        condition: service_started
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor

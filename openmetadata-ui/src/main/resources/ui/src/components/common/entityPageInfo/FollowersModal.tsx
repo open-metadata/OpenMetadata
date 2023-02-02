@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,8 +13,8 @@
 
 import { Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
+import UserCard from 'pages/teams/UserCard';
 import React, { useState } from 'react';
-import UserCard from '../../../pages/teams/UserCard';
 import { getEntityName } from '../../../utils/CommonUtils';
 import Searchbar from '../searchbar/Searchbar';
 import { FollowersModalProps } from './FollowersModal.interface';
@@ -61,17 +61,19 @@ const FollowersModal = ({
       centered
       destroyOnClose
       data-testid="modal-container"
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}
       onCancel={onCancel}>
       <div>
         <Searchbar
-          placeholder={`${t('label.search-for-followers')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.follower-plural'),
+          })}...`}
           searchValue={searchText}
           typingInterval={1500}
           onSearch={handleSearchAction}

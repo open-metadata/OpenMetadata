@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,10 +15,7 @@ import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getSystemProfileList,
-  getTableProfilesList,
-} from '../../../axiosAPIs/tableAPI';
+import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
@@ -101,6 +98,8 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         datasetFQN,
         PROFILER_FILTER_RANGE[selectedTimeRange].days
       );
+    } else {
+      setIsLoading(false);
     }
   }, [datasetFQN, selectedTimeRange]);
 

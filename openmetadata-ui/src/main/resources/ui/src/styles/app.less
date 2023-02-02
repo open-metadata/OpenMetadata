@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,7 +18,6 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
-@grey-body: rgb(55, 53, 47);
 @trigger-btn-hover-bg: #efefef;
 
 //font weight
@@ -69,8 +68,19 @@
 .text-grey-muted {
   color: #6b7280;
 }
+.text-grey-body {
+  color: @text-color-secondary;
+}
 .text-body {
   color: @text-color-secondary;
+}
+
+.text-success {
+  color: #008376;
+}
+
+.text-failure {
+  color: #cb2431;
 }
 
 // text alignment
@@ -129,46 +139,6 @@
   border-radius: 6px;
 }
 
-// flex
-.flex {
-  display: flex;
-}
-.item-start {
-  align-items: flex-start;
-}
-.items-center {
-  align-items: center;
-}
-.justify-end {
-  justify-content: flex-end;
-}
-.justify-between {
-  justify-content: space-between;
-}
-.justify-center {
-  justify-content: center;
-}
-.self-center {
-  align-self: center;
-}
-.flex-col {
-  flex-direction: column;
-}
-.flex-initial {
-  flex: 0 1 auto;
-}
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flex-wrap {
-  flex-wrap: wrap;
-}
-.flex-grow {
-  flex-grow: 1;
-}
-
 .break-word {
   word-break: break-word;
 }
@@ -192,6 +162,9 @@
 .bg-grey {
   background-color: @gray;
 }
+.bg-white {
+  background-color: @white;
+}
 
 .activeCategory {
   border-left: 2px solid @primary;
@@ -212,6 +185,12 @@
   opacity: 0.6;
 }
 
+.link-hover {
+  &:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
 .cursor-pointer {
   cursor: pointer;
 }
@@ -265,6 +244,10 @@
 
 .bg-white {
   background: @white;
+}
+
+.z-5 {
+  z-index: 5;
 }
 .z-10 {
   z-index: 10;

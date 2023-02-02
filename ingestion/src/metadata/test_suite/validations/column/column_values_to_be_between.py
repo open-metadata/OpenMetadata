@@ -21,6 +21,7 @@ from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
+from sqlalchemy.sql.sqltypes import DATE, DATETIME, TIMESTAMP
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -36,6 +37,20 @@ from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
+
+
+def convert_timestamp(timestamp: str) -> Union[int, float]:
+    """convert timestamp to int
+
+    Args:
+        timestamp (str):
+
+    Retunrs:
+        int
+    """
+    if len(timestamp) < 13:  # check for ms timestamp
+        return int(timestamp)
+    return float(timestamp) / 1000
 
 
 def test_case_status_result(min_value_res, max_value_res, min_bound, max_bound):
@@ -111,19 +126,36 @@ def _(
             ],
         )
 
-    min_bound = get_test_case_param_value(
-        test_case.parameterValues,  # type: ignore
-        "minValue",
-        float,
-        default=float("-inf"),
-    )
+    if isinstance(col.type, (TIMESTAMP, DATE, DATETIME)):
+        min_bound = get_test_case_param_value(
+            test_case.parameterValues,  # type: ignore
+            "minValue",
+            datetime.fromtimestamp,
+            default=datetime.min,
+            pre_processor=convert_timestamp,
+        )
 
-    max_bound = get_test_case_param_value(
-        test_case.parameterValues,  # type: ignore
-        "maxValue",
-        float,
-        default=float("inf"),
-    )
+        max_bound = get_test_case_param_value(
+            test_case.parameterValues,  # type: ignore
+            "maxValue",
+            datetime.fromtimestamp,
+            default=datetime.max,
+            pre_processor=convert_timestamp,
+        )
+    else:
+        min_bound = get_test_case_param_value(
+            test_case.parameterValues,  # type: ignore
+            "minValue",
+            float,
+            default=float("-inf"),
+        )
+
+        max_bound = get_test_case_param_value(
+            test_case.parameterValues,  # type: ignore
+            "maxValue",
+            float,
+            default=float("inf"),
+        )
 
     status, result = test_case_status_result(
         min_value_res, max_value_res, min_bound, max_bound
@@ -134,8 +166,22 @@ def _(
         testCaseStatus=status,
         result=result,
         testResultValue=[
-            TestResultValue(name="min", value=str(min_value_res)),
-            TestResultValue(name="max", value=str(max_value_res)),
+            TestResultValue(
+                name="min",
+                value=str(
+                    min_value_res.timestamp()
+                    if isinstance(min_value_res, datetime)
+                    else min_value_res
+                ),
+            ),
+            TestResultValue(
+                name="max",
+                value=str(
+                    max_value_res.timestamp()
+                    if isinstance(max_value_res, datetime)
+                    else max_value_res
+                ),
+            ),
         ],
     )
 

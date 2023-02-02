@@ -14,9 +14,9 @@
 package org.openmetadata.service.alerts;
 
 import com.lmax.disruptor.BatchEventProcessor;
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
@@ -46,7 +46,7 @@ import org.openmetadata.service.resources.events.EventResource;
 @Slf4j
 public class AlertsActionPublisher extends AbstractAlertPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
-  private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
+  @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
 
   public AlertsActionPublisher(Alert alert, AlertAction alertAction) {
     super(alert, alertAction);
@@ -76,7 +76,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return alertAction;
   }
 
-  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason) throws IOException {
+  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason) {
     FailureDetails failureDetails =
         new FailureDetails()
             .withLastFailedAt(updateTime)
@@ -93,7 +93,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     throw new RuntimeException(reason);
   }
 
-  protected void setAwaitingRetry(Long updateTime, int statusCode, String reason) throws IOException {
+  protected void setAwaitingRetry(Long updateTime, int statusCode, String reason) {
     FailureDetails failureDetails =
         new FailureDetails()
             .withLastFailedAt(updateTime)
@@ -109,7 +109,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     setStatus(status);
   }
 
-  protected void setSuccessStatus(Long updateTime) throws IOException {
+  protected void setSuccessStatus(Long updateTime) {
     AlertActionStatus status =
         new AlertActionStatus()
             .withStatus(AlertActionStatus.Status.ACTIVE)
@@ -119,8 +119,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     setStatus(status);
   }
 
-  protected void setStatus(AlertActionStatus status) throws IOException {
-    AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status);
+  protected void setStatus(AlertActionStatus status) {
     alertAction.setStatusDetails(status);
   }
 
@@ -133,19 +132,14 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  public BatchEventProcessor<EventPubSub.ChangeEventHolder> getProcessor() {
-    return processor;
-  }
-
-  protected void sendAlert(EventResource.ChangeEventList list) throws IOException, InterruptedException {}
+  protected void sendAlert(EventResource.ChangeEventList list) {}
 
   protected void onStartDelegate() {}
 
   protected void onShutdownDelegate() {}
 
   @Override
-  public void publish(EventResource.ChangeEventList list)
-      throws EventPublisherException, IOException, InterruptedException {
+  public void publish(EventResource.ChangeEventList list) throws EventPublisherException {
     // Publish to the given Alert Actions
     try {
       LOG.info("Sending Alert {}:{}:{}", alert.getName(), alertAction.getStatusDetails().getStatus(), batch.size());

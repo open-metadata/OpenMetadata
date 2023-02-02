@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -68,7 +68,11 @@ export default function EntitySummaryPanel({
   return (
     <div className={classNames('summary-panel-container')}>
       {summaryComponent}
-      <CloseOutlined className="close-icon" onClick={handleClosePanel} />
+      <CloseOutlined
+        className="close-icon"
+        data-testid="summary-panel-close-icon"
+        onClick={handleClosePanel}
+      />
     </div>
   );
 }

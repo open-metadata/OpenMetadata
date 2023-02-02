@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
@@ -20,16 +20,16 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
-  checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
+} from 'rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from 'rest/miscAPI';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { getLoadingStatus } from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -39,7 +39,6 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import PopOver from '../common/popover/PopOver';
 import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -49,6 +48,7 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
 const TestSuitePipelineTab = () => {
+  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const { permissions } = usePermissionProvider();
@@ -69,7 +69,6 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const testSuitePath = useMemo(
     () => location.pathname.split('/')[1],
@@ -305,22 +304,6 @@ const TestSuitePipelineTab = () => {
     fetchAirFlowEndPoint();
   }, []);
 
-  useEffect(() => {
-    setIsLoading(true);
-    checkAirflowStatus()
-      .then((res) => {
-        if (res.status === 200) {
-          setIsAirflowRunning(true);
-        } else {
-          setIsAirflowRunning(false);
-        }
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-        setIsLoading(false);
-      });
-  }, []);
-
   const pipelineColumns = useMemo(() => {
     const column: ColumnsType<IngestionPipeline> = [
       {
@@ -366,8 +349,8 @@ const TestSuitePipelineTab = () => {
           return (
             <>
               {record?.airflowConfig.scheduleInterval ? (
-                <PopOver
-                  html={
+                <Popover
+                  content={
                     <div>
                       {cronstrue.toString(
                         record.airflowConfig.scheduleInterval || '',
@@ -378,11 +361,10 @@ const TestSuitePipelineTab = () => {
                       )}
                     </div>
                   }
-                  position="bottom"
-                  theme="light"
-                  trigger="mouseenter">
+                  placement="bottom"
+                  trigger="hover">
                   <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </PopOver>
+                </Popover>
               ) : (
                 <span>--</span>
               )}
@@ -391,7 +373,7 @@ const TestSuitePipelineTab = () => {
         },
       },
       {
-        title: t('label.recent-runs'),
+        title: t('label.recent-run-plural'),
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
         render: (_, record) => (
@@ -401,7 +383,7 @@ const TestSuitePipelineTab = () => {
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => {
@@ -516,7 +498,7 @@ const TestSuitePipelineTab = () => {
                 <Tooltip
                   title={
                     viewPermission
-                      ? t('label.logs')
+                      ? t('label.log-plural')
                       : t('message.no-permission-for-action')
                   }>
                   <Button
@@ -565,15 +547,17 @@ const TestSuitePipelineTab = () => {
     currTriggerId,
   ]);
 
-  if (isLoading) {
+  if (isLoading || isFetchingStatus) {
     return <Loader />;
   }
 
-  return !isAirflowRunning ? (
+  return !isAirflowAvailable ? (
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer
-      buttonName={t('label.add-pipeline-ingestion', { pipelineType: '' })}
+      buttonName={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
       onButtonClick={() => {

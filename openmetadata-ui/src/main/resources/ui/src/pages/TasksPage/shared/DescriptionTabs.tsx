@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,12 @@
  */
 
 import { Tabs } from 'antd';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useState } from 'react';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
 

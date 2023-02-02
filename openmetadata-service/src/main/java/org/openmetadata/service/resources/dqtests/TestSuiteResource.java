@@ -143,7 +143,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Suite Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -163,7 +163,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       })
   public TestSuite get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -192,11 +192,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             responseCode = "200",
             description = "The test suite",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
-        @ApiResponse(responseCode = "404", description = "Test Suite for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Test Suite for instance {name} is not found")
       })
   public TestSuite getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the test suite", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -232,7 +233,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public TestSuite getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Suite Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Test Suite version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -274,7 +275,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -308,6 +309,30 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteTestSuiteByName",
+      summary = "Delete a test suite",
+      tags = "TestSuites",
+      description = "Delete a test suite by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Test suite for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the test suite", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteTestSuite",
@@ -329,7 +354,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "TestSuite Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,16 +25,15 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest.fn().mockReturnValue(<div>Delete Widget</div>)
 );
 
-jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       policy: {

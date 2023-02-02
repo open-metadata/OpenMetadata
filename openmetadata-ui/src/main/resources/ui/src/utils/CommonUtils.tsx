@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
+/* eslint-disable @typescript-eslint/ban-types */
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import {
+  getDayCron,
+  getHourCron,
+} from 'components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -27,7 +35,6 @@ import {
 } from 'lodash';
 import {
   CurrentState,
-  EntityFieldThreadCount,
   ExtraInfo,
   FormattedTableData,
   RecentlySearched,
@@ -38,14 +45,9 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { getFeedCount } from 'rest/feedsAPI';
 import AppState from '../AppState';
-import { getFeedCount } from '../axiosAPIs/feedsAPI';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../components/Loader/Loader';
+import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
@@ -64,6 +66,7 @@ import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { Field } from '../generated/api/data/createTopic';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
+import { Classification } from '../generated/entity/classification/classification';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
@@ -74,12 +77,12 @@ import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TagCategory } from '../generated/entity/tags/tagCategory';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -89,16 +92,13 @@ import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
-export const arraySorterByKey = (
-  key: string,
+export const arraySorterByKey = <T extends object>(
+  key: keyof T,
   sortDescending = false
-): Function => {
+) => {
   const sortOrder = sortDescending ? -1 : 1;
 
-  return (
-    elementOne: { [x: string]: number | string },
-    elementTwo: { [x: string]: number | string }
-  ) => {
+  return (elementOne: T, elementTwo: T) => {
     return (
       (elementOne[key] < elementTwo[key]
         ? -1
@@ -294,14 +294,9 @@ export const addToRecentSearched = (searchTerm: string): void => {
     let arrSearchedData: RecentlySearched['data'] = [];
     if (recentlySearch?.data) {
       const arrData = recentlySearch.data
-        // search term is not case-insensetive.
+        // search term is not case-insensitive.
         .filter((item) => item.term !== searchData.term)
-        .sort(
-          arraySorterByKey('timestamp', true) as (
-            a: RecentlySearchedData,
-            b: RecentlySearchedData
-          ) => number
-        );
+        .sort(arraySorterByKey<RecentlySearchedData>('timestamp', true));
       arrData.unshift(searchData);
 
       if (arrData.length > 5) {
@@ -335,12 +330,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   if (recentlyViewed?.data) {
     const arrData = recentlyViewed.data
       .filter((item) => item.fqn !== entityData.fqn)
-      .sort(
-        arraySorterByKey('timestamp', true) as (
-          a: RecentlyViewedData,
-          b: RecentlyViewedData
-        ) => number
-      );
+      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
     arrData.unshift(entityData);
 
     if (arrData.length > 5) {
@@ -578,7 +568,7 @@ export const getEntityName = (
     | Webhook
     | Bot
     | Kpi
-    | TagCategory
+    | Classification
     | Field
 ) => {
   return entity?.displayName || entity?.name || '';
@@ -793,7 +783,7 @@ export const getEmptyPlaceholder = () => {
   return (
     <ErrorPlaceHolder size={SIZE.MEDIUM}>
       <Typography.Paragraph>
-        {t('label.no-data-available')}
+        {t('message.no-data-available')}
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );
@@ -880,7 +870,7 @@ export const Transi18next = ({
   ...otherProps
 }: {
   i18nKey: string;
-  values?: {};
+  values?: object;
   renderElement: JSX.Element | HTMLElement;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>
@@ -917,3 +907,50 @@ export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
       return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
   }
 };
+
+/**
+ * It takes a string and returns a string
+ * @param {FilterPatternEnum} type - FilterPatternEnum
+ * @returns A function that takes in a type and returns a keyof AddIngestionState
+ */
+export const getFilterTypes = (
+  type: FilterPatternEnum
+): keyof AddIngestionState => {
+  switch (type) {
+    case FilterPatternEnum.CHART:
+      return 'chartFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DASHBOARD:
+      return 'dashboardFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DATABASE:
+      return 'databaseFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.MLMODEL:
+      return 'mlModelFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.PIPELINE:
+      return 'pipelineFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.SCHEMA:
+      return 'schemaFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.TABLE:
+      return 'tableFilterPattern' as keyof AddIngestionState;
+    default:
+      return 'topicFilterPattern' as keyof AddIngestionState;
+  }
+};
+
+/**
+ * It takes a state and an action, and returns a new state with the action merged into it
+ * @param {S} state - S - The current state of the reducer.
+ * @param {A} action - A - The action that was dispatched.
+ * @returns An object with the state and action properties.
+ */
+export const reducerWithoutAction = <S, A>(state: S, action: A) => {
+  return {
+    ...state,
+    ...action,
+  };
+};
+
+/**
+ * @param text plain text
+ * @returns base64 encoded text
+ */
+export const getBase64EncodedString = (text: string): string => btoa(text);

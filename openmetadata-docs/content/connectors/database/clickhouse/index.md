@@ -4,16 +4,32 @@ slug: /connectors/database/clickhouse
 ---
 
 # Clickhouse
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Clickhouse connector.
 
 Configure and schedule Clickhouse metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
-- [DBT Integration](#dbt-integration)
+- [Lineage](#lineage)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -225,12 +241,12 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
 <Tile
 icon="manage_accounts"
 title="Usage Workflow"
-text="Learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI."
+text="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
 link="/connectors/ingestion/workflows/usage"
 />
 
@@ -252,11 +268,20 @@ text="Learn more about how to configure the Data Quality tests from the UI."
 link="/connectors/ingestion/workflows/data-quality"
 />
 
-## DBT Integration
+## Lineage
+
+<Tile
+icon="air"
+title="Lineage Workflow"
+text="Learn more about how to configure the Lineage from the UI."
+link="/connectors/ingestion/workflows/lineage"
+/>
+
+## dbt Integration
 
 <Tile
 icon="mediation"
-title="DBT Integration"
-text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/connectors/ingestion/workflows/metadata/dbt"
+title="dbt Integration"
+text="Learn more about how to ingest dbt models' definitions and their lineage."
+link="/connectors/ingestion/workflows/dbt"
 />

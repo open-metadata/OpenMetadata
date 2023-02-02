@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState } from 'Models';
+
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
@@ -28,6 +28,10 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import PipelineDetails from './PipelineDetails.component';
 
 /**
@@ -38,18 +42,6 @@ window.ResizeObserver = jest.fn().mockImplementation(() => ({
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 const mockUserTeam = [
   {
@@ -151,11 +143,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<p>Tag Container</p>);
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 
@@ -216,16 +208,16 @@ describe('Test PipelineDetails component', () => {
     );
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
-    const tasksTab = await findByText(container, 'label.tasks');
+    const tasksTab = await findByText(container, 'label.task-plural');
     const activityFeedTab = await findByText(
       container,
       'label.activity-feed-and-task-plural'
     );
     const lineageTab = await findByText(container, 'label.lineage');
-    const executionsTab = await findByText(container, 'label.executions');
+    const executionsTab = await findByText(container, 'label.execution-plural');
     const customPropertiesTab = await findByText(
       container,
-      'label.custom-properties'
+      'label.custom-property-plural'
     );
 
     expect(EntityPageInfo).toBeInTheDocument();
@@ -241,7 +233,7 @@ describe('Test PipelineDetails component', () => {
     render(<PipelineDetails {...PipelineDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const taskDetail = await screen.findByText('label.tasks');
+    const taskDetail = await screen.findByText('label.task-plural');
 
     expect(taskDetail).toBeInTheDocument();
   });
@@ -292,7 +284,10 @@ describe('Test PipelineDetails component', () => {
       }
     );
 
-    const activityFeedTab = await findByText(container, 'label.executions');
+    const activityFeedTab = await findByText(
+      container,
+      'label.execution-plural'
+    );
 
     await act(async () => {
       fireEvent.click(activityFeedTab);
@@ -329,7 +324,7 @@ describe('Test PipelineDetails component', () => {
 
     const activityFeedTab = await findByText(
       container,
-      'label.custom-properties'
+      'label.custom-property-plural'
     );
 
     await act(async () => {

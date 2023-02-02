@@ -152,7 +152,7 @@ public final class RestUtil {
   }
 
   public static class PatchResponse<T> {
-    private final T entity;
+    @Getter private final T entity;
     private final Response.Status status;
     private final String changeType;
 
@@ -166,26 +166,18 @@ public final class RestUtil {
       this.changeType = changeType;
     }
 
-    public T getEntity() {
-      return entity;
-    }
-
     public Response toResponse() {
       return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
     }
   }
 
   public static class DeleteResponse<T> {
-    private final T entity;
+    @Getter private final T entity;
     private final String changeType;
 
     public DeleteResponse(T entity, String changeType) {
       this.entity = entity;
       this.changeType = changeType;
-    }
-
-    public T getEntity() {
-      return entity;
     }
 
     public Response toResponse() {

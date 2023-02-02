@@ -1,6 +1,5 @@
-/* eslint-disable jest/no-disabled-tests */
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable jest/no-disabled-tests */
 
 import {
   findByTestId,
@@ -66,7 +66,7 @@ describe.skip('Test FormModal component', () => {
     const cancel = await findByText(container, /Cancel/i);
     fireEvent.click(cancel);
 
-    expect(mockCancel).toBeCalledTimes(1);
+    expect(mockCancel).toHaveBeenCalledTimes(1);
   });
 
   it('Onclick of Save button, onSave callback should called', async () => {
@@ -83,6 +83,6 @@ describe.skip('Test FormModal component', () => {
     const save = await findByText(container, /Save/i);
     fireEvent.click(save);
 
-    expect(mockSave).toBeCalledTimes(1);
+    expect(mockSave).toHaveBeenCalledTimes(1);
   });
 });

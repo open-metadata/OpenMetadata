@@ -30,6 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.csv.EntityCsvTest.assertRows;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
@@ -59,6 +64,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -70,6 +76,8 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -77,6 +85,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
@@ -98,9 +108,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -121,7 +134,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
-    this.supportsAuthorizedMetadataOperations = false;
+    supportedNameCharacters = "_-.";
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -284,12 +297,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
     CreateUser create = createRequest(test).withRoles(roles);
-    List<UUID> createdRoles = Arrays.asList(role1.getId(), role2.getId());
-    CreateUser created = createRequest(test).withRoles(createdRoles);
     User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure User has relationship to these roles
-    String[] expectedRoles = createdRoles.stream().map(UUID::toString).sorted().toArray(String[]::new);
+    String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
     List<EntityReference> roleReferences = user.getRoles();
     String[] actualRoles = roleReferences.stream().map(ref -> ref.getId().toString()).sorted().toArray(String[]::new);
     assertArrayEquals(expectedRoles, actualRoles);
@@ -420,8 +431,51 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(initialUserCount - initialBotCount, users.getPaging().getTotal());
   }
 
-  private CreateUser createBotUserRequest(TestInfo test, int index) {
-    return createBotUserRequest(getEntityName(test, index));
+  @Test
+  void get_listUsersWithFalseBotFilterPagination(TestInfo test) throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = Map.of("isBot", "false", "team", team.getName());
+
+    // create 5 bot users
+    for (int i = 0; i < 5; i++) {
+      CreateUser create = createBotUserRequest(test, i).withTeams(List.of(team.getId()));
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    // create 10 non-bot users
+    for (int i = 5; i < 15; i++) {
+      CreateUser create = createRequest(test, i).withTeams(List.of(team.getId()));
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // First page must contain "after" and should not have "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    User user1 = users.getData().get(0);
+
+    String after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // Third page must contain only "before" since it is the last page
+    assertNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user2 = users.getData().get(0);
+    assertNotEquals(user1, user2);
+
+    String before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(10, users.getPaging().getTotal());
+    // First page must contain only "after"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    assertEquals(user1, users.getData().get(0));
   }
 
   @Test
@@ -484,6 +538,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNotNull(users.getPaging().getAfter());
     assertNull(users.getPaging().getBefore());
     assertEquals(user1, users.getData().get(0));
+  }
+
+  @Test
+  void get_generateRandomPassword() throws HttpResponseException {
+    String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
+    assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
   }
 
   /**
@@ -682,7 +742,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
+  void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthType.SSO)
@@ -725,12 +785,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void get_generateRandomPassword() throws HttpResponseException {
-    String randomPwd = TestUtils.get(getResource("users/generateRandomPwd"), String.class, ADMIN_AUTH_HEADERS);
-    assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
-  }
-
-  @Test
   void post_createUser_BasicAuth_AdminCreate_login_200_ok(TestInfo test) throws HttpResponseException {
     // Create a user with Auth and Try Logging in
     User user =
@@ -750,7 +804,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -759,7 +814,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -773,7 +828,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth@email.com").withPassword(encodePassword("Test1@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -803,7 +858,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNull(user.getAuthenticationMechanism());
 
     // Login With Correct Password
-    LoginRequest loginRequest = new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test@1234");
+    LoginRequest loginRequest =
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test@1234"));
     JwtResponse jwtResponse =
         TestUtils.post(
             getResource("users/login"), loginRequest, JwtResponse.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
@@ -812,7 +868,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
-        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword("Test@1234");
+        new LoginRequest().withEmail("testBasicAuth1234@email.com").withPassword(encodePassword("Test@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -826,7 +882,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Login With Wrong Password
     LoginRequest failedLoginWithWrongPwd =
-        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword("Test1@1234");
+        new LoginRequest().withEmail("testBasicAuth123@email.com").withPassword(encodePassword("Test1@1234"));
     assertResponse(
         () ->
             TestUtils.post(
@@ -837,6 +893,78 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 ADMIN_AUTH_HEADERS),
         UNAUTHORIZED,
         CatalogExceptionMessage.INVALID_USERNAME_PASSWORD);
+  }
+
+  @Test
+  void testCsvDocumentation() throws HttpResponseException {
+    assertEquals(UserCsv.DOCUMENTATION, getCsvDocumentation());
+  }
+
+  @Test
+  void testImportInvalidCsv() throws IOException {
+    // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
+
+    // Invalid team
+    String resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
+    String record = "user,,,user@domain.com,,,invalidTeam,";
+    String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
+    CsvImportResult result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
+    assertRows(result, expectedRows);
+
+    // Invalid roles
+    record = "user,,,user@domain.com,,,team-invalidCsv,invalidRole";
+    csv = createCsv(UserCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))};
+    assertRows(result, expectedRows);
+  }
+
+  @Test
+  void testUserImportExport() throws IOException {
+    // Create team hierarchy - team with children t1, t1 has t11
+    // "name", "displayName", "description", "teamType", "parents", "owner", "isJoinable", "defaultRoles", & "policies"
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    String team = "teamImportExport,,,Division,Organization,,,,";
+    String team1 = "teamImportExport1,,,Department,teamImportExport,,,,";
+    String team11 = "teamImportExport11,,,Group,teamImportExport1,,,,";
+    String csv = EntityCsvTest.createCsv(TeamCsv.HEADERS, listOf(team, team1, team11), null);
+    CsvImportResult result = teamResourceTest.importCsv(ORG_TEAM.getName(), csv, false);
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    // Create users in the team hierarchy
+    // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
+    String user = "userImportExport,d,s,userImportExport@domain.com,America/Los_Angeles,true,teamImportExport,";
+    String user1 = "userImportExport1,,,userImportExport1@domain.com,,,teamImportExport1,DataConsumer";
+    String user11 = "userImportExport11,,,userImportExport11@domain.com,,,teamImportExport11,";
+    List<String> createRecords = listOf(user, user1, user11);
+
+    // Update user descriptions
+    user = "userImportExport,displayName,,userImportExport@domain.com,,,teamImportExport,";
+    user1 = "userImportExport1,displayName1,,userImportExport1@domain.com,,,teamImportExport1,";
+    user11 = "userImportExport11,displayName11,,userImportExport11@domain.com,,,teamImportExport11,";
+    List<String> updateRecords = listOf(user, user1, user11);
+
+    // Add new users
+    String user2 = "userImportExport2,displayName2,,userImportExport2@domain.com,,,teamImportExport1,";
+    String user21 = "userImportExport21,displayName21,,userImportExport11@domain.com,,,teamImportExport11,";
+    List<String> newRecords = listOf(user2, user21);
+    testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
+
+    // Import to team11 a user in team1 - since team1 is not under team11 hierarchy, import should fail
+    String user3 = "userImportExport3,displayName3,,userImportExport3@domain.com,,,teamImportExport1,";
+    csv = EntityCsvTest.createCsv(UserCsv.HEADERS, listOf(user3), null);
+    result = importCsv("teamImportExport11", csv, false);
+    String error = UserCsv.invalidTeam(6, "teamImportExport11", "userImportExport3", "teamImportExport1");
+    assertTrue(result.getImportResultsCsv().contains(error));
+  }
+
+  private String encodePassword(String password) {
+    return Base64.getEncoder().encodeToString(password.getBytes());
   }
 
   private void validateJwtBasicAuth(JwtResponse jwtResponse, String username) {
@@ -876,7 +1004,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(
         () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
+        CatalogExceptionMessage.userAlreadyBot(botUser.getName(), create.getName()));
   }
 
   @Test
@@ -948,7 +1076,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
+    EntityReference userRef = reduceEntityReference(user);
     locationResourceTest.createEntity(
         locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
     locationResourceTest.createEntity(
@@ -964,7 +1092,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     List<EntityReference> expectedOwnedEntities = new ArrayList<>();
     for (EntityReference ref : listOrEmpty(userBeforeDeletion.getOwns())) {
-      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+      expectedOwnedEntities.add(reduceEntityReference(ref));
     }
 
     TestUtils.assertEntityReferences(expectedOwnedEntities, userAfterDeletion.getOwns());
@@ -1038,7 +1166,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  protected String getAllowedFields() {
+  public String getAllowedFields() {
     List<String> allowedFields = Entity.getAllowedFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);
@@ -1060,5 +1188,24 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.JWT)
                 .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+  }
+
+  private CreateUser createBotUserRequest(TestInfo test, int index) {
+    return createBotUserRequest(getEntityName(test, index));
+  }
+
+  @Override
+  public CsvImportResult importCsv(String teamName, String csv, boolean dryRun) throws HttpResponseException {
+    WebTarget target = getCollection().path("/import");
+    target = target.queryParam("team", teamName);
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
+  protected String exportCsv(String teamName) throws HttpResponseException {
+    WebTarget target = getCollection().path("/export");
+    target = target.queryParam("team", teamName);
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 }

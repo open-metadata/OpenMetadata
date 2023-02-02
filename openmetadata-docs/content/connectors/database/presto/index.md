@@ -4,6 +4,21 @@ slug: /connectors/database/presto
 ---
 
 # Presto
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |       ❌      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| Partially via Views | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Presto connector.
 
@@ -12,7 +27,7 @@ Configure and schedule Presto metadata and profiler workflows from the OpenMetad
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -136,6 +151,7 @@ the changes.
 - **Password**: Password to connect to Presto.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Presto deployment in the Host and Port field.
 - **Catalog**: Presto offers a catalog feature where all the databases are stored. (Providing the Catalog is not mandatory from 0.12.2 or greater versions)
+- **DatabaseSchema**: DatabaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Presto during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Presto during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
@@ -236,12 +252,12 @@ text="Learn more about how to configure the Data Quality tests from the UI."
 link="/connectors/ingestion/workflows/data-quality"
 />
 
-## DBT Integration
+## dbt Integration
 
 <Tile
 icon="mediation"
-title="DBT Integration"
-text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/connectors/ingestion/workflows/metadata/dbt"
+title="dbt Integration"
+text="Learn more about how to ingest dbt models' definitions and their lineage."
+link="/connectors/ingestion/workflows/dbt"
 />
 

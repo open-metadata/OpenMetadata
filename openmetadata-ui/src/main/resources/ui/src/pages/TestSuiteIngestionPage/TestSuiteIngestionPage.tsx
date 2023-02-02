@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
+import { INGESTION_DATA } from 'components/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayout from 'components/containers/PageLayout';
+import Loader from 'components/Loader/Loader';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getIngestionPipelineByFqn } from '../../axiosAPIs/ingestionPipelineAPI';
-import { getTestSuiteByName } from '../../axiosAPIs/testAPI';
-import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
-import { INGESTION_DATA } from '../../components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
-import Loader from '../../components/Loader/Loader';
+import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
+import { getTestSuiteByName } from 'rest/testAPI';
 import { ROUTES } from '../../constants/constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';

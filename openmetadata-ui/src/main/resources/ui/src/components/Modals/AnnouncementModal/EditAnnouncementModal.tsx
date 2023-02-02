@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -82,8 +82,8 @@ const EditAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText={t('label.save')}
+      open={open}
       title={t('label.edit-an-announcement')}
-      visible={open}
       width={720}
       onCancel={onCancel}>
       <Form
@@ -150,7 +150,7 @@ const EditAnnouncementModal: FC<Props> = ({
         <Form.Item label={`${t('label.description')}:`} name="description">
           <RichTextEditor
             initialValue={description}
-            placeHolder={t('label.write-your-announcement-lowercase')}
+            placeHolder={t('message.write-your-announcement-lowercase')}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

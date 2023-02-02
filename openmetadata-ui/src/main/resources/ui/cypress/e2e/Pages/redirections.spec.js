@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,11 @@
  */
 
 import { BASE_URL } from '../../constants/constants';
-import { LEFT_PANEL_DETAILS, NAVBAR_DETAILS, SETTINGS_LEFT_PANEL } from '../../constants/redirections.constants';
+import {
+  LEFT_PANEL_DETAILS,
+  NAVBAR_DETAILS,
+  SETTINGS_LEFT_PANEL,
+} from '../../constants/redirections.constants';
 
 const validateURL = (url) => {
   cy.url().should('contain', url);
@@ -25,8 +29,10 @@ describe('Redirection link should work properly', () => {
 
   it('Check mydata redirection links on navbar', () => {
     Object.values(NAVBAR_DETAILS).map((navbar) => {
-      cy.get(navbar.testid).should('be.visible').click({animationDistanceThreshold: 10});
-      if(navbar.subMenu) {
+      cy.get(navbar.testid)
+        .should('be.visible')
+        .click({ animationDistanceThreshold: 10 });
+      if (navbar.subMenu) {
         cy.get(navbar.subMenu).should('be.visible').click({ force: true });
       }
       //
@@ -49,9 +55,12 @@ describe('Redirection link should work properly', () => {
   it('Check redirection links on settings page', () => {
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(SETTINGS_LEFT_PANEL).map((settingsLeftPanel) => {
-      cy.get(settingsLeftPanel.testid).scrollIntoView().should('be.visible').click();
+      cy.get(settingsLeftPanel.testid)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
       cy.wait(200);
       validateURL(settingsLeftPanel.url);
     });
-  })
+  });
 });

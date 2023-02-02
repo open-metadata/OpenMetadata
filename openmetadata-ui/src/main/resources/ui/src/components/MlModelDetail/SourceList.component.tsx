@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -67,7 +67,10 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             </Col>
             <Col span={10}>
               <Typography.Text className="text-grey-muted">
-                {t('label.data-source')}:
+                {t('label.data-entity', {
+                  entity: t('label.source'),
+                })}
+                :
               </Typography.Text>
               <Link
                 className="m-l-xs"

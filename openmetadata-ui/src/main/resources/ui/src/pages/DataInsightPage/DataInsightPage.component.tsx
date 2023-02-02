@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,26 +21,26 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
+import DataInsightSummary from 'components/DataInsightDetail/DataInsightSummary';
+import DescriptionInsight from 'components/DataInsightDetail/DescriptionInsight';
+import KPIChart from 'components/DataInsightDetail/KPIChart';
+import OwnerInsight from 'components/DataInsightDetail/OwnerInsight';
+import PageViewsByEntitiesChart from 'components/DataInsightDetail/PageViewsByEntitiesChart';
+import TierInsight from 'components/DataInsightDetail/TierInsight';
+import TopActiveUsers from 'components/DataInsightDetail/TopActiveUsers';
+import TopViewEntities from 'components/DataInsightDetail/TopViewEntities';
+import TotalEntityInsight from 'components/DataInsightDetail/TotalEntityInsight';
+import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { getListKPIs } from '../../axiosAPIs/KpiAPI';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
-import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
-import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
-import KPIChart from '../../components/DataInsightDetail/KPIChart';
-import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
-import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
-import TierInsight from '../../components/DataInsightDetail/TierInsight';
-import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
-import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
-import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
-import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
-import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { getListKPIs } from 'rest/KpiAPI';
+import { searchQuery } from 'rest/searchAPI';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
@@ -50,7 +50,6 @@ import {
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -277,18 +276,24 @@ const DataInsightPage = () => {
                 {t('label.data-insight-plural')}
               </Typography.Title>
               <Typography.Text className="data-insight-label-text">
-                {t('label.data-insight-subtitle')}
+                {t('message.data-insight-subtitle')}
               </Typography.Text>
             </div>
             <Tooltip
               title={
-                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
+                isAdminUser
+                  ? t('label.add-entity', {
+                      entity: t('label.kpi-uppercase'),
+                    })
+                  : t('message.no-permission-for-action')
               }>
               <Button
                 disabled={!isAdminUser}
                 type="primary"
                 onClick={handleAddKPI}>
-                {t('label.add-kpi')}
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
               </Button>
             </Tooltip>
           </Space>

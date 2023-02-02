@@ -23,7 +23,8 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.source.database.datalake import ometa_to_dataframe
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -32,7 +33,6 @@ from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.utils.column_base_model import ColumnBaseModel
-from metadata.utils.connections import get_connection
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -259,7 +259,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         sampler = DatalakeSampler(
             session=self.client,
             table=self.data_frame_list,
-            profile_sample=self.profile_sample_config,
+            profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
@@ -35,6 +33,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -42,7 +41,6 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -72,9 +70,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
-    ingestionPipeline.setService(getContainer(ingestionPipeline.getId()));
-    ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
-    return ingestionPipeline;
+    return ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
   }
 
   @Override

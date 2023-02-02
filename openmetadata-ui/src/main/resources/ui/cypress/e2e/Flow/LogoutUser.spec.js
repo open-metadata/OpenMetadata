@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,25 +11,28 @@
  *  limitations under the License.
  */
 
-import { interceptURL, verifyResponseStatusCode } from "../../common/common";
-import { BASE_URL } from "../../constants/constants";
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 
-describe("Logout User", () => {
+describe('Logout User', () => {
   beforeEach(() => {
     cy.login();
   });
 
-  it("After login logout the user and invalidate the token", () => {
-    
-    cy.get('[data-testid="avatar"]').first().should("be.visible").trigger('mouseover').click()
+  it('After login logout the user and invalidate the token', () => {
+    cy.get('[data-testid="avatar"]')
+      .first()
+      .should('be.visible')
+      .trigger('mouseover')
+      .click();
 
     interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-    
-    cy.get('[data-testid="menu-item-Logout"]').should("be.visible").click()
+
+    cy.get('[data-testid="menu-item-Logout"]').should('be.visible').click();
 
     // verify the logout request
     verifyResponseStatusCode('@logoutUser', 200);
 
     cy.url().should('eq', `${BASE_URL}/signin`);
-  })
-})
+  });
+});

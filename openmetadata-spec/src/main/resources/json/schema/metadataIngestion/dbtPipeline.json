@@ -38,6 +38,17 @@
           "$ref": "./dbtconfig/dbtGCSConfig.json"
         }
       ]
+    },
+    "dbtUpdateDescriptions": {
+      "description": "Optional configuration to update the description from DBT or not",
+      "type": "boolean",
+      "default": false
+    },
+    "dbtClassificationName": {
+      "title": "dbt Classification Name",
+      "description": "Custom OpenMetadata Classification name for dbt tags.",
+      "type": "string",
+      "default": "dbtTags"
     }
   },
   "additionalProperties": false

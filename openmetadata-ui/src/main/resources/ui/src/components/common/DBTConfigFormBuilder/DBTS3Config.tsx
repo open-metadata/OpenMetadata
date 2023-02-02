@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
+import { Button, Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DBTBucketDetails,
@@ -27,25 +27,26 @@ import {
   checkDbtS3CredsConfigRules,
   validateDbtS3Config,
 } from '../../../utils/DBTConfigFormUtil';
-import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import DBTCommonFields from './DBTCommonFields.component';
 import {
   DbtConfigS3GCS,
   DBTFormCommonProps,
   ErrorDbtS3,
 } from './DBTConfigForm.interface';
-import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
   handleUpdateDescriptions: (value: boolean) => void;
+  handleUpdateDBTClassification: (value: string) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
   dbtUpdateDescriptions = false,
+  dbtClassificationName,
   okText,
   cancelText,
   onCancel,
@@ -53,6 +54,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   handleSecurityConfigChange,
   handlePrefixConfigChange,
   handleUpdateDescriptions,
+  handleUpdateDBTClassification,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = {
@@ -89,6 +91,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       dbtSecurityConfig,
       dbtPrefixConfig,
       dbtUpdateDescriptions,
+      dbtClassificationName,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -231,32 +234,31 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       </Field>
       {getSeparator('')}
 
-      <SwitchField
+      <DBTCommonFields
+        dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
+        descriptionId="s3-update-description"
+        handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
-        id="s3-update-description"
       />
 
       {getSeparator('')}
 
-      <Field className="tw-flex tw-justify-end">
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>{cancelText}</span>
+          {cancelText}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleSubmit}>
-          <span>{okText}</span>
+          {okText}
         </Button>
       </Field>
     </Fragment>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,9 +13,9 @@
 
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
@@ -72,7 +72,7 @@ const ResetPassword = () => {
   const handleReVerify = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="h-full tw-py-36">
+    <div className="h-full p-y-36">
       {tokenValid ? (
         <Card
           bodyStyle={{ padding: '48px' }}
@@ -104,7 +104,7 @@ const ResetPassword = () => {
             </Col>
 
             <Col className="mt-12 text-center" span={24}>
-              <Typography.Text className="tw-text-xl font-medium tw-text-grey-muted">
+              <Typography.Text className="text-xl font-medium text-grey-muted">
                 Reset your Password
               </Typography.Text>
             </Col>

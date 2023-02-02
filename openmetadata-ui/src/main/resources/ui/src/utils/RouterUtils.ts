@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { GlossaryAction } from 'components/Glossary/GlossaryV1.interfaces';
+import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,
@@ -21,6 +22,7 @@ import {
   IN_PAGE_SEARCH_ROUTES,
   LOG_ENTITY_NAME,
   LOG_ENTITY_TYPE,
+  PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
@@ -419,7 +421,9 @@ export const getLogEntityPath = (
   path: string,
   logEntityType: string | undefined
 ): string => {
-  if (isUndefined(logEntityType)) return '';
+  if (isUndefined(logEntityType)) {
+    return '';
+  }
 
   const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
 
@@ -450,6 +454,19 @@ export const getLineageViewPath = (entity: EntityType, fqn: string) => {
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
+
+  return path;
+};
+
+export const getGlossaryPathWithAction = (
+  fqn: string,
+  action: GlossaryAction
+) => {
+  let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
+
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
+    .replace(PLACEHOLDER_ACTION, action);
 
   return path;
 };

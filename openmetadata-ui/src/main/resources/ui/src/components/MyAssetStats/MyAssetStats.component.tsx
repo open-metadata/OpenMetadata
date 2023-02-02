@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
 import {
@@ -25,15 +25,16 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { MyAssetStatsProps, Summary } from './MyAssetStats.interface';
+import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import { MyAssetStatsProps } from './MyAssetStats.interface';
 
 const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
-  entityCounts,
+  entityState,
 }: MyAssetStatsProps) => {
-  const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
+  const { entityCounts, entityCountLoading } = entityState;
 
-  const getSummarydata = () => {
-    return {
+  const dataSummary = useMemo(
+    () => ({
       tables: {
         icon: Icons.TABLE_GREY,
         data: 'Tables',
@@ -104,12 +105,9 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: getTeamsWithFqnPath(TeamType.Organization),
         dataTestId: 'terms',
       },
-    };
-  };
-
-  useEffect(() => {
-    setdataSummary(getSummarydata());
-  }, []);
+    }),
+    [entityState]
+  );
 
   return (
     <div className="ant-entity-card">
@@ -117,35 +115,43 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         data-testid="data-summary-container"
         id="assetStatsCount"
         style={leftPanelAntCardStyle}>
-        {Object.values(dataSummary).map((data, index) => (
-          <div
-            className="tw-flex tw-items-center tw-justify-between"
-            data-testid={`${data.dataTestId}-summary`}
-            key={index}>
-            <div className="tw-flex">
-              <SVGIcons
-                alt="icon"
-                className="tw-h-4 tw-w-4 tw-self-center"
-                icon={data.icon}
-              />
-              {data.link ? (
-                <Link
-                  className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
-                  data-testid={data.dataTestId}
-                  to={data.link}>
-                  <Button
-                    className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                    type="text">
-                    {data.data}
-                  </Button>
-                </Link>
-              ) : (
-                <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
-              )}
-            </div>
-            {!isNil(data.count) && getCountBadge(data.count, '', false)}
-          </div>
-        ))}
+        <EntityListSkeleton
+          isCount
+          isLabel
+          isSelect
+          loading={Boolean(entityCountLoading)}>
+          <>
+            {Object.values(dataSummary).map((data, index) => (
+              <div
+                className="tw-flex tw-items-center tw-justify-between"
+                data-testid={`${data.dataTestId}-summary`}
+                key={index}>
+                <div className="tw-flex">
+                  <SVGIcons
+                    alt="icon"
+                    className="tw-h-4 tw-w-4 tw-self-center"
+                    icon={data.icon}
+                  />
+                  {data.link ? (
+                    <Link
+                      className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
+                      data-testid={data.dataTestId}
+                      to={data.link}>
+                      <Button
+                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                        type="text">
+                        {data.data}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
+                  )}
+                </div>
+                {!isNil(data.count) && getCountBadge(data.count, '', false)}
+              </div>
+            ))}
+          </>
+        </EntityListSkeleton>
       </Card>
     </div>
   );

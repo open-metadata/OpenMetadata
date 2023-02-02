@@ -19,6 +19,11 @@
       "description": "Description of the testcase.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "owner": {
+      "description": "Owner of this TestCase definition.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "entityType": {
       "$ref": "../../tests/testDefinition.json#/definitions/entityType"
     },
