@@ -30,6 +30,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -60,8 +61,8 @@ public class JwtFilter implements ContainerRequestFilter {
   private JwkProvider jwkProvider;
   private String principalDomain;
   private boolean enforcePrincipalDomain;
-  private String providerType;
   private String storedJwtKeyId;
+  private boolean isBasicAuth = false;
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/config",
@@ -83,7 +84,8 @@ public class JwtFilter implements ContainerRequestFilter {
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration,
       JWTTokenConfiguration jwtTokenConfiguration) {
-    this.providerType = authenticationConfiguration.getProvider();
+    this.isBasicAuth =
+        authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
@@ -122,7 +124,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString())) {
+    if (isBasicAuth) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 
@@ -136,12 +138,9 @@ public class JwtFilter implements ContainerRequestFilter {
     // validate bot token
     boolean isBot = claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
 
-    // if other sso and we have OM Jwt Token configuration as well
-    if ((!providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString()))) {
-      // check if the jwtId for the token used is from the jwtTokenConfig
-      if (storedJwtKeyId.equals(jwt.getKeyId()) && !isBot) {
-        throw new AuthenticationException("Not Authorized! , Invalid Key Id used for login");
-      }
+    /* in case of other SSO only bot can use the OM JwtTokenConfiguration, users cannot */
+    if (!isBasicAuth && (Objects.equals(storedJwtKeyId, jwt.getKeyId()) && !isBot)) {
+      throw new AuthenticationException("Not Authorized!, Invalid Key used");
     }
 
     if (isBot) {
