@@ -74,7 +74,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     // Names can't start with capital letter, can't have space, hyphen, apostrophe
     String[] tests = {"a bc", "a-bc", "a'b"};
 
-    String error = "[name must match \"^[\\pL\\pM\\p{Nd}\\p{Nl}_]+$\"]";
+    String error = "[name must match \"^(?U)[\\w]+$\"]";
     CreateType create = createRequest("placeHolder", "", "", null);
     for (String test : tests) {
       LOG.info("Testing with the name {}", test);

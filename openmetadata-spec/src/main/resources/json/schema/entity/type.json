@@ -10,7 +10,7 @@
     "entityName": {
       "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
       "type": "string",
-      "pattern": "^[\\pL\\pM\\p{Nd}\\p{Nl}_]+$"
+      "pattern": "^(?U)[\\w]+$"
     },
     "category": {
       "description": "Metadata category to which a type belongs to.",
@@ -26,11 +26,6 @@
         }
       ]
     },
-    "propertyName": {
-      "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-      "type": "string",
-      "pattern": "^[\\pL\\pM\\p{Nd}\\p{Nl}_]+$"
-    },
     "customProperty": {
       "description": "Type used for adding custom property to an entity to extend it.",
       "type": "object",
@@ -38,7 +33,7 @@
       "properties": {
         "name": {
           "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-          "$ref": "#/definitions/propertyName"
+          "$ref": "#/definitions/entityName"
         },
         "description": {
           "$ref": "../type/basic.json#/definitions/markdown"
