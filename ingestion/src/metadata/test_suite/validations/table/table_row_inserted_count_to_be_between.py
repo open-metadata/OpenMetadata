@@ -158,8 +158,10 @@ def _(
 
 @table_row_inserted_count_to_be_between.register
 def _(
-    runner: DataFrame, test_case: TestCase, execution_date: Union[datetime, float]
-):  # pylint: disable=unused-argument
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
     result = "Test is currently not supported for datalake sources."
     return build_test_case_result(
         execution_date,

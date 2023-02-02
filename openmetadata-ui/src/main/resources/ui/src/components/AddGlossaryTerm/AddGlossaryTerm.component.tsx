@@ -211,7 +211,7 @@ const AddGlossaryTerm = ({
 
     const updatedTerms = relatedTerms.map((term) => ({
       id: term.id,
-      type: 'tag',
+      type: 'glossaryTerm',
     }));
 
     if (validateForm(updatedReference)) {
