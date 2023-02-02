@@ -56,10 +56,14 @@ jobs:
           make install_all install_apis
 
       - name: Maven build
+        id: maven-build
+        continue-on-error: true
         run: mvn -DskipTests clean install
 
       - name: Run Scan
         id: security-report
+        if: steps.maven-build.outcome == 'success'
+        continue-on-error: true
         run: |
           source env/bin/activate
           make snyk-report
@@ -89,7 +93,13 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Upload Snyk Report HTML files
+        if: steps.security-report.outcome == 'success'
         uses: actions/upload-artifact@v3
         with:
           name: security-report
           path: security-report
+
+      - name: Force failure
+        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
+        run: |
+          exit 1
