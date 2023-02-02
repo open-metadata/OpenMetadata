@@ -66,17 +66,21 @@ const Appbar: React.FC = (): JSX.Element => {
   const match = useRouteMatch<{ searchQuery: string }>({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
-  const searchQuery = match?.params?.searchQuery;
+  const searchQuery = match?.params?.searchQuery ?? '';
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>('');
+
+  console.debug({ match });
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
   };
 
   const handleSearchChange = (value: string) => {
+    console.debug(`handleSearchChange value=${value}`);
+
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
   };
@@ -279,11 +283,14 @@ const Appbar: React.FC = (): JSX.Element => {
   ];
 
   const searchHandler = (value: string) => {
+    console.debug(`searchHandler value=${value}`);
+
     setIsOpen(false);
-    addToRecentSearched(value);
+    const encodedValue = encodeURIComponent(value);
+    addToRecentSearched(encodedValue);
     history.push({
       pathname: getExplorePathWithSearch(
-        encodeURIComponent(value),
+        encodeURIComponent(encodedValue),
         // this is for if user is searching from another page
         location.pathname.startsWith(ROUTES.EXPLORE)
           ? appState.explorePageTab
@@ -294,6 +301,8 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    console.debug(`handleKeyDown e=${e}`);
+
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
       searchHandler(target.value);
@@ -301,6 +310,8 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleOnclick = () => {
+    console.debug(`handleOnclick searchValue=${searchValue}`);
+
     searchHandler(searchValue ?? '');
   };
 
@@ -318,7 +329,16 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   useEffect(() => {
-    setSearchValue(decodeURIComponent(searchQuery || ''));
+    console.debug(`useEffect searchQuery=${searchQuery}`);
+
+    let newSearchValue = '';
+    try {
+      newSearchValue = decodeURIComponent(searchQuery);
+    } catch (e) {
+      newSearchValue = searchQuery;
+    }
+
+    setSearchValue(newSearchValue);
   }, [searchQuery]);
 
   useEffect(() => {

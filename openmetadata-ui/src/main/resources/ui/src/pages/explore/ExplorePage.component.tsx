@@ -94,7 +94,9 @@ const ExplorePage: FunctionComponent = () => {
     nSearchIndex
   ) => {
     history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
+      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${encodeURIComponent(
+        searchQueryParam
+      )}`,
       search: Qs.stringify({ page: 1 }),
     });
     setAdvancedSearchQueryFilter(undefined);
@@ -103,7 +105,6 @@ const ExplorePage: FunctionComponent = () => {
   const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
     (queryFilter) => {
       history.push({
-        pathname: history.location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
@@ -116,7 +117,6 @@ const ExplorePage: FunctionComponent = () => {
     postFilter
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, postFilter, page: 1 }),
     });
   };
@@ -125,7 +125,6 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };
