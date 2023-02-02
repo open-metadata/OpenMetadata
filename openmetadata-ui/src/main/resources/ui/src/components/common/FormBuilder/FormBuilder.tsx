@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import classNames from 'classnames';
@@ -222,7 +222,7 @@ const FormBuilder: FunctionComponent<Props> = ({
               size="regular"
               theme="primary"
               variant="contained">
-              <FontAwesomeIcon icon="check" />
+              <CheckOutlined />
             </Button>
           ) : (
             <Button

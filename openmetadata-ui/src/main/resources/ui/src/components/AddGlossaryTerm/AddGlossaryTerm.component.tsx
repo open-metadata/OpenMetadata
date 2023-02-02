@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Space, Switch } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
@@ -264,7 +264,7 @@ const AddGlossaryTerm = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <FontAwesomeIcon icon="check" />
+            <CheckOutlined />
           </Button>
         ) : (
           <Button
@@ -418,7 +418,7 @@ const AddGlossaryTerm = ({
                   theme="primary"
                   variant="contained"
                   onClick={addReferenceFields}>
-                  <FontAwesomeIcon icon="plus" />
+                  <PlusOutlined />
                 </Button>
               </Space>
             </Field>
@@ -488,7 +488,7 @@ const AddGlossaryTerm = ({
                 theme="primary"
                 variant="contained"
                 onClick={() => setShowRelatedTermsModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined />
               </Button>
             </div>
             <div className="tw-my-4">
@@ -520,7 +520,7 @@ const AddGlossaryTerm = ({
                 theme="primary"
                 variant="contained"
                 onClick={() => setShowReviewerModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined />
               </Button>
             </div>
             <div className="tw-my-4">

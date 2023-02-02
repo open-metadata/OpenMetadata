@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -153,20 +149,14 @@ const SampleDataTable: FunctionComponent<Props> = ({
         <button
           className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
           onClick={() => scrollHandler(-50)}>
-          <FontAwesomeIcon
-            className="tw-text-grey-muted"
-            icon={faChevronLeft}
-          />
+          <LeftOutlined className="tw-text-grey-muted" />
         </button>
       ) : null}
       {scrollHandle.right ? (
         <button
           className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
           onClick={() => scrollHandler(50)}>
-          <FontAwesomeIcon
-            className="tw-text-grey-muted"
-            icon={faChevronRight}
-          />
+          <RightOutlined className="tw-text-grey-muted" />
         </button>
       ) : null}
 
