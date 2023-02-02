@@ -119,8 +119,6 @@ const Ingestion: React.FC<IngestionProps> = ({
         };
       }, {});
 
-      console.log(permissionData);
-
       setServicePermission(permissionData);
     } catch (error) {
       showErrorToast(error as AxiosError);
