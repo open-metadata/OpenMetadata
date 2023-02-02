@@ -130,3 +130,12 @@ workflowConfig:
 
 In the above section, under the `workflowConfig`, configure `authProvider` to be "openmetadata" and under `securityConfig`
 section, add `jwtToken` and its value from the ingestion bot page.
+
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** de admin default account shipped by OM in case you have [Basic Authentication](/deployment/security/basic-auth) enabled.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide 
+by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
