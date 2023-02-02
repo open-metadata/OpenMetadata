@@ -98,3 +98,9 @@ Following are valid value for transportation strategy:
 - `SMTP`: If SMTP port is 25 use this
 - `SMTPS`: If SMTP port is 465 use this
 - `SMTP_TLS`: If SMTP port is 587 use this
+
+## Security note
+
+For **production** environment, please:
+- **DELETE** de admin default account shipped by OM.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is enabled.

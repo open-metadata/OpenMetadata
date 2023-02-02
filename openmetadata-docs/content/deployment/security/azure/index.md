@@ -226,3 +226,11 @@ workflowConfig:
         - <azure-service-application-id-uri>/.default
 
 ```
+
+## Security note
+
+For **production** environment, please:
+- **DELETE** de admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Azure SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is
+  enabled.
