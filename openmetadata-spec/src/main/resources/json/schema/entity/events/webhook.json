@@ -11,7 +11,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^[\\w'\\-.]+$"
+      "pattern": "^[\\pL\\pM\\p{Nd}\\p{Nl}_'\\-.]+$"
     }
   },
   "properties": {

@@ -93,14 +93,14 @@
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$"
+      "pattern": "^<#E::\\w+::[\\pL\\pM\\p{Nd}\\p{Nl}_'\\- .&/:+\"\\\\()$#]+>$"
     },
     "entityName": {
       "description": "Name that identifies a entity.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^[\\w'\\- .&]+$"
+      "pattern": "^[\\pL\\pM\\p{Nd}\\p{Nl}_'\\- .&]+$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.",

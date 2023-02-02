@@ -191,7 +191,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    String failureReason = "[about must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$\"]";
+    String failureReason = "[about must match \"^<#E::\\w+::[\\pL\\pM\\p{Nd}\\p{Nl}_'\\- .&/:+\"\\\\()$#]+>$\"]";
     assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, failureReason);
 
     create.withAbout("<#E::>"); // Invalid EntityLink - missing entityType and entityId
