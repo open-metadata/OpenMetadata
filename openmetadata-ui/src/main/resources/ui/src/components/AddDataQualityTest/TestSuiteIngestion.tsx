@@ -183,7 +183,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleIngestionSubmit = useCallback(
-    () => (repeatFrequency: string) => {
+    (repeatFrequency: string) => {
       if (ingestionFQN) {
         updateIngestionPipeline(repeatFrequency);
       } else {
@@ -198,12 +198,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     ]
   );
 
-  const handleViewTestSuiteClick = useCallback(
-    () => () => {
-      history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
-    },
-    [history, testSuite]
-  );
+  const handleViewTestSuiteClick = useCallback(() => {
+    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
+  }, [history, testSuite]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);
