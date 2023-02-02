@@ -253,7 +253,7 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-ui-report
 	$(MAKE)	export-snyk-pdf-report
 
-.PHONY: export-snyk-html-report
+.PHONY: export-snyk-pdf-report
 export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
