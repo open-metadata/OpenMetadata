@@ -74,7 +74,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "🚨 Security report failed, please check it <https://https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+              "text": "🚨 Security report failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
@@ -86,7 +86,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "🟢 Security report generated, please check it <https://https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+              "text": "🟢 Security report generated, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
