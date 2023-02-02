@@ -49,8 +49,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   public LocationResourceTest() {
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
     // TODO quoted location is not allowed by the Location listPrefix APIs
-    // supportedNameCharacters = "_'-.";
-    supportedNameCharacters = supportedNameCharacters.replaceAll("[ &.]", ""); // Space not supported
+    // TODO "." is not allowed
+    supportedNameCharacters = "_'-";
   }
 
   @Override
