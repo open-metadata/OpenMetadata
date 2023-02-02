@@ -114,16 +114,16 @@ class DomodashboardSource(DashboardServiceSource):
             )
             logger.debug(traceback.format_exc())
 
-    def get_page_details(self, page_id):
+    def get_page_details(self, page_id) -> dict:
         try:
             pages = self.client.page_get(page_id)
             return pages
         except Exception as exc:
             logger.warning(
-                f"Error while getting details from collection {page_id} - {exc}"
+                f"Error while getting details from collection page {page_id} - {exc}"
             )
             logger.debug(traceback.format_exc())
-            return None
+            return {}
 
     def get_chart_ids(self, collection_ids: List[Any]):
         chart_ids = []
@@ -151,9 +151,9 @@ class DomodashboardSource(DashboardServiceSource):
                 )
 
                 if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart["title"]
+                    self.source_config.chartFilterPattern, chart.get("title")
                 ):
-                    self.status.filter(chart["title"], "Chart Pattern not allowed")
+                    self.status.filter(chart.get("title"), "Chart Pattern not allowed")
                     continue
 
                 yield CreateChartRequest(
@@ -161,7 +161,7 @@ class DomodashboardSource(DashboardServiceSource):
                     description=chart.get("description", ""),
                     displayName=chart.get("title"),
                     chartType=get_standard_chart_type(
-                        chart["metadata"].get("chartType", "")
+                        chart.get("metadata").get("chartType", "")
                     ).value,
                     chartUrl=chart_url,
                     service=EntityReference(
@@ -169,7 +169,7 @@ class DomodashboardSource(DashboardServiceSource):
                         type="dashboardService",
                     ),
                 )
-                self.status.scanned(chart["title"])
+                self.status.scanned(chart.get("title"))
             except Exception as exc:
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
                 logger.debug(traceback.format_exc())

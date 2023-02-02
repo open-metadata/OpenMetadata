@@ -65,7 +65,9 @@ class DomoClient:
             response = self.client._request(  # pylint: disable=protected-access
                 method="GET", path=url, headers=HEADERS
             )
-            return response[0] if len(response) > 0 else None
+            return (
+                response[0] if isinstance(response, list) and len(response) > 0 else {}
+            )
 
         except Exception as exc:
             logger.info(f"Error while getting details for Card {page_id} - {exc}")
@@ -74,14 +76,24 @@ class DomoClient:
         return None
 
     def get_pipelines(self):
-        response = self.client._request(  # pylint: disable=protected-access
-            method="GET", path=WORKFLOW_URL, headers=HEADERS
-        )
-        return response
+        try:
+            response = self.client._request(  # pylint: disable=protected-access
+                method="GET", path=WORKFLOW_URL, headers=HEADERS
+            )
+            return response
+        except Exception as exc:
+            logger.info(f"Error while getting pipelines - {exc}")
+            logger.debug(traceback.format_exc())
+        return []
 
     def get_runs(self, workflow_id):
-        url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
-        response = self.client._request(  # pylint: disable=protected-access
-            method="GET", path=url, headers=HEADERS
-        )
-        return response
+        try:
+            url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
+            response = self.client._request(  # pylint: disable=protected-access
+                method="GET", path=url, headers=HEADERS
+            )
+            return response
+        except Exception as exc:
+            logger.info(f"Error while getting runs for pipeline {workflow_id} - {exc}")
+            logger.debug(traceback.format_exc())
+        return []
