@@ -49,6 +49,7 @@ class FileSink(Sink[Entity]):
         # Build the path if it does not exist
         if not fpath.parent.is_dir():
             Path(self.config.filename).mkdir(parents=True, exist_ok=True)
+        # pylint: disable=consider-using-with
         self.file = fpath.open("w", encoding="utf-8")
         self.wrote_something = False
 
