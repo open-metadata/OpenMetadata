@@ -155,10 +155,16 @@ workflowConfig:
       domain: '{your_domain}'
 ```
 
-## Security note
+<Important>
+
+<h4> Security Note </h4>
+
+<br/>
 
 For **production** environment, please:
 - **DELETE** de admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
   enabled before configuring the authentication with Auth0 SSO.
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is
   enabled.
+
+</Important>
