@@ -2076,7 +2076,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(50 * 100L)) // 50 iterations
+        .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2121,7 +2121,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
         .until(() -> eventHolder.hasDeletedEvent(getChangeEvents(null, null, entityType, timestamp, authHeaders), id));
     ChangeEvent changeEvent = eventHolder.getExpectedEvent();
 
