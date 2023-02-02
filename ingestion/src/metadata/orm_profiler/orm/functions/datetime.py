@@ -122,18 +122,19 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DatetimeAddFn, Dialects.BigQuery)
-def _(elements, compiler, **kwargs):
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     """generic date and datetime function"""
     interval = elements.clauses.clauses[0].value
     interval_unit = elements.clauses.clauses[1].text
 
     # bigquery does not support month or year interval for timestamp
     # we'll do an approximation to get the interval in days.
-    if interval_unit.lower() in {"month","year"}:
+    if interval_unit.lower() in {"month", "year"}:
         raise ValueError(
             "Bigquery does not support `month` or `year` interval for table partitioned on timestamp",
             "field types. You can set the `interval_unit to day directly from OpenMetadata UI`."
-            "Visit https://docs.open-metadata.org/connectors/ingestion/workflows/profiler#4-updating-profiler-setting-at-the-table-level for more details."
+            # pylint: disable=line-too-long
+            "Visit https://docs.open-metadata.org/connectors/ingestion/workflows/profiler#4-updating-profiler-setting-at-the-table-level for more details.",
         )
 
     return f"CAST(CURRENT_TIMESTAMP - interval {interval} {interval_unit} AS TIMESTAMP)"
@@ -173,7 +174,9 @@ def _(elements, compiler, **kwargs):
     interval, interval_unit = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return f"DATEADD({interval_unit}, -{interval}, {func.current_timestamp()}::timestamp)"
+    return (
+        f"DATEADD({interval_unit}, -{interval}, {func.current_timestamp()}::timestamp)"
+    )
 
 
 @compiles(DatetimeAddFn, Dialects.SQLite)
