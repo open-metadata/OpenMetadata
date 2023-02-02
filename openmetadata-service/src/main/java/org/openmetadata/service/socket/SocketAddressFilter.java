@@ -29,7 +29,6 @@ import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.service.security.JwtFilter;
 
 @Slf4j
@@ -39,12 +38,10 @@ public class SocketAddressFilter implements Filter {
   private final boolean enableSecureSocketConnection;
 
   public SocketAddressFilter(
-      AuthenticationConfiguration authenticationConfiguration,
-      AuthorizerConfiguration authorizerConf,
-      JWTTokenConfiguration jwtTokenConfiguration) {
+      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConf) {
     enableSecureSocketConnection = authorizerConf.getEnableSecureSocketConnection();
     if (enableSecureSocketConnection) {
-      jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf, jwtTokenConfiguration);
+      jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
     }
   }
 

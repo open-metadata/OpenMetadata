@@ -21,7 +21,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -29,9 +28,7 @@ public class NoopFilter implements ContainerRequestFilter {
   @Context private UriInfo uriInfo;
 
   public NoopFilter(
-      AuthenticationConfiguration authenticationConfiguration,
-      AuthorizerConfiguration authorizerConfiguration,
-      JWTTokenConfiguration jwtTokenConfiguration) {}
+      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {}
 
   public void filter(ContainerRequestContext containerRequestContext) {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");
