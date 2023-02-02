@@ -109,9 +109,12 @@ def _get_columns(
     columns = []
     for record in res:
         col_type = datatype.parse_sqltype(record.Type)
-        column = dict(
-            name=record.Column, type=col_type, nullable=True, comment=record.Comment
-        )
+        column = {
+            "name": record.Column,
+            "type": col_type,
+            "nullable": True,
+            "comment": record.Comment,
+        }
         type_str = record.Type.strip().lower()
         type_name, type_opts = get_type_name_and_opts(type_str)
         if type_opts and type_name == ROW_DATA_TYPE:
