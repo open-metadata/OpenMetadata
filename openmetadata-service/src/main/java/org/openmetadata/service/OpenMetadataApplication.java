@@ -60,7 +60,6 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
@@ -274,16 +273,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         filter =
             Class.forName(filterClazzName)
                 .asSubclass(ContainerRequestFilter.class)
-                .getConstructor(
-                    AuthenticationConfiguration.class, AuthorizerConfiguration.class, JWTTokenConfiguration.class)
-                .newInstance(authenticationConfiguration, authorizerConf, catalogConfig.getJwtTokenConfiguration());
+                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
         environment.jersey().register(filter);
       }
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = new NoopAuthorizer();
-      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null, null);
+      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       environment.jersey().register(filter);
     }
   }
@@ -344,9 +342,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
-              catalogConfig.getAuthenticationConfiguration(),
-              catalogConfig.getAuthorizerConfiguration(),
-              catalogConfig.getJwtTokenConfiguration());
+              catalogConfig.getAuthenticationConfiguration(), catalogConfig.getAuthorizerConfiguration());
     } else {
       socketAddressFilter = new SocketAddressFilter();
     }

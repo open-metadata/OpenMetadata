@@ -43,7 +43,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.security.auth.BotTokenCache;
@@ -61,7 +60,6 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
   private String providerType;
-  private String storedJwtKeyId;
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/config",
@@ -80,9 +78,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
   @SneakyThrows
   public JwtFilter(
-      AuthenticationConfiguration authenticationConfiguration,
-      AuthorizerConfiguration authorizerConfiguration,
-      JWTTokenConfiguration jwtTokenConfiguration) {
+      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
     this.providerType = authenticationConfiguration.getProvider();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
@@ -93,7 +89,6 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
-    this.storedJwtKeyId = jwtTokenConfiguration != null ? jwtTokenConfiguration.getKeyId() : StringUtils.EMPTY;
   }
 
   @VisibleForTesting
@@ -134,17 +129,7 @@ public class JwtFilter implements ContainerRequestFilter {
     String userName = validateAndReturnUsername(claims);
 
     // validate bot token
-    boolean isBot = claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
-
-    // if other sso and we have OM Jwt Token configuration as well
-    if ((!providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString()))) {
-      // check if the jwtId for the token used is from the jwtTokenConfig
-      if (storedJwtKeyId.equals(jwt.getKeyId()) && !isBot) {
-        throw new AuthenticationException("Not Authorized! , Invalid Key Id used for login");
-      }
-    }
-
-    if (isBot) {
+    if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
       validateBotToken(tokenFromHeader, userName);
     }
 
