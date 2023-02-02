@@ -201,7 +201,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                 <Space className="justify-end w-full p-r-md">
                   <Button
                     ghost
-                    data-testid="cancel"
+                    data-testid="cancel-button"
                     type="primary"
                     onClick={handleGlossaryRedirection}>
                     {t('label.cancel')}

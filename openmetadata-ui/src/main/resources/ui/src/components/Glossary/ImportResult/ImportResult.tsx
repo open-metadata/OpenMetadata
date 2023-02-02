@@ -43,7 +43,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           record: GlossaryCSVRecord
         ) => {
           return (
-            <Space align="start">
+            <Space align="start" data-testid="status-container">
               {status === Status.Success && (
                 <SuccessBadgeIcon
                   className="m-t-xss"
@@ -187,7 +187,12 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         worker: true,
         complete: (results) => {
           // results.data is returning data with unknown type
-          setParsedRecords(parseCSV(results.data as string[][]));
+          setParsedRecords(
+            parseCSV(results.data as string[][]).map((value) => ({
+              ...value,
+              key: value['name*'],
+            }))
+          );
         },
       });
     }
