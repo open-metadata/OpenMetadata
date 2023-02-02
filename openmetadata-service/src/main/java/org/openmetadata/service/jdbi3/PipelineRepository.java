@@ -43,8 +43,8 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension";
-  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension";
+  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension,followers";
+  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension,followers";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
   public PipelineRepository(CollectionDAO dao) {
