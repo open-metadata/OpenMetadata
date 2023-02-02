@@ -47,29 +47,80 @@ class DatalakeCliTest(DatalakeBase.TestSuite):
     def get_connector_name() -> str:
         return "datalake"
 
+    @staticmethod
+    def get_includes_schemas() -> List[str]:
+        return ["awsdatalake-testing"]
+
     def assert_for_vanilla_ingestion(
         self, source_status: SourceStatus, sink_status: SinkStatus
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
-        self.assertTrue(len(source_status.filtered) == 0)
+        self.assertTrue(
+            len(source_status.filtered) == self.expected_filtered_table_excludes()
+        )
         self.assertTrue(len(source_status.success) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
 
+    def assert_filtered_schemas_includes(
+        self, source_status: SourceStatus, sink_status: SinkStatus
+    ):
+        self.assertTrue((len(source_status.failures) == 0))
+        total_database_schema = sum("DatabaseSchema" in s for s in sink_status.records)
+        self.assertTrue(
+            (total_database_schema == self.expected_filtered_schema_includes())
+        )
+
     @staticmethod
     def expected_tables() -> int:
-        return 22
+        return 5
 
     @staticmethod
     def expected_schema() -> str:
-        return "local_datalake1.default.awsdatalake-testing"
+        return "local_datalake.default.awsdatalake-testing"
 
     @staticmethod
     def get_includes_tables() -> List[str]:
-        return ["data/customers.*"]
+        return ["data/customers.*", "data/sales*"]
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return ["data/sales.*"]
+        return ["dbt-testing.*", "data/test-data/*"]
+
+    def assert_filtered_tables_excludes(
+        self, source_status: SourceStatus, sink_status: SinkStatus
+    ):
+        self.assertTrue((len(source_status.failures) == 0))
+        self.assertTrue(
+            (len(source_status.filtered) == self.expected_filtered_table_excludes())
+        )
+
+    def assert_filtered_tables_includes(
+        self, source_status: SourceStatus, sink_status: SinkStatus
+    ):
+        self.assertTrue((len(source_status.failures) == 0))
+        self.assertTrue(
+            (len(source_status.success) == self.expected_filtered_table_includes())
+        )
+
+    def assert_filtered_mix(self, source_status: SourceStatus, sink_status: SinkStatus):
+        self.assertTrue((len(source_status.failures) == 0))
+        self.assertTrue((len(source_status.filtered) == self.expected_filtered_mix()))
+
+    @staticmethod
+    def expected_filtered_table_excludes() -> int:
+        return 27
+
+    @staticmethod
+    def expected_filtered_table_includes() -> int:
+        return 5
+
+    @staticmethod
+    def expected_filtered_schema_includes() -> int:
+        return 1
+
+    @staticmethod
+    def expected_filtered_mix() -> int:
+        return 27

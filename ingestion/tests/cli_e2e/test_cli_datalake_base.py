@@ -18,6 +18,7 @@ import subprocess
 from abc import abstractmethod
 from enum import Enum
 from pathlib import Path
+from typing import List
 from unittest import TestCase
 
 import pytest
@@ -72,6 +73,61 @@ class DatalakeBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
+        @pytest.mark.order(4)
+        def test_schema_filter_includes(self) -> None:
+            # build config file for ingest with filters
+            self.build_config_file(
+                E2EType.INGEST_FILTER_SCHEMA, {"includes": self.get_includes_schemas()}
+            )
+            # run ingest
+            result = self.run_command()
+
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_filtered_schemas_includes(source_status, sink_status)
+
+        @pytest.mark.order(6)
+        def test_table_filter_includes(self) -> None:
+            # build config file for ingest with filters
+            self.build_config_file(
+                E2EType.INGEST_FILTER_TABLE, {"includes": self.get_includes_tables()}
+            )
+            # run ingest
+            result = self.run_command()
+
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_filtered_tables_includes(source_status, sink_status)
+
+        @pytest.mark.order(6)
+        def test_table_filter_excludes(self) -> None:
+            # build config file for ingest with filters
+            self.build_config_file(
+                E2EType.INGEST_FILTER_TABLE, {"includes": self.get_includes_tables()}
+            )
+            # run ingest
+            result = self.run_command()
+
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_filtered_tables_excludes(source_status, sink_status)
+
+        # 8. Vanilla ingestion mixing filters
+        @pytest.mark.order(8)
+        def test_table_filter_mix(self) -> None:
+            # build config file for ingest with filters
+            self.build_config_file(
+                E2EType.INGEST_FILTER_MIX,
+                {
+                    "schema": {"includes": self.get_includes_schemas()},
+                    "table": {
+                        "includes": self.get_includes_tables(),
+                        "excludes": self.get_excludes_tables(),
+                    },
+                },
+            )
+            # run ingest
+            result = self.run_command()
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_filtered_mix(source_status, sink_status)
+
         def build_config_file(
             self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
         ) -> None:
@@ -99,7 +155,6 @@ class DatalakeBase(TestCase):
             return process_status.stderr.read().decode("utf-8")
 
         def retrieve_statuses(self, result):
-            print("result&&&&&", result)
             source_status: SourceStatus = self.extract_source_status(result)
             sink_status: SinkStatus = self.extract_sink_status(result)
             return sink_status, source_status
@@ -178,10 +233,36 @@ class DatalakeBase(TestCase):
                 ] = extra_args["table"]
             return config_yaml
 
+        @abstractmethod
         def assert_filtered_tables_excludes(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
-            self.assertTrue((len(source_status.failures) == 0))
-            self.assertTrue(
-                (len(source_status.filtered) == self.expected_filtered_table_excludes())
-            )
+            raise NotImplementedError()
+
+        @staticmethod
+        @abstractmethod
+        def expected_filtered_schema_includes() -> int:
+            raise NotImplementedError()
+
+        @abstractmethod
+        def assert_filtered_schemas_includes(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ):
+            raise NotImplementedError()
+
+        @staticmethod
+        @abstractmethod
+        def get_includes_schemas() -> List[str]:
+            raise NotImplementedError()
+
+        @abstractmethod
+        def assert_filtered_tables_includes(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ):
+            raise NotImplementedError()
+
+        @abstractmethod
+        def assert_filtered_mix(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ):
+            raise NotImplementedError()
