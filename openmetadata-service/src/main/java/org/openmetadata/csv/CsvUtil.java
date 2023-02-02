@@ -56,7 +56,10 @@ public final class CsvUtil {
     }
 
     /**
-     * Get headers from CsvHeaders * * @param csvHeaders list of csv Headers of type CsvHeader * @return list of actual CsvHeader Type String
+     * Get headers from CsvHeaders
+     *
+     * @param csvHeaders list of csv Headers of type CsvHeader
+     * @return list of actual CsvHeader Type String
      */
     public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
         List<String> headers = new ArrayList<>();
