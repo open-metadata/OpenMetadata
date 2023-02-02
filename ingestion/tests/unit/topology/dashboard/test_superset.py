@@ -261,7 +261,9 @@ class SupersetUnitTest(TestCase):
         """
         Mock the client and check that we get a list
         """
-        result = self.superset_api._get_charts_of_dashboard(MOCK_DASHBOARD)
+        result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access
+            MOCK_DASHBOARD
+        )
         self.assertEqual(result, [37])
 
     def test_dashboard_name(self):
@@ -295,6 +297,9 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(list(dashboard_charts), [EXPECTED_CHART])
 
     def test_api_get_datasource_fqn(self):
+        """
+        Test generated datasource fqn for api source
+        """
         with patch.object(
             OpenMetadata, "es_search_from_fqn", return_value=None
         ), patch.object(
@@ -304,7 +309,9 @@ class SupersetUnitTest(TestCase):
         ), patch.object(
             SupersetAPIClient, "fetch_database", return_value=mock_data.get("database")
         ):
-            fqn = self.superset_api._get_datasource_fqn(1, "demo")
+            fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
+                1, "demo"
+            )
             self.assertEqual(fqn, EXPECTED_DATASET_FQN)
 
         with patch.object(
@@ -316,16 +323,30 @@ class SupersetUnitTest(TestCase):
         ), patch.object(
             SupersetAPIClient, "fetch_database", return_value=NOT_FOUND_RESP
         ):
-            fqn = self.superset_api._get_datasource_fqn(1, "demo")
+            fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
+                1, "demo"
+            )
             self.assertEqual(fqn, None)
 
     def test_db_get_datasource_fqn_for_lineage(self):
-        fqn = self.superset_db._get_datasource_fqn_for_lineage(MOCK_CHART_DB, "demo")
+        fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
+            MOCK_CHART_DB, "demo"
+        )
         self.assertEqual(fqn, EXPECTED_DATASET_FQN)
 
     def test_db_get_database_name(self):
         sqa_str1 = "postgres://user:pass@localhost:8888/database"
-        self.assertEqual(self.superset_db._get_database_name(sqa_str1), "database")
+        self.assertEqual(
+            self.superset_db._get_database_name(  # pylint: disable=protected-access
+                sqa_str1
+            ),
+            "database",
+        )
 
         sqa_str2 = "sqlite:////app/superset_home/superset.db"
-        self.assertEqual(self.superset_db._get_database_name(sqa_str2), "superset.db")
+        self.assertEqual(
+            self.superset_db._get_database_name(  # pylint: disable=protected-access
+                sqa_str2
+            ),
+            "superset.db",
+        )
