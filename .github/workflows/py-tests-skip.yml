@@ -9,28 +9,27 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""
-Singleton Module
-"""
+name: py-tests
+on:
+  push:
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
+    paths-ignore:
+      - 'openmetadata-docs/**'
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+    paths-ignore:
+      - "ingestion/**"
 
-from abc import ABCMeta
+permissions:
+  contents: read
 
-
-class Singleton(ABCMeta):
-    """
-    Singleton class
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-    @classmethod
-    def clear_all(mcs):
-        """
-        Method to clear all singleton instances
-        """
-        Singleton._instances = {}
+jobs:
+  py-run-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py-version: ['3.7', '3.8', '3.9']
+    steps:
+      - run: 'echo "Step is not required"'

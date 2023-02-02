@@ -42,6 +42,7 @@ import {
   updateThread,
 } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PanelTab, TaskOperation } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -67,7 +68,6 @@ import {
   updateThreadData,
 } from '../../../utils/FeedUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
@@ -629,17 +629,14 @@ const TaskDetailPage = () => {
                           className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
                         />
                         {(hasEditAccess() || isCreator) && !isTaskClosed && (
-                          <button
-                            className="focus:tw-outline-none tw-self-baseline tw-flex-none"
+                          <Button
+                            className="p-0"
                             data-testid="edit-suggestion"
-                            onClick={() => setEditAssignee(true)}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              title="Edit"
-                              width="14px"
-                            />
-                          </button>
+                            icon={<IconEdit height={14} width={14} />}
+                            size="small"
+                            type="text"
+                            onClick={() => setEditAssignee(true)}
+                          />
                         )}
                       </Fragment>
                     )}
