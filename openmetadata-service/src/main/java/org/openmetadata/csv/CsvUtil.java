@@ -54,12 +54,7 @@ public final class CsvUtil {
     return writer.toString();
   }
 
-  /**
-   * Get headers from CsvHeaders
-   *
-   * @param csvHeaders list of csv Headers of type CsvHeader
-   * @return list of actual CsvHeader Type String
-   */
+  /** Get headers from CsvHeaders */
   public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {
@@ -105,7 +100,9 @@ public final class CsvUtil {
   }
 
   public static List<String> addField(List<String> record, Boolean field) {
-    record.add(field == null ? "" : field.toString());
+    if (field != null) {
+      record.add(field.toString());
+    }
     return record;
   }
 
