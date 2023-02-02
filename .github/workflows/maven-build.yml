@@ -43,14 +43,12 @@ concurrency:
 jobs:
   test:
     runs-on: ${{matrix.os}}
-
     strategy:
       matrix:
         os:
           - ubuntu-latest
         node-version:
           - 16.x
-
     steps:
 
       - name: Wait for the labeler
