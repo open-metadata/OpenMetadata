@@ -1,4 +1,3 @@
-
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -13,7 +12,7 @@
 name: security-scan
 on:
   schedule:
-    - cron:  '0 0 * * 1'
+    - cron:  '0 0 */2 * *'
   workflow_dispatch:
 
 jobs:
@@ -41,7 +40,7 @@ jobs:
           # stop relying on apt cache of GitHub runners
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          librdkafka-dev unixodbc-dev libevent-dev
+          librdkafka-dev unixodbc-dev libevent-dev wkhtmltopdf
 
       # Install and Authenticate to Snyk
       - name: Install Snyk & Authenticate
@@ -57,15 +56,50 @@ jobs:
           make install_all install_apis
 
       - name: Maven build
+        id: maven-build
+        continue-on-error: true
         run: mvn -DskipTests clean install
 
       - name: Run Scan
+        id: security-report
+        if: steps.maven-build.outcome == 'success'
+        continue-on-error: true
         run: |
           source env/bin/activate
           make snyk-report
 
+      - name: Slack on Failure
+        if: steps.security-report.outcome != 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "🚨 Security report failed, please check it <https://https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Slack on Success
+        if: steps.security-report.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "🟢 Security report generated, please check it <https://https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
       - name: Upload Snyk Report HTML files
+        if: steps.security-report.outcome == 'success'
         uses: actions/upload-artifact@v3
         with:
           name: security-report
           path: security-report
+
+      - name: Force failure
+        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
+        run: |
+          exit 1

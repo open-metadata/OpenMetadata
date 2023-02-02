@@ -203,7 +203,8 @@ export const getNameFromEmail = (email: string) => {
 
 export const getNameFromUserData = (
   user: UserProfile,
-  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = []
+  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
+  principleDomain = ''
 ) => {
   // filter and extract the present claims in user profile
   const jwtClaims = jwtPrincipalClaims.reduce(
@@ -222,15 +223,17 @@ export const getNameFromUserData = (
   const firstClaim = first(jwtClaims);
 
   let userName = '';
+  let domain = principleDomain;
 
   // if claims contains the "@" then split it out otherwise assign it to username as it is
   if (firstClaim?.includes('@')) {
-    userName = getNameFromEmail(firstClaim);
+    userName = firstClaim.split('@')[0];
+    domain = firstClaim.split('@')[1];
   } else {
     userName = firstClaim ?? '';
   }
 
-  return userName;
+  return { name: userName, email: userName + '@' + domain };
 };
 
 export const isProtectedRoute = (pathname: string) => {

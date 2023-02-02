@@ -7,6 +7,16 @@ slug: /deployment/security/one-login
 
 Follow the sections in this guide to set up OneLogin SSO.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with OneLogin SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Server Credentials
 
 ### Step 1: Configure a new Application
@@ -103,13 +113,3 @@ workflowConfig:
       secretKey: '{your_client_secret}'
       domain: '{your_domain}'
 ```
-
-<Important>
-
-Security requirements for your **production** environment:
-- **DELETE** de admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
-  enabled before configuring the authentication with OneLogin SSO.
-- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide 
-by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
-
-</Important>
