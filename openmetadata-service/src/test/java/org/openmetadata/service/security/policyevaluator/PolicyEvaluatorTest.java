@@ -4,9 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Permission.Access;
-import org.openmetadata.service.util.ParallelizeTest;
 
-@ParallelizeTest
 class PolicyEvaluatorTest {
   @Test
   public void test_AccessOrderOfPrecedence() {

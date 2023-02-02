@@ -71,12 +71,10 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ParallelizeTest
 public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionPipeline, CreateIngestionPipeline> {
   public static SourceConfig DATABASE_METADATA_CONFIG;
   public static SourceConfig DASHBOARD_METADATA_CONFIG;

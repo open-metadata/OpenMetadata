@@ -35,11 +35,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
   public DatabaseSchemaResourceTest() {
     super(

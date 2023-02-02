@@ -39,12 +39,10 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);

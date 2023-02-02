@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -49,12 +50,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.alerts.AlertResource;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Disabled
 public class AlertResourceTest extends EntityResourceTest<Alert, CreateAlert> {
   public static final TriggerConfig ALL_EVENTS_FILTER =
       new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);

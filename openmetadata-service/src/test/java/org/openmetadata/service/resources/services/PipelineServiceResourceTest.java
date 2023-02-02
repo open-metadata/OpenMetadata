@@ -58,11 +58,9 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
   public PipelineServiceResourceTest() {
     super(

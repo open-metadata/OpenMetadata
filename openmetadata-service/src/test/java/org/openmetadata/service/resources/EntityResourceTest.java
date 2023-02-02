@@ -167,12 +167,10 @@ import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class EntityResourceTest<T extends EntityInterface, K extends CreateEntity>
     extends OpenMetadataApplicationTest {

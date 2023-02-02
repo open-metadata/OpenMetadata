@@ -54,12 +54,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class UsageResourceTest extends OpenMetadataApplicationTest {
   private static final String PUT = "PUT";

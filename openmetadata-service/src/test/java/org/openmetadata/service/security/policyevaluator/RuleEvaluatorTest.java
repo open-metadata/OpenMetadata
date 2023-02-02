@@ -21,11 +21,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-@ParallelizeTest
 class RuleEvaluatorTest {
   private static Table table;
   private static User user;

@@ -39,7 +39,6 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
-@ParallelizeTest
 class JsonUtilsTest {
   /** Test apply patch method with different operations. */
   @Test

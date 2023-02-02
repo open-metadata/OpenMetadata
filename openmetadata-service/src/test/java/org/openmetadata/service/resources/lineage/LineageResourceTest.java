@@ -59,12 +59,10 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ParallelizeTest
 public class LineageResourceTest extends OpenMetadataApplicationTest {
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;

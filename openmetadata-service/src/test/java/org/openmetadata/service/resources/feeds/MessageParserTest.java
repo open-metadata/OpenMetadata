@@ -19,9 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.util.ParallelizeTest;
 
-@ParallelizeTest
 class MessageParserTest {
   @Test
   void parseMessage() {

@@ -51,14 +51,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
-@ParallelizeTest
 public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTestCase> {
   public static String TABLE_LINK;
   public static String TABLE_COLUMN_LINK;

@@ -58,13 +58,11 @@ import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ParallelizeTest
 public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   private final ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
 

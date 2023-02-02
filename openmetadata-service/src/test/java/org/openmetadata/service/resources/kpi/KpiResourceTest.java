@@ -40,13 +40,11 @@ import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dataInsight.DataInsightResourceTest;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
-@ParallelizeTest
 public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public KpiResourceTest() {
     super(Entity.KPI, Kpi.class, KpiResource.KpiList.class, "kpi", KpiResource.FIELDS);

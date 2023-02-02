@@ -49,13 +49,11 @@ import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.resources.types.TypeResource.TypeList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ParallelizeTest
 public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   public TypeResourceTest() {

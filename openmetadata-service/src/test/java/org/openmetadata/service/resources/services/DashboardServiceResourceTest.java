@@ -51,12 +51,10 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-@ParallelizeTest
 public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
   public DashboardServiceResourceTest() {
     super(

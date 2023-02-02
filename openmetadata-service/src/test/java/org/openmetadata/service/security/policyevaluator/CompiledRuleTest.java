@@ -11,9 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.service.resources.policies.PolicyResource;
-import org.openmetadata.service.util.ParallelizeTest;
 
-@ParallelizeTest
 class CompiledRuleTest {
   @Test
   void testResourceMatchAll() throws IOException {

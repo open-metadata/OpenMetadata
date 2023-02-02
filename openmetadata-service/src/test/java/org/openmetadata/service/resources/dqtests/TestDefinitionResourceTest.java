@@ -19,9 +19,7 @@ import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.ParallelizeTest;
 
-@ParallelizeTest
 public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
   public TestDefinitionResourceTest() {
     super(

@@ -25,11 +25,9 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
-@ParallelizeTest
 public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateTestSuite> {
   public TestSuiteResourceTest() {
     super(

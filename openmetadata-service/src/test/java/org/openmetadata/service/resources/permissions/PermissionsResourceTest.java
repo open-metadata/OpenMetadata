@@ -74,11 +74,9 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static Rule ORG_IS_OWNER_RULE;
   private static Rule ORG_NO_OWNER_RULE;

@@ -37,11 +37,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResource.ChartList;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@ParallelizeTest
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   public ChartResourceTest() {

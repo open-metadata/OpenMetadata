@@ -45,9 +45,7 @@ import javax.ws.rs.core.UriInfo;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.openmetadata.service.util.ParallelizeTest;
 
-@ParallelizeTest
 class JwtFilterTest {
 
   private static JwtFilter jwtFilter;

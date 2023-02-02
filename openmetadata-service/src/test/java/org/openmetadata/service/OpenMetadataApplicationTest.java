@@ -35,11 +35,9 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
-@ParallelizeTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");

@@ -28,11 +28,9 @@ import org.openmetadata.schema.type.StorageServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource.StorageServiceList;
-import org.openmetadata.service.util.ParallelizeTest;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@ParallelizeTest
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {
     super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class, "services/storageServices", "owner");
