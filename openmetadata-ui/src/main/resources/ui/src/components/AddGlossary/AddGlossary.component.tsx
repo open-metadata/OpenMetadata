@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Space, Switch, Typography } from 'antd';
 import Tags from 'components/Tag/Tags/tags';
+import { LOADING_STATE } from 'enums/common.enum';
 import { cloneDeep } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
@@ -265,7 +266,7 @@ const AddGlossary = ({
             <Button
               data-testid="save-glossary"
               disabled={!allowAccess}
-              loading={saveState === 'waiting'}
+              loading={saveState === LOADING_STATE.WAITING}
               type="primary"
               onClick={handleSave}>
               {t('label.save')}
