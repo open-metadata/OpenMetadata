@@ -126,12 +126,12 @@ public interface ElasticSearchApi extends ApiClient.Api {
   /**
    * Suggest Entities Get suggested entities used for auto-completion.
    *
-   * @param q Suggest API can be used to auto-fill the entities name while use is typing search text &lt;br/&gt; 1. To
-   *     get suggest results pass q&#x3D;us or q&#x3D;user etc.. &lt;br/&gt; 2. Do not add any wild-cards such as * like
-   *     in search api &lt;br/&gt; 3. suggest api is a prefix suggestion &lt;br/&gt; (required)
+   * @param q Suggest API can be used to auto-fill the entities name while use is typing search text <br/> 1. To
+   *     get suggest results pass q=us or q=user etc.. <br/> 2. Do not add any wild-cards such as * like
+   *     in search api <br/> 3. suggest api is a prefix suggestion <br/> (required)
    * @param index (optional, default to table_search_index)
-   * @param field Field in object containing valid suggestions. Defaults to &#39;suggest&#x60;. All indices has a
-   *     &#x60;suggest&#x60; field, only some indices have other &#x60;suggest_*&#x60; fields. (optional, default to
+   * @param field Field in object containing valid suggestions. Defaults to `suggest`. All indices has a
+   *     `suggest` field, only some indices have other `suggest_*` fields. (optional, default to
    *     suggest)
    * @param size Size field to limit the no.of results returned, defaults to 10 (optional, default to 10)
    * @param fetchSource Get document body for each hit (optional, default to true)
@@ -158,12 +158,12 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * Suggest Entities Similar to <code>getSuggestedEntities</code> but it also returns the http response headers . Get
    * suggested entities used for auto-completion.
    *
-   * @param q Suggest API can be used to auto-fill the entities name while use is typing search text &lt;br/&gt; 1. To
-   *     get suggest results pass q&#x3D;us or q&#x3D;user etc.. &lt;br/&gt; 2. Do not add any wild-cards such as * like
-   *     in search api &lt;br/&gt; 3. suggest api is a prefix suggestion &lt;br/&gt; (required)
+   * @param q Suggest API can be used to auto-fill the entities name while use is typing search text <br/> 1. To
+   *     get suggest results pass q=us or q=user etc.. <br/> 2. Do not add any wild-cards such as * like
+   *     in search api <br/> 3. suggest api is a prefix suggestion <br/> (required)
    * @param index (optional, default to table_search_index)
-   * @param field Field in object containing valid suggestions. Defaults to &#39;suggest&#x60;. All indices has a
-   *     &#x60;suggest&#x60; field, only some indices have other &#x60;suggest_*&#x60; fields. (optional, default to
+   * @param field Field in object containing valid suggestions. Defaults to `suggest`. All indices has a
+   *     `suggest` field, only some indices have other `suggest_*` fields. (optional, default to
    *     suggest)
    * @param size Size field to limit the no.of results returned, defaults to 10 (optional, default to 10)
    * @param fetchSource Get document body for each hit (optional, default to true)
@@ -195,12 +195,12 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @param queryParams Map of query parameters as name-value pairs
    *     <p>The following elements may be specified in the query map:
    *     <ul>
-   *       <li>q - Suggest API can be used to auto-fill the entities name while use is typing search text &lt;br/&gt; 1.
-   *           To get suggest results pass q&#x3D;us or q&#x3D;user etc.. &lt;br/&gt; 2. Do not add any wild-cards such
-   *           as * like in search api &lt;br/&gt; 3. suggest api is a prefix suggestion &lt;br/&gt; (required)
+   *       <li>q - Suggest API can be used to auto-fill the entities name while use is typing search text <br/> 1.
+   *           To get suggest results pass q=us or q=user etc.. <br/> 2. Do not add any wild-cards such
+   *           as * like in search api <br/> 3. suggest api is a prefix suggestion <br/> (required)
    *       <li>index - (optional, default to table_search_index)
-   *       <li>field - Field in object containing valid suggestions. Defaults to &#39;suggest&#x60;. All indices has a
-   *           &#x60;suggest&#x60; field, only some indices have other &#x60;suggest_*&#x60; fields. (optional, default
+   *       <li>field - Field in object containing valid suggestions. Defaults to `suggest`. All indices has a
+   *           `suggest` field, only some indices have other `suggest_*` fields. (optional, default
    *           to suggest)
    *       <li>size - Size field to limit the no.of results returned, defaults to 10 (optional, default to 10)
    *       <li>fetchSource - Get document body for each hit (optional, default to true)
@@ -226,12 +226,12 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @param queryParams Map of query parameters as name-value pairs
    *     <p>The following elements may be specified in the query map:
    *     <ul>
-   *       <li>q - Suggest API can be used to auto-fill the entities name while use is typing search text &lt;br/&gt; 1.
-   *           To get suggest results pass q&#x3D;us or q&#x3D;user etc.. &lt;br/&gt; 2. Do not add any wild-cards such
-   *           as * like in search api &lt;br/&gt; 3. suggest api is a prefix suggestion &lt;br/&gt; (required)
+   *       <li>q - Suggest API can be used to auto-fill the entities name while use is typing search text <br/> 1.
+   *           To get suggest results pass q=us or q=user etc.. <br/> 2. Do not add any wild-cards such
+   *           as * like in search api <br/> 3. suggest api is a prefix suggestion <br/> (required)
    *       <li>index - (optional, default to table_search_index)
-   *       <li>field - Field in object containing valid suggestions. Defaults to &#39;suggest&#x60;. All indices has a
-   *           &#x60;suggest&#x60; field, only some indices have other &#x60;suggest_*&#x60; fields. (optional, default
+   *       <li>field - Field in object containing valid suggestions. Defaults to `suggest`. All indices has a
+   *           `suggest` field, only some indices have other `suggest_*` fields. (optional, default
    *           to suggest)
    *       <li>size - Size field to limit the no.of results returned, defaults to 10 (optional, default to 10)
    *       <li>fetchSource - Get document body for each hit (optional, default to true)
@@ -291,15 +291,15 @@ public interface ElasticSearchApi extends ApiClient.Api {
   }
 
   /**
-   * Search entities Search entities using query test. Use query params &#x60;from&#x60; and &#x60;size&#x60; for
-   * pagination. Use &#x60;sort_field&#x60; to sort the results in &#x60;sort_order&#x60;.
+   * Search entities Search entities using query test. Use query params `from` and `size` for
+   * pagination. Use `sort_field` to sort the results in `sort_order`.
    *
-   * @param q Search Query Text, Pass *text* for substring match; Pass without wildcards for exact match. &lt;br/&gt; 1.
-   *     For listing all tables or topics pass q&#x3D;* &lt;br/&gt;2. For search tables or topics pass
-   *     q&#x3D;*search_term* &lt;br/&gt;3. For searching field names such as search by column_name pass
-   *     q&#x3D;column_names:address &lt;br/&gt;4. For searching by tag names pass q&#x3D;tags:user.email &lt;br/&gt;5.
-   *     When user selects a filter pass q&#x3D;query_text AND tags:user.email AND platform:MYSQL &lt;br/&gt;6. Search
-   *     with multiple values of same filter q&#x3D;tags:user.email AND tags:user.address &lt;br/&gt; logic operators
+   * @param q Search Query Text, Pass *text* for substring match; Pass without wildcards for exact match. <br/> 1.
+   *     For listing all tables or topics pass q=* <br/>2. For search tables or topics pass
+   *     q=*search_term* <br/>3. For searching field names such as search by column_name pass
+   *     q=column_names:address <br/>4. For searching by tag names pass q=tags:user.email <br/>5.
+   *     When user selects a filter pass q=query_text AND tags:user.email AND platform:MYSQL <br/>6. Search
+   *     with multiple values of same filter q=tags:user.email AND tags:user.address <br/> logic operators
    *     such as AND and OR must be in uppercase (required)
    * @param index ElasticSearch Index name, defaults to table_search_index (optional, default to table_search_index)
    * @param deleted Filter documents by deleted param. By default deleted is false (optional, default to false)
@@ -310,7 +310,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @param sortOrder Sort order asc for ascending or desc for descending, defaults to desc (optional, default to desc)
    * @param trackTotalHits Track Total Hits (optional, default to false)
    * @param queryFilter Elasticsearch query that will be combined with the query_string query generator from the
-   *     &#x60;query&#x60; argument (optional)
+   *     `query` argument (optional)
    * @param postFilter Elasticsearch query that will be used as a post_filter (optional)
    * @param fetchSource Get document body for each hit (optional, default to true)
    * @param includeSourceFields Get only selected fields of the document body for each hit. Empty value will return all
@@ -338,15 +338,15 @@ public interface ElasticSearchApi extends ApiClient.Api {
 
   /**
    * Search entities Similar to <code>searchEntitiesWithQuery</code> but it also returns the http response headers .
-   * Search entities using query test. Use query params &#x60;from&#x60; and &#x60;size&#x60; for pagination. Use
-   * &#x60;sort_field&#x60; to sort the results in &#x60;sort_order&#x60;.
+   * Search entities using query test. Use query params `from` and `size` for pagination. Use
+   * `sort_field` to sort the results in `sort_order`.
    *
-   * @param q Search Query Text, Pass *text* for substring match; Pass without wildcards for exact match. &lt;br/&gt; 1.
-   *     For listing all tables or topics pass q&#x3D;* &lt;br/&gt;2. For search tables or topics pass
-   *     q&#x3D;*search_term* &lt;br/&gt;3. For searching field names such as search by column_name pass
-   *     q&#x3D;column_names:address &lt;br/&gt;4. For searching by tag names pass q&#x3D;tags:user.email &lt;br/&gt;5.
-   *     When user selects a filter pass q&#x3D;query_text AND tags:user.email AND platform:MYSQL &lt;br/&gt;6. Search
-   *     with multiple values of same filter q&#x3D;tags:user.email AND tags:user.address &lt;br/&gt; logic operators
+   * @param q Search Query Text, Pass *text* for substring match; Pass without wildcards for exact match. <br/> 1.
+   *     For listing all tables or topics pass q=* <br/>2. For search tables or topics pass
+   *     q=*search_term* <br/>3. For searching field names such as search by column_name pass
+   *     q=column_names:address <br/>4. For searching by tag names pass q=tags:user.email <br/>5.
+   *     When user selects a filter pass q=query_text AND tags:user.email AND platform:MYSQL <br/>6. Search
+   *     with multiple values of same filter q=tags:user.email AND tags:user.address <br/> logic operators
    *     such as AND and OR must be in uppercase (required)
    * @param index ElasticSearch Index name, defaults to table_search_index (optional, default to table_search_index)
    * @param deleted Filter documents by deleted param. By default deleted is false (optional, default to false)
@@ -357,7 +357,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @param sortOrder Sort order asc for ascending or desc for descending, defaults to desc (optional, default to desc)
    * @param trackTotalHits Track Total Hits (optional, default to false)
    * @param queryFilter Elasticsearch query that will be combined with the query_string query generator from the
-   *     &#x60;query&#x60; argument (optional)
+   *     `query` argument (optional)
    * @param postFilter Elasticsearch query that will be used as a post_filter (optional)
    * @param fetchSource Get document body for each hit (optional, default to true)
    * @param includeSourceFields Get only selected fields of the document body for each hit. Empty value will return all
@@ -384,8 +384,8 @@ public interface ElasticSearchApi extends ApiClient.Api {
       @Param("includeSourceFields") List<String> includeSourceFields);
 
   /**
-   * Search entities Search entities using query test. Use query params &#x60;from&#x60; and &#x60;size&#x60; for
-   * pagination. Use &#x60;sort_field&#x60; to sort the results in &#x60;sort_order&#x60;. Note, this is equivalent to
+   * Search entities Search entities using query test. Use query params `from` and `size` for
+   * pagination. Use `sort_field` to sort the results in `sort_order`. Note, this is equivalent to
    * the other <code>searchEntitiesWithQuery</code> method, but with the query parameters collected into a single Map
    * parameter. This is convenient for services with optional query parameters, especially when used with the {@link
    * SearchEntitiesWithQueryQueryParams} class that allows for building up this map in a fluent style.
@@ -394,12 +394,12 @@ public interface ElasticSearchApi extends ApiClient.Api {
    *     <p>The following elements may be specified in the query map:
    *     <ul>
    *       <li>q - Search Query Text, Pass *text* for substring match; Pass without wildcards for exact match.
-   *           &lt;br/&gt; 1. For listing all tables or topics pass q&#x3D;* &lt;br/&gt;2. For search tables or topics
-   *           pass q&#x3D;*search_term* &lt;br/&gt;3. For searching field names such as search by column_name pass
-   *           q&#x3D;column_names:address &lt;br/&gt;4. For searching by tag names pass q&#x3D;tags:user.email
-   *           &lt;br/&gt;5. When user selects a filter pass q&#x3D;query_text AND tags:user.email AND platform:MYSQL
-   *           &lt;br/&gt;6. Search with multiple values of same filter q&#x3D;tags:user.email AND tags:user.address
-   *           &lt;br/&gt; logic operators such as AND and OR must be in uppercase (required)
+   *           <br/> 1. For listing all tables or topics pass q=* <br/>2. For search tables or topics
+   *           pass q=*search_term* <br/>3. For searching field names such as search by column_name pass
+   *           q=column_names:address <br/>4. For searching by tag names pass q=tags:user.email
+   *           <br/>5. When user selects a filter pass q=query_text AND tags:user.email AND platform:MYSQL
+   *           <br/>6. Search with multiple values of same filter q=tags:user.email AND tags:user.address
+   *           <br/> logic operators such as AND and OR must be in uppercase (required)
    *       <li>index - ElasticSearch Index name, defaults to table_search_index (optional, default to
    *           table_search_index)
    *       <li>deleted - Filter documents by deleted param. By default deleted is false (optional, default to false)
@@ -411,7 +411,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    *           desc)
    *       <li>trackTotalHits - Track Total Hits (optional, default to false)
    *       <li>queryFilter - Elasticsearch query that will be combined with the query_string query generator from the
-   *           &#x60;query&#x60; argument (optional)
+   *           `query` argument (optional)
    *       <li>postFilter - Elasticsearch query that will be used as a post_filter (optional)
    *       <li>fetchSource - Get document body for each hit (optional, default to true)
    *       <li>includeSourceFields - Get only selected fields of the document body for each hit. Empty value will return
@@ -428,8 +428,8 @@ public interface ElasticSearchApi extends ApiClient.Api {
   Response searchEntitiesWithQuery(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
-   * Search entities Search entities using query test. Use query params &#x60;from&#x60; and &#x60;size&#x60; for
-   * pagination. Use &#x60;sort_field&#x60; to sort the results in &#x60;sort_order&#x60;. Note, this is equivalent to
+   * Search entities Search entities using query test. Use query params `from` and `size` for
+   * pagination. Use `sort_field` to sort the results in `sort_order`. Note, this is equivalent to
    * the other <code>searchEntitiesWithQuery</code> that receives the query parameters as a map, but this one also
    * exposes the Http response headers
    *
@@ -437,12 +437,12 @@ public interface ElasticSearchApi extends ApiClient.Api {
    *     <p>The following elements may be specified in the query map:
    *     <ul>
    *       <li>q - Search Query Text, Pass *text* for substring match; Pass without wildcards for exact match.
-   *           &lt;br/&gt; 1. For listing all tables or topics pass q&#x3D;* &lt;br/&gt;2. For search tables or topics
-   *           pass q&#x3D;*search_term* &lt;br/&gt;3. For searching field names such as search by column_name pass
-   *           q&#x3D;column_names:address &lt;br/&gt;4. For searching by tag names pass q&#x3D;tags:user.email
-   *           &lt;br/&gt;5. When user selects a filter pass q&#x3D;query_text AND tags:user.email AND platform:MYSQL
-   *           &lt;br/&gt;6. Search with multiple values of same filter q&#x3D;tags:user.email AND tags:user.address
-   *           &lt;br/&gt; logic operators such as AND and OR must be in uppercase (required)
+   *           <br/> 1. For listing all tables or topics pass q=* <br/>2. For search tables or topics
+   *           pass q=*search_term* <br/>3. For searching field names such as search by column_name pass
+   *           q=column_names:address <br/>4. For searching by tag names pass q=tags:user.email
+   *           <br/>5. When user selects a filter pass q=query_text AND tags:user.email AND platform:MYSQL
+   *           <br/>6. Search with multiple values of same filter q=tags:user.email AND tags:user.address
+   *           <br/> logic operators such as AND and OR must be in uppercase (required)
    *       <li>index - ElasticSearch Index name, defaults to table_search_index (optional, default to
    *           table_search_index)
    *       <li>deleted - Filter documents by deleted param. By default deleted is false (optional, default to false)
@@ -454,7 +454,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    *           desc)
    *       <li>trackTotalHits - Track Total Hits (optional, default to false)
    *       <li>queryFilter - Elasticsearch query that will be combined with the query_string query generator from the
-   *           &#x60;query&#x60; argument (optional)
+   *           `query` argument (optional)
    *       <li>postFilter - Elasticsearch query that will be used as a post_filter (optional)
    *       <li>fetchSource - Get document body for each hit (optional, default to true)
    *       <li>includeSourceFields - Get only selected fields of the document body for each hit. Empty value will return

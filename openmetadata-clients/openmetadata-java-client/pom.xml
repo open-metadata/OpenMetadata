@@ -100,7 +100,7 @@
             <version>4.13.2</version>
         </dependency>
 
-<!--        &lt;!&ndash; avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGMOZILLA-1314295 &ndash;&gt;-->
+        <!--avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGMOZILLA-1314295-->
         <dependency>
             <groupId>org.mozilla</groupId>
             <artifactId>rhino</artifactId>
