@@ -10,7 +10,8 @@
 #  limitations under the License.
 
 """
-This script generates a PDF from all HTML files contained in a
+This script generates a PDF from all HTML files contained in a INPUT_FOLDER into a OUTPUT_FOLDER with a PDF_FILE_NAME.
+It removes all the html files during the generation of the PDF file.
 """
 import glob
 import os
