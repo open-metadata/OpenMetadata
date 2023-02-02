@@ -20,12 +20,18 @@ on:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
 
 permissions:
   contents: read

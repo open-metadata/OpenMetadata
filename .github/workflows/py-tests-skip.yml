@@ -9,24 +9,27 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Avoid running Maven CI on each PR opened which does not modify Java or UI code
-# https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-
-# of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
-name: Maven CI
-
+name: py-tests
 on:
+  push:
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
+    paths-ignore:
+      - 'openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths-ignore:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "common/**"
+      - "ingestion/**"
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  py-run-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py-version: ['3.7', '3.8', '3.9']
     steps:
       - run: 'echo "Step is not required"'
