@@ -23,6 +23,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -34,7 +35,8 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
   @SuppressWarnings("unused")
   private CatalogOpenIdAuthorizationRequestFilter() {}
 
-  public CatalogOpenIdAuthorizationRequestFilter(AuthenticationConfiguration config, AuthorizerConfiguration conf) {}
+  public CatalogOpenIdAuthorizationRequestFilter(
+      AuthenticationConfiguration config, AuthorizerConfiguration conf, JWTTokenConfiguration jwtTokenConfiguration) {}
 
   public void filter(ContainerRequestContext containerRequestContext) {
     if (isHealthEndpoint(containerRequestContext)) {
