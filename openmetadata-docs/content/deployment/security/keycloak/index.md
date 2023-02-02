@@ -114,6 +114,16 @@ workflowConfig:
       tokenEndpoint: '{your_token_endpoint}' # e.g. http://localhost:8081/realms/data-sec/protocol/openid-connect/token
 ```
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** de admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Keycloak SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide 
+by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 <Note>
 A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
 </Note>

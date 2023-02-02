@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 .ant-btn,
 button {
   &:disabled {
@@ -20,4 +22,15 @@ button {
       opacity: 0.5;
     }
   }
+}
+
+.ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
+  background: @primary-color;
+  color: @white;
+}
+
+.ant-btn-background-ghost.hover-button.ant-btn-primary[disabled]:hover {
+  background: initial;
+  color: initial;
+  opacity: 0.45;
 }
