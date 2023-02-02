@@ -20,7 +20,7 @@ import React from 'react';
 import { getGraphDataByEntityType } from 'utils/DataInsightUtils';
 import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
 
-import DescriptionInsight from './DescriptionInsight';
+import OwnerInsight from './OwnerInsight';
 
 jest.mock('../../utils/DataInsightUtils', () => ({
   renderLegend: jest
@@ -49,19 +49,15 @@ describe('Test DescriptionInsight Component', () => {
   it('Should render the graph', async () => {
     await act(async () => {
       const { container } = render(
-        <DescriptionInsight
+        <OwnerInsight
           chartFilter={INITIAL_CHART_FILTER}
           kpi={undefined}
           selectedDays={30}
         />
       );
-      const card = screen.getByTestId('entity-description-percentage-card');
+      const card = screen.getByTestId('entity-summary-card-percentage');
 
-      const graph = queryByAttribute(
-        'id',
-        container,
-        'description-summary-graph'
-      );
+      const graph = queryByAttribute('id', container, 'owner-summary-graph');
 
       expect(card).toBeInTheDocument();
       expect(graph).toBeInTheDocument();
@@ -74,19 +70,15 @@ describe('Test DescriptionInsight Component', () => {
     );
     await act(async () => {
       const { container } = render(
-        <DescriptionInsight
+        <OwnerInsight
           chartFilter={INITIAL_CHART_FILTER}
           kpi={undefined}
           selectedDays={30}
         />
       );
-      const card = screen.getByTestId('entity-description-percentage-card');
+      const card = screen.getByTestId('entity-summary-card-percentage');
 
-      const graph = queryByAttribute(
-        'id',
-        container,
-        'description-summary-graph'
-      );
+      const graph = queryByAttribute('id', container, 'owner-summary-graph');
       const missingEntityValue = await screen.findByTestId('Table');
 
       expect(card).toBeInTheDocument();
