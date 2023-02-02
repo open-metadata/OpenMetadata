@@ -46,8 +46,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension";
-  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension";
+  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension,followers";
+  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension,followers";
 
   public MlModelRepository(CollectionDAO dao) {
     super(
