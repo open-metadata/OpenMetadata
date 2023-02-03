@@ -1,17 +1,17 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/storeService.json",
+  "$id": "https://open-metadata.org/schema/entity/services/objectstoreService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Store Service",
-  "description": "This schema defines the Store Service entity, such as S3, GCS, AZURE.",
+  "title": "Object Store Service",
+  "description": "This schema defines the Object Store Service entity, such as S3, GCS, AZURE.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.services.StoreService",
+  "javaType": "org.openmetadata.schema.entity.services.ObjectStoreService",
   "javaInterfaces": [
     "org.openmetadata.schema.EntityInterface",
     "org.openmetadata.schema.ServiceEntityInterface"
   ],
   "definitions": {
-    "storeServiceType": {
-      "description": "Type of store service such as S3, GFS, AZURE...",
+    "objectStoreServiceType": {
+      "description": "Type of object store service such as S3, GFS, AZURE...",
       "javaInterfaces": [
         "org.openmetadata.schema.EnumInterface"
       ],
@@ -33,9 +33,9 @@
         }
       ]
     },
-    "storeConnection": {
+    "objectStoreConnection": {
       "type": "object",
-      "description": "Store Connection.",
+      "description": "Object Store Connection.",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
       ],
@@ -44,13 +44,13 @@
           "mask": true,
           "oneOf": [
             {
-              "$ref": "./connections/store/s3StoreConnection.json"
+              "$ref": "connections/objectstore/s3ObjectStoreConnection.json"
             },
             {
-              "$ref": "./connections/store/gcsStoreConnection.json"
+              "$ref": "connections/objectstore/gcsObjectStoreConnection.json"
             },
             {
-              "$ref": "./connections/store/azureStoreConnection.json"
+              "$ref": "connections/objectstore/azureObjectStoreConnection.json"
             }
           ]
         }
@@ -60,11 +60,11 @@
   },
   "properties": {
     "id": {
-      "description": "Unique identifier of this store service instance.",
+      "description": "Unique identifier of this object store service instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies this store service.",
+      "description": "Name that identifies this object store service.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
@@ -72,26 +72,26 @@
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this store service.",
+      "description": "Display Name that identifies this object store service.",
       "type": "string"
     },
     "serviceType": {
-      "description": "Type of store service such as S3, GCS, AZURE...",
-      "$ref": "#/definitions/storeServiceType"
+      "description": "Type of object store service such as S3, GCS, AZURE...",
+      "$ref": "#/definitions/objectStoreServiceType"
     },
     "description": {
-      "description": "Description of a store service instance.",
+      "description": "Description of a object store service instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
-      "$ref": "#/definitions/storeConnection"
+      "$ref": "#/definitions/objectStoreConnection"
     },
     "pipelines": {
-      "description": "References to pipelines deployed for this store service to extract metadata, usage, lineage etc..",
+      "description": "References to pipelines deployed for this object store service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "tags": {
-      "description": "Tags for this Store Service.",
+      "description": "Tags for this Object Store Service.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -111,11 +111,11 @@
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this store service.",
+      "description": "Link to the resource corresponding to this object store service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this store service.",
+      "description": "Owner of this object store service.",
       "$ref": "../../type/entityReference.json"
     },
     "changeDescription": {
@@ -131,7 +131,7 @@
   "required": [
     "id",
     "name",
-    "serviceType",
+    "objectStoreServiceType",
     "href"
   ],
   "additionalProperties": false

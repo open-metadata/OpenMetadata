@@ -1,15 +1,15 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/store/azureStoreConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/store/gcsStoreConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Azure StoreConnection",
-  "description": "Azure Store Connection.",
+  "title": "GCS StoreConnection",
+  "description": "GCS Store Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.store.AzureStoreConnection",
+  "javaType": "org.openmetadata.schema.services.connections.store.GCStoreConnection",
   "properties": {
     "credentials": {
-      "title": "Azure Credentials",
-      "description": "Azure Credentials",
-      "$ref": "../../../../security/credentials/azureCredentials.json"
+      "title": "GCS Credentials",
+      "description": "GCS Credentials",
+      "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -22,10 +22,6 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsProfiler": {
-      "title": "Supports Profiler",
-      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,

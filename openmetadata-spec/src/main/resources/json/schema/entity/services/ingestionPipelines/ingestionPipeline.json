@@ -156,7 +156,7 @@
     "airflowConfig": {
       "$ref": "#/definitions/airflowConfig"
     },
-    "service": {
+    "objectStoreService": {
       "description": "Link to the database service where this database is hosted in.",
       "$ref": "../../../type/entityReference.json"
     },

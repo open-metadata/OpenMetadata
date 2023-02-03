@@ -1,0 +1,183 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/container.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Container",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the Container entity. A Container is an abstraction for any path(including the top level eg. bucket in S3) storing data in an Object store such as S3, GCP, Azure. It maps a tree-like structure, where each Container can have a parent and a list of sub-folders, and it can be structured - where it contains structured data, or unstructured where no schema for its data is defined.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Container",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "fileFormat": {
+      "javaType": "org.openmetadata.schema.type.fileFormat",
+      "description": "This schema defines the file formats for the object/files within a container.",
+      "type": "string",
+      "enum": [
+        "csv",
+        "tsv",
+        "json",
+        "parquet",
+        "zip",
+        "gz",
+        "avro",
+        "zstd"
+      ],
+      "javaEnums": [
+        {
+          "name": "Csv"
+        },
+        {
+          "name": "Tsv"
+        },
+        {
+          "name": "Json"
+        },
+        {
+          "name": "Parquet"
+        },
+        {
+          "name": "Avro"
+        },
+        {
+          "name": "Zip"
+        },
+        {
+          "name": "Gz"
+        },
+        {
+          "name": "Zstd"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this container instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the container.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a container in the format 'ServiceName.ContainerName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this container.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the container instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "objectStoreService": {
+      "description": "Link to the object store service where this container is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this container is hosted in.",
+      "$ref": "../services/objectstoreService.json#/definitions/objectStoreServiceType"
+    },
+    "parent": {
+      "description": "Link to the parent container under which this entity sits.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "References to child containers residing under this entity.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "isStructured": {
+      "description": "When `true` indicates the container's data is structured, so it has a schema",
+      "type": "boolean",
+      "default": false
+    },
+    "isPartitioned": {
+      "description": "Whether the data under this container is partitioned by some property, eg. eventTime=yyyy-mm-dd",
+      "type": "boolean",
+      "default": false
+    },
+    "prefix": {
+      "description": "Optional prefix path defined for this container",
+      "type": "string",
+      "default": null
+    },
+    "numberOfObjects": {
+      "description": "The number of objects/files this container has.",
+      "type": "number",
+      "default": "-1"
+    },
+    "size": {
+      "description": "The total size in KB this container has.",
+      "type": "number",
+      "default": "-1"
+    },
+    "fileFormats": {
+      "description": "File formats identified for this container's objects.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/fileFormat"
+      },
+      "default": null
+    },
+    "columns": {
+      "description": "Columns contained by this container's schema, if one is present.",
+      "type": "array",
+      "items": {
+        "$ref": "../data/table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this container.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "followers": {
+      "description": "Followers of this container.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this container.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "objectStoreService",
+    "serviceType",
+    "isStructured"
+  ],
+  "additionalProperties": false
+}
