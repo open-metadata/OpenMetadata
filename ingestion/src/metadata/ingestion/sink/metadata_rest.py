@@ -171,7 +171,7 @@ class MetadataRestSink(Sink[Entity]):
         else:
             logger.warning(
                 f"The table [{datamodel_link.fqn.__root__}] from the manifest file is not found in OM. "
-                f"Please check if the table is ingestion"
+                f"Please, check if the table has been ingested previously."
             )
 
     def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
