@@ -59,7 +59,7 @@ jobs:
         id: yarn-cache-dir-path
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
-      - name: Caching NPM dependencies 
+      - name: Caching NPM dependencies
         uses: actions/cache@v3
         id: yarn-cache
         with:
