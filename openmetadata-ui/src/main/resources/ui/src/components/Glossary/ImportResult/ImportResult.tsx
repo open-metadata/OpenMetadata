@@ -118,7 +118,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
               }}
               style={{ width: 300 }}
               title={description}>
-              {description}
+              {isEmpty(description) ? '--' : description}
             </Typography.Paragraph>
           );
         },
