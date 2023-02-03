@@ -15,7 +15,7 @@ import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
+import { getExplorePath, ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -39,35 +39,35 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         icon: Icons.TABLE_GREY,
         data: 'Tables',
         count: entityCounts.tableCount,
-        link: getExplorePathWithSearch(undefined, 'tables'),
+        link: getExplorePath({ tab: 'tables' }),
         dataTestId: 'tables',
       },
       topics: {
         icon: Icons.TOPIC_GREY,
         data: 'Topics',
         count: entityCounts.topicCount,
-        link: getExplorePathWithSearch(undefined, 'topics'),
+        link: getExplorePath({ tab: 'topics' }),
         dataTestId: 'topics',
       },
       dashboards: {
         icon: Icons.DASHBOARD_GREY,
         data: 'Dashboards',
         count: entityCounts.dashboardCount,
-        link: getExplorePathWithSearch(undefined, 'dashboards'),
+        link: getExplorePath({ tab: 'dashboards' }),
         dataTestId: 'dashboards',
       },
       pipelines: {
         icon: Icons.PIPELINE_GREY,
         data: 'Pipelines',
         count: entityCounts.pipelineCount,
-        link: getExplorePathWithSearch(undefined, 'pipelines'),
+        link: getExplorePath({ tab: 'pipelines' }),
         dataTestId: 'pipelines',
       },
       mlModal: {
         icon: Icons.MLMODAL,
         data: 'ML Models',
         count: entityCounts.mlmodelCount,
-        link: getExplorePathWithSearch(undefined, 'mlmodels'),
+        link: getExplorePath({ tab: 'mlmodels' }),
         dataTestId: 'mlmodels',
       },
       testSuite: {

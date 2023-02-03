@@ -14,17 +14,18 @@
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import { observer } from 'mobx-react';
+import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
 import { extractDetailsFromToken } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
 import {
-  getExplorePathWithSearch,
+  getExplorePath,
   getTeamAndUserDetailsPath,
   getUserPath,
   ROUTES,
@@ -63,16 +64,22 @@ const Appbar: React.FC = (): JSX.Element => {
     isTourRoute,
     onLogoutHandler,
   } = useAuthContext();
-  const match = useRouteMatch<{ searchQuery: string }>({
-    path: ROUTES.EXPLORE_WITH_SEARCH,
-  });
-  const searchQuery = match?.params?.searchQuery ?? '';
+
+  const parsedQueryString = Qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substr(1)
+      : location.search
+  );
+
+  const searchQuery = isString(parsedQueryString.search)
+    ? parsedQueryString.search
+    : '';
+
   const [searchValue, setSearchValue] = useState(searchQuery);
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>('');
-
-  console.debug({ match });
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
@@ -283,26 +290,20 @@ const Appbar: React.FC = (): JSX.Element => {
   ];
 
   const searchHandler = (value: string) => {
-    console.debug(`searchHandler value=${value}`);
-
     setIsOpen(false);
-    const encodedValue = encodeURIComponent(value);
-    addToRecentSearched(encodedValue);
-    history.push({
-      pathname: getExplorePathWithSearch(
-        encodeURIComponent(encodedValue),
-        // this is for if user is searching from another page
-        location.pathname.startsWith(ROUTES.EXPLORE)
-          ? appState.explorePageTab
-          : 'tables'
-      ),
-      search: location.search,
-    });
+    addToRecentSearched(value);
+    if (location.pathname.startsWith(ROUTES.EXPLORE)) {
+      // Already on explore page, only push search change
+      history.push({
+        search: Qs.stringify({ ...parsedQueryString, search: value }),
+      });
+    } else {
+      // Outside Explore page
+      history.push(getExplorePath({ search: value }));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    console.debug(`handleKeyDown e=${e}`);
-
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
       searchHandler(target.value);
@@ -310,9 +311,7 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleOnclick = () => {
-    console.debug(`handleOnclick searchValue=${searchValue}`);
-
-    searchHandler(searchValue ?? '');
+    searchHandler(searchValue);
   };
 
   const fetchOMVersion = () => {
@@ -329,16 +328,7 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   useEffect(() => {
-    console.debug(`useEffect searchQuery=${searchQuery}`);
-
-    let newSearchValue = '';
-    try {
-      newSearchValue = decodeURIComponent(searchQuery);
-    } catch (e) {
-      newSearchValue = searchQuery;
-    }
-
-    setSearchValue(newSearchValue);
+    setSearchValue(searchQuery);
   }, [searchQuery]);
 
   useEffect(() => {

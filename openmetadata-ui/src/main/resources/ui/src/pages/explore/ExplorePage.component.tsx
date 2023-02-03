@@ -27,7 +27,7 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import AppState from '../../AppState';
-import { PAGE_SIZE } from '../../constants/constants';
+import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
@@ -47,7 +47,7 @@ const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
 
-  const { searchQuery: searchQueryParam = '', tab } = useParams<UrlParams>();
+  const { tab } = useParams<UrlParams>();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
@@ -73,6 +73,11 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
+  const searchQueryParam = useMemo(
+    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
+    [location.search]
+  );
+
   const postFilter = useMemo(
     () =>
       isFilterObject(parsedSearch.postFilter)
@@ -93,12 +98,12 @@ const ExplorePage: FunctionComponent = () => {
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
     nSearchIndex
   ) => {
-    history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${encodeURIComponent(
-        searchQueryParam
-      )}`,
-      search: Qs.stringify({ page: 1 }),
-    });
+    history.push(
+      getExplorePath({
+        tab: tabsInfo[nSearchIndex].path,
+        extraParameters: { page: '1' },
+      })
+    );
     setAdvancedSearchQueryFilter(undefined);
   };
 
