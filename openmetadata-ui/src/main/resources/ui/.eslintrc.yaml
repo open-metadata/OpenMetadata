@@ -130,6 +130,9 @@ rules:
   react/jsx-pascal-case:
     - error
 
+  react/prop-types:
+    - off
+
   # Disallow unnecessary curly braces in JSX
   react/jsx-curly-brace-presence:
     - error

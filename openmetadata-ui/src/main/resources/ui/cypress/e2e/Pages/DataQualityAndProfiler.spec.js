@@ -189,11 +189,15 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
     scheduleIngestion();
 
-    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
+      .should('be.visible');
 
     // wait for ingestion to run
     cy.clock();
@@ -316,10 +320,10 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
       .contains(
         'has been created successfully. This will be picked up in the next run.'
       )
-      .scrollIntoView()
       .should('be.visible');
     cy.get('[data-testid="view-service-button"]').scrollIntoView().click();
     cy.get('.ant-table-row').should(
@@ -532,7 +536,9 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/testCase?fields=*', 'testCase');
     interceptURL('GET', '/api/v1/testDefinition/*', 'testCaseDefinition');
 
-    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get('[data-testid="view-service-button"]').should('be.visible').click();
 
     verifyResponseStatusCode('@testCase', 200);
