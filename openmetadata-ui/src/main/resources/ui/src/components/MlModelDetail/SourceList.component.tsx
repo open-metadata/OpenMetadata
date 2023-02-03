@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { Col, Row, Space, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,10 +33,11 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
     <div className="m-t-sm">
       <Space className="m-b-xs">
         <span onClick={() => setIsActive((prev) => !prev)}>
-          <FontAwesomeIcon
-            className="text-xs text-primary cursor-pointer"
-            icon={isActive ? 'chevron-down' : 'chevron-right'}
-          />
+          {isActive ? (
+            <DownOutlined className="text-xs text-primary cursor-pointer" />
+          ) : (
+            <RightOutlined className="text-xs text-primary cursor-pointer" />
+          )}
         </span>
         <Typography.Text className="font-medium m-y-0">
           {t('label.source-plural')}

@@ -170,6 +170,12 @@ export const NEW_COLUMN_TEST_CASE = {
   description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
+export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  column: 'id',
+  type: 'columnValuesToBeNotNull',
+  description: 'New table test case for columnValuesToBeNotNull',
+};
+
 export const NEW_TEAM = {
   team_1: {
     name: 'account',

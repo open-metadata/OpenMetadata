@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import classNames from 'classnames';
@@ -124,7 +124,11 @@ const FormBuilder: FunctionComponent<Props> = ({
       case 'success':
         return (
           <div className="tw-flex">
-            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
+            <SVGIcons
+              alt="success-badge"
+              icon={Icons.SUCCESS_BADGE}
+              width={24}
+            />
             <span className="tw-ml-2">Connection test was successful</span>
           </div>
         );
@@ -222,7 +226,7 @@ const FormBuilder: FunctionComponent<Props> = ({
               size="regular"
               theme="primary"
               variant="contained">
-              <FontAwesomeIcon icon="check" />
+              <CheckOutlined />
             </Button>
           ) : (
             <Button

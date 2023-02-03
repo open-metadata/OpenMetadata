@@ -13,7 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -797,7 +797,7 @@ export const getLoadingStatus = (
 ) => {
   return current.id === id ? (
     current.state === 'success' ? (
-      <FontAwesomeIcon icon="check" />
+      <CheckOutlined />
     ) : (
       <Loader size="small" type="default" />
     )

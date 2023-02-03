@@ -63,7 +63,7 @@ jest.mock('../containers/PageLayout', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (
-      <div data-testid="page-container">{children}</div>
+      <div data-testid="page-layout-v1">{children}</div>
     ));
 });
 
@@ -107,7 +107,7 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-container');
+    const pageContainer = await screen.findByTestId('page-layout-v1');
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
@@ -132,7 +132,7 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-container');
+    const pageContainer = await screen.findByTestId('page-layout-v1');
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = screen.queryByText('ProfilerTab component');
@@ -159,7 +159,7 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-container');
+    const pageContainer = await screen.findByTestId('page-layout-v1');
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
@@ -225,7 +225,7 @@ describe('Test ProfilerDashboardPage component', () => {
       });
     });
 
-    const pageContainer = await screen.findByTestId('page-container');
+    const pageContainer = await screen.findByTestId('page-layout-v1');
     const addTest = await screen.findByTestId('add-test');
 
     expect(pageContainer).toBeInTheDocument();

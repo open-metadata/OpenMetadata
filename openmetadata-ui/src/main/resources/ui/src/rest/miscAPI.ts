@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -66,6 +67,14 @@ export const getOwnershipCount = (
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
     '/config/auth'
+  );
+
+  return response.data;
+};
+
+export const fetchAuthorizerConfig = async () => {
+  const response = await APIClient.get<AuthorizerConfiguration>(
+    '/config/authorizer'
   );
 
   return response.data;

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Dropdown, Row, Tooltip, Typography } from 'antd';
+import { EllipsisOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
@@ -63,6 +63,7 @@ const ManageButton: FC<Props> = ({
   const { t } = useTranslation();
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [showReactiveModal, setShowReactiveModal] = useState(false);
 
   const items = [
     {
@@ -118,7 +119,7 @@ const ManageButton: FC<Props> = ({
                     if (canDelete) {
                       e.stopPropagation();
                       setShowActions(false);
-                      onRestoreEntity && onRestoreEntity();
+                      setShowReactiveModal(true);
                     }
                   }}>
                   <Col span={3}>
@@ -212,9 +213,9 @@ const ManageButton: FC<Props> = ({
           title="Manage"
           type="default"
           onClick={() => setShowActions(true)}>
-          <FontAwesomeIcon
+          <EllipsisOutlined
             className="tw-text-primary tw-self-center manage-dropdown-icon"
-            icon="ellipsis-vertical"
+            rotate={90}
           />
         </Button>
       </Dropdown>
@@ -233,6 +234,29 @@ const ManageButton: FC<Props> = ({
           onCancel={() => setIsDelete(false)}
         />
       )}
+
+      <Modal
+        centered
+        cancelButtonProps={{
+          type: 'link',
+        }}
+        className="reactive-modal"
+        closable={false}
+        okText={t('label.restore')}
+        open={showReactiveModal}
+        title={t('label.restore-entity', {
+          entity: entityType,
+        })}
+        onCancel={() => {
+          setShowReactiveModal(false);
+        }}
+        onOk={onRestoreEntity}>
+        <Typography.Text data-testid="restore-modal-body">
+          {t('message.are-you-want-to-restore', {
+            entity: entityName,
+          })}
+        </Typography.Text>
+      </Modal>
     </>
   );
 };

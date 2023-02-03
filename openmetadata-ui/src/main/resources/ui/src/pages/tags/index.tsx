@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -790,12 +790,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons"
                           data-testid="cancelAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="times"
-                            />
-                          }
+                          icon={<CloseOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleEditNameCancel}
@@ -803,12 +798,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons m-l-xss"
                           data-testid="saveAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="check"
-                            />
-                          }
+                          icon={<CheckOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleRenameSave}

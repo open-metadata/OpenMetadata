@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { EllipsisOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -318,16 +318,13 @@ const PoliciesDetailPage = () => {
             <Button
               data-testid={`manage-button-${rule.name}`}
               disabled={!policyPermission.EditAll}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
               size="small"
               type="text"
               onClick={(e) => {
                 e.stopPropagation();
-              }}>
-              <FontAwesomeIcon
-                className="text-grey-body"
-                icon="ellipsis-vertical"
-              />
-            </Button>
+              }}
+            />
           </Tooltip>
         </Dropdown>
       );
