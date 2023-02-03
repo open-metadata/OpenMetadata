@@ -13,6 +13,7 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -292,9 +293,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="tw-w-full tw-justify-end" size={16}>
-          <Button onClick={onBack}>Back</Button>
+          <Button onClick={onBack}>{t('label.back')}</Button>
           <Button data-testid="submit-test" htmlType="submit" type="primary">
-            Submit
+            {t('label.submit')}
           </Button>
         </Space>
       </Form.Item>

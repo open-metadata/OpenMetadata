@@ -205,7 +205,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     <Space align="start">
                       <Space>
                         <Typography.Text className="text-grey-muted">
-                          {t('label.type')}:
+                          {`${t('label.type')}:`}
                         </Typography.Text>{' '}
                         <Typography.Text>
                           {feature.dataType || '--'}
@@ -214,7 +214,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space>
                         <Typography.Text className="text-grey-muted">
-                          {t('label.algorithm')}:
+                          {`${t('label.algorithm')}:`}
                         </Typography.Text>{' '}
                         <Typography.Text>
                           {feature.featureAlgorithm || '--'}
@@ -223,7 +223,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space align="start">
                         <Typography.Text className="text-grey-muted">
-                          {t('label.tag-plural')}:
+                          {`${t('label.tag-plural')}:`}
                         </Typography.Text>{' '}
                         <div
                           data-testid="feature-tags-wrapper"
@@ -307,7 +307,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   <Col className="m-t-sm" span={24}>
                     <Space direction="vertical">
                       <Typography.Text className="text-grey-muted">
-                        {t('label.description')}:
+                        {`${t('label.description')}:`}
                       </Typography.Text>
                       <Space>
                         {feature.description ? (

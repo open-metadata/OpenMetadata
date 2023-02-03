@@ -364,7 +364,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <Space className="w-full" direction="vertical">
-              <label htmlFor="tags">{t('label.tag-plural')}:</label>
+              <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
               <AddTags
                 data-testid="tags"
                 setTags={(tag: EntityTags[]) => setTags(tag)}
@@ -374,7 +374,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              {t('label.synonym-plural')}:
+              {`${t('label.synonyms')}:`}
             </label>
 
             <input

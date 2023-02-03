@@ -144,7 +144,6 @@ class DbtCommonEnum(Enum):
     MANIFEST_NODE = "manifest_node"
     UPSTREAM = "upstream"
     RESULTS = "results"
-    DEFAULT = "default"
     TEST_SUITE_NAME = "test_suite_name"
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
 
@@ -453,16 +452,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
-                            database_name=(
-                                manifest_node.database
-                                if manifest_node.database
-                                else DbtCommonEnum.DEFAULT.value
-                            ),
-                            schema_name=(
-                                manifest_node.schema_
-                                if manifest_node.schema_
-                                else DbtCommonEnum.DEFAULT.value
-                            ),
+                            database_name=manifest_node.database,
+                            schema_name=manifest_node.schema_,
                             table_name=model_name,
                         ),
                         datamodel=DataModel(
@@ -513,12 +504,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=parent_node.database
-                        if parent_node.database
-                        else DbtCommonEnum.DEFAULT.value,
-                        schema_name=parent_node.schema_
-                        if parent_node.schema_
-                        else DbtCommonEnum.DEFAULT.value,
+                        database_name=parent_node.database,
+                        schema_name=parent_node.schema_,
                         table_name=table_name,
                     ).lower()
                     if parent_fqn:

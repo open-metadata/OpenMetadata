@@ -255,7 +255,9 @@ const Appbar: React.FC = (): JSX.Element => {
           : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-text-grey-muted tw-text-xs">Teams</span>
+            <span className="tw-text-grey-muted tw-text-xs">
+              {t('label.team-plural')}
+            </span>
             {teams.map((t, i) => (
               <Typography.Paragraph
                 className="ant-typography-ellipsis-custom text-sm"

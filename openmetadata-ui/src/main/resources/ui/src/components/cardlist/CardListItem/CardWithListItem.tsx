@@ -18,6 +18,7 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import React, { FunctionComponent } from 'react';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
@@ -71,7 +72,7 @@ const CardListItem: FunctionComponent<Props> = ({
             size="small"
             theme="primary"
             onClick={() => onSave(tier)}>
-            Select
+            {t('label.select')}
           </Button>
         );
     }
@@ -92,7 +93,7 @@ const CardListItem: FunctionComponent<Props> = ({
           theme="primary"
           variant="outlined"
           onClick={() => onSave(cardId)}>
-          Select
+          {t('label.select')}
         </Button>
       );
     }

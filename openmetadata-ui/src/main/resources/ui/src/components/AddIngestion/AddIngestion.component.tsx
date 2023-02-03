@@ -610,7 +610,7 @@ const AddIngestion = ({
     return (
       <span>
         <span className="tw-mr-1 tw-font-semibold">
-          &quot;{state.ingestionName}&quot;
+          {`"${state.ingestionName}"`}
         </span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
