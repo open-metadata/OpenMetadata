@@ -43,7 +43,11 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           record: GlossaryCSVRecord
         ) => {
           return (
-            <Space align="start" data-testid="status-container">
+            <Space
+              align="start"
+              data-testid="status-container"
+              // Added max width because in case of full success we don't want to occupied full width
+              style={{ maxWidth: 200 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
                   className="m-t-xss"
@@ -74,7 +78,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         fixed: true,
         render: (parent: GlossaryCSVRecord['parent']) => {
           return (
-            <Typography.Paragraph style={{ minWidth: 150 }}>
+            <Typography.Paragraph style={{ width: 200 }}>
               {isEmpty(parent) ? '--' : parent}
             </Typography.Paragraph>
           );
@@ -87,7 +91,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         fixed: true,
         render: (name: GlossaryCSVRecord['name*']) => {
           return (
-            <Typography.Paragraph style={{ minWidth: 150 }}>
+            <Typography.Paragraph style={{ width: 200 }}>
               {name}
             </Typography.Paragraph>
           );
@@ -99,7 +103,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'displayName',
         render: (displayName: GlossaryCSVRecord['displayName']) => {
           return (
-            <Typography.Paragraph style={{ minWidth: 150 }}>
+            <Typography.Paragraph style={{ width: 200 }}>
               {isEmpty(displayName) ? '--' : displayName}
             </Typography.Paragraph>
           );
@@ -131,7 +135,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           const value = synonyms?.split(';').join(', ');
 
           return (
-            <Typography.Paragraph style={{ minWidth: 150 }}>
+            <Typography.Paragraph style={{ width: 200 }}>
               {isEmpty(synonyms) ? '--' : value}
             </Typography.Paragraph>
           );
@@ -145,7 +149,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           const value = relatedTerms?.split(';').join(', ');
 
           return (
-            <Typography.Paragraph style={{ minWidth: 150 }}>
+            <Typography.Paragraph style={{ width: 200 }}>
               {isEmpty(relatedTerms) ? '--' : value}
             </Typography.Paragraph>
           );
@@ -157,7 +161,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'relatedTerms',
         render: (references: GlossaryCSVRecord['references']) => {
           return (
-            <Typography.Paragraph style={{ minWidth: 150, maxWidth: 300 }}>
+            <Typography.Paragraph style={{ width: 200, maxWidth: 300 }}>
               {isEmpty(references) ? '--' : references}
             </Typography.Paragraph>
           );
@@ -171,7 +175,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           const value = tags?.split(';').join(', ');
 
           return (
-            <Typography.Paragraph style={{ minWidth: 150 }}>
+            <Typography.Paragraph style={{ width: 200 }}>
               {isEmpty(tags) ? '--' : value}
             </Typography.Paragraph>
           );
