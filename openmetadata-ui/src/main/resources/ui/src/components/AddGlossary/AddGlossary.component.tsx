@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import Tags from 'components/Tag/Tags/tags';
 import { LOADING_STATE } from 'enums/common.enum';
@@ -234,7 +234,7 @@ const AddGlossary = ({
                 size="small"
                 type="primary"
                 onClick={() => setShowReviewerModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined style={{ color: 'white' }} />
               </Button>
             </div>
             <div className="tw-my-4" data-testid="reviewers-container">

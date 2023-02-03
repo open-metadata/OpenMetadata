@@ -11,19 +11,6 @@
  *  limitations under the License.
  */
 
-import { library } from '@fortawesome/fontawesome-svg-core';
-import {
-  faCheck,
-  faCheckCircle,
-  faCheckSquare,
-  faChevronDown,
-  faChevronRight,
-  faChevronUp,
-  faEllipsisV,
-  faPlus,
-  faSearch,
-  faTimes,
-} from '@fortawesome/free-solid-svg-icons';
 import Appbar from 'components/app-bar/Appbar';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
@@ -41,19 +28,6 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import i18n from 'utils/i18next/LocalUtil';
 
 const App: FunctionComponent = () => {
-  library.add(
-    faTimes,
-    faCheck,
-    faSearch,
-    faPlus,
-    faCheckSquare,
-    faCheckCircle,
-    faChevronDown,
-    faChevronRight,
-    faChevronUp,
-    faEllipsisV
-  );
-
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">

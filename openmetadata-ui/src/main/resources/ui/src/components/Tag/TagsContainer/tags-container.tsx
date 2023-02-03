@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Select, Space } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
@@ -174,7 +174,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             theme="primary"
             variant="contained"
             onMouseDown={handleCancel}>
-            <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+            <CloseOutlined />
           </Button>
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -183,7 +183,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             theme="primary"
             variant="contained"
             onMouseDown={handleSave}>
-            <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+            <CheckOutlined />
           </Button>
         </Space>
       )}

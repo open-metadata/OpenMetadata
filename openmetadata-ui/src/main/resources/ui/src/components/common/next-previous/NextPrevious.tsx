@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,9 +91,9 @@ const NextPrevious: FC<Prop> = ({
         className="hover-button text-sm flex-center"
         data-testid="previous"
         disabled={computePrevDisableState()}
+        icon={<ArrowLeftOutlined />}
         type="primary"
         onClick={onPreviousHandler}>
-        <FontAwesomeIcon className="text-sm p-r-xs" icon={faArrowLeft} />
         <span>{t('label.previous')}</span>
       </Button>
       <span
@@ -111,7 +110,7 @@ const NextPrevious: FC<Prop> = ({
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
-        <FontAwesomeIcon className="text-sm p-l-xs" icon={faArrowRight} />
+        <ArrowRightOutlined />
       </Button>
     </div>
   );

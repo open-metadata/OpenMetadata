@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Button, Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -562,7 +561,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 onClick={() => ConfirmDelete(record.id as string, record.name)}>
                 {deleteSelection.id === record.id ? (
                   deleteSelection.state === 'success' ? (
-                    <FontAwesomeIcon icon="check" />
+                    <CheckOutlined />
                   ) : (
                     <Loader size="small" type="default" />
                   )
@@ -640,7 +639,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <div className="d-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
-              <FontAwesomeIcon icon={faExclamationCircle} />
+              <ExclamationCircleOutlined />
               <p>
                 {t('message.no-service-connection-details-message', {
                   serviceName,

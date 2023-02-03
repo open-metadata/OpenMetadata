@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Col, Dropdown, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -45,6 +44,7 @@ import {
 import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 
+import { EllipsisOutlined } from '@ant-design/icons';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
@@ -338,7 +338,7 @@ const GlossaryV1 = ({
                 variant="outlined"
                 onClick={() => setShowActions(true)}>
                 <span>
-                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                  <EllipsisOutlined rotate={90} />
                 </span>
               </Button>
             </Tooltip>
