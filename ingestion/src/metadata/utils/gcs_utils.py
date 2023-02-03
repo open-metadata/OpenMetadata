@@ -35,8 +35,8 @@ def _get_json_text(key: str, text: str) -> str:
     if key.endswith(".gz"):
         return gzip.decompress(text)
     if key.endswith(".zip"):
-        zip_file = zipfile.ZipFile(io.BytesIO(text))
-        return zip_file.read(zip_file.infolist()[0]).decode("utf-8")
+        with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
+            return zip_file.read(zip_file.infolist()[0]).decode("utf-8")
     return text
 
 
