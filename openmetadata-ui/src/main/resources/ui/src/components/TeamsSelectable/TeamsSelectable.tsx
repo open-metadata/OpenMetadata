@@ -12,6 +12,7 @@
  */
 
 import { TreeSelect } from 'antd';
+import { t } from 'i18next';
 import React, { useEffect, useState } from 'react';
 import { getTeamsHierarchy } from 'rest/teamsAPI';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
@@ -100,7 +101,7 @@ const TeamsSelectable = ({
             <SVGIcons alt="info" icon="info" title="Info" width="16px" />
           </div>
           <div className="tw-font-semibold tw-px-1">
-            There is no team available.
+            {t('message.no-data-available')}
           </div>
         </div>
       )}

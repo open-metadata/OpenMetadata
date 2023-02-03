@@ -715,8 +715,7 @@ const TagsPage = () => {
             </div>
             <div className="tw-mt-1" data-testid="usage">
               <span className="tw-text-grey-muted tw-mr-1">
-                {' '}
-                {t('label.usage')}:
+                {`${t('label.usage')}:`}
               </span>
               {record.usageCount ? (
                 <Link

@@ -601,7 +601,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           text?.trim() ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="text-grey-muted">No description</span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
     ],

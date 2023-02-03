@@ -210,13 +210,13 @@ const EntityPageInfo = ({
             ))}
           </div>
         ) : (
-          <p>{entityName} doesn&#39;t have any followers yet</p>
+          <p>{t('label.entity-does-not-have-followers', { entityName })}</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
           <p
             className="link-text tw-text-sm tw-py-2"
             onClick={() => setIsViewMore(true)}>
-            View more
+            {t('label.view-more')}
           </p>
         )}
       </div>
@@ -240,7 +240,7 @@ const EntityPageInfo = ({
               alt="version icon"
               icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
             />
-            <span>Versions</span>
+            <span>{t('label.version-plural')}</span>
           </span>
           <span
             className={classNames(
@@ -389,7 +389,7 @@ const EntityPageInfo = ({
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
                 data-testid="deleted-badge">
                 <ExclamationCircleOutlined className="tw-mr-1" />
-                Deleted
+                {t('label.deleted')}
               </div>
             </>
           )}
@@ -402,8 +402,7 @@ const EntityPageInfo = ({
                   placement="bottom"
                   title={
                     <p className="tw-text-xs">
-                      Viewing older version <br />
-                      Go to latest to update details
+                      {t('message.viewing-older-version')}
                     </p>
                   }
                   trigger="hover">
@@ -427,17 +426,8 @@ const EntityPageInfo = ({
                 !deleted && followHandler?.();
               }}>
               <Space>
-                {isFollowing ? (
-                  <>
-                    <StarFilled className="tw-text-xs" />
-                    Unfollow
-                  </>
-                ) : (
-                  <>
-                    <StarFilled className="tw-text-xs" />
-                    Follow
-                  </>
-                )}
+                <StarFilled className="tw-text-xs" />
+                {isFollowing ? t('label.un-follow') : t('label.follow')}
                 <Popover content={getFollowers()} trigger="click">
                   <span
                     className={classNames(
@@ -493,7 +483,7 @@ const EntityPageInfo = ({
                 />
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                   <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    |
+                    {t('label.pipe-symbol')}
                   </span>
                 ) : null}
               </span>

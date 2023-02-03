@@ -12,6 +12,7 @@
  */
 
 import { Popover } from 'antd';
+import { t } from 'i18next';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useState } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -33,7 +34,7 @@ const GithubStarButton: FunctionComponent = () => {
               href="https://github.com/open-metadata/OpenMetadata"
               rel="noopener noreferrer"
               target="_blank">
-              <span className="tw-mr-1">Star us on Github</span>
+              <span className="tw-mr-1">{t('label.star-us-on-github')}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"

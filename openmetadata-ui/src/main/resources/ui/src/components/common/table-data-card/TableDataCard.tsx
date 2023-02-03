@@ -22,6 +22,7 @@ import {
 } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -86,6 +87,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   database,
   databaseSchema,
 }: Props) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const getTier = () => {
     if (tier) {
@@ -199,7 +201,7 @@ const TableDataCard: FunctionComponent<Props> = ({
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
                 data-testid="deleted">
                 <ExclamationCircleOutlined className="tw-mr-1" />
-                Deleted
+                {t('label.deleted')}
               </div>
             </>
           )}
@@ -214,7 +216,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       </div>
       {matches && matches.length > 0 ? (
         <div className="tw-pt-2" data-testid="matches-stats">
-          <span className="tw-text-grey-muted">Matches :</span>
+          <span className="tw-text-grey-muted">{`${t('label.matches')}:`}</span>
           {matches.map((data, i) => (
             <span className="tw-ml-2" key={uniqueId()}>
               {`${data.value} in ${startCase(data.key)}${

@@ -386,7 +386,7 @@ const Users = ({
         <Typography.Text
           className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
-          Change Password
+          {t('label.change-password')}
         </Typography.Text>
 
         <ChangePasswordForm
@@ -417,7 +417,9 @@ const Users = ({
           </div>
         ))}
         {isEmpty(userData.teams) && (
-          <span className="tw-no-description ">No teams found</span>
+          <span className="tw-no-description ">
+            {t('message.no-team-found')}
+          </span>
         )}
       </Fragment>
     );
@@ -433,7 +435,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
             </div>
           }>
           <div className="tw-mb-4">{teamsElement}</div>
@@ -450,7 +452,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"

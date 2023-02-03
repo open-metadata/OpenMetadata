@@ -285,7 +285,7 @@ const GlossaryHeader = ({
         <Space className="flex-wrap" direction="horizontal">
           <div className="flex items-center">
             <Typography.Text className="text-grey-muted m-r-xs">
-              Owner:
+              {`${t('label.owner')}:`}
             </Typography.Text>
 
             {selectedData.owner && getEntityName(selectedData.owner) ? (
@@ -357,7 +357,7 @@ const GlossaryHeader = ({
             className="flex items-center tw-flex-wrap"
             data-testid="reviewer-card-container">
             <Typography.Text className="text-grey-muted m-r-xs">
-              Reviewer:
+              {`${t('label.reviewer')}:`}
             </Typography.Text>{' '}
             {selectedData.reviewers && selectedData.reviewers.length ? (
               <>

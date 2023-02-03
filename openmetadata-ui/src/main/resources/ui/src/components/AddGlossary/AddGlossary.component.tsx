@@ -227,7 +227,7 @@ const AddGlossary = ({
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
               <span className="w-form-label tw-mr-3">
-                {t('label.reviewer-plural')}:
+                {`${t('label.reviewer-plural')}:`}
               </span>
               <Button
                 data-testid="add-reviewers"
