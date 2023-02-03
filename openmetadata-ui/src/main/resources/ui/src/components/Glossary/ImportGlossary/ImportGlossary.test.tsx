@@ -71,7 +71,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('utils/RouterUtils', () => ({
-  getGlossaryPath: jest.fn().mockImplementation(() => 'glossary-path'),
+  getGlossaryPath: jest.fn().mockImplementation((fqn) => `/glossary/${fqn}`),
 }));
 
 jest.mock('utils/ToastUtils', () => ({
@@ -82,7 +82,7 @@ jest.mock('components/IngestionStepper/IngestionStepper.component', () =>
   jest.fn().mockReturnValue(<div data-testid="stepper">Stepper</div>)
 );
 
-describe('Import Glossary component should work properly', () => {
+describe('Import Glossary', () => {
   it('Should render the all components', async () => {
     render(<ImportGlossary glossaryName={glossaryName} />);
 
@@ -99,15 +99,22 @@ describe('Import Glossary component should work properly', () => {
     expect(uploadButton).toBeInTheDocument();
     expect(stepper).toBeInTheDocument();
     expect(cancelBtn).toBeInTheDocument();
+  });
+
+  it('Cancel button should work', async () => {
+    render(<ImportGlossary glossaryName={glossaryName} />);
+    const cancelBtn = await screen.findByTestId('cancel-button');
+
+    expect(cancelBtn).toBeInTheDocument();
 
     act(() => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(`/glossary/${glossaryName}`);
   });
 
-  it('Import functionality Should work flow should work properly', async () => {
+  it('Import should work for success csv file scenario', async () => {
     const file = new File([mockCsvContent], 'glossary-terms.csv', {
       type: 'text/plain',
     });
@@ -149,7 +156,8 @@ describe('Import Glossary component should work properly', () => {
       userEvent.click(previewButton);
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    // once successfully imported redirect to glossary page
+    expect(mockPush).toHaveBeenCalledWith(`/glossary/${glossaryName}`);
   });
 
   it('Import Should work for partial success', async () => {
@@ -199,7 +207,8 @@ describe('Import Glossary component should work properly', () => {
       userEvent.click(previewButton);
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    // once terms Partially imported redirect to glossary page
+    expect(mockPush).toHaveBeenCalledWith(`/glossary/${glossaryName}`);
   });
 
   it('Import Should not work for failure', async () => {
