@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -467,7 +467,7 @@ const TestSuitePipelineTab = () => {
                     }>
                     {deleteSelection.id === record.id ? (
                       deleteSelection.state === 'success' ? (
-                        <FontAwesomeIcon icon="check" />
+                        <CheckOutlined />
                       ) : (
                         <Loader size="small" type="default" />
                       )

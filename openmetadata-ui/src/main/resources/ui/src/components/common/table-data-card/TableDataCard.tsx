@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import {
   isNil,
   isString,
@@ -201,10 +200,7 @@ const TableDataCard: FunctionComponent<Props> = ({
               <div
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
                 data-testid="deleted">
-                <FontAwesomeIcon
-                  className="tw-mr-1"
-                  icon={faExclamationCircle}
-                />
+                <ExclamationCircleOutlined className="tw-mr-1" />
                 {t('label.deleted')}
               </div>
             </>

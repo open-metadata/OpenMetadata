@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
@@ -38,10 +38,11 @@ const MessageCard = ({ message }: { message: string }) => {
       onClick={() => setIsExpanded((pre) => !pre)}>
       <div className="tw-flex">
         <div className="tw-mr-3 tw-cursor-pointer">
-          <FontAwesomeIcon
-            className="tw-text-xs"
-            icon={isExpanded ? 'chevron-up' : 'chevron-down'}
-          />
+          {isExpanded ? (
+            <UpOutlined className="tw-text-xs" />
+          ) : (
+            <DownOutlined className="tw-text-xs" />
+          )}
         </div>
         {isExpanded ? (
           <div>

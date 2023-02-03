@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  CheckOutlined,
+  CloseOutlined,
+  EllipsisOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -970,14 +974,14 @@ const TeamDetailsV1 = ({
                 data-testid="cancelAssociatedTag"
                 type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+                <CloseOutlined />
               </Button>
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
                 data-testid="saveAssociatedTag"
                 type="primary"
                 onMouseDown={handleHeadingSave}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+                <CheckOutlined />
               </Button>
             </div>
           </div>
@@ -1088,9 +1092,9 @@ const TeamDetailsV1 = ({
                   className="rounded-4 w-6 manage-dropdown-button"
                   data-testid="teams-dropdown"
                   size="small">
-                  <FontAwesomeIcon
+                  <EllipsisOutlined
                     className="text-primary self-center manage-dropdown-icon"
-                    icon="ellipsis-vertical"
+                    rotate={90}
                   />
                 </Button>
               </Dropdown>

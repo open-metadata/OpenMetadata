@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ExclamationCircleOutlined, StarFilled } from '@ant-design/icons';
 import { Button, Popover, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -389,10 +388,7 @@ const EntityPageInfo = ({
               <div
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
                 data-testid="deleted-badge">
-                <FontAwesomeIcon
-                  className="tw-mr-1"
-                  icon={faExclamationCircle}
-                />
+                <ExclamationCircleOutlined className="tw-mr-1" />
                 {t('label.deleted')}
               </div>
             </>
@@ -430,17 +426,8 @@ const EntityPageInfo = ({
                 !deleted && followHandler?.();
               }}>
               <Space>
-                {isFollowing ? (
-                  <>
-                    <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
-                    {t('label.un-follow')}
-                  </>
-                ) : (
-                  <>
-                    <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
-                    {t('label.follow')}
-                  </>
-                )}
+                <StarFilled className="tw-text-xs" />
+                {isFollowing ? t('label.un-follow') : t('label.follow')}
                 <Popover content={getFollowers()} trigger="click">
                   <span
                     className={classNames(

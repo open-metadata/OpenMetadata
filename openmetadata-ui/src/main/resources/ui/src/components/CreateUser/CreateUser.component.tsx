@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -990,9 +990,7 @@ const CreateUser = ({
                   <Loader size="small" type="white" />
                 </Button>
               ) : saveState === 'success' ? (
-                <Button disabled type="primary">
-                  <FontAwesomeIcon icon="check" />
-                </Button>
+                <Button disabled icon={<CheckOutlined />} type="primary" />
               ) : (
                 <Button
                   data-testid="save-user"

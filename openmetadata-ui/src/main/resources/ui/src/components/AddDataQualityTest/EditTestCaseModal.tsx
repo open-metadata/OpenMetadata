@@ -69,7 +69,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
   const GenerateParamsField = useCallback(() => {
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
-      const name = selectedDefinition.parameterDefinition[0].name;
+      const name = selectedDefinition.parameterDefinition[0]?.name;
       if (name === 'sqlExpression') {
         return (
           <Form.Item
@@ -166,7 +166,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       (acc, curr) => ({
         ...acc,
         [curr.name || '']:
-          selectedDefinition?.parameterDefinition?.[0].dataType ===
+          selectedDefinition?.parameterDefinition?.[0]?.dataType ===
           TestDataType.Array
             ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
                 value: val,

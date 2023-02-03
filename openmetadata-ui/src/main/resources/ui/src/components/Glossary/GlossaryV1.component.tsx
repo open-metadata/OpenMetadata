@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { EllipsisOutlined } from '@ant-design/icons';
 import { Col, Dropdown, Row, Tooltip, Typography } from 'antd';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
@@ -340,7 +340,7 @@ const GlossaryV1 = ({
                 variant="outlined"
                 onClick={() => setShowActions(true)}>
                 <span>
-                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                  <EllipsisOutlined rotate={90} />
                 </span>
               </Button>
             </Tooltip>

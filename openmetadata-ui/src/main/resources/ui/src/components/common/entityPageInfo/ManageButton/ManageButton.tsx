@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { EllipsisOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
@@ -213,9 +213,9 @@ const ManageButton: FC<Props> = ({
           title="Manage"
           type="default"
           onClick={() => setShowActions(true)}>
-          <FontAwesomeIcon
+          <EllipsisOutlined
             className="tw-text-primary tw-self-center manage-dropdown-icon"
-            icon="ellipsis-vertical"
+            rotate={90}
           />
         </Button>
       </Dropdown>

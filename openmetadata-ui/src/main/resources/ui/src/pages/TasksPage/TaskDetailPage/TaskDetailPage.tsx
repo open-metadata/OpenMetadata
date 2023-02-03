@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
 import { Button, Card, Dropdown, Layout, MenuProps, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -602,25 +601,19 @@ const TaskDetailPage = () => {
                         />
                         <Button
                           className="tw-mx-1 tw-self-center ant-btn-primary-custom"
+                          icon={<CloseOutlined />}
                           size="small"
                           type="primary"
-                          onClick={() => setEditAssignee(false)}>
-                          <FontAwesomeIcon
-                            className="tw-w-3.5 tw-h-3.5"
-                            icon="times"
-                          />
-                        </Button>
+                          onClick={() => setEditAssignee(false)}
+                        />
                         <Button
                           className="tw-mx-1 tw-self-center ant-btn-primary-custom"
                           disabled={!assignees.length}
+                          icon={<CheckOutlined />}
                           size="small"
                           type="primary"
-                          onClick={onTaskUpdate}>
-                          <FontAwesomeIcon
-                            className="tw-w-3.5 tw-h-3.5"
-                            icon="check"
-                          />
-                        </Button>
+                          onClick={onTaskUpdate}
+                        />
                       </Fragment>
                     ) : (
                       <Fragment>
@@ -689,12 +682,7 @@ const TaskDetailPage = () => {
                           <Dropdown.Button
                             className="ant-btn-primary-dropdown"
                             data-testid="complete-task"
-                            icon={
-                              <FontAwesomeIcon
-                                className="tw-text-sm"
-                                icon={faChevronDown}
-                              />
-                            }
+                            icon={<DownOutlined />}
                             menu={{
                               items: TASK_ACTION_LIST,
                               selectable: true,
