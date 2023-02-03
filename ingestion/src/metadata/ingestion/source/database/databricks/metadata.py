@@ -167,6 +167,29 @@ def get_view_names(
     return views
 
 
+@reflection.cache
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
+    """
+    Returns comment of table
+    """
+    cursor = connection.execute(
+        "DESCRIBE TABLE EXTENDED {schema_name}.{table_name}".format(
+            schema_name=schema_name, table_name=table_name
+        )
+    )
+    try:
+        for result in list(cursor):
+            data = result.values()
+            if data[0] and data[0].strip() == "Comment":
+                return {"text": data[1] if data and data[1] else None}
+    except Exception:
+        return {"text": None}
+    return {"text": None}
+
+
+DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
