@@ -170,7 +170,8 @@ class MetadataRestSink(Sink[Entity]):
             )
         else:
             logger.warning(
-                f"Could not find any entity by Table FQN [{datamodel_link.fqn}] when adding DBT models."
+                f"The table [{datamodel_link.fqn.__root__}] from the manifest file is not found in OM. "
+                f"Please check if the table is ingestion"
             )
 
     def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
