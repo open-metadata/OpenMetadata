@@ -7,6 +7,16 @@ slug: /deployment/security/amazon-cognito
 
 Follow the sections in this guide to set up Amazon Cognito SSO.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Amazon Cognito SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is
+  enabled.
+
+</Important>
+
 ## Create Server Credentials
 
 ### Step 1: Login to AWS Portal
@@ -86,13 +96,3 @@ After the applying these steps, you can update the configuration of your deploym
 ## Configure Ingestion
 
 The ingestion can be configured by [Enabling JWT Tokens](/deployment/security/enable-jwt-tokens).
-
-<Important>
-
-Security requirements for your **production** environment:
-- **DELETE** de admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth) 
-enabled before configuring the authentication with Amazon Cognito SSO.
-- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is
-enabled.
-
-</Important>
