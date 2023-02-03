@@ -319,6 +319,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains(
         'has been created successfully. This will be picked up in the next run.'
       )
+      .scrollIntoView()
       .should('be.visible');
     cy.get('[data-testid="view-service-button"]').scrollIntoView().click();
     cy.get('.ant-table-row').should(
