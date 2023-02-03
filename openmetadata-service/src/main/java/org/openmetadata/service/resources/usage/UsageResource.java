@@ -115,7 +115,7 @@ public class UsageResource {
             responseCode = "200",
             description = "Entity usage",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
       })
   public EntityUsage getByName(
       @Context UriInfo uriInfo,

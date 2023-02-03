@@ -97,9 +97,7 @@ public final class CsvUtil {
   }
 
   public static List<String> addField(List<String> record, Boolean field) {
-    if (field != null) {
-      record.add(field.toString());
-    }
+    record.add(field == null ? "" : field.toString());
     return record;
   }
 

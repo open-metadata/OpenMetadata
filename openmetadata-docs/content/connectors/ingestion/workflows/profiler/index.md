@@ -102,6 +102,8 @@ Use a query to sample data for the profiler. This will overwrite any profle samp
 **Enable Column Profile**
 This setting allows user to exclude or include specific columns and metrics from the profiler.
 
+*Note: for Google BigQuery tables partitioned on timestamp/datetime column type, month and year interval are not supported. You will need to set the `Interval Unit` to `DAY` or `HOUR`.*
+
 **Enable Partition**
 If your table includes a timestamp, date or datetime column type you can enable partitionning. If enabled, the profiler will fetch the last `<interval>` `<interval unit>` of data to profile the table. Note that if "profile sample" is set, this configuration will be used against the partitioned data and not the whole table.
 - `Column Name`: this is the name of the column that will be used as the partition field

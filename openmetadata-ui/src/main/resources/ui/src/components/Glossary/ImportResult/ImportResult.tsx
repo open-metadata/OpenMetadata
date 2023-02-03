@@ -12,7 +12,8 @@
  */
 import { Col, Row, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import classNames from 'classnames';
+import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
+import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
 import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -36,29 +37,33 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        render: (status: GlossaryCSVRecord['status']) => {
+        fixed: true,
+        render: (
+          status: GlossaryCSVRecord['status'],
+          record: GlossaryCSVRecord
+        ) => {
           return (
-            <Typography.Text
-              className={classNames(
-                {
-                  'text-success': status === Status.Success,
-                },
-                { 'text-failure': status === Status.Failure }
-              )}>
-              {status}
-            </Typography.Text>
-          );
-        },
-      },
-      {
-        title: t('label.detail-plural'),
-        dataIndex: 'details',
-        key: 'details',
-        render: (details: GlossaryCSVRecord['details']) => {
-          return (
-            <Typography.Text>
-              {isEmpty(details) ? '--' : details}
-            </Typography.Text>
+            <Space align="start" data-testid="status-container">
+              {status === Status.Success && (
+                <SuccessBadgeIcon
+                  className="m-t-xss"
+                  data-testid="success-badge"
+                  height={16}
+                  width={16}
+                />
+              )}
+              {status === Status.Failure && (
+                <>
+                  <FailBadgeIcon
+                    className="m-t-xss"
+                    data-testid="failure-badge"
+                    height={16}
+                    width={16}
+                  />
+                  {record.details}
+                </>
+              )}
+            </Space>
           );
         },
       },
@@ -66,13 +71,12 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         title: t('label.parent'),
         dataIndex: 'parent',
         key: 'parent',
+        fixed: true,
         render: (parent: GlossaryCSVRecord['parent']) => {
           return (
-            <Typography.Text
-              ellipsis={{ tooltip: parent }}
-              style={{ maxWidth: 100 }}>
+            <Typography.Paragraph style={{ minWidth: 150 }}>
               {isEmpty(parent) ? '--' : parent}
-            </Typography.Text>
+            </Typography.Paragraph>
           );
         },
       },
@@ -80,8 +84,13 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         title: t('label.name'),
         dataIndex: 'name*',
         key: 'name',
+        fixed: true,
         render: (name: GlossaryCSVRecord['name*']) => {
-          return <Typography.Text>{name}</Typography.Text>;
+          return (
+            <Typography.Paragraph style={{ minWidth: 150 }}>
+              {name}
+            </Typography.Paragraph>
+          );
         },
       },
       {
@@ -90,18 +99,18 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         key: 'displayName',
         render: (displayName: GlossaryCSVRecord['displayName']) => {
           return (
-            <Typography.Text>
+            <Typography.Paragraph style={{ minWidth: 150 }}>
               {isEmpty(displayName) ? '--' : displayName}
-            </Typography.Text>
+            </Typography.Paragraph>
           );
         },
       },
       {
         title: t('label.description'),
-        dataIndex: 'description*',
+        dataIndex: 'description',
         key: 'description',
         width: 300,
-        render: (description: GlossaryCSVRecord['description*']) => {
+        render: (description: GlossaryCSVRecord['description']) => {
           return (
             <Typography.Paragraph
               ellipsis={{
@@ -109,7 +118,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
               }}
               style={{ width: 300 }}
               title={description}>
-              {description}
+              {isEmpty(description) ? '--' : description}
             </Typography.Paragraph>
           );
         },
@@ -119,12 +128,12 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'synonyms',
         key: 'synonyms',
         render: (synonyms: GlossaryCSVRecord['synonyms']) => {
+          const value = synonyms?.split(';').join(', ');
+
           return (
-            <Typography.Text
-              ellipsis={{ tooltip: synonyms }}
-              style={{ maxWidth: 100 }}>
-              {isEmpty(synonyms) ? '--' : synonyms}
-            </Typography.Text>
+            <Typography.Paragraph style={{ minWidth: 150 }}>
+              {isEmpty(synonyms) ? '--' : value}
+            </Typography.Paragraph>
           );
         },
       },
@@ -133,12 +142,24 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'relatedTerms',
         key: 'relatedTerms',
         render: (relatedTerms: GlossaryCSVRecord['relatedTerms']) => {
+          const value = relatedTerms?.split(';').join(', ');
+
           return (
-            <Typography.Text
-              ellipsis={{ tooltip: relatedTerms }}
-              style={{ maxWidth: 100 }}>
-              {isEmpty(relatedTerms) ? '--' : relatedTerms}
-            </Typography.Text>
+            <Typography.Paragraph style={{ minWidth: 150 }}>
+              {isEmpty(relatedTerms) ? '--' : value}
+            </Typography.Paragraph>
+          );
+        },
+      },
+      {
+        title: t('label.reference-plural'),
+        dataIndex: 'references',
+        key: 'relatedTerms',
+        render: (references: GlossaryCSVRecord['references']) => {
+          return (
+            <Typography.Paragraph style={{ minWidth: 150, maxWidth: 300 }}>
+              {isEmpty(references) ? '--' : references}
+            </Typography.Paragraph>
           );
         },
       },
@@ -147,12 +168,12 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         dataIndex: 'tags',
         key: 'tags',
         render: (tags: GlossaryCSVRecord['tags']) => {
+          const value = tags?.split(';').join(', ');
+
           return (
-            <Typography.Text
-              ellipsis={{ tooltip: tags }}
-              style={{ maxWidth: 100 }}>
-              {isEmpty(tags) ? '--' : tags}
-            </Typography.Text>
+            <Typography.Paragraph style={{ minWidth: 150 }}>
+              {isEmpty(tags) ? '--' : value}
+            </Typography.Paragraph>
           );
         },
       },
@@ -166,7 +187,12 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         worker: true,
         complete: (results) => {
           // results.data is returning data with unknown type
-          setParsedRecords(parseCSV(results.data as string[][]));
+          setParsedRecords(
+            parseCSV(results.data as string[][]).map((value) => ({
+              ...value,
+              key: value['name*'],
+            }))
+          );
         },
       });
     }
@@ -211,11 +237,13 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
       <Col span={24}>
         <Table
           bordered
+          className="vertical-top-align-td"
           columns={columns}
           data-testid="import-result-table"
           dataSource={parsedRecords}
           pagination={false}
           rowKey="name"
+          scroll={{ x: true }}
           size="small"
         />
       </Col>

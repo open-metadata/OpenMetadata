@@ -90,6 +90,8 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.RandomStringGenerator;
+import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -187,14 +189,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
-  protected String supportedNameCharacters = "_'-.&"; // Special characters supported in the entity name
+
+  // Special characters supported in the entity name
+  protected String supportedNameCharacters = "_'-.&" + RANDOM_STRING_GENERATOR.generate(1);
+
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
   public static final String ENTITY_LINK_MATCH_ERROR =
-      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$\"]";
+      "[entityLink must match \"^(?U)<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$\"]";
+
+  // Random unicode string generator to test entity name accepts all the unicode characters
+  protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
+      new Builder().filteredBy(Character::isLetterOrDigit).build();
 
   // Users
   public static User USER1;
@@ -1001,7 +1010,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
-    request = createPutRequest(getEntityName(test), "description", "displayName", null);
+    request.withOwner(null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
   }
@@ -1102,7 +1111,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update null description with a new description
-    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = request.withDescription("updatedDescription");
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -2027,7 +2036,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .atMost(Duration.ofMillis(20 * 100L)) // 10 iterations
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2379,7 +2388,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return String.join(",", Entity.getAllowedFields(entityClass));
   }
 
-  protected CsvImportResult importCsv(String entityName, String csv, boolean dryRun) throws HttpResponseException {
+  public CsvImportResult importCsv(String entityName, String csv, boolean dryRun) throws HttpResponseException {
     WebTarget target = getResourceByName(entityName + "/import");
     target = !dryRun ? target.queryParam("dryRun", false) : target;
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);

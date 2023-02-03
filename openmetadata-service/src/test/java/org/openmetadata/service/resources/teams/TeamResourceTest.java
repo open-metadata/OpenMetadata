@@ -74,6 +74,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -752,6 +753,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     String record3 = getRecord(3, GROUP, team.getName(), null, true, null, (List<Policy>) null);
     List<String> newRecords = listOf(record3);
     testImportExport(team.getName(), TeamCsv.HEADERS, createRecords, updateRecords, newRecords);
+
+    // Import to team111 a user with parent team1 - since team1 is not under team111 hierarchy, import should fail
+    String record4 = getRecord(3, GROUP, "x1", null, true, null, (List<Policy>) null);
+    String csv = EntityCsvTest.createCsv(TeamCsv.HEADERS, listOf(record4), null);
+    CsvImportResult result = importCsv("x111", csv, false);
+    String error = TeamCsv.invalidTeam(4, "x111", "x3", "x1");
+    assertTrue(result.getImportResultsCsv().contains(error));
   }
 
   private static void validateTeam(

@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  Button as ButtonAntd,
+  CheckOutlined,
+  CloseOutlined,
+  EllipsisOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
   Col,
   Dropdown,
   Modal,
@@ -37,6 +41,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
+import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -80,7 +85,6 @@ import {
   getDeleteMessagePostFix,
 } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
@@ -248,16 +252,15 @@ const TeamDetailsV1 = ({
               button ? (
                 button
               ) : (
-                <ButtonAntd
+                <Button
                   ghost
                   data-testid={datatestid}
                   disabled={disabled}
-                  size="small"
                   title={title}
                   type="primary"
                   onClick={onClick}>
                   {label}
-                </ButtonAntd>
+                </Button>
               )
             }
             description={description}
@@ -290,7 +293,7 @@ const TeamDetailsV1 = ({
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <ButtonAntd
+              <Button
                 data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
                 icon={
@@ -822,17 +825,14 @@ const TeamDetailsV1 = ({
               {currentTeamUsers.length > 0 && isActionAllowed() && (
                 <div>
                   <Button
-                    className="tw-h-8 tw-px-2"
                     data-testid="add-user"
                     disabled={!entityPermissions.EditAll}
-                    size="small"
-                    theme="primary"
                     title={
                       entityPermissions.EditAll
                         ? t('label.add-entity', { entity: t('label.user') })
                         : t('message.no-permission-for-action')
                     }
-                    variant="contained"
+                    type="primary"
                     onClick={() => {
                       handleAddUser(true);
                     }}>
@@ -891,9 +891,9 @@ const TeamDetailsV1 = ({
         ),
         button: (
           <Link to="/explore">
-            <ButtonAntd ghost size="small" type="primary">
+            <Button ghost type="primary">
               {t('label.explore')}
-            </ButtonAntd>
+            </Button>
           </Link>
         ),
       });
@@ -938,23 +938,15 @@ const TeamDetailsV1 = ({
   const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
-        <Button
-          className="tw-h-8 tw-px-2"
-          data-testid="join-teams"
-          size="small"
-          theme="primary"
-          variant="contained"
-          onClick={joinTeam}>
+        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
           {t('label.join-team')}
         </Button>
       ) : null
     ) : (
       <Button
-        className="tw-h-8 tw-rounded"
+        ghost
         data-testid="leave-team-button"
-        size="small"
-        theme="primary"
-        variant="outlined"
+        type="primary"
         onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
         {t('label.leave-team')}
       </Button>
@@ -980,20 +972,16 @@ const TeamDetailsV1 = ({
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                 data-testid="cancelAssociatedTag"
-                size="custom"
-                theme="primary"
-                variant="contained"
+                type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+                <CloseOutlined />
               </Button>
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
                 data-testid="saveAssociatedTag"
-                size="custom"
-                theme="primary"
-                variant="contained"
+                type="primary"
                 onMouseDown={handleHeadingSave}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+                <CheckOutlined />
               </Button>
             </div>
           </div>
@@ -1014,8 +1002,8 @@ const TeamDetailsV1 = ({
                         })
                       : t('message.no-permission-for-action')
                   }>
-                  <button
-                    className="tw-ml-2 focus:tw-outline-none"
+                  <Button
+                    className="m-l-xss p-0"
                     data-testid="edit-synonyms"
                     disabled={
                       !(
@@ -1023,14 +1011,11 @@ const TeamDetailsV1 = ({
                         entityPermissions.EditAll
                       )
                     }
-                    onClick={() => setIsHeadingEditing(true)}>
-                    <SVGIcons
-                      alt={t('label.edit')}
-                      className="tw-mb-1"
-                      icon="icon-edit"
-                      width="16px"
-                    />
-                  </button>
+                    icon={<IconEdit height={16} width={16} />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsHeadingEditing(true)}
+                  />
                 </Tooltip>
               </div>
             )}
@@ -1103,15 +1088,15 @@ const TeamDetailsV1 = ({
                 placement="bottomRight"
                 trigger={['click']}
                 onOpenChange={setShowActions}>
-                <ButtonAntd
+                <Button
                   className="rounded-4 w-6 manage-dropdown-button"
                   data-testid="teams-dropdown"
                   size="small">
-                  <FontAwesomeIcon
+                  <EllipsisOutlined
                     className="text-primary self-center manage-dropdown-icon"
-                    icon="ellipsis-vertical"
+                    rotate={90}
                   />
-                </ButtonAntd>
+                </Button>
               </Dropdown>
             )}
           </div>
@@ -1199,7 +1184,7 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
-                        <ButtonAntd
+                        <Button
                           data-testid="add-team"
                           disabled={!createTeamPermission}
                           title={
@@ -1210,7 +1195,7 @@ const TeamDetailsV1 = ({
                           type="primary"
                           onClick={() => handleAddTeam(true)}>
                           {addTeam}
-                        </ButtonAntd>
+                        </Button>
                       </Space>
                     </Col>
                     <Col span={24}>
@@ -1248,7 +1233,7 @@ const TeamDetailsV1 = ({
                   <Space
                     className="tw-w-full roles-and-policy"
                     direction="vertical">
-                    <ButtonAntd
+                    <Button
                       data-testid="add-role"
                       disabled={!entityPermissions.EditAll}
                       title={
@@ -1264,7 +1249,7 @@ const TeamDetailsV1 = ({
                         })
                       }>
                       {addRole}
-                    </ButtonAntd>
+                    </Button>
                     <ListEntities
                       hasAccess={entityPermissions.EditAll}
                       list={currentTeam.defaultRoles || []}
@@ -1296,7 +1281,7 @@ const TeamDetailsV1 = ({
                   <Space
                     className="tw-w-full roles-and-policy"
                     direction="vertical">
-                    <ButtonAntd
+                    <Button
                       data-testid="add-policy"
                       disabled={!entityPermissions.EditAll}
                       title={
@@ -1312,7 +1297,7 @@ const TeamDetailsV1 = ({
                         })
                       }>
                       {addPolicy}
-                    </ButtonAntd>
+                    </Button>
                     <ListEntities
                       hasAccess={entityPermissions.EditAll}
                       list={currentTeam.policies || []}
@@ -1331,16 +1316,15 @@ const TeamDetailsV1 = ({
           buttons={
             <div className="tw-text-lg tw-text-center">
               <Button
+                ghost
                 data-testid="add-team"
                 disabled={!createTeamPermission}
-                size="small"
-                theme="primary"
                 title={
                   createTeamPermission
                     ? addTeam
                     : t('message.no-permission-for-action')
                 }
-                variant="outlined"
+                type="primary"
                 onClick={() => handleAddTeam(true)}>
                 {t('label.add-new-entity', { entity: t('label.team') })}
               </Button>
