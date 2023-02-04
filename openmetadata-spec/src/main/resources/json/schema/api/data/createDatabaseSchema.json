@@ -25,8 +25,8 @@
       "$ref": "../../type/entityReference.json"
     },
     "database": {
-      "description": "Link to the database where this schema is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the database fully qualified name where this schema is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["name", "database"],

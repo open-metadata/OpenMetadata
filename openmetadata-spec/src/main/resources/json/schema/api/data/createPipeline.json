@@ -57,8 +57,8 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the pipeline service where this pipeline is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the pipeline service fqn where this pipeline is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",

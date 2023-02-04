@@ -8,13 +8,9 @@
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
-    "glossary": {
-      "description": "Reference to the glossary that this term is part of.",
-      "$ref": "../../type/entityReference.json"
-    },
     "parent": {
-      "description": "Reference to the parent glossary term. When null, the term is at the root of the glossary.",
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of  the parent glossary or glossary term.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "name": {
       "description": "Preferred name for the glossary term.",
@@ -36,8 +32,11 @@
       }
     },
     "relatedTerms": {
-      "description": "Other glossary terms that are related to this glossary term.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "description": "Other array of glossary term fully qualified names that are related to this glossary term.",
+      "type" : "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
@@ -48,7 +47,10 @@
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "type" : "array",
+      "items" : {
+        "$ref" : "../../entity/teams/user.json#/definitions/entityName"
+      }
     },
     "owner": {
       "description": "Owner of this glossary term.",

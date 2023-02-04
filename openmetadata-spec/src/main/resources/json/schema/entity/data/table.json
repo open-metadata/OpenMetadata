@@ -407,7 +407,7 @@
           "type": "number"
         },
         "valuesPercentage": {
-          "description": "Percentage of values in this column with respect to rowcount.",
+          "description": "Percentage of values in this column with respect to row count.",
           "type": "number"
         },
         "validCount": {

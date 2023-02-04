@@ -24,7 +24,7 @@
       "description": "User references of the reviewers for this glossary.",
       "type": "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
+        "$ref": "../../entity/teams/user.json#/definitions/entityName"
       }
     },
     "owner": {

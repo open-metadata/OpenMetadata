@@ -39,8 +39,8 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the pipeline service where this location is used",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the pipeline service fqn where this location is used",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["name", "service"],
