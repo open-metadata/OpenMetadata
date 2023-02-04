@@ -10,7 +10,7 @@ In this section we comment common issues that the user can face when enabling SS
 ## Bot using JWT as authentication mechanism
 
 After enabling SSL on the OM server, we have to update also the public keys URL for the validation of the JWT tokens by 
-updating to the secured URL: `https://{server_domain}:{port}/api/v1/config/jwks`.
+updating to the secured URL: `https://{server_domain}:{port}/api/v1/system/config/jwks`.
 
 In case we are using a self-signed certificate, it will fail with the error below:
 

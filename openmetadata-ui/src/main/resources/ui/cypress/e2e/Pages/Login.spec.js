@@ -29,7 +29,7 @@ const invalidPassword = 'testUsers@123';
 
 describe('Login flow should work properly', () => {
   it('Signup and Login with signed up credentials', () => {
-    interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
     // Click on create account button
@@ -101,7 +101,7 @@ describe('Login flow should work properly', () => {
   });
 
   it('Forgot password and login with new password', () => {
-    interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
     // Click on Forgot button

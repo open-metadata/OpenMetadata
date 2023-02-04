@@ -35,7 +35,7 @@ The following configuration controls the auth mechanism for OpenMetadata. Update
 ```yaml
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
 ```
@@ -43,7 +43,7 @@ authenticationConfiguration:
 For the Basic auth we need to set:
  
 -  `provider`: basic
--  `publicKeyUrls`: {http|https}://{your_domain}:{port}}/api/v1/config/jwks
+-  `publicKeyUrls`: {http|https}://{your_domain}:{port}}/api/v1/system/config/jwks
 -  `authority`: {your_domain}
 -  `enableSelfSignup`: This flag indicates if users can come and signup by themselves on the OM
 

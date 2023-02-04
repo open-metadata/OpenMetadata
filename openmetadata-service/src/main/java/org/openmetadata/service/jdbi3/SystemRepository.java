@@ -1,16 +1,3 @@
-/*
- *  Copyright 2021 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
 package org.openmetadata.service.jdbi3;
 
 import java.util.List;
@@ -19,24 +6,35 @@ import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.util.EntitiesCount;
+import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class SettingsRepository {
+public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
-  private final CollectionDAO dao;
+  private final SystemDAO dao;
 
-  public SettingsRepository(CollectionDAO dao) {
+  public SystemRepository(SystemDAO dao) {
     this.dao = dao;
+  }
+
+  public EntitiesCount getAllEntitiesCount(ListFilter filter) {
+    return dao.getAggregatedEntitiesCount(filter.getCondition());
+  }
+
+  public ServicesCount getAllServicesCount(ListFilter filter) {
+    return dao.getAggregatedServicesCount(filter.getCondition());
   }
 
   public ResultList<Settings> listAllConfigs() {
     List<Settings> settingsList = null;
     try {
-      settingsList = dao.getSettingsDAO().getAllConfig();
+      settingsList = dao.getAllConfig();
     } catch (Exception ex) {
       LOG.error("Error while trying fetch all Settings " + ex.getMessage());
     }
@@ -49,7 +47,7 @@ public class SettingsRepository {
 
   public Settings getConfigWithKey(String key) {
     try {
-      return dao.getSettingsDAO().getConfigWithKey(key);
+      return dao.getConfigWithKey(key);
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings " + ex.getMessage());
     }
@@ -97,8 +95,7 @@ public class SettingsRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      dao.getSettingsDAO()
-          .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
+      dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }

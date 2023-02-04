@@ -410,16 +410,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .withOwner(reduceEntityReference(owner));
   }
 
-  public final K createPutRequest(String name, String description, String displayName, EntityReference owner) {
-    if (!supportsEmptyDescription && description == null) {
-      throw new IllegalArgumentException("Entity " + entityType + " does not support empty description");
-    }
-    return createPutRequest(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(reduceEntityReference(owner));
-  }
-
   public abstract K createRequest(String name);
 
   public K createPutRequest(String name) {
