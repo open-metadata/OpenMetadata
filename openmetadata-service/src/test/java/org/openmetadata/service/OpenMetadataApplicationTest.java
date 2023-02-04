@@ -51,7 +51,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   @BeforeAll
-  public void createApplication() throws Exception {
+  public static void createApplication() throws Exception {
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
     final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
@@ -94,7 +94,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   @AfterAll
-  public void stopApplication() throws Exception {
+  public static void stopApplication() throws Exception {
     // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
     // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
     if (APP != null) {
@@ -106,7 +106,7 @@ public abstract class OpenMetadataApplicationTest {
     RoleCache.cleanUp();
   }
 
-  public Client getClient() {
+  public static Client getClient() {
     return new JerseyClientBuilder()
         .register(new JacksonFeature(APP.getObjectMapper()))
         .property(ClientProperties.CONNECT_TIMEOUT, 0)
@@ -115,11 +115,11 @@ public abstract class OpenMetadataApplicationTest {
         .build();
   }
 
-  public WebTarget getResource(String collection) {
+  public static WebTarget getResource(String collection) {
     return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
   }
 
-  public WebTarget getConfigResource(String resource) {
+  public static WebTarget getConfigResource(String resource) {
     return getClient().target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
   }
 }
