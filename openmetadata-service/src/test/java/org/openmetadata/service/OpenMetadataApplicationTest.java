@@ -118,6 +118,6 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return getClient().target(format("http://localhost:%s/api/v1/config/%s", APP.getLocalPort(), resource));
+    return getClient().target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
   }
 }

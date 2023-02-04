@@ -15,7 +15,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
 | global.authentication.provider | string | `basic` |
-| global.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/config/jwks]` |
+| global.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/system/config/jwks]` |
 | global.authentication.authority | string | `https://accounts.google.com` |
 | global.authentication.clientId | string | `Empty String` |
 | global.authentication.callbackUrl | string | `Empty String` |
