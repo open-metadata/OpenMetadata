@@ -13,6 +13,11 @@
 
 /* eslint-disable max-len */
 
+import entitySpclCharImg from '../../../assets/img/EntitySplChar.png';
+import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
+import ingestionFramework from '../../../assets/img/IngestionFramework.png';
+import tagCategoryImg from '../../../assets/img/TagCategory.png';
+
 export const LATEST_VERSION_ID = 12;
 
 export const COOKIE_VERSION = 'VERSION_0_13_2'; // To be changed with each release.
@@ -640,17 +645,56 @@ export const WHATS_NEW = [
     description: 'Released on 30 January 2023.',
     features: [
       {
-        title: 'Glossary Export',
-        description: 'You can now export your Glossary data as a CSV file.',
+        title: 'Glossary Import & Export',
+        description:
+          'You can now export your Glossary data as a CSV file. you can now bulk upload terms to a Glossary by adding their details in a CSV file.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/ImlcPNFotec',
+        path: 'https://www.youtube.com/embed/LSJBJCaj01g',
       },
       {
-        title: 'Glossary Bulk Upload',
+        title: 'New Glossary UI',
         description:
-          'you can now bulk upload terms to a Glossary by adding their details in a CSV file.',
+          'Moved from a tree view in the left panel to an easy to navigate list of the terms sorted alphabetically. The term list shows the tags and descriptions in the cards.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/DnFXkg7SgIA',
+        path: 'https://www.youtube.com/embed/Y0MLZgG-Ibs',
+      },
+      {
+        title: 'Improved SQL Lineage',
+        description:
+          'We’ve collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities to improve the parsing capabilities of `sqllineage`.',
+        isImage: true,
+        path: sqlLineageImg,
+      },
+      {
+        title: 'Unified Tag Category API',
+        description:
+          'Renamed Tag Categories to Classification, a more widely used term. Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).',
+        isImage: true,
+        path: tagCategoryImg,
+      },
+      {
+        title: 'Ingestion Framework improvements',
+        description: `Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
+          - The Oracle connector now ships with the Thick mode enabled.
+          - AWS QuickSight fixes
+          - DB2 constraints and profiler improvements
+          - Added support for Postgres Foreign Tables
+          - Added support for Datalake profiler row-based sampling
+          `,
+        isImage: true,
+        path: ingestionFramework,
+      },
+      {
+        title: 'Entity Name',
+        description: `To better manage and harmonize \`entityName\` value and allow users to form better expectations around these values the team introduced an enforcement of the \`entityName\` format using regex pattern. You can find more information about this in the [docs](https://docs.open-metadata.org/deployment/upgrade).`,
+        isImage: true,
+        path: entitySpclCharImg,
+      },
+      {
+        title: 'Chrome Extension',
+        description: `Announcing the beta version of OpenMetadata Chrome extension.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/5kfWbbfVEzU',
       },
       {
         title: 'Mutually Exclusive Tags',

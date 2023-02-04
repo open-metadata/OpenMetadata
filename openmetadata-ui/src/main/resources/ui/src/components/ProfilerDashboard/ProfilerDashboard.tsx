@@ -25,6 +25,8 @@ import {
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { t } from 'i18next';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -71,7 +73,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayout from '../containers/PageLayout';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -454,7 +455,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   }, [table]);
 
   return (
-    <PageLayout>
+    <PageLayoutV1>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
@@ -547,7 +548,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                   }
                   type="primary"
                   onClick={handleAddTestClick}>
-                  Add Test
+                  {t('label.add-entity', { entity: t('label.test') })}
                 </Button>
               </Tooltip>
             </Space>
@@ -575,7 +576,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           </Col>
         )}
       </Row>
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

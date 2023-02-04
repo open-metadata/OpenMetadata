@@ -16,6 +16,15 @@ supports service accounts that the SSO provider supports. Please read the [docs]
 In some cases, either creating a service account is not feasible, or the SSO provider itself doesn't support the service account. To address
 this gap, we shipped JWT token generation and authentication within OpenMetadata.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you have [Basic Authentication](/deployment/security/basic-auth) enabled.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Private / Public key 
 
 ### For local/testing deployment
@@ -69,11 +78,11 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 ```
 
-add `http://{your domain}:8585/api/v1/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
+add `http://{your domain}:8585/api/v1/system/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
 your SSO and JWTToken auth verification will work. 
 
 ```yaml
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, http://{your domain}:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, http://{your domain}:8585/api/v1/system/config/jwks]}
 ```
 
 Once you configure the above settings, restart OpenMetadata server .

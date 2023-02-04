@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -448,7 +448,7 @@ const TestSuitePipelineTab = () => {
                         )
                       );
                     }}>
-                    Edit
+                    {t('label.edit')}
                   </Button>
                 </Tooltip>
                 {separator}
@@ -467,7 +467,7 @@ const TestSuitePipelineTab = () => {
                     }>
                     {deleteSelection.id === record.id ? (
                       deleteSelection.state === 'success' ? (
-                        <FontAwesomeIcon icon="check" />
+                        <CheckOutlined />
                       ) : (
                         <Loader size="small" type="default" />
                       )
@@ -491,7 +491,7 @@ const TestSuitePipelineTab = () => {
                       setIsKillModalOpen(true);
                       setSelectedPipeline(record);
                     }}>
-                    Kill
+                    {t('label.kill')}
                   </Button>
                 </Tooltip>
                 {separator}
@@ -513,7 +513,7 @@ const TestSuitePipelineTab = () => {
                     onClick={() => {
                       setSelectedPipeline(record);
                     }}>
-                    Logs
+                    {t('label.log-plural')}
                   </Button>
                 </Tooltip>
               </div>

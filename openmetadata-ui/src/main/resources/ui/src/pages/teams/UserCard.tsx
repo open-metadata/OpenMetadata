@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CloseOutlined } from '@ant-design/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
@@ -244,10 +244,7 @@ const UserCard = ({
                 disabled={!editPermission}
                 type="text"
                 onClick={() => onRemove?.(item.id as string)}>
-                <FontAwesomeIcon
-                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
-                  icon="remove"
-                />
+                <CloseOutlined className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100" />
               </Button>
             </Tooltip>
           </div>

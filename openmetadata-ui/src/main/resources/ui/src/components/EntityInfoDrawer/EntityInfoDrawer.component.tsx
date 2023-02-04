@@ -15,6 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Divider, Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
@@ -209,7 +210,7 @@ const EntityInfoDrawer = ({
           </section>
           {entityInfo.length > 0 && <Divider />}
           <section className="tw-mt-1">
-            <span className="tw-text-grey-muted">Tags</span>
+            <span className="tw-text-grey-muted">{t('label.tag-plural')}</span>
             <div className="tw-flex tw-flex-wrap tw-pt-1.5">
               {getEntityTags(selectedNode.type, entityDetail).length > 0 ? (
                 <TagsViewer
@@ -217,18 +218,22 @@ const EntityInfoDrawer = ({
                   tags={getEntityTags(selectedNode.type, entityDetail)}
                 />
               ) : (
-                <p className="tw-text-xs tw-text-grey-muted">No Tags added</p>
+                <p className="tw-text-xs tw-text-grey-muted">
+                  {t('label.no-tags-added')}
+                </p>
               )}
             </div>
           </section>
           <Divider />
           <section className="tw-mt-1">
-            <span className="tw-text-grey-muted">Description</span>
+            <span className="tw-text-grey-muted">{t('label.description')}</span>
             <div>
               {entityDetail.description?.trim() ? (
                 <RichTextEditorPreviewer markdown={entityDetail.description} />
               ) : (
-                <p className="tw-text-xs tw-text-grey-muted">No description</p>
+                <p className="tw-text-xs tw-text-grey-muted">
+                  {t('label.no-description')}
+                </p>
               )}
             </div>
           </section>

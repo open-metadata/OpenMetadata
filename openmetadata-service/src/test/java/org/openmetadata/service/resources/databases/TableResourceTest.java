@@ -146,7 +146,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
-    supportedNameCharacters = "_'- .()$";
+    supportedNameCharacters = "_'- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {

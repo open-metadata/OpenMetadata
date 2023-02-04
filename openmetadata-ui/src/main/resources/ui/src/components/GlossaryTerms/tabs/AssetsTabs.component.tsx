@@ -12,6 +12,7 @@
  */
 
 import Loader from 'components/Loader/Loader';
+import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
 import React from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
@@ -68,7 +69,7 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>No assets available.</ErrorPlaceHolder>
+        <ErrorPlaceHolder>{t('message.no-asset-available')}</ErrorPlaceHolder>
       )}
     </div>
   );

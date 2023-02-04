@@ -404,23 +404,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   />
                 )}
 
-                <Tooltip
-                  title={
+                <Link
+                  to={
                     editTest
-                      ? t('label.add-entity', {
-                          entity: t('label.test'),
-                        })
-                      : t('message.no-permission-for-action')
+                      ? getAddDataQualityTableTestPath(
+                          ProfilerDashboardType.TABLE,
+                          `${table?.fullyQualifiedName}`
+                        )
+                      : '#'
                   }>
-                  <Link
-                    to={
-                      editTest
-                        ? getAddDataQualityTableTestPath(
-                            ProfilerDashboardType.TABLE,
-                            `${table?.fullyQualifiedName}`
-                          )
-                        : '#'
-                    }>
+                  <Tooltip
+                    title={!editTest && t('message.no-permission-for-action')}>
                     <Button
                       className="rounded-4"
                       data-testid="profiler-add-table-test-btn"
@@ -430,10 +424,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                         entity: t('label.test'),
                       })}
                     </Button>
-                  </Link>
-                </Tooltip>
+                  </Tooltip>
+                </Link>
 
                 <Tooltip
+                  placement="topRight"
                   title={
                     editTest
                       ? t('label.setting-plural')
@@ -466,7 +461,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     pathname:
                       'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
                   }}>
-                  {t('label.here-lowercase')}.
+                  {`${t('label.here-lowercase')}.`}
                 </Link>
               </p>
             </div>

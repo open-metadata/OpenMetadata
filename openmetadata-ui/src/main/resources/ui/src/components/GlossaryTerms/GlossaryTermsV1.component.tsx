@@ -216,11 +216,13 @@ const GlossaryTermsV1 = ({
       setReviewer([]);
     }
   }, [glossaryTerm.reviewers]);
+
   useEffect(() => {
     fetchGlossaryTermAssets(
       glossaryTerm.fullyQualifiedName || glossaryTerm.name
     );
   }, [glossaryTerm.fullyQualifiedName]);
+
   useEffect(() => {
     setActiveTab('glossaryTerms');
   }, [glossaryFqn]);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { Col, Row, Space, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,10 +33,11 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
     <div className="m-t-sm">
       <Space className="m-b-xs">
         <span onClick={() => setIsActive((prev) => !prev)}>
-          <FontAwesomeIcon
-            className="text-xs text-primary cursor-pointer"
-            icon={isActive ? 'chevron-down' : 'chevron-right'}
-          />
+          {isActive ? (
+            <DownOutlined className="text-xs text-primary cursor-pointer" />
+          ) : (
+            <RightOutlined className="text-xs text-primary cursor-pointer" />
+          )}
         </span>
         <Typography.Text className="font-medium m-y-0">
           {t('label.source-plural')}
@@ -51,7 +52,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             <Col span={2}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>
               <Typography.Text className="text-grey-muted">
-                {t('label.name')}:
+                {`${t('label.name')}:`}
               </Typography.Text>
               <Typography.Text className="m-l-xs">
                 {source.name}
@@ -59,7 +60,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             </Col>
             <Col span={6}>
               <Typography.Text className="text-grey-muted">
-                {t('label.type')}:
+                {`${t('label.type')}:`}
               </Typography.Text>
               <Typography.Text className="m-l-xs">
                 {source.dataType}
@@ -67,10 +68,9 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             </Col>
             <Col span={10}>
               <Typography.Text className="text-grey-muted">
-                {t('label.data-entity', {
+                {`${t('label.data-entity', {
                   entity: t('label.source'),
-                })}
-                :
+                })}:`}
               </Typography.Text>
               <Link
                 className="m-l-xs"

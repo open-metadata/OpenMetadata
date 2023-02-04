@@ -17,6 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  NO_DATA_PLACEHOLDER,
   PRIMERY_COLOR,
   SECONDARY_COLOR,
   SUCCESS_COLOR,
@@ -192,7 +193,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               ))}
             </Space>
           ) : (
-            <Typography.Text> --- </Typography.Text>
+            <Typography.Text> {NO_DATA_PLACEHOLDER} </Typography.Text>
           );
         },
       },

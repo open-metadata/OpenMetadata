@@ -18,6 +18,7 @@ import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
+import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -32,7 +33,7 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
-import { fetchAuthenticationConfig } from 'rest/miscAPI';
+import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
 import { getLoggedInUser, getUserByName, updateUser } from 'rest/userAPI';
 import appState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
@@ -107,6 +108,9 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true);
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
+
+  const [authorizerConfig, setAuthorizerConfig] =
+    useState<AuthorizerConfiguration>();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isUserCreated, setIsUserCreated] = useState(false);
 
@@ -421,50 +425,54 @@ export const AuthProvider = ({
     );
   };
 
-  const fetchAuthConfig = (): void => {
-    fetchAuthenticationConfig()
-      .then((authRes) => {
-        const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
-        if (isSecureMode) {
-          const provider = authRes?.provider;
-          // show an error toast if provider is null or not supported
-          if (
-            provider &&
-            Object.values(AuthTypes).includes(provider as AuthTypes)
-          ) {
-            const configJson = getAuthConfig(authRes);
-            setJwtPrincipalClaims(authRes.jwtPrincipalClaims);
-            initializeAxiosInterceptors();
-            setAuthConfig(configJson);
-            updateAuthInstance(configJson);
-            if (!oidcUserToken) {
-              if (isProtectedRoute(location.pathname)) {
-                storeRedirectPath();
-              }
-              setLoading(false);
-            } else {
-              getLoggedInUserDetails();
+  const fetchAuthConfig = async () => {
+    try {
+      const [authConfig, authorizerConfig] = await Promise.all([
+        fetchAuthenticationConfig(),
+        fetchAuthorizerConfig(),
+      ]);
+      const isSecureMode =
+        !isNil(authConfig) && authConfig.provider !== NO_AUTH;
+      if (isSecureMode) {
+        const provider = authConfig?.provider;
+        // show an error toast if provider is null or not supported
+        if (
+          provider &&
+          Object.values(AuthTypes).includes(provider as AuthTypes)
+        ) {
+          const configJson = getAuthConfig(authConfig);
+          setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+          initializeAxiosInterceptors();
+          setAuthConfig(configJson);
+          setAuthorizerConfig(authorizerConfig);
+          updateAuthInstance(configJson);
+          if (!oidcUserToken) {
+            if (isProtectedRoute(location.pathname)) {
+              storeRedirectPath();
             }
-          } else {
-            // provider is either null or not supported
             setLoading(false);
-            showErrorToast(
-              `The configured SSO Provider "${authRes?.provider}" is not supported. Please check the authentication configuration in the server.`
-            );
+          } else {
+            getLoggedInUserDetails();
           }
         } else {
+          // provider is either null or not supported
           setLoading(false);
-          setIsAuthDisabled(true);
-          fetchAllUsers();
+          showErrorToast(
+            `The configured SSO Provider "${authConfig?.provider}" is not supported. Please check the authentication configuration in the server.`
+          );
         }
-      })
-      .catch((err: AxiosError) => {
+      } else {
         setLoading(false);
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-auth-config-error']
-        );
-      });
+        setIsAuthDisabled(true);
+        fetchAllUsers();
+      }
+    } catch (error) {
+      setLoading(false);
+      showErrorToast(
+        error,
+        jsonData['api-error-messages']['fetch-auth-config-error']
+      );
+    }
   };
 
   const getCallBackComponent = () => {
@@ -607,6 +615,7 @@ export const AuthProvider = ({
     isUserCreated,
     setIsAuthDisabled,
     authConfig,
+    authorizerConfig,
     setAuthConfig,
     isSigningIn,
     setIsSigningIn,
