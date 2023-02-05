@@ -35,9 +35,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_VIEW_DEFINITIONS,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_view_definitions,
+    get_view_definition_wrapper,
+)
 
 logger = ingestion_logger()
 
@@ -189,10 +196,25 @@ def get_table_comment(  # pylint: disable=unused-argument
     return {"text": None}
 
 
+@reflection.cache
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=DATABRICKS_VIEW_DEFINITIONS,
+    )
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
+DatabricksDialect.get_view_definition = get_view_definition
+DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 
 
