@@ -463,7 +463,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   private Topic getTopic(CreateTopic create, String user) throws IOException {
     return copy(new Topic(), create, user)
-        .withService(create.getService())
+        .withService(getEntityReference(Entity.MESSAGING_SERVICE, create.getService()))
         .withPartitions(create.getPartitions())
         .withMessageSchema(create.getMessageSchema())
         .withCleanupPolicies(create.getCleanupPolicies())

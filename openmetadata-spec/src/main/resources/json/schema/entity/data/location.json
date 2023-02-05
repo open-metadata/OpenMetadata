@@ -99,7 +99,7 @@
       "default": null
     },
     "service": {
-      "description": "Link to the database cluster/service where this database is hosted in.",
+      "description": "Link to the database service where this database is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "serviceType": {

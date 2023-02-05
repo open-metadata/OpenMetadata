@@ -68,14 +68,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest.createRequest("test_testSuite_1_" + i).withTestSuite(testSuite1.getEntityReference());
+          testCaseResourceTest.createRequest("test_testSuite_1_" + i).withTestSuite(testSuite1.getFullyQualifiedName());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
     }
 
     for (int i = 5; i < 10; i++) {
       CreateTestCase create =
-          testCaseResourceTest.createRequest("test_testSuite_2_" + i).withTestSuite(testSuite2.getEntityReference());
+          testCaseResourceTest.createRequest("test_testSuite_2_" + i).withTestSuite(testSuite2.getFullyQualifiedName());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
       testCases2.add(testCase.getEntityReference());
     }

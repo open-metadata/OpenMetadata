@@ -55,18 +55,18 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Test
   void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {METABASE_REFERENCE, LOOKER_REFERENCE};
+    String[] differentServices = {METABASE_REFERENCE.getName(), LOOKER_REFERENCE.getName()};
 
     // Create chart for each service and test APIs
-    for (EntityReference service : differentServices) {
+    for (String service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List charts by filtering on service name and ensure right charts in the response
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("service", service.getName());
+      queryParams.put("service", service);
       ResultList<Chart> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Chart chart : list.getData()) {
-        assertEquals(service.getName(), chart.getService().getName());
+        assertEquals(service, chart.getService().getName());
       }
     }
   }
@@ -94,7 +94,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Override
   public CreateChart createRequest(String name) {
-    return new CreateChart().withName(name).withService(getContainer()).withChartType(ChartType.Area);
+    return new CreateChart().withName(name).withService(getContainer().getName()).withChartType(ChartType.Area);
   }
 
   @Override

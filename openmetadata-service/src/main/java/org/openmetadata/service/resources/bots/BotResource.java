@@ -396,7 +396,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private Bot getBot(CreateBot create, String user) throws IOException {
     return copy(new Bot(), create, user)
-        .withBotUser(create.getBotUser())
+        .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
         .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
   }

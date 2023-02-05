@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -44,13 +45,13 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void prepare(Tag entity) {
+  public void prepare(Tag entity) throws IOException {
     // Validate parent term
-    EntityReference parentTerm = Entity.getEntityReferenceByName(entity.getParent());
+    EntityReference parentTerm = Entity.getEntityReference(entity.getParent(), NON_DELETED);
     entity.setParent(parentTerm);
 
     // Validate Classification
-    EntityReference Classification = Entity.getEntityReferenceByName(entity.getClassification());
+    EntityReference Classification = Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(Classification);
   }
 

@@ -506,7 +506,16 @@ public final class TestUtils {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
-    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferenceNames(List<String> expected, List<EntityReference> actual) {
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (String e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e, true);
+      }
+    }
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -523,6 +532,25 @@ public final class TestUtils {
     } else {
       if (ref != null) {
         assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
+  }
+
+  // TODO clean up
+  public static void existsInEntityReferenceList(List<EntityReference> list, String fqn, boolean expectedExistsInList) {
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      validateEntityReference(r);
+      if (r.getFullyQualifiedName().equals(fqn)) {
+        ref = r;
+        break;
+      }
+    }
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + fqn);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + fqn);
       }
     }
   }

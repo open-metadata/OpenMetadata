@@ -948,10 +948,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create TeamManager role with the policy to update team
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     CreateRole createRole =
-        roleResourceTest
-            .createRequest(testInfo)
-            .withName("TeamManager")
-            .withPolicies(List.of(policy.getEntityReference()));
+        roleResourceTest.createRequest(testInfo).withName("TeamManager").withPolicies(List.of(policy.getName()));
     Role teamManager = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     // Create a user with TeamManager role.

@@ -371,7 +371,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Create a role with all the policies
     RoleResourceTest roleResourceTest = new RoleResourceTest();
-    CreateRole createRole = roleResourceTest.createRequest(test).withPolicies(EntityUtil.toEntityReferences(policies));
+    CreateRole createRole = roleResourceTest.createRequest(test).withPolicies(EntityUtil.toFQNs(policies));
     Role role = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     // Get each policy and ensure the teams and roles are listed correctly

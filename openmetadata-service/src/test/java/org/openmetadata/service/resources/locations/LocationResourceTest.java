@@ -73,12 +73,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
       throws HttpResponseException {
     assertEquals(createRequest.getPath(), location.getPath());
     // Validate service
-    EntityReference expectedService = createRequest.getService();
-    if (expectedService != null) {
-      TestUtils.validateEntityReference(location.getService());
-      assertEquals(expectedService.getId(), location.getService().getId());
-      assertEquals(expectedService.getType(), location.getService().getType());
-    }
+    assertReference(createRequest.getService(), location.getService());
     TestUtils.validateTags(createRequest.getTags(), location.getTags());
   }
 

@@ -395,6 +395,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {
-    return copy(new DatabaseSchema(), create, user).withDatabase(create.getDatabase());
+    return copy(new DatabaseSchema(), create, user)
+        .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()));
   }
 }
