@@ -291,6 +291,7 @@
     "from-lowercase": "from",
     "full-name": "Full name",
     "function": "Function",
+    "g-chat": "G Chat",
     "gcs-credential-path": "GCS Credentials Path",
     "generate": "Generate",
     "generate-new-token": "Generate New Token",
