@@ -10,8 +10,56 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "containerDataModel": {
+      "description": "This captures information about how the container's data is modeled, if it has a schema. ",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ContainerDataModel",
+      "properties": {
+        "isPartitioned": {
+          "description": "Whether the data under this container is partitioned by some property, eg. eventTime=yyyy-mm-dd",
+          "type": "boolean",
+          "default": false
+        },
+        "columns": {
+          "description": "Columns belonging to this container's schema",
+          "type": "array",
+          "items": {
+            "$ref": "../data/table.json#/definitions/column"
+          },
+          "default": null
+        },
+        "generatedAt": {
+          "$ref": "../../type/basic.json#/definitions/dateTime"
+        }
+      },
+      "required": [
+        "columns"
+      ],
+      "additionalProperties": false
+    },
     "fileFormat": {
-      "javaType": "org.openmetadata.schema.type.fileFormat",
+      "javaType": "org.openmetadata.schema.type.ContainerFileFormat",
+      "description": "This schema defines the file formats for the object/files within a container.",
+      "type": "string",
+      "enum": [
+        "zip",
+        "gz",
+        "zstd"
+      ],
+      "javaEnums": [
+        {
+          "name": "Zip"
+        },
+        {
+          "name": "Gz"
+        },
+        {
+          "name": "Zstd"
+        }
+      ]
+    },
+    "dataFormat": {
+      "javaType": "org.openmetadata.schema.type.ContainerDataFormat",
       "description": "This schema defines the file formats for the object/files within a container.",
       "type": "string",
       "enum": [
@@ -19,10 +67,7 @@
         "tsv",
         "json",
         "parquet",
-        "zip",
-        "gz",
-        "avro",
-        "zstd"
+        "avro"
       ],
       "javaEnums": [
         {
@@ -39,15 +84,6 @@
         },
         {
           "name": "Avro"
-        },
-        {
-          "name": "Zip"
-        },
-        {
-          "name": "Gz"
-        },
-        {
-          "name": "Zstd"
         }
       ]
     }
@@ -105,15 +141,10 @@
       "description": "References to child containers residing under this entity.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
-    "isStructured": {
-      "description": "When `true` indicates the container's data is structured, so it has a schema",
-      "type": "boolean",
-      "default": false
-    },
-    "isPartitioned": {
-      "description": "Whether the data under this container is partitioned by some property, eg. eventTime=yyyy-mm-dd",
-      "type": "boolean",
-      "default": false
+    "dataModel": {
+      "description": "References to the container's data model, if data is structured, or null otherwise",
+      "$ref": "#/definitions/containerDataModel",
+      "default": null
     },
     "prefix": {
       "description": "Optional prefix path defined for this container",
@@ -123,26 +154,27 @@
     "numberOfObjects": {
       "description": "The number of objects/files this container has.",
       "type": "number",
-      "default": "-1"
+      "default": null
     },
     "size": {
       "description": "The total size in KB this container has.",
       "type": "number",
-      "default": "-1"
-    },
-    "fileFormats": {
-      "description": "File formats identified for this container's objects.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/fileFormat"
-      },
       "default": null
     },
-    "columns": {
-      "description": "Columns contained by this container's schema, if one is present.",
+    "fileFormats": {
+      "description": "This can have items of fileFormat or dataFormat. e.g. fileFormats=[csv, mp4]  dataModel=null as it's not structured, fileFormats=[parquet] and have dataModel informed as all parquets follow the same schema, fileFormats=[parquet] and have a non informed dataModel because the parquets have different schemas",
       "type": "array",
       "items": {
-        "$ref": "../data/table.json#/definitions/column"
+        "oneOf": [
+          {
+            "type": "object",
+            "$ref": "#/definitions/fileFormat"
+          },
+          {
+            "type": "object",
+            "$ref": "#/definitions/dataFormat"
+          }
+        ]
       },
       "default": null
     },
@@ -176,8 +208,7 @@
     "id",
     "name",
     "objectStoreService",
-    "serviceType",
-    "isStructured"
+    "serviceType"
   ],
   "additionalProperties": false
 }
