@@ -34,19 +34,19 @@ public class ExposedAnnotator extends AbstractAnnotator {
     }
   }
 
-  /** Add {@link ExposedField} annotation to getter methods */
-  @Override
-  public void propertyGetter(JMethod getter, JDefinedClass clazz, String propertyName) {
-    super.propertyGetter(getter, clazz, propertyName);
-    addMaskedFieldAnnotationIfApplies(getter, propertyName);
-  }
+  // /** Add {@link ExposedField} annotation to getter methods */
+  // @Override
+  // public void propertyGetter(JMethod getter, JDefinedClass clazz, String propertyName) {
+  //   super.propertyGetter(getter, clazz, propertyName);
+  //   addMaskedFieldAnnotationIfApplies(getter, propertyName);
+  // }
 
-  /** Add {@link ExposedField} annotation to setter methods */
-  @Override
-  public void propertySetter(JMethod setter, JDefinedClass clazz, String propertyName) {
-    super.propertySetter(setter, clazz, propertyName);
-    addMaskedFieldAnnotationIfApplies(setter, propertyName);
-  }
+  // /** Add {@link ExposedField} annotation to setter methods */
+  // @Override
+  // public void propertySetter(JMethod setter, JDefinedClass clazz, String propertyName) {
+  //   super.propertySetter(setter, clazz, propertyName);
+  //   addMaskedFieldAnnotationIfApplies(setter, propertyName);
+  // }
 
   /**
    * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If the {@link JMethod} is
@@ -56,7 +56,7 @@ public class ExposedAnnotator extends AbstractAnnotator {
   private void addMaskedFieldAnnotationIfApplies(JMethod jMethod, String propertyName) {
     try {
       Field outerClassField = JMethod.class.getDeclaredField("outer");
-      outerClassField.setAccessible(true);
+      //outerClassField.setAccessible(true);
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
       if (outerClass.fields().containsKey(propertyName)
           && outerClass.fields().get(propertyName).annotations().stream()
@@ -64,17 +64,17 @@ public class ExposedAnnotator extends AbstractAnnotator {
         jMethod.annotate(ExposedField.class);
       }
     } catch (NoSuchFieldException | IllegalAccessException e) {
-      throw new RuntimeException(e);
+      throw new Exception(e);
     }
   }
 
   private String getAnnotationClassName(JAnnotationUse annotation) {
     try {
       Field clazzField = JAnnotationUse.class.getDeclaredField("clazz");
-      clazzField.setAccessible(true);
+      //clazzField.setAccessible(true);
       return ((JClass) clazzField.get(annotation)).fullName();
     } catch (NoSuchFieldException | IllegalAccessException e) {
-      throw new RuntimeException(e);
+      throw new Exception(e);
     }
   }
 }
