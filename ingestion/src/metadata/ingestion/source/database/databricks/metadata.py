@@ -36,6 +36,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_VIEW_DEFINITIONS,
 )
 from metadata.utils import fqn
@@ -182,7 +183,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     Returns comment of table
     """
     cursor = connection.execute(
-        "DESCRIBE TABLE EXTENDED {schema_name}.{table_name}".format(
+        DATABRICKS_GET_TABLE_COMMENTS.format(
             schema_name=schema_name, table_name=table_name
         )
     )
