@@ -16,8 +16,8 @@ import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
-import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
 import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
 import {
@@ -93,7 +93,7 @@ export const fetchSlackConfig = (): Promise<AxiosResponse> => {
 };
 
 export const fetchAirflowConfig = async () => {
-  const response = await APIClient.get<AirflowConfiguration>(
+  const response = await APIClient.get<PipelineServiceClientConfiguration>(
     '/system/config/pipeline-service-client'
   );
 
