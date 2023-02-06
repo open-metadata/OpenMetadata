@@ -129,6 +129,8 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.slack');
     case AlertActionType.MSTeamsWebhook:
       return i18next.t('label.ms-team-plural');
+    case AlertActionType.GChatWebhook:
+      return i18next.t('label.g-chat');
   }
 };
 
