@@ -26,7 +26,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfigForAPI;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.sandbox.SandboxConfiguration;
 import org.openmetadata.service.security.jwt.JWKSResponse;
@@ -139,7 +139,7 @@ public class ConfigResource {
   }
 
   @GET
-  @Path(("/airflow"))
+  @Path(("/pipelineServiceClient"))
   @Operation(
       operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
@@ -151,15 +151,15 @@ public class ConfigResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = AirflowConfigurationForAPI.class)))
+                    schema = @Schema(implementation = PipelineServiceClientConfigForAPI.class)))
       })
-  public AirflowConfigurationForAPI getAirflowConfig() {
-    AirflowConfigurationForAPI airflowConfigurationForAPI = new AirflowConfigurationForAPI();
-    if (openMetadataApplicationConfig.getAirflowConfiguration() != null) {
-      airflowConfigurationForAPI.setApiEndpoint(
-          openMetadataApplicationConfig.getAirflowConfiguration().getApiEndpoint());
+  public PipelineServiceClientConfigForAPI getPipelineServiceConfig() {
+    PipelineServiceClientConfigForAPI pipelineServiceClientConfigForAPI = new PipelineServiceClientConfigForAPI();
+    if (openMetadataApplicationConfig.getPipelineServiceClientConfiguration() != null) {
+      pipelineServiceClientConfigForAPI.setApiEndpoint(
+          openMetadataApplicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint());
     }
-    return airflowConfigurationForAPI;
+    return pipelineServiceClientConfigForAPI;
   }
 
   @GET

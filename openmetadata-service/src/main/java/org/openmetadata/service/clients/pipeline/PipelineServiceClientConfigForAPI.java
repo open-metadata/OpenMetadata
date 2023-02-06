@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.airflow;
+package org.openmetadata.service.clients.pipeline;
 
 import javax.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
 
-public class AirflowConfigurationForAPI {
+public class PipelineServiceClientConfigForAPI {
 
   @NotEmpty @Getter @Setter private String apiEndpoint;
 }

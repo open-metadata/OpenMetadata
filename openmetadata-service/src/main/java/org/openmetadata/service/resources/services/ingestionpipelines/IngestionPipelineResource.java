@@ -63,7 +63,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.airflow.AirflowRESTClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -103,7 +103,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
-    this.pipelineServiceClient = new AirflowRESTClient(openMetadataApplicationConfig.getAirflowConfiguration());
+
+    this.pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
 

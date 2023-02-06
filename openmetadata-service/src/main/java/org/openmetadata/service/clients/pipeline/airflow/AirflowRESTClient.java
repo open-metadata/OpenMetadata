@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.airflow;
+package org.openmetadata.service.clients.pipeline.airflow;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -35,6 +38,16 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
+
+  private static final String USERNAME_KEY = "username";
+  private static final String PASSWORD_KEY = "password";
+  private static final String API_ENDPOINT_KEY = "apiEndpoint";
+  private static final String TIMEOUT_KEY = "timeout";
+
+  protected final String username;
+  protected final String password;
+  protected final HttpClient client;
+  protected final URL serviceURL;
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
 
@@ -57,13 +70,35 @@ public class AirflowRESTClient extends PipelineServiceClient {
           PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
           "elasticsearch_reindex_task");
 
-  public AirflowRESTClient(AirflowConfiguration airflowConfig) {
-    super(
-        airflowConfig.getUsername(),
-        airflowConfig.getPassword(),
-        airflowConfig.getApiEndpoint(),
-        airflowConfig.getHostIp(),
-        airflowConfig.getTimeout());
+  public AirflowRESTClient(PipelineServiceClientConfiguration config) {
+
+    super(config);
+
+    this.username = (String) config.getParameters().getAdditionalProperties().get(USERNAME_KEY);
+    this.password = (String) config.getParameters().getAdditionalProperties().get(PASSWORD_KEY);
+    this.serviceURL = validateServiceURL(config.getApiEndpoint());
+    this.client =
+        HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(
+                Duration.ofSeconds((Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)))
+            .build();
+  }
+
+  public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
+      throws IOException, InterruptedException {
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder(URI.create(endpoint))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
+            .POST(HttpRequest.BodyPublishers.ofString(payload));
+    if (authenticate) {
+      requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
+    }
+    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  public final HttpResponse<String> post(String endpoint, String payload) throws IOException, InterruptedException {
+    return post(endpoint, payload, true);
   }
 
   @Override

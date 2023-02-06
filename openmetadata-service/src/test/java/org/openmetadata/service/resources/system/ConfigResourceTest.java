@@ -34,7 +34,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.airflow.AirflowConfigurationForAPI;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfigForAPI;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.util.TestUtils;
@@ -81,9 +81,10 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void get_airflow_configs_200_OK() throws IOException {
-    WebTarget target = getConfigResource("airflow");
-    AirflowConfigurationForAPI auth = TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAirflowConfiguration().getApiEndpoint(), auth.getApiEndpoint());
+    WebTarget target = getConfigResource("pipelineServiceClient");
+    PipelineServiceClientConfigForAPI auth =
+        TestUtils.get(target, PipelineServiceClientConfigForAPI.class, TEST_AUTH_HEADERS);
+    assertEquals(config.getPipelineServiceClientConfiguration().getApiEndpoint(), auth.getApiEndpoint());
   }
 
   @Test

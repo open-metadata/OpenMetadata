@@ -94,7 +94,7 @@ export const fetchSlackConfig = (): Promise<AxiosResponse> => {
 
 export const fetchAirflowConfig = async () => {
   const response = await APIClient.get<AirflowConfiguration>(
-    '/system/config/airflow'
+    '/system/config/pipelineServiceClient'
   );
 
   return response.data;

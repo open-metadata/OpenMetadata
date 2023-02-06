@@ -186,16 +186,21 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.ChangeEventHandler"
     - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
-airflowConfiguration:
+pipelineServiceClientConfiguration:
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  hostIp: ${AIRFLOW_HOST_IP:-""}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  verifySSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     validate:
-      certificatePath: ${AIRFLOW_SSL_CERT_PATH:-""} # Local path for Airflow
+      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
