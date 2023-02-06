@@ -610,7 +610,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public Glossary createGlossary(String name, List<EntityReference> reviewers, EntityReference owner)
       throws IOException {
     CreateGlossary create = glossaryResourceTest.createRequest(name).withReviewers(getFqns(reviewers)).withOwner(owner);
-    System.out.println("XXX create request " + JsonUtils.pojoToJson(create, true));
     return glossaryResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 

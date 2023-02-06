@@ -7,7 +7,6 @@ import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -35,7 +35,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
   }
 
-  public void setupBots(TestInfo test) throws URISyntaxException, IOException {
+  public void setupBots() {
     createUser();
   }
 
@@ -44,8 +44,10 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     ResultList<Bot> bots = listEntities(null, ADMIN_AUTH_HEADERS);
     for (Bot bot : bots.getData()) {
       try {
-        deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
-        createUser();
+        if (!bot.getProvider().equals(ProviderType.SYSTEM)) {
+          deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
+          createUser();
+        }
       } catch (Exception ignored) {
       }
     }
@@ -106,7 +108,6 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
           .withName(name)
           .withBotUser(Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
     }
-    System.out.println("XXX botUser " + botUser);
     return new CreateBot().withName(name).withBotUser(botUser.getName());
   }
 
@@ -129,7 +130,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   private void createUser() {
-    botUser = new UserResourceTest().createUser("botUser", true);
-    System.out.println("XXX botUser " + botUser);
+    User user = new UserResourceTest().createUser("botUser", true);
+    botUser = user != null ? user : botUser;
   }
 }

@@ -31,7 +31,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.messaging_service import (

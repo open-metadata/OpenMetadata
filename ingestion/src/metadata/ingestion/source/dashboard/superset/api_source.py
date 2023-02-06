@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type

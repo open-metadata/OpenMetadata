@@ -62,7 +62,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -436,16 +435,16 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private User retrieveUser(Bot bot) {
+    // TODO fix this code - don't depend on exception
     try {
-      return UserRepository.class
-          .cast(Entity.getEntityRepository(Entity.USER))
-          .get(null, bot.getBotUser().getId(), EntityUtil.Fields.EMPTY_FIELDS);
+      return Entity.getEntity(bot.getBotUser(), "", Include.NON_DELETED);
     } catch (Exception exception) {
       return null;
     }
   }
 
   private Bot retrieveBot(String botName) {
+    // TODO fix this code - don't depend on exception
     try {
       return dao.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
     } catch (Exception e) {

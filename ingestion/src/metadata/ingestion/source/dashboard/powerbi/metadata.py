@@ -28,7 +28,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn

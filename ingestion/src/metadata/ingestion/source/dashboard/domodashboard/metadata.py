@@ -160,7 +160,7 @@ class DomodashboardSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(
                         chart["metadata"].get("chartType", "")
                     ).value,
-                    chartUrl=rt_url,
+                    chartUrl=chart_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart["title"])

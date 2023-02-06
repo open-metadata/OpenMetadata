@@ -80,7 +80,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference

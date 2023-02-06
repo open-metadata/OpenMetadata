@@ -38,7 +38,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (

@@ -152,7 +152,6 @@ public final class EntityUtil {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
-        System.out.println("XXX got ref " + ref2);
         EntityUtil.copy(ref2, ref);
       }
       list.sort(compareEntityReference);

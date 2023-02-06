@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification

@@ -31,7 +31,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_ALL_CHARTS,

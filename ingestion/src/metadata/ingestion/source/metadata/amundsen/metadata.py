@@ -56,7 +56,6 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -411,7 +410,7 @@ class AmundsenSource(Source[Entity]):
                 name=table["name"],
                 tableType="Regular",
                 description=table["description"],
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=self.database_schema_object.fullyQualifiedName,
                 tags=tags,
                 columns=columns,
             )

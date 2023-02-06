@@ -14,9 +14,11 @@
 package org.openmetadata.service.resources.dashboards;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -76,7 +78,10 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   @Test
   void post_DashboardWithInvalidService_4xx(TestInfo test) {
     CreateDashboard create = createRequest(test).withService(SUPERSET_INVALID_SERVICE);
-    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "TODO");
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.DASHBOARD_SERVICE, SUPERSET_INVALID_SERVICE));
   }
 
   @Test
@@ -197,9 +202,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     }
     if (fieldName.contains("charts")) {
       @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<String> expectedRefs = (List<String>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
+      assertEntityReferenceNames(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
