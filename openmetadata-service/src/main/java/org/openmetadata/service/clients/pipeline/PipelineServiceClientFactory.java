@@ -44,9 +44,9 @@ public class PipelineServiceClientFactory {
         | InvocationTargetException
         | InstantiationException
         | IllegalAccessException e) {
-      LOG.error("Error trying to load PipelineServiceClient {}: {}", pipelineServiceClientClass, e.getMessage());
+      throw new RuntimeException(
+          String.format("Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e.getMessage())
+      );
     }
-
-    return null;
   }
 }
