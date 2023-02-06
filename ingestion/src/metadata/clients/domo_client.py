@@ -54,6 +54,7 @@ class DomoOwner(BaseModel):
     """
 
     displayName: str
+    id: str
 
 
 class DomoDashboardDetails(DomoBaseModel):
@@ -64,7 +65,7 @@ class DomoDashboardDetails(DomoBaseModel):
     cardIds: Optional[List[int]]
     collectionIds: Optional[List[int]]
     description: Optional[str]
-    owners: Optional[DomoOwner]
+    owners: Optional[List[DomoOwner]]
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -142,6 +143,8 @@ class DomoClient:
             logger.debug(traceback.format_exc())
 
         return None
+
+    # def get_owner_details(self, owner_id) -> dict:
 
     def get_pipelines(self):
         try:

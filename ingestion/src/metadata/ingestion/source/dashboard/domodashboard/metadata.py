@@ -21,6 +21,7 @@ from metadata.clients.domo_client import (
     DomoChartDetails,
     DomoClient,
     DomoDashboardDetails,
+    DomoOwner,
 )
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -51,7 +52,7 @@ class DomodashboardSource(DashboardServiceSource):
     """
 
     config: WorkflowSource
-    metadata: OpenMetadataConnection
+    metadata_config: OpenMetadataConnection
     status: SourceStatus
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
@@ -91,6 +92,23 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
+    def get_owner_details(self, owners: List[DomoOwner]) -> Optional[EntityReference]:
+        for owner in owners:
+            try:
+                owner_details = self.client.users_get(owner.id)
+                if owner_details.get("email"):
+                    user = self.metadata.get_user_by_email(owner_details["email"])
+                    if user:
+                        return EntityReference(id=user["id"], type="user")
+                    logger.debug(
+                        f"No user for found for email {owner_details['email']} in OMD"
+                    )
+            except Exception as exc:
+                logger.warning(
+                    f"Error while getting details of user {owner.displayName} - {exc}"
+                )
+        return None
+
     def yield_dashboard(
         self, dashboard_details: DomoDashboardDetails
     ) -> Iterable[CreateDashboardRequest]:
@@ -112,6 +130,7 @@ class DomodashboardSource(DashboardServiceSource):
                     id=self.context.dashboard_service.id.__root__,
                     type="dashboardService",
                 ),
+                owner=self.get_owner_details(dashboard_details.owners),
             )
         except KeyError as err:
             logger.warning(
@@ -129,6 +148,15 @@ class DomodashboardSource(DashboardServiceSource):
             )
             logger.debug(traceback.format_exc())
 
+    def get_owners(self, owners: List[dict]) -> List[DomoOwner]:
+        domo_owner = []
+        for owner in owners:
+            domo_owner.append(
+                DomoOwner(id=str(owner["id"]), displayName=owner["displayName"])
+            )
+
+        return domo_owner
+
     def get_page_details(self, page_id) -> Optional[DomoDashboardDetails]:
         try:
             pages = self.client.page_get(page_id)
@@ -138,6 +166,7 @@ class DomodashboardSource(DashboardServiceSource):
                 cardIds=pages.get("cardIds", []),
                 description=pages.get("description", ""),
                 collectionIds=pages.get("collectionIds", []),
+                owners=self.get_owners(pages.get("owners", [])),
             )
         except Exception as exc:
             logger.warning(
