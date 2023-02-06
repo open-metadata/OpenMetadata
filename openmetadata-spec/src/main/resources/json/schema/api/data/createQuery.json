@@ -50,6 +50,10 @@
       "description": "Description of the query instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "queryUsage": {
+      "description": "list of entities to which the query is joined.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "entityName": {
       "description": "Name of an entity to which the query belongs, to create fqn for eg: checksum.entityName",
       "type": "string"
