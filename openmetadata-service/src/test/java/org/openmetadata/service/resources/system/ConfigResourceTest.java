@@ -81,7 +81,7 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void get_airflow_configs_200_OK() throws IOException {
-    WebTarget target = getConfigResource("pipelineServiceClient");
+    WebTarget target = getConfigResource("pipeline-service-client");
     PipelineServiceAPIClientConfig auth =
         TestUtils.get(target, PipelineServiceAPIClientConfig.class, TEST_AUTH_HEADERS);
     assertEquals(config.getPipelineServiceClientConfiguration().getApiEndpoint(), auth.getApiEndpoint());

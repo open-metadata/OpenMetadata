@@ -139,7 +139,7 @@ public class ConfigResource {
   }
 
   @GET
-  @Path(("/pipelineServiceClient"))
+  @Path(("/pipeline-service-client"))
   @Operation(
       operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
