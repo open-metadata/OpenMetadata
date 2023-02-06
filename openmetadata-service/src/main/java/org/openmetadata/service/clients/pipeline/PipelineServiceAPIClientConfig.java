@@ -17,7 +17,7 @@ import javax.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
 
-public class PipelineServiceClientConfigForAPI {
+public class PipelineServiceAPIClientConfig {
 
   @NotEmpty @Getter @Setter private String apiEndpoint;
 }

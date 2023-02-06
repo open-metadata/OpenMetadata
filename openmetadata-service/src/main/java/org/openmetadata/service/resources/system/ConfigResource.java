@@ -26,7 +26,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfigForAPI;
+import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.sandbox.SandboxConfiguration;
 import org.openmetadata.service.security.jwt.JWKSResponse;
@@ -151,10 +151,10 @@ public class ConfigResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineServiceClientConfigForAPI.class)))
+                    schema = @Schema(implementation = PipelineServiceAPIClientConfig.class)))
       })
-  public PipelineServiceClientConfigForAPI getPipelineServiceConfig() {
-    PipelineServiceClientConfigForAPI pipelineServiceClientConfigForAPI = new PipelineServiceClientConfigForAPI();
+  public PipelineServiceAPIClientConfig getPipelineServiceConfig() {
+    PipelineServiceAPIClientConfig pipelineServiceClientConfigForAPI = new PipelineServiceAPIClientConfig();
     if (openMetadataApplicationConfig.getPipelineServiceClientConfiguration() != null) {
       pipelineServiceClientConfigForAPI.setApiEndpoint(
           openMetadataApplicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint());
