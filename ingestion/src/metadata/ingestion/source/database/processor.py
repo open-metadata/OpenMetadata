@@ -109,8 +109,8 @@ class ColumnNameScanner(Scanner):
 
     def scan(self, text):
         types = set()
-        for pii_type_keys, _ in self.regex.items():
-            if self.regex[pii_type_keys].match(text) is not None:
+        for pii_type_keys, pii_type_pattern in self.regex.items():
+            if pii_type_pattern.match(text) is not None:
                 types.add(pii_type_keys)
 
         logging.debug("PiiTypes are %s", ",".join(str(x) for x in list(types)))
