@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import {
@@ -85,7 +84,7 @@ export const getListTestCaseResults = async (
   return response.data;
 };
 
-export const createTestCase = async (data: CreateTestCase) => {
+export const createTestCase = async (data: TestCase) => {
   const response = await APIClient.post<TestCase>(testCaseUrl, data);
 
   return response.data;

@@ -122,7 +122,7 @@ const AddGlossary = ({
         name: name.trim(),
         displayName: name.trim(),
         description: getDescription(),
-        reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
+        reviewers: reviewer.map((d) => d.fullyQualifiedName!),
         owner: {
           id: getCurrentUserId(),
           type: 'user',

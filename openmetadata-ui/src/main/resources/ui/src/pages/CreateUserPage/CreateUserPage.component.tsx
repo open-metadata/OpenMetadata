@@ -26,9 +26,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
-import { Bot } from '../../generated/entity/bot';
 import { Role } from '../../generated/entity/teams/role';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -102,11 +100,11 @@ const CreateUserPage = () => {
 
           // Create a bot entity with botUser data
           const botResponse = await createBotWithPut({
-            botUser: { id: userResponse.id, type: EntityType.USER },
+            botUser: userResponse.fullyQualifiedName!,
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
-          } as Bot);
+          });
 
           if (botResponse) {
             setStatus('success');
