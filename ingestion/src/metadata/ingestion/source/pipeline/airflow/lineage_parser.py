@@ -142,6 +142,6 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
     # We will then iterate over the inlet keys to build the list of XLets
     return [
         XLets(inlets=set(_inlets[key]), outlets=set(_outlets[key]))
-        for key in _inlets.keys()
+        for key in _inlets
         if _inlets.get(key) and _outlets.get(key)
     ]
