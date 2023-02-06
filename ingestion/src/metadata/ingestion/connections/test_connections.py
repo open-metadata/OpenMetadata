@@ -17,6 +17,7 @@ from typing import Callable, List
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.inspection import inspect
 
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.timeout import timeout
@@ -58,16 +59,20 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
     """
     Run all the function steps and raise any errors
     """
+    error_list = {}
     for step in steps:
         try:
-            step.function()
+            result = step.function()
         except Exception as exc:
-            msg = f"Error validating step [{step.name}] due to: {exc}."
-            raise SourceConnectionException(msg) from exc
+            msg = f"Faild {step.name} Name"
+            error_list[step.name] = msg
+
+    if error_list:
+        raise SourceConnectionException(error_list)
 
 
 @timeout(seconds=120)
-def test_connection_db_common(connection: Engine) -> None:
+def test_connection_db_common(connection: Engine, extra_steps_args=[]) -> None:
     """
     Default implementation is the engine to test.
 
@@ -78,6 +83,25 @@ def test_connection_db_common(connection: Engine) -> None:
     try:
         with connection.connect() as conn:
             conn.execute(ConnTestFn())
+            inspector = inspect(connection)
+            steps = [
+                TestConnectionStep(
+                    function=inspector.get_schema_names,
+                    name="Get Schemas",
+                ),
+                TestConnectionStep(
+                    function=inspector.get_table_names,
+                    name="Get Tables",
+                ),
+                TestConnectionStep(
+                    function=inspector.get_view_names,
+                    name="Get Views",
+                ),
+            ]
+            steps.extend(extra_steps_args)
+            test_connection_steps(steps)
+    except SourceConnectionException as exc:
+        raise exc
     except OperationalError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err

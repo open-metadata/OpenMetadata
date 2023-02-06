@@ -12,7 +12,10 @@
 """
 Source connection handler
 """
+from functools import partial
+
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
@@ -22,7 +25,13 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    TestConnectionStep,
+    test_connection_db_common,
+    test_connection_steps,
+)
+from metadata.ingestion.source.database.mssql import MSSQL_GET_DATABASE
 
 
 def get_connection_url(connection: MssqlConnection) -> str:
@@ -42,8 +51,24 @@ def get_connection(connection: MssqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: MssqlConnection) -> None:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+
+    def custom_executor(engine, statement):
+        cursor = engine.execute(statement)
+        return list(cursor.all())
+
+    extra_steps_args = [
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=MSSQL_GET_DATABASE,
+                engine=engine,
+            ),
+            name="Get Databases",
+        )
+    ]
+
+    test_connection_db_common(engine, extra_steps_args)
