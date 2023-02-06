@@ -107,9 +107,6 @@ public abstract class PipelineServiceClient {
     }
   }
 
-  /* To instantiate the class */
-  // public abstract PipelineServiceClient init(PipelineServiceClientConfiguration pipelineServiceClientConfiguration);
-
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract Response getServiceStatus();
 
