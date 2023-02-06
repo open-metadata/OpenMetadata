@@ -35,9 +35,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_GET_TABLE_COMMENTS,
+    DATABRICKS_VIEW_DEFINITIONS,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import (
+    get_all_view_definitions,
+    get_view_definition_wrapper,
+)
 
 logger = ingestion_logger()
 
@@ -167,9 +175,47 @@ def get_view_names(
     return views
 
 
+@reflection.cache
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
+    """
+    Returns comment of table
+    """
+    cursor = connection.execute(
+        DATABRICKS_GET_TABLE_COMMENTS.format(
+            schema_name=schema_name, table_name=table_name
+        )
+    )
+    try:
+        for result in list(cursor):
+            data = result.values()
+            if data[0] and data[0].strip() == "Comment":
+                return {"text": data[1] if data and data[1] else None}
+    except Exception:
+        return {"text": None}
+    return {"text": None}
+
+
+@reflection.cache
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+):
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=DATABRICKS_VIEW_DEFINITIONS,
+    )
+
+
+DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
+DatabricksDialect.get_view_definition = get_view_definition
+DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 
 
