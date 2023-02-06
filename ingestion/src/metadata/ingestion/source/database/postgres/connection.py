@@ -12,7 +12,10 @@
 """
 Source connection handler
 """
+from functools import partial
+
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -22,7 +25,13 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    TestConnectionStep,
+    test_connection_db_common,
+    test_connection_steps,
+)
+from metadata.ingestion.source.database.postgres import POSTGRES_GET_DATABASE
 
 
 def get_connection(connection: PostgresConnection) -> Engine:
@@ -40,4 +49,33 @@ def test_connection(engine: Engine) -> None:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+
+    def custom_executor(engine, statement):
+        cursor = engine.execute(statement)
+        return list(cursor.all())
+
+    inspector = inspect(engine)
+    steps = [
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+        ),
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=POSTGRES_GET_DATABASE,
+                engine=engine,
+            ),
+            name="Get Databases",
+        ),
+    ]
+
+    test_connection_db_common(engine, steps)

@@ -62,7 +62,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
     error_list = {}
     for step in steps:
         try:
-            result = step.function()
+            step.function()
         except Exception as exc:
             msg = f"Faild {step.name} Name"
             error_list[step.name] = msg
@@ -72,7 +72,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
 
 
 @timeout(seconds=120)
-def test_connection_db_common(connection: Engine, extra_steps_args=[]) -> None:
+def test_connection_db_common(connection: Engine, steps=None) -> None:
     """
     Default implementation is the engine to test.
 
@@ -84,21 +84,24 @@ def test_connection_db_common(connection: Engine, extra_steps_args=[]) -> None:
         with connection.connect() as conn:
             conn.execute(ConnTestFn())
             inspector = inspect(connection)
-            steps = [
-                TestConnectionStep(
-                    function=inspector.get_schema_names,
-                    name="Get Schemas",
-                ),
-                TestConnectionStep(
-                    function=inspector.get_table_names,
-                    name="Get Tables",
-                ),
-                TestConnectionStep(
-                    function=inspector.get_view_names,
-                    name="Get Views",
-                ),
-            ]
-            steps.extend(extra_steps_args)
+            if steps:
+                steps = steps
+            else:
+                steps = [
+                    TestConnectionStep(
+                        function=inspector.get_schema_names,
+                        name="Get Schemas",
+                    ),
+                    TestConnectionStep(
+                        function=inspector.get_table_names,
+                        name="Get Tables",
+                    ),
+                    TestConnectionStep(
+                        function=inspector.get_view_names,
+                        name="Get Views",
+                    ),
+                ]
+
             test_connection_steps(steps)
     except SourceConnectionException as exc:
         raise exc

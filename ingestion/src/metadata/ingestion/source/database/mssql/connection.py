@@ -60,7 +60,20 @@ def test_connection(engine: MssqlConnection) -> None:
         cursor = engine.execute(statement)
         return list(cursor.all())
 
-    extra_steps_args = [
+    inspector = inspect(engine)
+    steps = [
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+        ),
         TestConnectionStep(
             function=partial(
                 custom_executor,
@@ -68,7 +81,7 @@ def test_connection(engine: MssqlConnection) -> None:
                 engine=engine,
             ),
             name="Get Databases",
-        )
+        ),
     ]
 
-    test_connection_db_common(engine, extra_steps_args)
+    test_connection_db_common(engine, steps)
