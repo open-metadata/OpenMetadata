@@ -50,22 +50,6 @@ class PiiTypes(Enum):
     KEY = auto()
 
 
-# Ref: https://stackoverflow.com/questions/24481852/serialising-an-enum-member-to-json
-# class PiiTypeEncoder(json.JSONEncoder):
-#     def default(self, obj):
-#         if type(obj) == PiiTypes:
-#             return {"__enum__": str(obj)}
-#         return json.JSONEncoder.default(self, obj)
-
-
-# def as_enum(d):
-#     if "__enum__" in d:
-#         _, member = d["__enum__"].split(".")
-#         return getattr(PiiTypes, member)
-#     else:
-#         return d
-
-
 class Scanner(ABC):
     @abstractmethod
     def scan(self, text):
@@ -174,8 +158,6 @@ class PiiProcessor(Processor):
             elif len(tag_labels) > 0:
                 column.tags = tag_labels
             self.status.records.append(column.name.__root__)
-
-        return table_request
 
     def close(self):
         pass
