@@ -72,6 +72,7 @@ export const AddTags = ({
 
   return (
     <Select
+      id="select-tags"
       loading={isTagLoading}
       mode="multiple"
       placeholder={t('label.add-entity', {
