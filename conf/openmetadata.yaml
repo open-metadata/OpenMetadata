@@ -188,7 +188,7 @@ eventHandlerConfiguration:
 
 pipelineServiceClientConfiguration:
   className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
