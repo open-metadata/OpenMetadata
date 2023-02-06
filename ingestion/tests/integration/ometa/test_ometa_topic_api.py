@@ -82,14 +82,14 @@ class OMetaTopicTest(TestCase):
         cls.entity = Topic(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
             fullyQualifiedName="test-service-topic.test",
             partitions=2,
         )
 
         cls.create = CreateTopicRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
             partitions=2,
         )
 

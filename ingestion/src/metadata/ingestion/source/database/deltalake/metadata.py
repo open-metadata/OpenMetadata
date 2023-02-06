@@ -144,10 +144,7 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -182,7 +179,7 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -266,10 +263,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 description=self.context.table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.config.database_schema.fullyQualifiedName,
                 viewDefinition=view_definition,
             )
 

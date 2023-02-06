@@ -147,10 +147,7 @@ class CommonDbSourceService(
 
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -176,7 +173,7 @@ class CommonDbSourceService(
 
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     @staticmethod
@@ -364,10 +361,7 @@ class CommonDbSourceService(
                 columns=columns,
                 viewDefinition=view_definition,
                 tableConstraints=table_constraints if table_constraints else None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
                 tags=self.get_tag_labels(
                     table_name=table_name
                 ),  # Pick tags from context info, if any

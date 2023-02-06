@@ -303,9 +303,7 @@ class TableauSource(DashboardServiceSource):
             ],
             tags=self.get_tag_labels(dashboard_details.tags),
             dashboardUrl=f"#{workbook_url}",
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_lineage_details(
@@ -387,10 +385,7 @@ class TableauSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(chart.sheet_type),
                     chartUrl=chart_url,
                     tags=self.get_tag_labels(chart.tags),
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)
             except Exception as exc:

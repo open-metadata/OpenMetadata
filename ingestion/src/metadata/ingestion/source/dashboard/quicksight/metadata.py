@@ -143,13 +143,8 @@ class QuicksightSource(DashboardServiceSource):
             dashboardUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
             description=dashboard_details["Version"].get("Description", ""),
-            charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
-                for chart in self.context.charts
-            ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            charts=[chart.fullyQualifiedName.__root__ for chart in self.context.charts],
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_chart(
@@ -180,10 +175,7 @@ class QuicksightSource(DashboardServiceSource):
                     description="",
                     chartType=ChartType.Other.value,
                     chartUrl=f"{self.dashboard_url}/sheets/{chart['SheetId']}",
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart["Name"])
             except Exception as exc:

@@ -515,9 +515,7 @@ class SampleDataSource(
                 displayName=location["displayName"],
                 description=location["description"],
                 locationType=location["locationType"],
-                service=EntityReference(
-                    id=self.storage_service.id, type="storageService"
-                ),
+                service=self.storage_service.fullyQualifiedName,
             )
             yield location_ev
 
@@ -528,9 +526,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=EntityReference(
-                id=self.database_service.id.__root__, type="databaseService"
-            ),
+            service=self.database_service.fullyQualifiedName,
         )
 
         yield db
@@ -548,7 +544,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=database_object.id, type="database"),
+            database=database_object.fullyQualifiedName,
         )
         yield schema
 
@@ -569,9 +565,7 @@ class SampleDataSource(
                 name=table["name"],
                 description=table["description"],
                 columns=table["columns"],
-                databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
@@ -581,9 +575,7 @@ class SampleDataSource(
 
             location = CreateLocationRequest(
                 name=table["name"],
-                service=EntityReference(
-                    id=self.glue_storage_service.id, type="storageService"
-                ),
+                service=self.glue_storage_service.fullyQualifiedName,
             )
             self.status.scanned("location", location.name)
             yield location
@@ -615,9 +607,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=EntityReference(
-                id=self.database_service.id.__root__, type="databaseService"
-            ),
+            service=self.database_service.fullyQualifiedName.__root__,
         )
         yield db
 
@@ -635,7 +625,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=database_object.id, type="database"),
+            database=database_object.fullyQualifiedName,
         )
         yield schema
 
@@ -659,9 +649,7 @@ class SampleDataSource(
                 name=table["name"],
                 description=table["description"],
                 columns=table["columns"],
-                databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
@@ -686,9 +674,7 @@ class SampleDataSource(
                 replicationFactor=topic["replicationFactor"],
                 maximumMessageSize=topic["maximumMessageSize"],
                 cleanupPolicies=topic["cleanupPolicies"],
-                service=EntityReference(
-                    id=self.kafka_service.id, type="messagingService"
-                ),
+                service=self.kafka_service.fullyQualifiedName,
             )
 
             if "schemaType" in topic:
@@ -718,9 +704,7 @@ class SampleDataSource(
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]).value,
                     chartUrl=chart["chartUrl"],
-                    service=EntityReference(
-                        id=self.dashboard_service.id, type="dashboardService"
-                    ),
+                    service=self.dashboard_service.fullyQualifiedName,
                 )
                 self.status.scanned("chart", chart_ev.name)
                 yield chart_ev
@@ -740,9 +724,7 @@ class SampleDataSource(
                     self.metadata,
                     self.dashboard_service.name.__root__,
                 ),
-                service=EntityReference(
-                    id=self.dashboard_service.id, type="dashboardService"
-                ),
+                service=self.dashboard_service.fullyQualifiedName,
             )
             self.status.scanned("dashboard", dashboard_ev.name.__root__)
             yield dashboard_ev
@@ -755,9 +737,7 @@ class SampleDataSource(
                 description=pipeline["description"],
                 pipelineUrl=pipeline["pipelineUrl"],
                 tasks=pipeline["tasks"],
-                service=EntityReference(
-                    id=self.pipeline_service.id, type="pipelineService"
-                ),
+                service=self.pipeline_service.fullyQualifiedName,
             )
             yield pipeline_ev
 
@@ -839,14 +819,12 @@ class SampleDataSource(
                         f"Cannot find {mlmodel_fqn} in Sample Dashboards"
                     )
 
-                dashboard_id = str(dashboard.id.__root__)
-
                 model_ev = CreateMlModelRequest(
                     name=model["name"],
                     displayName=model["displayName"],
                     description=model["description"],
                     algorithm=model["algorithm"],
-                    dashboard=EntityReference(id=dashboard_id, type="dashboard"),
+                    dashboard=dashboard.fullyQualifiedName.__root__,
                     mlStore=MlStore(
                         storage=model["mlStore"]["storage"],
                         imageRepository=model["mlStore"]["imageRepository"],
@@ -860,10 +838,7 @@ class SampleDataSource(
                         MlHyperParameter(name=param["name"], value=param["value"])
                         for param in model.get("mlHyperParameters", [])
                     ],
-                    service=EntityReference(
-                        id=self.model_service.id,
-                        type="mlmodelService",
-                    ),
+                    service=self.model_service.fullyQualifiedName,
                 )
                 yield model_ev
             except Exception as exc:
@@ -975,18 +950,9 @@ class SampleDataSource(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
                         description=test_case["description"],
-                        testDefinition=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=test_case["testDefinitionName"],
-                                entity=TestDefinition,
-                            ).id.__root__,
-                            type="testDefinition",
-                        ),
+                        testDefinition="testDefinitionName",
                         entityLink=test_case["entityLink"],
-                        testSuite=EntityReference(
-                            id=suite.id.__root__,
-                            type="testSuite",
-                        ),
+                        testSuite=suite.fullyQualifiedName.__root__,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]

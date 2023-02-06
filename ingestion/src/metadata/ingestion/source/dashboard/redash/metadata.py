@@ -91,13 +91,9 @@ class RedashSource(DashboardServiceSource):
                 displayName=dashboard_details.get("name"),
                 description=dashboard_description,
                 charts=[
-                    EntityReference(id=chart.id.__root__, type="chart")
-                    for chart in self.context.charts
+                    chart.fullyQualifiedName.__root__ for chart in self.context.charts
                 ],
-                service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__,
-                    type="dashboardService",
-                ),
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
             )
             self.status.scanned(dashboard_details["name"])
@@ -182,10 +178,7 @@ class RedashSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(
                         visualization["type"] if visualization else ""
                     ),
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     chartUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
                     description=visualization["description"] if visualization else "",
                 )

@@ -158,10 +158,7 @@ class AirflowLineageRunner:
             pipelineLocation=self.dag.fileloc,
             startDate=self.dag.start_date.isoformat() if self.dag.start_date else None,
             tasks=self.get_om_tasks(),
-            service=EntityReference(
-                id=pipeline_service.id,
-                type="pipelineService",
-            ),
+            service=pipeline_service.fullyQualifiedName,
         )
 
         return self.metadata.create_or_update(pipeline_request)

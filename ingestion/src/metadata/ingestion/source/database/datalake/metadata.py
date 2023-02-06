@@ -141,10 +141,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def fetch_gcs_bucket_names(self):
@@ -244,7 +241,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
@@ -427,10 +424,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=EntityReference(
-                        id=self.context.database_schema.id,
-                        type="databaseSchema",
-                    ),
+                    databaseSchema=self.context.database_schema.fullyQualifiedName,
                 )
                 yield table_request
                 self.register_record(table_request=table_request)

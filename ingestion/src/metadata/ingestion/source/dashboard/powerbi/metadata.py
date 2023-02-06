@@ -172,13 +172,8 @@ class PowerbiSource(DashboardServiceSource):
             dashboardUrl=dashboard_url,
             displayName=dashboard_details["displayName"],
             description="",
-            charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
-                for chart in self.context.charts
-            ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            charts=[chart.fullyQualifiedName.__root__ for chart in self.context.charts],
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_lineage_details(
@@ -263,10 +258,7 @@ class PowerbiSource(DashboardServiceSource):
                     chartType=ChartType.Other.value,
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
                     chartUrl=chart_url,
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_display_name)
             except Exception as exc:  # pylint: disable=broad-except

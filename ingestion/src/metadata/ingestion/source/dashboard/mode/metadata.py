@@ -98,12 +98,9 @@ class ModeSource(DashboardServiceSource):
             if dashboard_details.get(client.DESCRIPTION)
             else "",
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
-                for chart in self.context.charts
+                chart.fullyQualifiedNamed.__root__ for chart in self.context.charts
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_lineage_details(
@@ -200,10 +197,7 @@ class ModeSource(DashboardServiceSource):
                         description="",
                         chartType=ChartType.Other,
                         chartUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
-                        service=EntityReference(
-                            id=self.context.dashboard_service.id.__root__,
-                            type="dashboardService",
-                        ),
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)
                 except Exception as exc:  # pylint: disable=broad-except

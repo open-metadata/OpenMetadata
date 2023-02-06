@@ -83,13 +83,8 @@ class SupersetDBSource(SupersetSourceMixin):
             description="",
             dashboardUrl=f"/superset/dashboard/{dashboard_details['id']}",
             owner=self.get_owner_details(dashboard_details),
-            charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
-                for chart in self.context.charts
-            ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            charts=[chart.fullyQualifiedName.__root__ for chart in self.context.charts],
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_lineage_details(
@@ -152,10 +147,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
                 chartUrl=f"/explore/?slice_id={chart_json['id']}",
-                service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__,
-                    type="dashboardService",
-                ),
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart
 

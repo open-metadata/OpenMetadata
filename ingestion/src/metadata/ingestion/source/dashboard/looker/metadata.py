@@ -198,9 +198,7 @@ class LookerSource(DashboardServiceSource):
                 for chart in self.context.charts
             ],
             dashboardUrl=f"/dashboards/{dashboard_details.id}",
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
             owner=self.get_owner_details(dashboard_details),
         )
 
@@ -364,10 +362,7 @@ class LookerSource(DashboardServiceSource):
                     description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
                     chartUrl=f"/dashboard_elements/{chart.id}",
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)
 

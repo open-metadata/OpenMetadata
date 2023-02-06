@@ -137,16 +137,7 @@ EXPTECTED_DATABASE_SCHEMA = [
         displayName=None,
         description=None,
         owner=None,
-        database=EntityReference(
-            id="a4e2f4aa-10af-4d4b-a85b-5daad6f70720",
-            type="database",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        database="local_databricks.hive_metastore",
     )
 ]
 
@@ -239,6 +230,7 @@ EXPTECTED_TABLE = [
         tablePartition=None,
         tableProfilerConfig=None,
         owner=None,
+        # TODO need help in fixing this with database schema FQN
         databaseSchema=EntityReference(
             id="2d725b6e-1588-4814-9d8b-eff384cd105b",
             type="databaseSchema",

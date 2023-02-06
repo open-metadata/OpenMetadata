@@ -122,9 +122,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             downstreamTasks=["d3f023ac-0182-1000-8bbe-e2b00347fff8"],
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service="nifi_source",
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(

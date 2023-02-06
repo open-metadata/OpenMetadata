@@ -114,9 +114,7 @@ class MetabaseSource(DashboardServiceSource):
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_chart(
@@ -157,10 +155,7 @@ class MetabaseSource(DashboardServiceSource):
                         str(chart_details["display"])
                     ).value,
                     chartUrl=chart_url,
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_details["name"])
             except Exception as exc:  # pylint: disable=broad-except

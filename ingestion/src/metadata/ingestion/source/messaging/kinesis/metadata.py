@@ -86,10 +86,7 @@ class KinesisSource(MessagingServiceSource):
             logger.info(f"Fetching topic details {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=EntityReference(
-                    id=self.context.messaging_service.id.__root__,
-                    type="messagingService",
-                ),
+                service=self.context.messaging_service.fullyQualifiedName.__root__,
                 partitions=len(topic_details.topic_metadata["partitions"]),
                 retentionTime=float(
                     topic_details.topic_metadata["summary"].get(

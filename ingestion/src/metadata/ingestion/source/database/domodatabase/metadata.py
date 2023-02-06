@@ -87,10 +87,7 @@ class DomodatabaseSource(DatabaseServiceSource):
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -102,7 +99,7 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[CreateDatabaseSchemaRequest]:
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -156,10 +153,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 description=table_object.get("description"),
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
             )
             yield table_request
             self.register_record(table_request=table_request)

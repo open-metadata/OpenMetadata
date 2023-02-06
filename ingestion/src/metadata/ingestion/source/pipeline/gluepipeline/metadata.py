@@ -101,9 +101,7 @@ class GluepipelineSource(PipelineServiceSource):
             displayName=pipeline_details[NAME],
             description="",
             tasks=self.get_tasks(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
         yield pipeline_ev
 

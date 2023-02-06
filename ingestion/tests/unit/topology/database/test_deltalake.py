@@ -79,9 +79,7 @@ MOCK_DATABASE = Database(
     id="2004514B-A800-4D92-8442-14B2796F712E",
     name="default",
     fullyQualifiedName="delta.default",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service="local_databricks",
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -91,9 +89,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     database=EntityReference(
         id="2004514B-A800-4D92-8442-14B2796F712E", type="database"
     ),
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service="local_databricks",
 )
 
 
@@ -160,9 +156,7 @@ class DeltaLakeUnitTest(TestCase):
         database_requests = list(self.delta.yield_database(database_name="default"))
         expected_database_request = CreateDatabaseRequest(
             name="default",
-            service=EntityReference(
-                id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-            ),
+            service="local_databricks",
         )
 
         self.assertEqual(database_requests, [expected_database_request])
@@ -174,10 +168,7 @@ class DeltaLakeUnitTest(TestCase):
     def test_yield_database_schema(self):
         schema_requests = list(self.delta.yield_database_schema(schema_name="default"))
         expected_schema_request = CreateDatabaseSchemaRequest(
-            name="default",
-            database=EntityReference(
-                id="2004514B-A800-4D92-8442-14B2796F712E", type="database"
-            ),
+            name="default", database="delta.default"
         )
 
         self.assertEqual(schema_requests, [expected_schema_request])
@@ -206,10 +197,7 @@ class DeltaLakeUnitTest(TestCase):
             description="testing around",
             columns=expected_columns,
             tableConstraints=None,
-            databaseSchema=EntityReference(
-                id="92D36A9B-B1A9-4D0A-A00B-1B2ED137ABA5",
-                type="databaseSchema",
-            ),
+            databaseSchema=MOCK_DATABASE_SCHEMA.fullyQualifiedName,
             viewDefinition=None,
         )
 

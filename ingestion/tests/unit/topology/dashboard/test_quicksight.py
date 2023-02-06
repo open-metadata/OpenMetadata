@@ -94,16 +94,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     charts=[],
     tags=None,
     owner=None,
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="dashboardService",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
+    service="quicksight_source_test",
     extension=None,
 )
 
@@ -117,16 +108,7 @@ EXPECTED_DASHBOARDS = [
         tables=None,
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
     CreateChartRequest(
         name="1985861713",
@@ -137,16 +119,7 @@ EXPECTED_DASHBOARDS = [
         tables=None,
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
     CreateChartRequest(
         name="2025899139",
@@ -157,16 +130,7 @@ EXPECTED_DASHBOARDS = [
         tables=None,
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
 ]
 

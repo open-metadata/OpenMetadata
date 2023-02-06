@@ -173,9 +173,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             downstreamTasks=[],
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service="databricks_pipeline_test",
 )
 
 

@@ -97,16 +97,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     charts=[],
     tags=None,
     owner=None,
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="dashboardService",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
+    service="domodashboard_source_test",
     extension=None,
 )
 
@@ -123,16 +114,7 @@ EXPECTED_DASHBOARDS = [
         tables=None,
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="domodashboard_source_test",
     ),
     CreateChartRequest(
         name="Milan Datasets",
@@ -143,16 +125,7 @@ EXPECTED_DASHBOARDS = [
         tables=None,
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="domodashboard_source_test",
     ),
     CreateChartRequest(
         name="Page Fans",
@@ -163,16 +136,7 @@ EXPECTED_DASHBOARDS = [
         tables=None,
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="domodashboard_source_test",
     ),
 ]
 

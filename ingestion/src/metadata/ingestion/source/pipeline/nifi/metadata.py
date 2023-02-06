@@ -145,9 +145,7 @@ class NifiSource(PipelineServiceSource):
                 self.service_connection.hostPort, ""
             ),
             tasks=self._get_tasks_from_details(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
 
     def yield_pipeline_status(

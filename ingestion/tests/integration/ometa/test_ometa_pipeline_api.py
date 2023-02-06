@@ -96,13 +96,13 @@ class OMetaPipelineTest(TestCase):
         cls.entity = Pipeline(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
             fullyQualifiedName="test-service-pipeline.test",
         )
 
         cls.create = CreatePipelineRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod
@@ -233,7 +233,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -286,7 +286,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -352,7 +352,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),

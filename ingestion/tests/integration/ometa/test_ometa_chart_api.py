@@ -84,13 +84,13 @@ class OMetaChartTest(TestCase):
         cls.entity = Chart(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
             fullyQualifiedName="test-service-chart.test",
         )
 
         cls.create = CreateChartRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod

@@ -153,5 +153,5 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 )
                 for key, value in model.get_params().items()
             ],
-            service=EntityReference(id=service.id, type="mlmodelService"),
+            service=service.fullyQualifiedName,
         )

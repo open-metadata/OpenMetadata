@@ -84,13 +84,13 @@ class OMetaDashboardTest(TestCase):
         cls.entity = Dashboard(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
             fullyQualifiedName="test-service-dashboard.test",
         )
 
         cls.create = CreateDashboardRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod

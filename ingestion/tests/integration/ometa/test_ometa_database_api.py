@@ -85,13 +85,13 @@ class OMetaDatabaseTest(TestCase):
         cls.entity = Database(
             id=uuid.uuid4(),
             name="test-db",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
             fullyQualifiedName="test-service-db.test-db",
         )
 
         cls.create = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod

@@ -83,9 +83,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             description="",
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service="fivertran_source",
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(

@@ -93,10 +93,7 @@ class DomodashboardSource(DashboardServiceSource):
                     EntityReference(id=chart.id.__root__, type="chart")
                     for chart in self.context.charts
                 ],
-                service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__,
-                    type="dashboardService",
-                ),
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
         except KeyError as err:
             logger.warning(
@@ -163,11 +160,8 @@ class DomodashboardSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(
                         chart["metadata"].get("chartType", "")
                     ).value,
-                    chartUrl=chart_url,
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    chartUrl=rt_url,
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart["title"])
             except Exception as exc:

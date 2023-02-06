@@ -162,9 +162,7 @@ class DagsterSource(PipelineServiceSource):
             displayName=pipeline_details["name"],
             description=pipeline_details.get("description", ""),
             tasks=task_list,
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
             tags=self.get_tag_labels(self.context.repository_name),
         )
 
