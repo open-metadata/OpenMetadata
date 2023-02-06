@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/core';
 import classNames from 'classnames';
 import React, { Fragment, FunctionComponent } from 'react';
@@ -36,7 +36,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
             theme="primary"
             variant="contained"
             onClick={props.onAddClick}>
-            <FontAwesomeIcon icon="plus" />
+            <PlusOutlined />
           </Button>
         )}
       </div>

@@ -13,7 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -453,7 +453,9 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
-      {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
+      {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
+      {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
+      {t('label.not-found-lowercase')}
     </p>
   );
 };
@@ -797,7 +799,7 @@ export const getLoadingStatus = (
 ) => {
   return current.id === id ? (
     current.state === 'success' ? (
-      <FontAwesomeIcon icon="check" />
+      <CheckOutlined />
     ) : (
       <Loader size="small" type="default" />
     )

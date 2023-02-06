@@ -14,8 +14,10 @@ Utils module to convert different file types from gcs buckets into a dataframe
 """
 
 import gzip
+import io
 import json
 import traceback
+import zipfile
 from typing import Any
 
 import gcsfs
@@ -32,6 +34,9 @@ logger = utils_logger()
 def _get_json_text(key: str, text: str) -> str:
     if key.endswith(".gz"):
         return gzip.decompress(text)
+    if key.endswith(".zip"):
+        with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
+            return zip_file.read(zip_file.infolist()[0]).decode("utf-8")
     return text
 
 

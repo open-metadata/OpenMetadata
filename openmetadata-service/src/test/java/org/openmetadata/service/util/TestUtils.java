@@ -483,12 +483,13 @@ public final class TestUtils {
     if (expected == null && actual == null) {
       return;
     }
-    if (listOrEmpty(expected).isEmpty()) {
+    expected = listOrEmpty(expected);
+    actual = listOrEmpty(actual);
+    if (expected.isEmpty()) {
       return;
     }
-    for (UUID id : listOrEmpty(expected)) {
-      actual = listOrEmpty(actual);
-      assertEquals(expected.size(), actual.size());
+    assertEquals(expected.size(), actual.size());
+    for (UUID id : expected) {
       assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
     }
     validateEntityReferences(actual);

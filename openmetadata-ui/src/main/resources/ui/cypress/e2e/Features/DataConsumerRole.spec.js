@@ -117,7 +117,7 @@ const ID = {
 
 describe('DataConsumer Edit policy should work properly', () => {
   it('Create a new account and assign Data consumer role to the user', () => {
-    interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
     // Click on create account button

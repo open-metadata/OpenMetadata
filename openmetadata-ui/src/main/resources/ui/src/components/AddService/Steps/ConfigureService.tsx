@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import React, { useRef } from 'react';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -73,7 +74,7 @@ const ConfigureService = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label" htmlFor="description">
-          Description:
+          {`${t('label.description')}:`}
         </label>
         <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
@@ -86,7 +87,7 @@ const ConfigureService = ({
           theme="primary"
           variant="text"
           onClick={onBack}>
-          <span>Back</span>
+          <span>{t('label.back')}</span>
         </Button>
 
         <Button
@@ -95,7 +96,7 @@ const ConfigureService = ({
           theme="primary"
           variant="contained"
           onClick={() => onNext(markdownRef.current?.getEditorContent() || '')}>
-          <span>Next</span>
+          <span>{t('label.next')}</span>
         </Button>
       </Field>
     </div>

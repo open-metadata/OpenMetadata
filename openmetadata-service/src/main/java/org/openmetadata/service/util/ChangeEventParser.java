@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.emailAlert.EmailMessage;
+import org.openmetadata.service.alerts.gchat.GChatMessage;
 import org.openmetadata.service.alerts.msteams.TeamsMessage;
 import org.openmetadata.service.alerts.slack.SlackAttachment;
 import org.openmetadata.service.alerts.slack.SlackMessage;
@@ -85,6 +86,7 @@ public final class ChangeEventParser {
     FEED,
     SLACK,
     TEAMS,
+    GCHAT,
     EMAIL
   }
 
@@ -96,6 +98,8 @@ public final class ChangeEventParser {
         return FEED_BOLD;
       case SLACK:
         return SLACK_BOLD;
+      case GCHAT:
+        return "<b>%s</b>";
       default:
         return "INVALID";
     }
@@ -105,7 +109,8 @@ public final class ChangeEventParser {
     switch (publishTo) {
       case FEED:
       case TEAMS:
-        // TEAMS and FEED bold formatting is same
+      case GCHAT:
+        // TEAMS, GCHAT, FEED linebreak formatting are same
         return FEED_LINE_BREAK;
       case SLACK:
         return SLACK_LINE_BREAK;
@@ -119,10 +124,11 @@ public final class ChangeEventParser {
       case FEED:
         return FEED_SPAN_ADD;
       case TEAMS:
-        // TEAMS and FEED bold formatting is same
         return "**";
       case SLACK:
         return "*";
+      case GCHAT:
+        return "<b>";
       default:
         return "INVALID";
     }
@@ -133,10 +139,11 @@ public final class ChangeEventParser {
       case FEED:
         return FEED_SPAN_CLOSE;
       case TEAMS:
-        // TEAMS and FEED bold formatting is same
         return "** ";
       case SLACK:
         return "*";
+      case GCHAT:
+        return "</b>";
       default:
         return "INVALID";
     }
@@ -147,10 +154,11 @@ public final class ChangeEventParser {
       case FEED:
         return FEED_SPAN_REMOVE;
       case TEAMS:
-        // TEAMS and FEED bold formatting is same
         return "~~";
       case SLACK:
         return "~";
+      case GCHAT:
+        return "<s>";
       default:
         return "INVALID";
     }
@@ -161,10 +169,11 @@ public final class ChangeEventParser {
       case FEED:
         return FEED_SPAN_CLOSE;
       case TEAMS:
-        // TEAMS and FEED bold formatting is same
         return "~~ ";
       case SLACK:
         return "~";
+      case GCHAT:
+        return "</s>";
       default:
         return "INVALID";
     }
@@ -177,7 +186,7 @@ public final class ChangeEventParser {
     if (Objects.nonNull(urlInstance)) {
       String scheme = urlInstance.getScheme();
       String host = urlInstance.getHost();
-      if (publishTo == PUBLISH_TO.SLACK) {
+      if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
         return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
       } else if (publishTo == PUBLISH_TO.TEAMS) {
         return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
@@ -248,6 +257,42 @@ public final class ChangeEventParser {
     }
     teamsMessage.setSections(attachmentList);
     return teamsMessage;
+  }
+
+  public static GChatMessage buildGChatMessage(ChangeEvent event) {
+    GChatMessage gChatMessage = new GChatMessage();
+    GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
+    GChatMessage.Card card = new GChatMessage.Card();
+    GChatMessage.Section section = new GChatMessage.Section();
+    if (event.getEntity() != null) {
+      String headerTemplate = "%s posted on %s %s";
+      String headerText =
+          String.format(
+              headerTemplate, event.getUserName(), event.getEntityType(), getEntityUrl(PUBLISH_TO.GCHAT, event));
+      gChatMessage.setText(headerText);
+      GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
+      String cardHeaderText =
+          String.format(
+              headerTemplate,
+              event.getUserName(),
+              event.getEntityType(),
+              ((EntityInterface) event.getEntity()).getName());
+      cardHeader.setTitle(cardHeaderText);
+      card.setHeader(cardHeader);
+    }
+    Map<EntityLink, String> messages =
+        getFormattedMessages(PUBLISH_TO.GCHAT, event.getChangeDescription(), (EntityInterface) event.getEntity());
+    List<GChatMessage.Widget> widgets = new ArrayList<>();
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
+      GChatMessage.Widget widget = new GChatMessage.Widget();
+      widget.setTextParagraph(new GChatMessage.TextParagraph(entry.getValue()));
+      widgets.add(widget);
+    }
+    section.setWidgets(widgets);
+    card.setSections(List.of(section));
+    cardsV2.setCard(card);
+    gChatMessage.setCardsV2(List.of(cardsV2));
+    return gChatMessage;
   }
 
   public static Map<EntityLink, String> getFormattedMessages(

@@ -26,6 +26,7 @@ extends:
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
   - prettier
+  - plugin:i18next/recommended
   - 'plugin:cypress/recommended'
 
 parser: '@typescript-eslint/parser'
@@ -43,6 +44,7 @@ plugins:
   - jest
   - jest-formatting
   - '@typescript-eslint'
+  - i18next
   - 'cypress'
 
 rules:
@@ -128,6 +130,9 @@ rules:
   react/jsx-pascal-case:
     - error
 
+  react/prop-types:
+    - off
+
   # Disallow unnecessary curly braces in JSX
   react/jsx-curly-brace-presence:
     - error
@@ -180,6 +185,12 @@ rules:
 
   # React rules
 
+  # i18next rules
+
+  i18next/no-literal-string: error
+
+  # i18next rules
+
   # Cypress rules
 
   cypress/no-unnecessary-waiting: warn
@@ -222,6 +233,15 @@ overrides:
       jest/valid-expect-in-promise:
         - off
       jest/valid-expect:
+        - off
+
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
         - off
 
 globals:

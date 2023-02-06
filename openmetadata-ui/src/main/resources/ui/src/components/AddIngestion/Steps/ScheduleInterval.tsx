@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../buttons/Button/Button';
@@ -73,7 +73,7 @@ const ScheduleInterval = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <FontAwesomeIcon icon="check" />
+            <CheckOutlined />
           </Button>
         ) : (
           <Button

@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -65,7 +66,15 @@ export const getOwnershipCount = (
 
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
-    '/config/auth'
+    '/system/config/auth'
+  );
+
+  return response.data;
+};
+
+export const fetchAuthorizerConfig = async () => {
+  const response = await APIClient.get<AuthorizerConfiguration>(
+    '/system/config/authorizer'
   );
 
   return response.data;
@@ -73,18 +82,20 @@ export const fetchAuthenticationConfig = async () => {
 
 export const fetchSandboxConfig = async () => {
   const response = await APIClient.get<{ sandboxModeEnabled: boolean }>(
-    '/config/sandbox'
+    '/system/config/sandbox'
   );
 
   return response.data;
 };
 
 export const fetchSlackConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/slackChat');
+  return APIClient.get('/system/config/slackChat');
 };
 
 export const fetchAirflowConfig = async () => {
-  const response = await APIClient.get<AirflowConfiguration>('/config/airflow');
+  const response = await APIClient.get<AirflowConfiguration>(
+    '/system/config/airflow'
+  );
 
   return response.data;
 };
@@ -119,7 +130,7 @@ export const getSuggestions = <T extends SearchIndex>(
 };
 
 export const getVersion = async () => {
-  const response = await APIClient.get<{ version: string }>('/version');
+  const response = await APIClient.get<{ version: string }>('/system/version');
 
   return response.data;
 };
@@ -283,7 +294,7 @@ export const getEntityCount = async (
 };
 
 export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/util/entities/count');
+  const response = await APIClient.get<EntitiesCount>('/system/entities/count');
 
   return response.data;
 };

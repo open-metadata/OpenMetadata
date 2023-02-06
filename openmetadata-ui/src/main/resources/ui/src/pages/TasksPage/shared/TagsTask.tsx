@@ -13,6 +13,7 @@
 
 import { diffArrays } from 'diff';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   TaskType,
   Thread,
@@ -40,6 +41,7 @@ const TagsTask: FC<TagsTaskProps> = ({
   task,
   currentTags,
 }) => {
+  const { t } = useTranslation();
   const isRequestTag = task?.type === TaskType.RequestTag;
 
   const isUpdateTag = task?.type === TaskType.UpdateTag;
@@ -52,7 +54,9 @@ const TagsTask: FC<TagsTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">No Tags</span>
+          <span className="tw-p-2 tw-text-grey-muted">
+            {t('label.no-entity', { entity: t('label.tag-plural') })}
+          </span>
         </div>
       );
     } else {
@@ -76,7 +80,9 @@ const TagsTask: FC<TagsTaskProps> = ({
     const oldTags = task?.oldValue;
 
     return !newTags && !oldTags ? (
-      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
+      <span className="tw-p-2 tw-text-grey-muted">
+        {t('label.no-entity', { entity: t('label.suggestion') })}
+      </span>
     ) : (
       <TagsDiffView
         diffArr={diffArrays(
@@ -89,7 +95,7 @@ const TagsTask: FC<TagsTaskProps> = ({
 
   return (
     <div data-testid="task-tags-tabs">
-      <p className="tw-text-grey-muted">Tags:</p>{' '}
+      <p className="tw-text-grey-muted">{`${t('label.tag-plural')}:`}</p>
       <Fragment>
         {isTaskClosed ? (
           getDiffView()

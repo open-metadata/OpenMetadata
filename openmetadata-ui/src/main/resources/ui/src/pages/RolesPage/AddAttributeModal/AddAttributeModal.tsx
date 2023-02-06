@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -134,7 +134,7 @@ const AddAttributeModal: FC<Props> = ({
         <span data-testid="modal-title">
           {title}{' '}
           <span className="text-grey-muted text-sm">
-            ({selectedValues.length}/{data.length} selected)
+            {`(${selectedValues.length}/${data.length} selected)`}
           </span>
         </span>
       }
@@ -150,12 +150,7 @@ const AddAttributeModal: FC<Props> = ({
               <Input
                 data-testid="search-input"
                 placeholder={`Search ${type}`}
-                prefix={
-                  <FontAwesomeIcon
-                    icon="search"
-                    style={{ color: '#37352F4D' }}
-                  />
-                }
+                prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </Col>
@@ -175,7 +170,7 @@ const AddAttributeModal: FC<Props> = ({
               </Col>
               <Col span={2}>
                 {selectedValues.includes(option.id) && (
-                  <FontAwesomeIcon className="text-primary" icon="check" />
+                  <CheckOutlined className="text-primary" />
                 )}
               </Col>
             </Row>

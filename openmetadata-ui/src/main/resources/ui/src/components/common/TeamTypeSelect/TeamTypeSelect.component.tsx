@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
@@ -50,14 +50,8 @@ function TeamTypeSelect({
         onSelect={handleSelect}
       />
       <Space className="edit-team-type-buttons" size={4}>
-        <Button
-          icon={<FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="xmark" />}
-          onClick={handleCancel}
-        />
-        <Button
-          icon={<FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />}
-          onClick={handleSubmit}
-        />
+        <Button icon={<CloseOutlined />} onClick={handleCancel} />
+        <Button icon={<CheckOutlined />} onClick={handleSubmit} />
       </Space>
     </Space>
   );

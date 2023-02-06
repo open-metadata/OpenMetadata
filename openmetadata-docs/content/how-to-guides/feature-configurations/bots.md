@@ -35,7 +35,7 @@ Otherwise, a JWT Token will be generated to be the default authentication mechan
 
 **2. JWT Token auth mechanism**
 
-If you decide to configure a JWT Token for the authentication mechanism ensure that you have also the value `http://localhost:8585/api/v1/config/jwks`
+If you decide to configure a JWT Token for the authentication mechanism ensure that you have also the value `http://localhost:8585/api/v1/system/config/jwks`
 in your `publicKeyUrls` list:
 
 - For **bare metal** configuration:
@@ -45,13 +45,13 @@ authenticationConfiguration:
   provider: "google"
   publicKeyUrls:
     - "https://www.googleapis.com/oauth2/v3/certs"
-    - "http://localhost:8585/api/v1/config/jwks"
+    - "http://localhost:8585/api/v1/system/config/jwks"
 ```
 
 - For **docker** configuration, the value to be updated is `AUTHENTICATION_PUBLIC_KEYS`:
 
 ```bash
-AUTHENTICATION_PUBLIC_KEYS=[https://www.googleapis.com/oauth2/v3/certs, http://localhost:8585/api/v1/config/jwks]
+AUTHENTICATION_PUBLIC_KEYS=[https://www.googleapis.com/oauth2/v3/certs, http://localhost:8585/api/v1/system/config/jwks]
 ```
 
 - In the case of **kubernetes**, you have to update `publicKeys` values:
@@ -61,7 +61,7 @@ global:
   authentication:
     publicKeys:
       - "https://www.googleapis.com/oauth2/v3/certs"
-      - "http://localhost:8585/api/v1/config/jwks" 
+      - "http://localhost:8585/api/v1/system/config/jwks" 
 ```
 
 **3. Redeploying ingestion pipelines**

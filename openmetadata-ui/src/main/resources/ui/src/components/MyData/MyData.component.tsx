@@ -135,7 +135,7 @@ const MyData: React.FC<MyDataProps> = ({
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       {t('label.view-all')}{' '}
                       <span data-testid="my-data-total-count">
-                        ({ownedDataCount})
+                        {`(${ownedDataCount})`}
                       </span>
                     </span>
                   </Link>
@@ -164,7 +164,7 @@ const MyData: React.FC<MyDataProps> = ({
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       {t('label.view-all')}{' '}
                       <span data-testid="following-data-total-count">
-                        ({followedDataCount})
+                        {`(${followedDataCount})`}
                       </span>
                     </span>
                   </Link>

@@ -1,17 +1,4 @@
-/*
- *  Copyright 2021 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
-package org.openmetadata.service.resources.settings;
+package org.openmetadata.service.resources.system;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -28,12 +15,14 @@ import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -42,28 +31,35 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.util.EntitiesCount;
+import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.SettingsRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
-/**
- * Resource for managing OpenMetadata settings that an admin can change. Example - using APIs here, the conversation
- * thread notification can be changed to include only events that an organization uses.
- */
-@Path("/v1/settings")
-@Api(value = "Settings Collection", tags = "Settings collection")
+@Path("/v1/system")
+@Api(value = "Util collection", tags = "Util collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "settings")
+@Collection(name = "system")
 @Slf4j
-public class SettingsResource {
-  private final SettingsRepository settingsRepository;
+public class SystemResource {
+  public static final String COLLECTION_PATH = "/v1/util";
+  private final SystemRepository systemRepository;
   private final Authorizer authorizer;
+
+  public SystemResource(CollectionDAO dao, Authorizer authorizer) {
+    Objects.requireNonNull(dao, "SystemRepository must not be null");
+    this.systemRepository = new SystemRepository(dao.systemDAO());
+    this.authorizer = authorizer;
+  }
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -83,10 +79,10 @@ public class SettingsResource {
       settings.forEach(
           (setting) -> {
             try {
-              Settings storedSettings = settingsRepository.getConfigWithKey(setting.getConfigType().toString());
+              Settings storedSettings = systemRepository.getConfigWithKey(setting.getConfigType().toString());
               if (storedSettings == null) {
                 // Only in case a config doesn't exist in DB we insert it
-                settingsRepository.createNewSetting(setting);
+                systemRepository.createNewSetting(setting);
               }
             } catch (Exception ex) {
               LOG.debug("Fetching from DB failed ", ex);
@@ -104,18 +100,12 @@ public class SettingsResource {
     }
   }
 
-  public SettingsResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "SettingsRepository must not be null");
-    this.settingsRepository = new SettingsRepository(dao);
-    SettingsCache.initialize(dao);
-    this.authorizer = authorizer;
-  }
-
   @GET
+  @Path("/settings")
   @Operation(
       operationId = "listSettings",
       summary = "List All Settings",
-      tags = "settings",
+      tags = "system",
       description = "Get a List of all OpenMetadata Settings",
       responses = {
         @ApiResponse(
@@ -125,15 +115,15 @@ public class SettingsResource {
       })
   public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return settingsRepository.listAllConfigs();
+    return systemRepository.listAllConfigs();
   }
 
   @GET
-  @Path("/{name}")
+  @Path("/settings/{name}")
   @Operation(
       operationId = "getSetting",
       summary = "Get a Setting",
-      tags = "settings",
+      tags = "system",
       description = "Get a OpenMetadata Settings",
       responses = {
         @ApiResponse(
@@ -147,14 +137,15 @@ public class SettingsResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string")) @PathParam("name")
           String name) {
     authorizer.authorizeAdmin(securityContext);
-    return settingsRepository.getConfigWithKey(name);
+    return systemRepository.getConfigWithKey(name);
   }
 
   @PUT
+  @Path("/settings")
   @Operation(
       operationId = "createOrUpdate",
       summary = "Update Setting",
-      tags = "settings",
+      tags = "system",
       description = "Update Existing Settings",
       responses = {
         @ApiResponse(
@@ -165,15 +156,15 @@ public class SettingsResource {
   public Response createOrUpdateSetting(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
     authorizer.authorizeAdmin(securityContext);
-    return settingsRepository.createOrUpdate(settingName);
+    return systemRepository.createOrUpdate(settingName);
   }
 
   @PATCH
-  @Path("/{settingName}")
+  @Path("/settings/{settingName}")
   @Operation(
       operationId = "patchSetting",
       summary = "Patch a Setting",
-      tags = "settings",
+      tags = "system",
       description = "Update an existing Setting using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -192,6 +183,56 @@ public class SettingsResource {
                       }))
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
-    return settingsRepository.patchSetting(settingName, patch);
+    return systemRepository.patchSetting(settingName, patch);
+  }
+
+  @GET
+  @Path("/entities/count")
+  @Operation(
+      operationId = "listEntitiesCount",
+      summary = "List All Entities Counts",
+      tags = "system",
+      description = "Get a List of all Entities Count",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Entities Count",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntitiesCount.class)))
+      })
+  public EntitiesCount listEntitiesCount(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    return systemRepository.getAllEntitiesCount(filter);
+  }
+
+  @GET
+  @Path("/services/count")
+  @Operation(
+      operationId = "listServicesCount",
+      summary = "List All Services Counts",
+      tags = "system",
+      description = "Get a List of all Entities Count",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Services Count",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ServicesCount.class)))
+      })
+  public ServicesCount listServicesCount(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    return systemRepository.getAllServicesCount(filter);
   }
 }
