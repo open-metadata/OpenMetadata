@@ -68,7 +68,9 @@ DATALAKE_DATA_TYPES = {
     ),
 }
 
-DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet", ".json.gz")
+JSON_SUPPORTED_TYPES = (".json", ".json.gz", ".json.zip")
+
+DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".parquet") + JSON_SUPPORTED_TYPES
 
 
 def ometa_to_dataframe(config_source, client, table):
@@ -287,6 +289,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
 
                     if filter_by_table(
@@ -315,6 +318,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         database_name=self.context.database.name.__root__,
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
+                        skip_es_search=True,
                     )
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
@@ -348,6 +352,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                             database_name=self.context.database.name.__root__,
                             schema_name=self.context.database_schema.name.__root__,
                             table_name=table_name,
+                            skip_es_search=True,
                         )
                         if filter_by_table(
                             self.config.sourceConfig.config.tableFilterPattern,
@@ -453,7 +458,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             if key.endswith(".tsv"):
                 return read_tsv_from_gcs(key, bucket_name)
 
-            if key.endswith((".json", ".json.gz")):
+            if key.endswith(JSON_SUPPORTED_TYPES):
                 return read_json_from_gcs(client, key, bucket_name)
 
             if key.endswith(".parquet"):
@@ -481,7 +486,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             if key.endswith(".csv"):
                 return read_csv_from_azure(client, key, container_name, storage_options)
 
-            if key.endswith((".json", ".json.gz")):
+            if key.endswith(JSON_SUPPORTED_TYPES):
                 return read_json_from_azure(
                     client, key, container_name, storage_options
                 )
@@ -522,7 +527,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             if key.endswith(".tsv"):
                 return read_tsv_from_s3(client, key, bucket_name)
 
-            if key.endswith((".json", ".json.gz")):
+            if key.endswith(JSON_SUPPORTED_TYPES):
                 return read_json_from_s3(client, key, bucket_name)
 
             if key.endswith(".parquet"):
@@ -531,7 +536,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected exception to get S3 files from [{bucket_name}]: {exc}"
+                f"Unexpected exception to get S3 file [{key}] from bucket [{bucket_name}]: {exc}"
             )
         return None
 

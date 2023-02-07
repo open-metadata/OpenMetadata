@@ -159,10 +159,10 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     if (role.getUsers() == null) {
       UserResourceTest userResourceTest = new UserResourceTest();
       userResourceTest.createEntity(
-          userResourceTest.createRequest(role.getName() + "user1", "", "", null).withRoles(List.of(role.getId())),
+          userResourceTest.createRequest("roleUser1", "", "", null).withRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
       userResourceTest.createEntity(
-          userResourceTest.createRequest(role.getName() + "user2", "", "", null).withRoles(List.of(role.getId())),
+          userResourceTest.createRequest("roleUser2", "", "", null).withRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
     }
 
@@ -170,14 +170,10 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     if (role.getTeams() == null) {
       TeamResourceTest teamResourceTest = new TeamResourceTest();
       teamResourceTest.createEntity(
-          teamResourceTest
-              .createRequest(role.getName() + "team1", "", "", null)
-              .withDefaultRoles(List.of(role.getId())),
+          teamResourceTest.createRequest("roleTeam1", "", "", null).withDefaultRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
       teamResourceTest.createEntity(
-          teamResourceTest
-              .createRequest(role.getName() + "team2", "", "", null)
-              .withDefaultRoles(List.of(role.getId())),
+          teamResourceTest.createRequest("roleTeam2", "", "", null).withDefaultRoles(List.of(role.getId())),
           ADMIN_AUTH_HEADERS);
     }
 

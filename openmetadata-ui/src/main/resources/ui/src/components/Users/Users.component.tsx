@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button as AntDButton,
   Card,
@@ -102,6 +102,7 @@ const Users = ({
   ownedEntities,
   feedData,
   isFeedLoading,
+  isUserEntitiesLoading,
   postFeedHandler,
   deletePostHandler,
   fetchFeedHandler,
@@ -304,7 +305,7 @@ const Users = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={() => setIsDisplayNameEdit(false)}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+                  <CloseOutlined />
                 </Button>
                 <Button
                   className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -313,7 +314,7 @@ const Users = ({
                   theme="primary"
                   variant="contained"
                   onClick={handleDisplayNameChange}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+                  <CheckOutlined />
                 </Button>
               </div>
             </Space>
@@ -494,10 +495,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onMouseDown={() => setIsTeamsEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
+                    <CloseOutlined />
                   </Button>
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -506,10 +504,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onClick={handleTeamsChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
+                    <CheckOutlined />
                   </Button>
                 </div>
               </Space>
@@ -630,10 +625,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onMouseDown={() => setIsRolesEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
+                    <CloseOutlined />
                   </Button>
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -642,10 +634,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onClick={handleRolesChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
+                    <CheckOutlined />
                   </Button>
                 </div>
               </Space>
@@ -807,6 +796,7 @@ const Users = ({
             className=""
             deletePostHandler={deletePostHandler}
             feedList={feedData}
+            isFeedLoading={isFeedLoading}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
           />
@@ -899,6 +889,9 @@ const Users = ({
   const getEntityData = useCallback(
     (tabNumber: number) => {
       const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
+      if (isUserEntitiesLoading) {
+        return <Loader />;
+      }
 
       return (
         <div data-testid="table-container">
@@ -953,7 +946,7 @@ const Users = ({
         </div>
       );
     },
-    [followingEntities, ownedEntities]
+    [followingEntities, ownedEntities, isUserEntitiesLoading]
   );
 
   return (

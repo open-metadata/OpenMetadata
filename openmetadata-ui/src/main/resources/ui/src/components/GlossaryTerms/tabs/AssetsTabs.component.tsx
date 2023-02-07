@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
 import React from 'react';
@@ -28,6 +29,10 @@ interface Props {
 }
 
 const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
+  if (assetData.isLoading) {
+    return <Loader />;
+  }
+
   return (
     <div data-testid="table-container">
       {assetData.data.length ? (

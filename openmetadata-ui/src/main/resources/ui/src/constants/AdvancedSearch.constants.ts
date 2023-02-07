@@ -32,7 +32,7 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.name',
+    key: 'owner.displayName',
   },
   {
     label: t('label.tag'),
@@ -103,7 +103,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.name',
+            field: 'owner.displayName',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -144,15 +144,19 @@ export const autocomplete: (args: {
         fetchSource: isUserAndTeamSearchIndex,
       }).then((resp) => {
         return {
-          values: uniq(resp).map(({ text, _source }) => ({
-            value: text,
-            title:
-              // set displayName or name if index is type of user or team and both.
-              // else set the text
+          values: uniq(resp).map(({ text, _source }) => {
+            // set displayName or name if index is type of user or team and both.
+            // else set the text
+            const name =
               isUserAndTeamSearchIndex && !isUndefined(_source)
                 ? _source?.displayName || _source.name
-                : text,
-          })),
+                : text;
+
+            return {
+              value: name,
+              title: name,
+            };
+          }),
           hasMore: false,
         };
       });
@@ -194,7 +198,7 @@ const getCommonQueryBuilderFields = (
       defaultValue: true,
     },
 
-    'owner.name': {
+    'owner.displayName': {
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
@@ -452,4 +456,6 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
   }
 };
 
-export const MISC_FIELDS = ['owner.name', 'tags.tagFQN'];
+export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
+
+export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';

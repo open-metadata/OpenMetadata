@@ -2,13 +2,15 @@ FROM python:3.9-buster
 
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get update \
-    && apt-get install -y build-essential \
+    && apt-get install -y alien \
+    build-essential \
     ca-certificates \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
     gcc \
     gnupg \
+    libaio1 \
     libevent-dev \
     libffi-dev \
     libpq-dev \
@@ -23,6 +25,7 @@ RUN apt-get update \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
+    unzip \
     wget --no-install-recommends
 
 # Prep to install msodbcsql18
@@ -41,6 +44,17 @@ RUN apt-get update && \
     ./configure && make && make install && \
     cd ../ && rm -rf librdkafka
 
+RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+ then \
+ wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ else \
+ wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ fi
+
+ENV LD_LIBRARY_PATH=/instantclient
+
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
@@ -49,8 +63,8 @@ COPY ingestion/operators/docker/main.py .
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install --upgrade openmetadata-ingestion[airflow]
-RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]
+RUN pip install --upgrade "openmetadata-ingestion[airflow]==0.13.2.1"
+RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.13.2.1"
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error

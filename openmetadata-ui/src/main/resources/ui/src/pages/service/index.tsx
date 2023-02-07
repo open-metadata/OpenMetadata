@@ -14,7 +14,6 @@
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { Button as LegacyButton } from 'components/buttons/Button/Button';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import Description from 'components/common/description/Description';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
@@ -974,26 +973,28 @@ const ServicePage: FunctionComponent = () => {
                   {serviceDetails?.serviceType !==
                     MetadataServiceType.OpenMetadata && (
                     <Tooltip
+                      placement="topRight"
                       title={
-                        servicePermission.Delete
-                          ? t('label.delete')
-                          : t('message.no-permission-for-action')
+                        !servicePermission.Delete &&
+                        t('message.no-permission-for-action')
                       }>
-                      <LegacyButton
+                      <Button
+                        ghost
                         data-testid="service-delete"
                         disabled={!servicePermission.Delete}
+                        icon={
+                          <IcDeleteColored
+                            className="anticon"
+                            height={14}
+                            viewBox="0 0 24 24"
+                            width={14}
+                          />
+                        }
                         size="small"
-                        theme="primary"
-                        variant="outlined"
+                        type="primary"
                         onClick={handleDelete}>
-                        <IcDeleteColored
-                          className="m-r-xs"
-                          height={14}
-                          viewBox="0 0 24 24"
-                          width={14}
-                        />
                         {t('label.delete')}
-                      </LegacyButton>
+                      </Button>
                     </Tooltip>
                   )}
                   <DeleteWidgetModal
@@ -1094,6 +1095,10 @@ const ServicePage: FunctionComponent = () => {
                           }}
                           data-testid="service-children-table"
                           dataSource={data}
+                          loading={{
+                            spinning: isLoading,
+                            indicator: <Loader size="small" />,
+                          }}
                           pagination={false}
                           rowKey="id"
                           size="small"

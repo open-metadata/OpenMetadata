@@ -651,6 +651,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                       deletePostHandler={deletePostHandler}
                       entityName={mlModelDetail.name}
                       feedList={entityThread}
+                      isFeedLoading={isEntityThreadLoading}
                       postFeedHandler={postFeedHandler}
                       updateThreadHandler={updateThreadHandler}
                       onFeedFiltersUpdate={handleFeedFilterChange}
@@ -692,6 +693,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   }
                   entityType={EntityType.MLMODEL}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    mlModelPermissions.EditAll ||
+                    mlModelPermissions.EditCustomFields
+                  }
                 />
               )}
               <div

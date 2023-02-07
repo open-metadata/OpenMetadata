@@ -82,6 +82,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     Entity.withHref(uriInfo, term.getChildren());
     Entity.withHref(uriInfo, term.getRelatedTerms());
     Entity.withHref(uriInfo, term.getReviewers());
+    Entity.withHref(uriInfo, term.getOwner());
     return term;
   }
 
@@ -102,7 +103,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     }
   }
 
-  static final String FIELDS = "children,relatedTerms,reviewers,tags,usageCount";
+  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount";
 
   @GET
   @Valid
@@ -211,7 +212,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public GlossaryTerm get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -228,22 +229,24 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @GET
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "getGlossaryTermByFQN",
-      summary = "Get a glossary term by name",
+      summary = "Get a glossary term by fully qualified name",
       tags = "glossaryTerm",
-      description = "Get a glossary term by name.",
+      description = "Get a glossary term by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The glossary term",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Glossary for instance {fqn} is not found")
       })
   public GlossaryTerm getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -257,7 +260,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -276,7 +279,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -300,7 +303,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "glossary term version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -342,7 +345,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -397,9 +400,34 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Glossary Term Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteGlossaryTermByName",
+      summary = "Delete a glossary term by fully qualified name",
+      tags = "glossaryTerm",
+      description = "Delete a glossary term by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "glossaryTerm for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT

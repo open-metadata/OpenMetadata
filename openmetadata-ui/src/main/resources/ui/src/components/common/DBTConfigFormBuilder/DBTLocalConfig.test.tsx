@@ -21,6 +21,7 @@ const mockCatalogChange = jest.fn();
 const mockManifestChange = jest.fn();
 const mockRunResultsFilePathChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
 
 const mockProps = {
   dbtCatalogFilePath: '',
@@ -35,10 +36,11 @@ const mockProps = {
   handleManifestFilePathChange: mockManifestChange,
   handleRunResultsFilePathChange: mockRunResultsFilePathChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
 
-jest.mock('./SwitchField.component', () =>
-  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
 );
 
 describe('Test DBT Local Config Form', () => {

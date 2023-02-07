@@ -15,7 +15,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
 | global.authentication.provider | string | `basic` |
-| global.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/config/jwks]` |
+| global.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/system/config/jwks]` |
 | global.authentication.authority | string | `https://accounts.google.com` |
 | global.authentication.clientId | string | `Empty String` |
 | global.authentication.callbackUrl | string | `Empty String` |
@@ -59,7 +59,9 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.elasticsearch.trustStore.path | string | `Empty String` |
 | global.elasticsearch.trustStore.password.secretRef | string | `elasticsearch-truststore-secrets` |
 | global.elasticsearch.trustStore.password.secretKey | string | `openmetadata-elasticsearch-truststore-password` |
-| global.fernetKey | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
+| global.fernetkey.value | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
+| global.fernetkey.secretRef | string | `` |
+| global.fernetkey.secretKef | string | `` |
 | global.jwtTokenConfiguration.enabled | bool | `true` |
 | global.jwtTokenConfiguration.rsapublicKeyFilePath | string | `./conf/public_key.der` |
 | global.jwtTokenConfiguration.rsaprivateKeyFilePath | string | `./conf/private_key.der` |
@@ -93,42 +95,42 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 <Table>
 
-| Key | Type | Default |
-| :---------- | :---------- | :---------- |
-| affinity | object | `{}` |
-| extraEnvs | Extra [environment variables][] which will be appended to the `env:` definition for the container | `[]` |
-| extraVolumes | Templatable string of additional `volumes` to be passed to the `tpl` function | "" |
-| extraVolumeMounts | Templatable string of additional `volumeMounts` to be passed to the `tpl` function | "" |
-| fullnameOverride | string | `"openmetadata"` |
-| image.pullPolicy | string | `"Always"` |
-| image.repository | string | `"openmetadata/server"` |
-| image.tag | string | `0.13.1` |
-| imagePullSecrets | list | `[]` |
-| ingress.annotations | object | `{}` |
-| ingress.className | string | `""` |
-| ingress.enabled | bool | `false` |
-| ingress.hosts[0].host | string | `"open-metadata.local"` |
-| ingress.hosts[0].paths[0].path | string | `"/"` |
+| Key | Type | Default                    |
+| :---------- | :---------- |:---------------------------|
+| affinity | object | `{}`                       |
+| extraEnvs | Extra [environment variables][] which will be appended to the `env:` definition for the container | `[]`                       |
+| extraVolumes | Templatable string of additional `volumes` to be passed to the `tpl` function | ""                         |
+| extraVolumeMounts | Templatable string of additional `volumeMounts` to be passed to the `tpl` function | ""                         |
+| fullnameOverride | string | `"openmetadata"`           |
+| image.pullPolicy | string | `"Always"`                 |
+| image.repository | string | `"openmetadata/server"`    |
+| image.tag | string | `0.13.2`                   |
+| imagePullSecrets | list | `[]`                       |
+| ingress.annotations | object | `{}`                       |
+| ingress.className | string | `""`                       |
+| ingress.enabled | bool | `false`                    |
+| ingress.hosts[0].host | string | `"open-metadata.local"`    |
+| ingress.hosts[0].paths[0].path | string | `"/"`                      |
 | ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"` |
-| livenessProbe.initialDelaySeconds | int | `60` |
-| livenessProbe.periodSeconds | int | `30` |
-| livenessProbe.failureThreshold | int | `5` |
-| nameOverride | string | `""` |
-| nodeSelector | object | `{}` |
-| podAnnotations | object | `{}` |
-| podSecurityContext | object | `{}` |
-| readinessProbe.initialDelaySeconds | int | `60` |
-| readinessProbe.periodSeconds | int | `30` |
-| readinessProbe.failureThreshold | int | `5` |
-| replicaCount | int | `1` |
-| resources | object | `{}` |
-| securityContext | object | `{}` |
-| service.port | int | `8585` |
-| service.type | string | `"ClusterIP"` |
-| serviceAccount.annotations | object | `{}` |
-| serviceAccount.create | bool | `true` |
-| serviceAccount.name | string | `nil` |
-| sidecars | list | `[]` |
-| tolerations | list | `[]` |
+| livenessProbe.initialDelaySeconds | int | `60`                       |
+| livenessProbe.periodSeconds | int | `30`                       |
+| livenessProbe.failureThreshold | int | `5`                        |
+| nameOverride | string | `""`                       |
+| nodeSelector | object | `{}`                       |
+| podAnnotations | object | `{}`                       |
+| podSecurityContext | object | `{}`                       |
+| readinessProbe.initialDelaySeconds | int | `60`                       |
+| readinessProbe.periodSeconds | int | `30`                       |
+| readinessProbe.failureThreshold | int | `5`                        |
+| replicaCount | int | `1`                        |
+| resources | object | `{}`                       |
+| securityContext | object | `{}`                       |
+| service.port | int | `8585`                     |
+| service.type | string | `"ClusterIP"`              |
+| serviceAccount.annotations | object | `{}`                       |
+| serviceAccount.create | bool | `true`                     |
+| serviceAccount.name | string | `nil`                      |
+| sidecars | list | `[]`                       |
+| tolerations | list | `[]`                       |
 
 </Table>

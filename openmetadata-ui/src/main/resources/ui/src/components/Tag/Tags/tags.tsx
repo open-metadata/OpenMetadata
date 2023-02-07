@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CloseOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -54,7 +54,7 @@ const Tags: FunctionComponent<TagProps> = ({
         <SVGIcons
           alt="plus"
           className="tw-w-3.5 tw-mr-1"
-          icon={Icons.ICON_PLUS_PRIMERY}
+          icon={Icons.ICON_PLUS_PRIMARY}
         />
       ) : (
         startWith
@@ -94,7 +94,7 @@ const Tags: FunctionComponent<TagProps> = ({
               e.stopPropagation();
               removeTag && removeTag(e, getTagString(tag));
             }}>
-            <FontAwesomeIcon className="tw-text-primary" icon="times" />
+            <CloseOutlined className="tw-text-primary" />
           </span>
         )}
       </span>

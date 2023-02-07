@@ -7,6 +7,13 @@
   "javaType": "org.openmetadata.schema.entity.data.Location",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
+    "entityName": {
+      "description": "Name of a location",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?U)[\\w'\\-./]+$"
+    },
     "locationType": {
       "javaType": "org.openmetadata.schema.type.LocationType",
       "description": "This schema defines the type used for describing different types of Location.",
@@ -37,8 +44,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a location",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref" : "#/definitions/entityName"
     },
     "path": {
       "description": "Location full path",

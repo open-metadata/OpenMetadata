@@ -14,7 +14,7 @@
 # Insert license header
 '*': yarn license-header-fix
 
-'*.{ts,tsx,js}':
+'*.{ts,tsx,js,jsx}':
   # Organize Imports
   - organize-imports-cli
   # Run ESLint

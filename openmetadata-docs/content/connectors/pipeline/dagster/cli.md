@@ -92,7 +92,7 @@ If dagster is deployed on `localhost` and entering `https://localhost:3000` into
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `pipelineFilterPattern` : Note that the `pipelineFilterPattern` support regex as include or exclude. E.g.,
 
 ```yaml

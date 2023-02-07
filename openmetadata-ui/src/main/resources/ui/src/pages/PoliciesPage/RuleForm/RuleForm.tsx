@@ -329,7 +329,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           />
           {validationError && (
             <div className="m-t-xss" data-testid="condition-error" role="alert">
-              {`❌ Invalid condition : ${validationError}`}
+              {`❌ ${t('label.invalid-condition')} : ${validationError}`}
             </div>
           )}
           {isValidatingCondition && (
@@ -342,7 +342,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
               className="m-t-xss"
               data-testid="condition-success"
               role="alert">
-              {t('label.valid-condition')}
+              {`✅ ${t('label.valid-condition')}`}
             </div>
           )}
         </>

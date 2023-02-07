@@ -237,3 +237,57 @@ global:
 ```
 
 Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+
+  
+## Using a Custom Ingestion Image
+  
+One possible use case where you would need to use a custom image for the ingestion is because you have developed your own custom connectors.
+You can find a complete working example of this [here](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector). After
+you have your code ready, the steps would be the following:
+  
+### 1. Create a `Dockerfile` based on `openmetadata/ingestion`:
+
+For example:
+
+```
+FROM openmetadata/ingestion:x.y.z
+
+# Let's use the same workdir as the ingestion image
+WORKDIR ingestion
+USER airflow
+
+# Install our custom connector
+COPY <your_package> <your_package>
+COPY setup.py .
+RUN pip install --no-deps .
+```
+  
+where `openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `openmetadata/ingestion:0.13.2`.
+This image needs to be built and published to the container registry of your choice.
+
+### 2. Update your dependency values YAML
+
+The ingestion containers (which is the one shipping Airflow) gets installed in the `openmetadata-dependencies` helm chart. In this step, we use
+our own custom values YAML file to point to the image we just created on the previous step. You can create a file named `values.deps.yaml` with the
+following contents:
+  
+```yaml
+airflow:
+  airflow:
+    image:
+      repository: <your repository>  # by default, openmetadata/ingestion
+      tag: <your tag>  # by default, the version you are deploying, e.g., 0.13.2
+      pullPolicy: "IfNotPresent"
+```
+
+### 3. Install or Upgrade openmetadata-dependencies
+
+Upgrade/Install your openmetadata-dependencies helm charts with the below single command:
+
+```bash
+helm upgrade --install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values.deps.yaml
+```
+
+### 4. Install OpenMetadata
+
+Finally, follow the usual installation for the `openmetadata` helm charts.

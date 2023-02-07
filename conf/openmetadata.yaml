@@ -145,7 +145,7 @@ authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
@@ -171,9 +171,9 @@ elasticsearch:
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
   searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
 
-# eventMonitoringConfiguration:
-  # eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
-  # batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+eventMonitoringConfiguration:
+  eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
+  batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -184,6 +184,7 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
 airflowConfiguration:
   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}

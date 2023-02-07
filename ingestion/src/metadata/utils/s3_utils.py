@@ -14,14 +14,17 @@ Utils module to convert different file types from s3 buckets into a dataframe
 """
 
 import gzip
+import io
 import json
 import traceback
+import zipfile
 from typing import Any
 
 import pandas as pd
 import pyarrow.parquet as pq
 import s3fs
 
+from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -30,6 +33,9 @@ logger = utils_logger()
 def _get_json_text(key: str, text: bytes) -> str:
     if key.endswith(".gz"):
         return gzip.decompress(text)
+    if key.endswith(".zip"):
+        with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
+            return zip_file.read(zip_file.infolist()[0]).decode("utf-8")
     return text.decode("utf-8")
 
 
@@ -45,7 +51,7 @@ def read_csv_from_s3(
     try:
         stream = client.get_object(Bucket=bucket_name, Key=key)["Body"]
         chunk_list = []
-        with pd.read_csv(stream, sep=sep, chunksize=200000) as reader:
+        with pd.read_csv(stream, sep=sep, chunksize=CHUNKSIZE) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
         return chunk_list
@@ -89,11 +95,13 @@ def read_parquet_from_s3(client: Any, key: str, bucket_name: str):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
-    s3_fs = s3fs.S3FileSystem(
-        key=client.awsAccessKeyId,
-        secret=client.awsSecretAccessKey.get_secret_value(),
-        token=client.awsSessionToken,
-    )
+    s3_fs = s3fs.S3FileSystem()
+    if client.awsAccessKeyId and client.awsSecretAccessKey:
+        s3_fs = s3fs.S3FileSystem(
+            key=client.awsAccessKeyId,
+            secret=client.awsSecretAccessKey.get_secret_value(),
+            token=client.awsSessionToken,
+        )
     bucket_uri = f"s3://{bucket_name}/{key}"
     dataset = pq.ParquetDataset(bucket_uri, filesystem=s3_fs)
     return [dataset.read_pandas().to_pandas()]

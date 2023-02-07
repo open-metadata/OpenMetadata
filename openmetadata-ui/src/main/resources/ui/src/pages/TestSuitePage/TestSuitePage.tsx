@@ -11,26 +11,32 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Typography } from 'antd';
+import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
+import { checkPermission } from 'utils/PermissionsUtils';
 import {
   INITIAL_PAGING_VALUE,
+  MAX_CHAR_LIMIT_TEST_SUITE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
 import { WEBHOOK_DOCS } from '../../constants/docs.constants';
 import { TEST_SUITE_BREADCRUMB } from '../../constants/TestSuite.constant';
+import { Operation } from '../../generated/entity/policies/policy';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName, pluralize } from '../../utils/CommonUtils';
@@ -43,6 +49,15 @@ const TestSuitePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
+  const { permissions } = usePermissionProvider();
+
+  const createPermission = useMemo(() => {
+    return checkPermission(
+      Operation.Create,
+      ResourceEntity.TEST_SUITE,
+      permissions
+    );
+  }, [permissions]);
 
   const fetchTestSuites = async (param?: Record<string, string>) => {
     try {
@@ -76,13 +91,22 @@ const TestSuitePage = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 300,
-        render: (_, record) => (
-          <Typography.Paragraph
-            className="ant-typography-ellipsis-custom w-11-12"
-            ellipsis={{ tooltip: true }}>
-            {record.description}
-          </Typography.Paragraph>
+        width: 500,
+        render: (description) => (
+          <Tooltip
+            overlayStyle={{ maxWidth: '400px' }}
+            placement="topLeft"
+            title={
+              description.length > MAX_CHAR_LIMIT_TEST_SUITE && description
+            }>
+            <Typography.Paragraph className="ant-typography-ellipsis-custom">
+              <RichTextEditorPreviewer
+                enableSeeMoreVariant={false}
+                markdown={description}
+                maxLength={MAX_CHAR_LIMIT_TEST_SUITE}
+              />
+            </Typography.Paragraph>
+          </Tooltip>
         ),
       },
       {
@@ -133,6 +157,7 @@ const TestSuitePage = () => {
               ghost
               className="h-8 rounded-4 tw-m-y-sm"
               data-testid="add-test-suite-button"
+              disabled={!createPermission}
               size="small"
               type="primary"
               onClick={onAddTestSuite}>
@@ -162,14 +187,19 @@ const TestSuitePage = () => {
     <PageLayoutV1>
       <Space align="center" className="w-full justify-between" size={16}>
         <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
-        <Button
-          data-testid="add-test-suite"
-          type="primary"
-          onClick={onAddTestSuite}>
-          {t('label.add-entity', {
-            entity: t('label.test-suite'),
-          })}
-        </Button>
+        <Tooltip
+          placement="topRight"
+          title={!createPermission && t('message.no-permission-for-action')}>
+          <Button
+            data-testid="add-test-suite"
+            disabled={!createPermission}
+            type="primary"
+            onClick={onAddTestSuite}>
+            {t('label.add-entity', {
+              entity: t('label.test-suite'),
+            })}
+          </Button>
+        </Tooltip>
       </Space>
 
       <Row className="w-full mt-4">

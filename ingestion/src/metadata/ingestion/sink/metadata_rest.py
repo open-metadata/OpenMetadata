@@ -21,15 +21,6 @@ from pydantic import BaseModel, ValidationError
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
-from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTableProfile import (
-    CreateTableProfileRequest,
-)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -41,11 +32,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
@@ -105,7 +94,6 @@ class MetadataRestSink(Sink[Entity]):
 
         # Prepare write record dispatching
         self.write_record = singledispatch(self.write_record)
-        self.write_record.register(OMetaDatabaseAndTable, self.write_tables)
         self.write_record.register(AddLineageRequest, self.write_lineage)
         self.write_record.register(OMetaUserProfile, self.write_users)
         self.write_record.register(OMetaTagAndClassification, self.write_classification)
@@ -182,7 +170,8 @@ class MetadataRestSink(Sink[Entity]):
             )
         else:
             logger.warning(
-                f"Could not find any entity by Table FQN [{datamodel_link.fqn}] when adding DBT models."
+                f"The table [{datamodel_link.fqn.__root__}] from the manifest file is not found in OM. "
+                f"Please, check if the table has been ingested previously."
             )
 
     def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
@@ -224,124 +213,6 @@ class MetadataRestSink(Sink[Entity]):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to write dashboard usage [{dashboard_usage}]: {exc}")
-
-    def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable) -> None:
-        """Based on all the table information, send that to OM API
-
-        This method is only used for testing and should be deprecated.
-        """
-        try:
-            db_request = CreateDatabaseRequest(
-                name=db_schema_and_table.database.name,
-                description=db_schema_and_table.database.description,
-                service=EntityReference(
-                    id=db_schema_and_table.database.service.id,
-                    type="databaseService",
-                ),
-            )
-            db = self.metadata.create_or_update(db_request)
-            db_ref = EntityReference(
-                id=db.id.__root__, name=db.name.__root__, type="database"
-            )
-            db_schema_request = CreateDatabaseSchemaRequest(
-                name=db_schema_and_table.database_schema.name,
-                description=db_schema_and_table.database_schema.description,
-                database=db_ref,
-            )
-            db_schema = self.metadata.create_or_update(db_schema_request)
-            db_schema_ref = EntityReference(
-                id=db_schema.id.__root__,
-                name=db_schema.name.__root__,
-                type="databaseSchema",
-            )
-            if db_schema_and_table.table.description is not None:
-                db_schema_and_table.table.description = (
-                    db_schema_and_table.table.description.__root__.strip()
-                )
-            table_request = CreateTableRequest(
-                name=db_schema_and_table.table.name.__root__,
-                tableType=db_schema_and_table.table.tableType,
-                columns=db_schema_and_table.table.columns,
-                description=db_schema_and_table.table.description,
-                databaseSchema=db_schema_ref,
-                tableConstraints=db_schema_and_table.table.tableConstraints,
-                tags=db_schema_and_table.table.tags,
-            )
-            if db_schema_and_table.table.viewDefinition:
-                table_request.viewDefinition = (
-                    db_schema_and_table.table.viewDefinition.__root__
-                )
-
-            created_table = self.metadata.create_or_update(table_request)
-            if db_schema_and_table.location is not None:
-                if db_schema_and_table.location.description is not None:
-                    db_schema_and_table.location.description = (
-                        db_schema_and_table.location.description.__root__.strip()
-                    )
-                location_request = CreateLocationRequest(
-                    name=db_schema_and_table.location.name,
-                    description=db_schema_and_table.location.description,
-                    locationType=db_schema_and_table.location.locationType,
-                    owner=db_schema_and_table.location.owner,
-                    service=EntityReference(
-                        id=db_schema_and_table.location.service.id,
-                        type="storageService",
-                    ),
-                )
-                location = self.metadata.create_or_update(location_request)
-                self.metadata.add_location(table=created_table, location=location)
-            if db_schema_and_table.table.sampleData is not None:
-                try:
-                    self.metadata.ingest_table_sample_data(
-                        table=created_table,
-                        sample_data=db_schema_and_table.table.sampleData,
-                    )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to ingest sample data for table {db_schema_and_table.table.name}: {exc}"
-                    )
-
-            if db_schema_and_table.table.profile is not None:
-                self.metadata.ingest_profile_data(
-                    table=db_schema_and_table.table,
-                    profile_request=CreateTableProfileRequest(
-                        tableProfile=db_schema_and_table.table.profile
-                    ),
-                )
-
-            if db_schema_and_table.table.dataModel is not None:
-                self.metadata.ingest_table_data_model(
-                    table=created_table, data_model=db_schema_and_table.table.dataModel
-                )
-
-            if db_schema_and_table.table.tableQueries is not None:
-                self.metadata.ingest_table_queries_data(
-                    table=created_table,
-                    table_queries=db_schema_and_table.table.tableQueries,
-                )
-
-            logger.debug(
-                "Successfully ingested table"
-                f" {db_schema_and_table.database.name.__root__}.{created_table.name.__root__}"
-            )
-            self.status.records_written(
-                f"Table: {db_schema_and_table.database.name.__root__}.{created_table.name.__root__}"
-            )
-        except (APIError, HTTPError, ValidationError) as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to ingest table {db_schema_and_table.table.name.__root__}"
-                f" in database {db_schema_and_table.database.name.__root__}: {err}"
-            )
-            logger.error(err)
-            self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected error writing db schema and table [{db_schema_and_table}]: {exc}"
-            )
 
     def write_classification(self, record: OMetaTagAndClassification) -> None:
         """PUT Classification and Tag to OM API

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Card, Col, Row, Space, Tooltip } from 'antd';
-import { t } from 'i18next';
+import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import {
   getServiceDetailsPath,
@@ -40,7 +40,6 @@ import {
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -63,6 +62,7 @@ const Services = ({
   currentPage,
   onPageChange,
 }: ServicesProps) => {
+  const { t } = useTranslation();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
@@ -114,18 +114,21 @@ const Services = ({
                 placement="left"
                 title={
                   addServicePermission
-                    ? 'Add Service'
+                    ? t('label.add-entity', {
+                        entity: t('label.service'),
+                      })
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
-                  className="tw-h-8 tw-rounded tw-mb-2"
+                  className="m-b-xs"
                   data-testid="add-service-button"
                   disabled={!addServicePermission && !isAuthDisabled}
-                  size="small"
-                  theme="primary"
-                  variant="contained"
+                  size="middle"
+                  type="primary"
                   onClick={handleAddServiceClick}>
-                  {t('label.add-a-new-service')}
+                  {t('label.add-new-entity', {
+                    entity: t('label.service'),
+                  })}
                 </Button>
               </Tooltip>
             </Space>
@@ -215,10 +218,12 @@ const Services = ({
                 placement="left"
                 title={
                   addServicePermission
-                    ? 'Add Service'
+                    ? t('label.add-entity', {
+                        entity: t('label.service'),
+                      })
                     : NO_PERMISSION_FOR_ACTION
                 }>
-                <ButtonAntd
+                <Button
                   ghost
                   data-testid="add-service-button"
                   disabled={!addServicePermission}
@@ -228,7 +233,7 @@ const Services = ({
                   {t('label.add-new-entity', {
                     entity: servicesDisplayName[serviceName],
                   })}
-                </ButtonAntd>
+                </Button>
               </Tooltip>
             }
             doc={CONNECTORS_DOCS}

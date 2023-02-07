@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Space, Switch } from 'antd';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { FormErrorData } from 'Models';
 import React, {
@@ -27,28 +28,34 @@ import { errorMsg } from '../../utils/CommonUtils';
 type CustomClassification = {
   description: CreateClassification['description'];
   name: CreateClassification['name'];
+  mutuallyExclusive: CreateClassification['mutuallyExclusive'];
 };
 
 type FormProp = {
   saveData: (value: CreateClassification) => void;
   initialData: CustomClassification;
   errorData?: FormErrorData;
+  showHiddenFields: boolean;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
-  ({ saveData, initialData, errorData }: FormProp, ref): JSX.Element => {
+  (
+    { saveData, initialData, errorData, showHiddenFields }: FormProp,
+    ref
+  ): JSX.Element => {
     const { t } = useTranslation();
     const [data, setData] = useState<CustomClassification>({
       name: initialData.name,
       description: initialData.description,
+      mutuallyExclusive: initialData.mutuallyExclusive,
     });
 
     const isMounting = useRef<boolean>(true);
     const markdownRef = useRef<EditorContentRef>();
 
-    const onChangeHadler = (
+    const onChangeHandler = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
       e.persist();
@@ -97,7 +104,7 @@ const Form: React.FC<FormProp> = forwardRef(
                 placeholder="Name"
                 type="text"
                 value={data.name}
-                onChange={onChangeHadler}
+                onChange={onChangeHandler}
               />
               {errorData?.name && errorMsg(errorData.name)}
             </div>
@@ -108,6 +115,30 @@ const Form: React.FC<FormProp> = forwardRef(
                 ref={markdownRef}
               />
             </div>
+
+            {showHiddenFields && (
+              <div>
+                <Space align="end" className="m-y-md">
+                  <label
+                    className="tw-form-label m-b-0 tw-mb-1"
+                    data-testid="mutually-exclusive-label"
+                    htmlFor="mutuallyExclusive">
+                    {t('label.mutually-exclusive')}
+                  </label>
+                  <Switch
+                    checked={data.mutuallyExclusive}
+                    data-testid="mutually-exclusive-button"
+                    id="mutuallyExclusive"
+                    onChange={(value) =>
+                      setData((prevState) => ({
+                        ...prevState,
+                        mutuallyExclusive: value,
+                      }))
+                    }
+                  />
+                </Space>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -15,7 +15,9 @@ import { Select, Spin, Typography } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes } from 'lodash';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
+import { getGlossaryPath } from 'utils/RouterUtils';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -28,16 +30,15 @@ import SummaryDetail from '../SummaryDetail';
 interface RelatedTermsProps {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
-  onRelatedTermClick?: (fqn: string) => void;
   onGlossaryTermUpdate: (data: GlossaryTerm) => void;
 }
 
 const RelatedTerms = ({
   glossaryTerm,
   permissions,
-  onRelatedTermClick,
   onGlossaryTermUpdate,
 }: RelatedTermsProps) => {
+  const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<EntityReference[]>([]);
@@ -52,6 +53,10 @@ const RelatedTerms = ({
     });
 
     return [...selectedOption, ...data];
+  };
+
+  const handleRelatedTermClick = (fqn: string) => {
+    history.push(getGlossaryPath(fqn));
   };
 
   const handleRelatedTermsSave = () => {
@@ -103,7 +108,7 @@ const RelatedTerms = ({
     return data.map((value) => ({
       ...value,
       value: value.id,
-      label: value.displayName,
+      label: value.displayName || value.name,
       key: value.id,
     }));
   };
@@ -133,7 +138,7 @@ const RelatedTerms = ({
                   className="flex"
                   data-testid={`related-term-${term?.name}`}
                   onClick={() => {
-                    onRelatedTermClick?.(term.fullyQualifiedName || '');
+                    handleRelatedTermClick(term.fullyQualifiedName || '');
                   }}>
                   <Typography.Text
                     className="link-text-info"

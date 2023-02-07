@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  CheckCircleOutlined,
+  CheckOutlined,
+  DownOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FunctionComponent } from 'react';
@@ -58,7 +63,7 @@ const CardListItem: FunctionComponent<Props> = ({
         );
 
       case 'success':
-        return <FontAwesomeIcon icon="check" />;
+        return <CheckOutlined />;
 
       default:
         return (
@@ -75,9 +80,9 @@ const CardListItem: FunctionComponent<Props> = ({
 
   const getCardIcon = (cardId: string) => {
     if (isSelected && isActive) {
-      return <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />;
+      return <CheckCircleOutlined className="tw-text-h4" />;
     } else if (isSelected) {
-      return <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />;
+      return <CheckCircleOutlined className="tw-text-h4" />;
     } else if (isActive) {
       return getTierSelectButton(cardId);
     } else {
@@ -111,10 +116,11 @@ const CardListItem: FunctionComponent<Props> = ({
         )}>
         <div className="tw-flex">
           <div className="tw-self-start tw-mr-2">
-            <FontAwesomeIcon
-              className="tw-text-xs"
-              icon={isActive ? 'chevron-down' : 'chevron-right'}
-            />
+            {isActive ? (
+              <DownOutlined className="tw-text-xs" />
+            ) : (
+              <RightOutlined className="tw-text-xs" />
+            )}
           </div>
           <div className="tw-flex tw-flex-col">
             <p className={cardStyle.header.title}>{card.title}</p>

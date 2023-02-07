@@ -22,6 +22,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  DBT_CLASSIFICATION_DEFAULT_VALUE,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/Ingestions.constant';
@@ -191,6 +192,9 @@ const AddIngestion = ({
       stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
       resultLimit: sourceConfig?.resultLimit ?? 1000,
       metadataToESConfig: undefined,
+      dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
+      dbtClassificationName:
+        sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
     }),
     []
   );
@@ -459,10 +463,14 @@ const AddIngestion = ({
       case PipelineType.Dbt: {
         return {
           ...escapeBackwardSlashChar({
-            dbtConfigSource: omit(dbtConfigSource, 'dbtUpdateDescriptions'),
+            dbtConfigSource: omit(dbtConfigSource, [
+              'dbtUpdateDescriptions',
+              'dbtClassificationName',
+            ]),
           } as ConfigClass),
           type: ConfigType.Dbt,
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
+          dbtClassificationName: dbtConfigSource?.dbtClassificationName,
         };
       }
 

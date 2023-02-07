@@ -35,6 +35,8 @@ The below guide provides Persistent Volumes provisioning as static volumes (mean
 
 ## Provision EFS backed PVs, PVCs for Airflow DAGs and Airflow Logs
 
+Please note that we are using one AWS Elastic File System (EFS) service with sub-directories as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
+
 <Collapse title="Code Samples for PV and PVC for Airflow DAGs">
 
 ```yaml
@@ -47,7 +49,7 @@ metadata:
     app: airflow-dags 
 spec: 
   capacity:
-    storage: 5Gi
+    storage: 10Gi
   storageClassName: ""
   accessModes: 
     - ReadWriteMany
@@ -70,7 +72,7 @@ spec:
   storageClassName: ""
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
 ```
 
 Create Persistent Volumes and Persistent Volume claims with the below command.
@@ -116,7 +118,7 @@ spec:
   storageClassName: ""
   resources:
     requests:
-      storage: 10Gi
+      storage: 5Gi
 ```
 
 Create Persistent Volumes and Persistent Volume claims with the below command.

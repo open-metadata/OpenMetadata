@@ -41,7 +41,7 @@ const ClosedTask: FC<ClosedTaskProps> = ({ task }) => {
           </span>{' '}
         </span>
       </UserPopOverCard>
-      <span className="tw-ml-1"> {t('message.closed-this-task')} </span>
+      <span className="tw-ml-1"> {t('label.closed-this-task-lowercase')} </span>
       <span className="tw-ml-1" data-testid="task-closedAt">
         {toLower(getDayTimeByTimeStamp(task?.closedAt as number))}
       </span>

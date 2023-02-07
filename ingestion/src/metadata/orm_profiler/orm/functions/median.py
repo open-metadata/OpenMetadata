@@ -30,7 +30,7 @@ class MedianFn(FunctionElement):
 
 @compiles(MedianFn)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = elements.clauses.clauses[0].name
+    col = compiler.process(elements.clauses.clauses[0])
     return "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s ASC)" % col
 
 
@@ -59,7 +59,7 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     """Median computation for MSSQL"""
     col = elements.clauses.clauses[0].name
-    return "percentile_cont(0.5)  WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
+    return "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
 
 
 @compiles(MedianFn, Dialects.Hive)
@@ -70,7 +70,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.MySQL)
-def _(elemenst, compiler, **kwargs):  # pylint: disable=unused-argument
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     """Median computation for MySQL currently not supported
     Needs to be tackled in https://github.com/open-metadata/OpenMetadata/issues/6340
     """
@@ -91,5 +91,13 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
             OFFSET (SELECT (COUNT(*) - 1) / 2
                 FROM {table})))
     """.format(
+        col=col, table=table.value
+    )
+
+
+@compiles(MedianFn, Dialects.Vertica)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    col, table = list(elements.clauses)
+    return "(SELECT MEDIAN({col}) OVER() FROM {table} LIMIT 1)".format(
         col=col, table=table.value
     )

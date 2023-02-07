@@ -278,7 +278,12 @@ export const getGlobalSettingMenuItem = (
     icon,
     children: subItems,
     label: isBeta ? (
-      <Badge color="#7147e8" count="beta" offset={[30, 8]} size="small">
+      <Badge
+        className="text-xs text-grey-muted"
+        color="#7147e8"
+        count="beta"
+        offset={[30, 8]}
+        size="small">
         {label}
       </Badge>
     ) : (

@@ -54,11 +54,12 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.glossary.GlossaryTermResource.GlossaryTermList;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -90,7 +91,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     }
   }
 
-  static final String FIELDS = "owner,tags,reviewers,usageCount";
+  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
 
   @GET
   @Valid
@@ -156,7 +157,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Glossary get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -184,11 +185,12 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             responseCode = "200",
             description = "The glossary",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Glossary for instance {name} is not found")
       })
   public Glossary getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -221,7 +223,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -245,7 +247,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Glossary getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "glossary version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -287,7 +289,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -343,9 +345,33 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteGlossaryByName",
+      summary = "Delete a Glossary",
+      tags = "glossaries",
+      description = "Delete a glossary by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "glossary for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -368,6 +394,18 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   @GET
+  @Path("/documentation/csv")
+  @Valid
+  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation", tags = "glossaries")
+  public String getCsvDocumentation(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -378,12 +416,15 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossary terms",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+            description = "Exported csv with glossary terms",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
       })
-  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
-    return super.exportCsvInternal(securityContext, name);
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name);
   }
 
   @PUT
@@ -397,13 +438,14 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossary terms",
+            description = "Import result",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTermList.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description =
                   "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
@@ -413,7 +455,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean dryRun,
       String csv)
       throws IOException {
-    return super.importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {

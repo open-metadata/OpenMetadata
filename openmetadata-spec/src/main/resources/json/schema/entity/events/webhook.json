@@ -5,10 +5,18 @@
   "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.Webhook",
+  "definitions": {
+    "entityName" : {
+      "description": "Unique name of the application receiving webhook events.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?U)[\\w'\\-.]+$"
+    }
+  },
   "properties": {
     "name": {
-      "description": "Unique name of the application receiving webhook events.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref" : "#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this webhook.",

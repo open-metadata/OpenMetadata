@@ -13,6 +13,7 @@
 OpenMetadata Airflow Lineage Operator
 """
 import traceback
+from typing import List
 
 from airflow.models.baseoperator import BaseOperator
 from airflow.utils.context import Context
@@ -22,6 +23,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
+    XLets,
+    get_xlets_from_dag,
+)
 
 
 class OpenMetadataLineageOperator(BaseOperator):
@@ -56,12 +61,18 @@ class OpenMetadataLineageOperator(BaseOperator):
         and push it to OpenMetadata using the Python Client.
         """
         try:
+            xlet_list: List[XLets] = get_xlets_from_dag(self.dag)
+
+            self.dag.log.info(
+                f"Extracted the following XLet data from the DAG: {xlet_list}"
+            )
+
             metadata = OpenMetadata(self.server_config)
             runner = AirflowLineageRunner(
                 metadata=metadata,
                 service_name=self.service_name,
                 dag=self.dag,
-                context=context,
+                xlets=xlet_list,
                 only_keep_dag_lineage=self.only_keep_dag_lineage,
                 max_status=self.max_status,
             )

@@ -148,7 +148,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
         self.status = MlModelSourceStatus()
 
-        self.client = self.connection.client
+        self.client = self.connection
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config

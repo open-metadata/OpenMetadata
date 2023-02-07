@@ -113,7 +113,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               justify="center">
               <Col>
                 <ErrorPlaceHolder>
-                  <p>{t('label.no-data-available')}</p>
+                  <p>{t('message.no-data-available')}</p>
                 </ErrorPlaceHolder>
               </Col>
             </Row>

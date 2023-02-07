@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from '../../../src/utils/TimeUtils';
-import { descriptionBox, interceptURL, toastNotification, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import {
+  getCurrentLocaleDate,
+  getFutureLocaleDateFromCurrentDate,
+} from '../../../src/utils/TimeUtils';
+import {
+  descriptionBox,
+  interceptURL,
+  toastNotification,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
+} from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -108,7 +117,7 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
-    //Clicking on users tab
+    // Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
       .should('exist')
@@ -116,7 +125,7 @@ describe('Entity Details Page', () => {
       .click();
 
     interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
-    //Selecting the user
+    // Selecting the user
     cy.get('[data-testid="list-item"]')
       .first()
       .should('exist')
@@ -192,7 +201,7 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
-    //Clicking on users tab
+    // Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
       .should('exist')
@@ -200,7 +209,7 @@ describe('Entity Details Page', () => {
       .click();
 
     interceptURL('PATCH', `/api/v1/*/*`, 'removeOwner');
-    //Removing the user
+    // Removing the user
     cy.get('[data-testid="remove-owner"]')
       .should('exist')
       .should('be.visible')
@@ -208,7 +217,7 @@ describe('Entity Details Page', () => {
 
     verifyResponseStatusCode('@removeOwner', 200);
 
-    //Check if user exist
+    // Check if user exist
     cy.get('[data-testid="entity-summary-details"]')
       .first()
       .scrollIntoView()
@@ -249,19 +258,24 @@ describe('Entity Details Page', () => {
     cy.get('#endtDate').should('be.visible').type(endDate);
     cy.get(descriptionBox).type('Description');
 
-    interceptURL('POST', '/api/v1/feed', 'waitForAnnouncement')
-    cy.get('[id="announcement-submit"]').scrollIntoView()
+    interceptURL('POST', '/api/v1/feed', 'waitForAnnouncement');
+    cy.get('[id="announcement-submit"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
-    verifyResponseStatusCode('@waitForAnnouncement', 201)
-    toastNotification('Announcement created successfully')
+    verifyResponseStatusCode('@waitForAnnouncement', 201);
+    toastNotification('Announcement created successfully');
     cy.get('[data-testid="title"] .anticon-close').should('be.visible').click();
 
     // reload page to get the active announcement card
-    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Announcement&activeAnnouncement=true', 'getEntityDetails')
+    interceptURL(
+      'GET',
+      '/api/v1/feed?entityLink=*&type=Announcement&activeAnnouncement=true',
+      'getEntityDetails'
+    );
     cy.reload();
-    verifyResponseStatusCode('@getEntityDetails', 200)
+    verifyResponseStatusCode('@getEntityDetails', 200);
     // check for announcement card on entity page
     cy.get('[data-testid="announcement-card"]').should('be.visible');
 

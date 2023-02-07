@@ -15,9 +15,7 @@ sql lineage utils tests
 import uuid
 from unittest import TestCase
 
-from sqllineage.core.models import Column
-
-from ingestion.build.lib.metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_lineage,

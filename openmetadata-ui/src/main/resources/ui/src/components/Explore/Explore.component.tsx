@@ -12,10 +12,9 @@
  */
 
 import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+} from '@ant-design/icons';
 import { Card, Col, Row, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
@@ -175,7 +174,7 @@ const Explore: React.FC<ExploreProps> = ({
       isEmpty(terms)
         ? undefined
         : {
-            query: { bool: { must: terms } },
+            query: { bool: { should: terms } },
           }
     );
   };
@@ -227,6 +226,9 @@ const Explore: React.FC<ExploreProps> = ({
         searchResults?.hits?.hits[0]._source as EntityDetailsType,
         tab
       );
+    } else {
+      setShowSummaryPanel(false);
+      setEntityDetails(undefined);
     }
   }, [tab, searchResults]);
 
@@ -268,23 +270,17 @@ const Explore: React.FC<ExploreProps> = ({
 
             <div className="tw-flex">
               {sortOrder === 'asc' ? (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('desc')}>
-                  <FontAwesomeIcon
+                <button onClick={() => onChangeSortOder('desc')}>
+                  <SortAscendingOutlined
                     className="tw-text-base tw-text-primary"
                     data-testid="last-updated"
-                    icon={faSortAmountUpAlt}
                   />
                 </button>
               ) : (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('asc')}>
-                  <FontAwesomeIcon
+                <button onClick={() => onChangeSortOder('asc')}>
+                  <SortDescendingOutlined
                     className="tw-text-base tw-text-primary"
                     data-testid="last-updated"
-                    icon={faSortAmountDownAlt}
                   />
                 </button>
               )}
@@ -333,7 +329,7 @@ const Explore: React.FC<ExploreProps> = ({
                       onChangePage(Number.parseInt(value));
                     }
                   }}
-                  selectedEntityName={entityDetails?.details.name || ''}
+                  selectedEntityId={entityDetails?.details.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                 />
               ) : (

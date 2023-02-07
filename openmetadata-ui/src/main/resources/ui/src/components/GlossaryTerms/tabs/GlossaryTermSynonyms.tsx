@@ -62,7 +62,8 @@ const GlossaryTermSynonyms = ({
 
   useEffect(() => {
     if (glossaryTerm.synonyms?.length) {
-      setSynonyms(glossaryTerm.synonyms);
+      // removing empty string
+      setSynonyms(glossaryTerm.synonyms.filter((synonym) => !isEmpty(synonym)));
     }
   }, [glossaryTerm]);
 

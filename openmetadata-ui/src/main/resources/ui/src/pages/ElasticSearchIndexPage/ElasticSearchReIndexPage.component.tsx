@@ -15,6 +15,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import PageHeader from 'components/header/PageHeader.component';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
 import { isEmpty, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -130,279 +131,297 @@ const ElasticSearchIndexPage = () => {
   }, []);
 
   return (
-    <div>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Card
-            extra={
-              <Space>
-                <Button
-                  data-testid="elastic-search-re-fetch-data"
-                  disabled={batchLoading}
-                  icon={<ReloadOutlined />}
-                  size="small"
-                  title="Refresh log"
-                  onClick={fetchBatchReIndexedData}
-                />
-                <Button
-                  data-testid="elastic-search-re-index-all"
-                  disabled={!isAdminUser}
-                  size="small"
-                  type="primary"
-                  onClick={() => setModalOpen(true)}>
-                  {t('label.re-index-all')}
-                </Button>
-              </Space>
-            }
-            loading={batchLoading}
-            size="small"
-            title="ElasticSearch">
-            <Row gutter={[16, 8]}>
-              <Col span={24}>
-                <Space wrap direction="horizontal" size={0}>
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.mode'
-                    )}:`}</span>
-                    <span className="m-l-xs">
-                      {startCase(batchJobData?.runMode) || '--'}
-                    </span>
-                  </div>
-                  <Divider type="vertical" />
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.status'
-                    )}:`}</span>
-                    <span className="m-l-xs">
-                      <Space size={8}>
-                        {batchJobData?.status && (
-                          <SVGIcons
-                            alt="result"
-                            className="w-4"
-                            icon={getStatusResultBadgeIcon(
-                              batchJobData?.status
-                            )}
-                          />
-                        )}
-                        <span>
-                          {getEventPublisherStatusText(batchJobData?.status) ||
-                            '--'}
+    <Row align="middle" gutter={[16, 16]}>
+      <Col span={24}>
+        <PageHeader
+          data={{
+            header: t('label.elastic-search'),
+            subHeader: t('message.elastic-search-message'),
+          }}
+        />
+      </Col>
+      <Col span={24}>
+        <div>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Card
+                extra={
+                  <Space>
+                    <Button
+                      data-testid="elastic-search-re-fetch-data"
+                      disabled={batchLoading}
+                      icon={<ReloadOutlined />}
+                      size="small"
+                      title="Refresh log"
+                      onClick={fetchBatchReIndexedData}
+                    />
+                    <Button
+                      data-testid="elastic-search-re-index-all"
+                      disabled={!isAdminUser}
+                      size="small"
+                      type="primary"
+                      onClick={() => setModalOpen(true)}>
+                      {t('label.re-index-all')}
+                    </Button>
+                  </Space>
+                }
+                loading={batchLoading}
+                size="small"
+                title="ElasticSearch">
+                <Row gutter={[16, 8]}>
+                  <Col span={24}>
+                    <Space wrap direction="horizontal" size={0}>
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.mode'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          {startCase(batchJobData?.runMode) || '--'}
                         </span>
-                      </Space>
-                    </span>
-                  </div>
-                  <Divider type="vertical" />
-                  <div className="flex">
-                    <span className="text-grey-muted">
-                      {`${t('label.index-states')}:`}
-                    </span>
+                      </div>
+                      <Divider type="vertical" />
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.status'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          <Space size={8}>
+                            {batchJobData?.status && (
+                              <SVGIcons
+                                alt="result"
+                                className="w-4"
+                                icon={getStatusResultBadgeIcon(
+                                  batchJobData?.status
+                                )}
+                              />
+                            )}
+                            <span>
+                              {getEventPublisherStatusText(
+                                batchJobData?.status
+                              ) || '--'}
+                            </span>
+                          </Space>
+                        </span>
+                      </div>
+                      <Divider type="vertical" />
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.index-states'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          {!isEmpty(batchJobData) ? (
+                            <Space size={8}>
+                              <Badge
+                                className="request-badge running"
+                                count={batchJobData?.stats?.total}
+                                overflowCount={99999999}
+                                title={`Total index sent: ${batchJobData?.stats?.total}`}
+                              />
+
+                              <Badge
+                                className="request-badge success"
+                                count={batchJobData?.stats?.success}
+                                overflowCount={99999999}
+                                title={`Success index: ${batchJobData?.stats?.success}`}
+                              />
+
+                              <Badge
+                                showZero
+                                className="request-badge failed"
+                                count={batchJobData?.stats?.failed}
+                                overflowCount={99999999}
+                                title={`Failed index: ${batchJobData?.stats?.failed}`}
+                              />
+                            </Space>
+                          ) : (
+                            '--'
+                          )}
+                        </span>
+                      </div>
+                      <Divider type="vertical" />
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.last-updated'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          {batchJobData?.timestamp
+                            ? getDateTimeByTimeStampWithZone(
+                                batchJobData?.timestamp
+                              )
+                            : '--'}
+                        </span>
+                      </div>
+                      <Divider type="vertical" />
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.last-failed-at'
+                        )}:`}</span>
+                        <p className="m-l-xs">
+                          {batchJobData?.failureDetails?.lastFailedAt
+                            ? getDateTimeByTimeStampWithZone(
+                                batchJobData?.failureDetails?.lastFailedAt
+                              )
+                            : '--'}
+                        </p>
+                      </div>
+                    </Space>
+                  </Col>
+                  <Col span={24}>
+                    <span className="text-grey-muted">{`${t(
+                      'label.failure-context'
+                    )}:`}</span>
                     <span className="m-l-xs">
-                      {!isEmpty(batchJobData) ? (
-                        <Space size={8}>
-                          <Badge
-                            className="request-badge running"
-                            count={batchJobData?.stats?.total}
-                            overflowCount={99999999}
-                            title={`Total index sent: ${batchJobData?.stats?.total}`}
-                          />
-
-                          <Badge
-                            className="request-badge success"
-                            count={batchJobData?.stats?.success}
-                            overflowCount={99999999}
-                            title={`Success index: ${batchJobData?.stats?.success}`}
-                          />
-
-                          <Badge
-                            showZero
-                            className="request-badge failed"
-                            count={batchJobData?.stats?.failed}
-                            overflowCount={99999999}
-                            title={`Failed index: ${batchJobData?.stats?.failed}`}
-                          />
-                        </Space>
+                      {batchJobData?.failureDetails?.context ? (
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={Boolean(batchJobData)}
+                          markdown={batchJobData?.failureDetails?.context}
+                        />
                       ) : (
                         '--'
                       )}
                     </span>
-                  </div>
-                  <Divider type="vertical" />
-                  <div className="flex">
-                    <span className="text-grey-muted">
-                      {`${t('label.last-updated')}:`}
-                    </span>
+                  </Col>
+                  <Col span={24}>
+                    <span className="text-grey-muted">{`${t(
+                      'label.last-error'
+                    )}:`}</span>
                     <span className="m-l-xs">
-                      {batchJobData?.timestamp
-                        ? getDateTimeByTimeStampWithZone(
-                            batchJobData?.timestamp
-                          )
-                        : '--'}
+                      {batchJobData?.failureDetails?.lastFailedReason ? (
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={Boolean(batchJobData)}
+                          markdown={
+                            batchJobData?.failureDetails?.lastFailedReason
+                          }
+                        />
+                      ) : (
+                        '--'
+                      )}
                     </span>
-                  </div>
-                  <Divider type="vertical" />
-                  <div className="flex">
-                    <span className="text-grey-muted">
-                      {`${t('label.last-failed-at')}:`}
-                    </span>
-                    <p className="m-l-xs">
-                      {batchJobData?.failureDetails?.lastFailedAt
-                        ? getDateTimeByTimeStampWithZone(
-                            batchJobData?.failureDetails?.lastFailedAt
-                          )
-                        : '--'}
-                    </p>
-                  </div>
-                </Space>
-              </Col>
-              <Col span={24}>
-                <span className="text-grey-muted">{`${t(
-                  'label.failure-context'
-                )}:`}</span>
-                <span className="m-l-xs">
-                  {batchJobData?.failureDetails?.context ? (
-                    <RichTextEditorPreviewer
-                      enableSeeMoreVariant={Boolean(batchJobData)}
-                      markdown={batchJobData?.failureDetails?.context}
-                    />
-                  ) : (
-                    '--'
-                  )}
-                </span>
-              </Col>
-              <Col span={24}>
-                <span className="text-grey-muted">{`${t(
-                  'label.last-error'
-                )}:`}</span>
-                <span className="m-l-xs">
-                  {batchJobData?.failureDetails?.lastFailedReason ? (
-                    <RichTextEditorPreviewer
-                      enableSeeMoreVariant={Boolean(batchJobData)}
-                      markdown={batchJobData?.failureDetails?.lastFailedReason}
-                    />
-                  ) : (
-                    '--'
-                  )}
-                </span>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-        <Col span={24}>
-          <Card
-            extra={
-              <Button
-                data-testid="elastic-search-re-fetch-data"
-                disabled={streamLoading}
-                icon={<ReloadOutlined />}
+                  </Col>
+                </Row>
+              </Card>
+            </Col>
+            <Col span={24}>
+              <Card
+                extra={
+                  <Button
+                    data-testid="elastic-search-re-fetch-data"
+                    disabled={streamLoading}
+                    icon={<ReloadOutlined />}
+                    size="small"
+                    title="Refresh log"
+                    onClick={fetchStreamReIndexedData}
+                  />
+                }
+                loading={streamLoading}
                 size="small"
-                title="Refresh log"
-                onClick={fetchStreamReIndexedData}
-              />
-            }
-            loading={streamLoading}
-            size="small"
-            title="ElasticSearch">
-            <Row gutter={[16, 8]}>
-              <Col span={24}>
-                <Space direction="horizontal" size={16}>
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.mode'
-                    )}:`}</span>
-                    <span className="m-l-xs">
-                      {startCase(streamJobData?.runMode) || '--'}
-                    </span>
-                  </div>
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.status'
-                    )}:`}</span>
-                    <span className="m-l-xs">
-                      <Space size={8}>
-                        {streamJobData?.status && (
-                          <SVGIcons
-                            alt="result"
-                            className="w-4"
-                            icon={getStatusResultBadgeIcon(
-                              streamJobData?.status
-                            )}
-                          />
-                        )}
-                        <span>
-                          {getEventPublisherStatusText(streamJobData?.status) ||
-                            '--'}
+                title="ElasticSearch">
+                <Row gutter={[16, 8]}>
+                  <Col span={24}>
+                    <Space direction="horizontal" size={16}>
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.mode'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          {startCase(streamJobData?.runMode) || '--'}
                         </span>
-                      </Space>
-                    </span>
-                  </div>
+                      </div>
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.status'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          <Space size={8}>
+                            {streamJobData?.status && (
+                              <SVGIcons
+                                alt="result"
+                                className="w-4"
+                                icon={getStatusResultBadgeIcon(
+                                  streamJobData?.status
+                                )}
+                              />
+                            )}
+                            <span>
+                              {getEventPublisherStatusText(
+                                streamJobData?.status
+                              ) || '--'}
+                            </span>
+                          </Space>
+                        </span>
+                      </div>
 
-                  <div className="flex">
-                    <span className="text-grey-muted">
-                      {`${t('label.last-updated')}:`}
-                    </span>
-                    <span className="m-l-xs">
-                      {streamJobData?.timestamp
-                        ? getDateTimeByTimeStampWithZone(
-                            streamJobData?.timestamp
-                          )
-                        : '--'}
-                    </span>
-                  </div>
-                  <div className="flex">
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.last-updated'
+                        )}:`}</span>
+                        <span className="m-l-xs">
+                          {streamJobData?.timestamp
+                            ? getDateTimeByTimeStampWithZone(
+                                streamJobData?.timestamp
+                              )
+                            : '--'}
+                        </span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          'label.last-failed-at'
+                        )}:`}</span>
+                        <p className="m-l-xs">
+                          {streamJobData?.failureDetails?.lastFailedAt
+                            ? getDateTimeByTimeStampWithZone(
+                                streamJobData?.failureDetails?.lastFailedAt
+                              )
+                            : '--'}
+                        </p>
+                      </div>
+                    </Space>
+                  </Col>
+                  <Col span={24}>
                     <span className="text-grey-muted">{`${t(
-                      'label.last-failed-at'
+                      'label.failure-context'
                     )}:`}</span>
-                    <p className="m-l-xs">
-                      {streamJobData?.failureDetails?.lastFailedAt
-                        ? getDateTimeByTimeStampWithZone(
-                            streamJobData?.failureDetails?.lastFailedAt
-                          )
-                        : '--'}
-                    </p>
-                  </div>
-                </Space>
-              </Col>
-              <Col span={24}>
-                <span className="text-grey-muted">{`${t(
-                  'label.failure-context'
-                )}:`}</span>
-                <span className="m-l-xs">
-                  {streamJobData?.failureDetails?.context ? (
-                    <RichTextEditorPreviewer
-                      enableSeeMoreVariant={Boolean(streamJobData)}
-                      markdown={streamJobData?.failureDetails?.context}
-                    />
-                  ) : (
-                    '--'
-                  )}
-                </span>
-              </Col>
-              <Col span={24}>
-                <span className="text-grey-muted">{`${t(
-                  'label.last-error'
-                )}:`}</span>
-                <span className="m-l-xs">
-                  {streamJobData?.failureDetails?.lastFailedReason ? (
-                    <RichTextEditorPreviewer
-                      enableSeeMoreVariant={Boolean(streamJobData)}
-                      markdown={streamJobData?.failureDetails?.lastFailedReason}
-                    />
-                  ) : (
-                    '--'
-                  )}
-                </span>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
-      <ReIndexAllModal
-        confirmLoading={confirmLoading}
-        visible={isModalOpen}
-        onCancel={() => setModalOpen(false)}
-        onSave={performReIndexAll}
-      />
-    </div>
+                    <span className="m-l-xs">
+                      {streamJobData?.failureDetails?.context ? (
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={Boolean(streamJobData)}
+                          markdown={streamJobData?.failureDetails?.context}
+                        />
+                      ) : (
+                        '--'
+                      )}
+                    </span>
+                  </Col>
+                  <Col span={24}>
+                    <span className="text-grey-muted">{`${t(
+                      'label.last-error'
+                    )}:`}</span>
+                    <span className="m-l-xs">
+                      {streamJobData?.failureDetails?.lastFailedReason ? (
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={Boolean(streamJobData)}
+                          markdown={
+                            streamJobData?.failureDetails?.lastFailedReason
+                          }
+                        />
+                      ) : (
+                        '--'
+                      )}
+                    </span>
+                  </Col>
+                </Row>
+              </Card>
+            </Col>
+          </Row>
+          <ReIndexAllModal
+            confirmLoading={confirmLoading}
+            visible={isModalOpen}
+            onCancel={() => setModalOpen(false)}
+            onSave={performReIndexAll}
+          />
+        </div>
+      </Col>
+    </Row>
   );
 };
 

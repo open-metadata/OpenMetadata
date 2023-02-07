@@ -210,7 +210,11 @@ const AddCustomProperty = () => {
                 placeholder="type"
                 value={formData.type || ''}
                 onChange={onChangeHandler}>
-                <option value="">{t('label.select-type')}</option>
+                <option value="">
+                  {t('label.select-field', {
+                    field: t('label.type-lowercase'),
+                  })}
+                </option>
                 {getPropertyTypes().map((propertyType) => (
                   <option key={uniqueId()} value={propertyType.id}>
                     {propertyType.displayName}

@@ -100,7 +100,7 @@ class TableauDashboard(TableauBaseModel):
 
     description: Optional[str]
     tags: List[str]
-    owner: TableauOwner
+    owner: Optional[TableauOwner]
     charts: Optional[List[TableauChart]]
     webpage_url: Optional[str]
 
@@ -144,7 +144,9 @@ class TableauSource(DashboardServiceSource):
                     id=workbook.get("owner", {}).get("id"),
                     name=workbook.get("owner", {}).get("name"),
                     email=workbook.get("owner", {}).get("email"),
-                ),
+                )
+                if workbook.get("owner", {}).get("email")
+                else None,
                 webpage_url=workbook.get("webpageUrl"),
             )
             for workbook in extract_pages(

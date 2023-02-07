@@ -4,12 +4,14 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get update \
-    && apt-get install -y build-essential \
+    && apt-get install -y alien \
+    build-essential \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
     gcc \
     gnupg \
+    libaio1 \
     libevent-dev \
     libffi-dev \
     libpq-dev \
@@ -25,11 +27,23 @@ RUN apt-get update \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
+    unzip \
     vim \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
+
+RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+ then \
+ wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ else \
+ wget https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+ unzip -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+ fi
+
+ENV LD_LIBRARY_PATH=/instantclient
 
 # Security patches for base image
 # monitor no fixed version for
@@ -58,8 +72,8 @@ USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis==0.12.2.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.12.2.4"
+RUN pip install "openmetadata-managed-apis==0.13.2.1" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.13.2.1"
 # remove all airflow providers except for docker
 RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 

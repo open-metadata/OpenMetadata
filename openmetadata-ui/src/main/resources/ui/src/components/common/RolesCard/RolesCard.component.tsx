@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Select, Space } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
@@ -122,9 +122,7 @@ const RolesCard = ({
                 <Button
                   className="text-sm mr-1"
                   data-testid="cancel-roles"
-                  icon={
-                    <FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />
-                  }
+                  icon={<CloseOutlined />}
                   size="small"
                   type="primary"
                   onMouseDown={() => setIsRolesEdit(false)}
@@ -132,9 +130,7 @@ const RolesCard = ({
                 <Button
                   className="text-sm"
                   data-testid="save-roles"
-                  icon={
-                    <FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />
-                  }
+                  icon={<CheckOutlined />}
                   size="small"
                   type="primary"
                   onClick={handleRolesChange}

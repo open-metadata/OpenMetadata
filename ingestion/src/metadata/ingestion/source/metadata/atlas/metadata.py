@@ -63,10 +63,6 @@ logger = ingestion_logger()
 
 ATLAS_TAG_CATEGORY = "AtlasMetadata"
 ATLAS_TABLE_TAG = "atlas_table"
-ENTITY_TYPES = {
-    "Table": {"Table": {"db": "db", "column": "columns"}},
-    "Topic": {"Topic": {"schema": "schema"}},
-}
 
 
 class AtlasSourceStatus(SourceStatus):
@@ -109,6 +105,12 @@ class AtlasSource(Source):
 
         self.service = None
         self.message_service = None
+        self.entity_types = {
+            "Table": {
+                self.service_connection.entity_type: {"db": "db", "column": "columns"}
+            },
+            "Topic": {"Topic": {"schema": "schema"}},
+        }
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -132,9 +134,9 @@ class AtlasSource(Source):
                 entity=DatabaseService, fqn=service
             )
             if check_service:
-                for key in ENTITY_TYPES["Table"]:
+                for key in self.entity_types["Table"]:
                     self.service = check_service
-                    self.tables[key] = self.atlas_client.list_entities(entity_type=key)
+                    self.tables[key] = self.atlas_client.list_entities()
                     if self.tables.get(key, None):
                         for key in self.tables:
                             yield from self._parse_table_entity(key, self.tables[key])
@@ -148,9 +150,9 @@ class AtlasSource(Source):
                 entity=MessagingService, fqn=service
             )
             if check_service:
-                for key in ENTITY_TYPES["Topic"]:
+                for key in self.entity_types["Topic"]:
                     self.message_service = check_service
-                    self.topics[key] = self.atlas_client.list_entities(entity_type=key)
+                    self.topics[key] = self.atlas_client.list_entities()
                     if self.topics.get(key, None):
                         for topic in self.topics:
                             yield from self._parse_topic_entity(topic)
@@ -207,12 +209,13 @@ class AtlasSource(Source):
         for table in entity:
             table_entity = self.atlas_client.get_entity(table)
             tbl_entities = table_entity["entities"]
+            db_entity = None
             for tbl_entity in tbl_entities:
                 try:
 
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"][
-                        ENTITY_TYPES["Table"][name]["db"]
+                        self.entity_types["Table"][name]["db"]
                     ]
 
                     database_fqn = fqn.build(
@@ -327,7 +330,7 @@ class AtlasSource(Source):
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
         col_entities = tbl_entity["relationshipAttributes"][
-            ENTITY_TYPES["Table"][name]["column"]
+            self.entity_types["Table"][name]["column"]
         ]
         referred_entities = table_response["referredEntities"]
         ordinal_pos = 1
@@ -369,11 +372,11 @@ class AtlasSource(Source):
         tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
         for key in tbl_entity["referredEntities"].keys():
             if not tbl_entity["entities"][0]["relationshipAttributes"].get(
-                ENTITY_TYPES["Table"][name]["db"]
+                self.entity_types["Table"][name]["db"]
             ):
                 continue
             db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                ENTITY_TYPES["Table"][name]["db"]
+                self.entity_types["Table"][name]["db"]
             ]
             if not tbl_entity["referredEntities"].get(key):
                 continue
@@ -401,7 +404,7 @@ class AtlasSource(Source):
                 tbl_entity = self.atlas_client.get_entity(edge["toEntityId"])
                 for key in tbl_entity["referredEntities"]:
                     db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                        ENTITY_TYPES["Table"][name]["db"]
+                        self.entity_types["Table"][name]["db"]
                     ]
 
                     db = self.get_database_entity(db_entity["displayText"])

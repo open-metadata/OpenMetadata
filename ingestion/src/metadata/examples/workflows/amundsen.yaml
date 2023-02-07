@@ -4,9 +4,9 @@ source:
   serviceConnection:
     config:
       type: Amundsen
-      username: neo4j
-      password: test
-      hostPort: bolt://192.168.1.8:7687
+      username: neo4j_username
+      password: neo4j_password
+      hostPort: bolt://localhost:7687
   sourceConfig:
     config:
       type: DatabaseMetadata

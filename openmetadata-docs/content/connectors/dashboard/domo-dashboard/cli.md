@@ -20,6 +20,13 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+
+</Note>
+
 ### Python Requirements
 
 To run the DomoDashboard ingestion, you will need to install:
@@ -59,8 +66,6 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
       type: DashboardMetadata
       # dbServiceNames:
       #   - service1
@@ -102,7 +107,7 @@ workflowConfig:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.
 
 ```yaml

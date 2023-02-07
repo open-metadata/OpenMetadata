@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Python Dependencies
+"""
+
 import os
 from typing import Dict, Set
 
@@ -17,8 +21,8 @@ from setuptools import find_namespace_packages, setup
 
 def get_long_description():
     root = os.path.dirname(__file__)
-    with open(os.path.join(root, "README.md")) as f:
-        description = f.read()
+    with open(os.path.join(root, "README.md"), encoding="UTF-8") as file:
+        description = file.read()
     return description
 
 
@@ -26,7 +30,7 @@ def get_long_description():
 VERSIONS = {
     "airflow": "apache-airflow==2.3.3",
     "avro-python3": "avro-python3~=1.10",
-    "boto3": "boto3~=1.26",  # No need to add botocore separately. It's a dep from boto3
+    "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "great-expectations": "great-expectations~=0.15.0",
@@ -89,8 +93,8 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
-    "sqlalchemy>=1.4.0",
-    "sqllineage==1.3.7",
+    "sqlalchemy>=1.4.0,<2",
+    "openmetadata-sqllineage==1.0.1",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
     "wheel~=0.38.4",
@@ -98,9 +102,7 @@ base_requirements = {
 
 
 plugins: Dict[str, Set[str]] = {
-    "airflow": {
-        "apache-airflow==2.3.3"
-    },  # Same as ingestion container. For development.
+    "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"PyAthena[SQLAlchemy]"},
     "atlas": {},
@@ -121,7 +123,12 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
         "dagster_graphql~=1.1",
     },
-    "dbt": {"google-cloud", VERSIONS["boto3"], VERSIONS["google-cloud-storage"]},
+    "dbt": {
+        "google-cloud",
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        "dbt-artifacts-parser",
+    },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
@@ -149,7 +156,7 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch>=7.17,<8"
+        "elasticsearch==7.13.1"
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -175,6 +182,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
+    "quicksight": {VERSIONS["boto3"]},
     "redash": {"redash-toolbelt~=0.1"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
@@ -205,24 +213,21 @@ dev = {
 }
 
 test = {
+    # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
     "coverage",
-    VERSIONS["google-cloud-storage"],
+    # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto==4.0.8",
-    VERSIONS["neo4j"],
-    VERSIONS["pandas"],
-    VERSIONS["pydomo"],
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    VERSIONS["scikit-learn"],
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.13.2.0.dev0",
+    version="1.0.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

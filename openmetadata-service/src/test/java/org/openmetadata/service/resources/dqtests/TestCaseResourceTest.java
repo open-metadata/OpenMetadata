@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -27,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
@@ -80,13 +79,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTable tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName("testCaseTable")
+            .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withOwner(USER1_REF)
             .withColumns(
                 List.of(
                     new Column()
-                        .withName("c1")
+                        .withName(C1)
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
@@ -95,12 +94,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName("testCaseTable" + UUID.randomUUID())
+            .withName("testCaseTable")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withColumns(
                 List.of(
                     new Column()
-                        .withName("c1")
+                        .withName(C1)
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
@@ -108,10 +107,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TEST_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     TABLE_LINK = String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName());
     TABLE_LINK_2 = String.format("<#E::table::%s>", TEST_TABLE2.getFullyQualifiedName());
-    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::c1>", TEST_TABLE1.getFullyQualifiedName());
-    TABLE_COLUMN_LINK_2 = String.format("<#E::table::%s::columns::c1>", TEST_TABLE2.getFullyQualifiedName());
+    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::%s>", TEST_TABLE1.getFullyQualifiedName(), C1);
+    TABLE_COLUMN_LINK_2 = String.format("<#E::table::%s::columns::%s>", TEST_TABLE2.getFullyQualifiedName(), C1);
     INVALID_LINK1 = String.format("<#E::dashboard::%s", "temp");
     INVALID_LINK2 = String.format("<#E::table::%s>", "non-existent");
+  }
+
+  @Test
+  void test_getEntityName(TestInfo test) {
+    assertTrue(getEntityName(test).contains(supportedNameCharacters));
   }
 
   @Override
@@ -164,9 +168,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     create.withEntityLink(INVALID_LINK1).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(
-        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[entityLink must match \"^<#E::\\S+::\\S+>$\"]");
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_LINK_MATCH_ERROR);
 
     create.withEntityLink(INVALID_LINK2).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(
@@ -314,9 +316,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     verifyTestCaseResults(testCaseResults, testCaseResultList, 12);
 
     // create another table and add profiles
-    TestCase testCase1 =
-        createAndCheckEntity(
-            createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
+    TestCase testCase1 = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     List<TestCaseResult> testCase1ResultList = new ArrayList<>();
     dateStr = "2021-10-";
     for (int i = 11; i <= 15; i++) {
@@ -353,34 +353,31 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     List<CreateTestCase> expectedTestCaseList = new ArrayList<>();
     List<CreateTestCase> expectedColTestCaseList = new ArrayList<>();
 
-    CreateTestCase create = createRequest(test);
-    create
-        .withName(test.getDisplayName())
-        .withEntityLink(TABLE_LINK_2)
-        .withTestSuite(TEST_SUITE1.getEntityReference())
-        .withTestDefinition(TEST_DEFINITION3.getEntityReference())
-        .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    CreateTestCase create =
+        createRequest(test)
+            .withEntityLink(TABLE_LINK_2)
+            .withTestSuite(TEST_SUITE1.getEntityReference())
+            .withTestDefinition(TEST_DEFINITION3.getEntityReference())
+            .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create);
-    CreateTestCase create1 = createRequest(test);
-    create1
-        .withName(test.getDisplayName() + UUID.randomUUID())
-        .withEntityLink(TABLE_LINK_2)
-        .withTestSuite(TEST_SUITE1.getEntityReference())
-        .withTestDefinition(TEST_DEFINITION3.getEntityReference())
-        .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
+    CreateTestCase create1 =
+        createRequest(test, 1)
+            .withEntityLink(TABLE_LINK_2)
+            .withTestSuite(TEST_SUITE1.getEntityReference())
+            .withTestDefinition(TEST_DEFINITION3.getEntityReference())
+            .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create1);
     ResultList<TestCase> testCaseList = getTestCases(10, "*", TABLE_LINK_2, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 2);
 
-    CreateTestCase create3 = createRequest(test);
-    create3
-        .withName(test.getDisplayName() + UUID.randomUUID())
-        .withEntityLink(TABLE_COLUMN_LINK_2)
-        .withTestSuite(TEST_SUITE1.getEntityReference())
-        .withTestDefinition(TEST_DEFINITION3.getEntityReference())
-        .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
+    CreateTestCase create3 =
+        createRequest(test, 2)
+            .withEntityLink(TABLE_COLUMN_LINK_2)
+            .withTestSuite(TEST_SUITE1.getEntityReference())
+            .withTestDefinition(TEST_DEFINITION3.getEntityReference())
+            .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
     createAndCheckEntity(create3, ADMIN_AUTH_HEADERS);
     expectedColTestCaseList.add(create3);
 
@@ -390,14 +387,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseList = getTestCases(10, "*", TABLE_COLUMN_LINK_2, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedColTestCaseList, 1);
 
-    for (int i = 1; i < 10; i++) {
-      CreateTestCase create4 = createRequest(test);
-      create4
-          .withName(test.getDisplayName() + UUID.randomUUID())
-          .withEntityLink(TABLE_COLUMN_LINK_2)
-          .withTestSuite(TEST_SUITE1.getEntityReference())
-          .withTestDefinition(TEST_DEFINITION3.getEntityReference())
-          .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
+    for (int i = 3; i < 12; i++) {
+      CreateTestCase create4 =
+          createRequest(test, i)
+              .withEntityLink(TABLE_COLUMN_LINK_2)
+              .withTestSuite(TEST_SUITE1.getEntityReference())
+              .withTestDefinition(TEST_DEFINITION3.getEntityReference())
+              .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
       createAndCheckEntity(create4, ADMIN_AUTH_HEADERS);
       expectedColTestCaseList.add(create4);
     }
@@ -412,9 +408,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
   }
 
-  public static void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
+  public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
+    WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
 
@@ -442,7 +438,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     fieldUpdated(change, "description", oldDescription, newDescription);
     testCase =
         updateAndCheckEntity(
-            createRequest(test).withDescription(newDescription), OK, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+            createRequest(test).withDescription(newDescription).withName(testCase.getName()),
+            OK,
+            ownerAuthHeaders,
+            UpdateType.MINOR_UPDATE,
+            change);
 
     // Update description with PATCH
     oldDescription = testCase.getDescription();
@@ -470,24 +470,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         permissionNotAllowed(TEST_USER_NAME, List.of(EDIT_TESTS)));
   }
 
-  public static void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
+  public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult/" + timestamp);
+    WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
     TestUtils.delete(target, authHeaders);
   }
 
-  public static ResultList<TestCaseResult> getTestCaseResults(
+  public ResultList<TestCaseResult> getTestCaseResults(
       String fqn, Long start, Long end, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
+    WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
 
-  public static ResultList<TestCase> getTestCases(
+  public ResultList<TestCase> getTestCases(
       Integer limit, String fields, String link, Boolean includeAll, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testCase");
+    WebTarget target = getCollection();
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     if (link != null) {
@@ -499,10 +499,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
   }
 
-  public static ResultList<TestCase> getTestCases(
+  public ResultList<TestCase> getTestCases(
       Integer limit, String fields, TestSuite testSuite, Boolean includeAll, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testCase");
+    WebTarget target = getCollection();
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     target = target.queryParam("testSuiteId", testSuite.getId());
