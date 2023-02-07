@@ -15,6 +15,7 @@ import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
@@ -32,6 +33,7 @@ interface ResetFormData {
 }
 
 const ResetPassword = () => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const location = useLocation();
 
@@ -89,7 +91,7 @@ const ResetPassword = () => {
 
           <div className="mt-20 flex-center">
             <Typography.Link underline onClick={handleReVerify}>
-              Re verify
+              {t('label.re-verify')}
             </Typography.Link>
           </div>
         </Card>
@@ -105,7 +107,7 @@ const ResetPassword = () => {
 
             <Col className="mt-12 text-center" span={24}>
               <Typography.Text className="text-xl font-medium text-grey-muted">
-                Reset your Password
+                {t('label.reset-your-password')}
               </Typography.Text>
             </Col>
 
@@ -163,7 +165,7 @@ const ResetPassword = () => {
                   className="w-full m-t-lg"
                   htmlType="submit"
                   type="primary">
-                  Submit
+                  {t('label.submit')}
                 </Button>
               </Form>
             </Col>

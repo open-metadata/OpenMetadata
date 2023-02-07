@@ -61,8 +61,9 @@ const TreeViewTab = ({
         </Col>
         <Col>
           <Typography.Text className="p-b-0 m-b-0 font-medium">
-            {formatDateTimeFromSeconds(startTime)} to{' '}
-            {formatDateTimeFromSeconds(endTime)}
+            {`${formatDateTimeFromSeconds(startTime)} ${t(
+              'label.to-lowercase'
+            )} ${formatDateTimeFromSeconds(endTime)}`}
           </Typography.Text>
         </Col>
         <Col>

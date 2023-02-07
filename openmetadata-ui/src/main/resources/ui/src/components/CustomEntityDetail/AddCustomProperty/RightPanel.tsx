@@ -11,22 +11,17 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import React, { Fragment } from 'react';
 
 export const RightPanel = () => {
   return (
     <Fragment>
       <h6 className="tw-heading tw-text-base" data-testid="header">
-        Add a Custom Property
+        {t('label.add-entity', { entity: t('label.custom-property') })}
       </h6>
       <div className="tw-mb-5" data-testid="body">
-        OpenMetadata supports custom properties in the Table entity. Create a
-        custom property by adding a unique property name. The name must start
-        with a lowercase letter, as preferred in the camelCase format. Uppercase
-        letters and numbers can be included in the field name; but spaces,
-        underscores, and dots are not supported. Select the preferred property
-        Type from among the options provided. Describe your custom property to
-        provide more information to your team.
+        {t('message.setup-custom-property')}
       </div>
     </Fragment>
   );

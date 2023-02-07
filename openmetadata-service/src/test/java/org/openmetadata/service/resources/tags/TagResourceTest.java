@@ -86,7 +86,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
             null,
             PERSONAL_DATA_TAG_LABEL.getTagFQN(),
             PII_SENSITIVE_TAG_LABEL.getTagFQN());
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_TAG_CATEGORY.getName(), "Address"));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {

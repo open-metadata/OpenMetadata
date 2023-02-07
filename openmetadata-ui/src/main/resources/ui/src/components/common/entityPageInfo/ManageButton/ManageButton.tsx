@@ -94,7 +94,7 @@ const ManageButton: FC<Props> = ({
                 </Col>
                 <Col className="p-t-xss">
                   <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.delete-action-description', {
+                    {t('message.delete-entity-type-action-description', {
                       entityType,
                     })}
                   </Typography.Paragraph>

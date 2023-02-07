@@ -556,7 +556,7 @@ const TaskDetailPage = () => {
                       status={taskDetail.task?.status as ThreadTaskStatus}
                     />
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                      |
+                      {t('label.pipe-symbol')}
                     </span>
                     <span className="tw-flex">
                       <UserPopOverCard userName={taskDetail.createdBy || ''}>
@@ -589,7 +589,7 @@ const TaskDetailPage = () => {
                       className={classNames('tw-text-grey-muted', {
                         'tw-self-center tw-mr-2': editAssignee,
                       })}>
-                      {t('label.assignee-plural')}:
+                      {`${t('label.assignee-plural')}:`}
                     </span>
                     {editAssignee ? (
                       <Fragment>

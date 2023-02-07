@@ -333,6 +333,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           databaseSchema
         ),
         pageNumber,
+        sortField: 'name.keyword',
+        sortOrder: 'asc',
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TABLE,
         includeDeleted: false,
@@ -601,7 +603,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           text?.trim() ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="text-grey-muted">No description</span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
     ],

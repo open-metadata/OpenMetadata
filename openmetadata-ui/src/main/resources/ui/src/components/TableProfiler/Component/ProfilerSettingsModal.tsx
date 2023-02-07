@@ -480,7 +480,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <>
                   <div className="tw-flex tw-items-center tw-mb-1.5">
                     <p className="w-form-label tw-text-xs tw-mr-3">
-                      {t('label.include')}:
+                      {`${t('label.include')}:`}
                     </p>
                     <Button
                       className="include-columns-add-button"

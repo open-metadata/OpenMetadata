@@ -124,7 +124,7 @@ const EntitySummaryDetails = ({
                     />
                     <span>{userDetails.ownerName}</span>
                     <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
-                      |
+                      {t('label.pipe-symbol')}
                     </span>
                   </>
                 )}
@@ -181,14 +181,14 @@ const EntitySummaryDetails = ({
 
     case 'TeamType':
       {
-        retVal = displayVal ? <>{t('label.type')} - </> : <></>;
+        retVal = displayVal ? <>{`${t('label.type')} - `}</> : <></>;
       }
 
       break;
 
     case 'Usage':
       {
-        retVal = <>{t('label.usage')} - </>;
+        retVal = <>{`${t('label.usage')} - `}</>;
       }
 
       break;

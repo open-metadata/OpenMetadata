@@ -69,7 +69,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
         url: getGlossaryPath(glossaryName),
       },
       {
-        name: t('label.import-glossary-terms'),
+        name: t('label.import-glossary-term-plural'),
         url: '',
         activeTitle: true,
       },

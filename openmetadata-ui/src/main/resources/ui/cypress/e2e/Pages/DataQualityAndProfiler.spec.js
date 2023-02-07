@@ -103,7 +103,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    interceptURL('GET', '/api/v1/config/airflow', 'airflow');
+    interceptURL('GET', '/api/v1/system/config/airflow', 'airflow');
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
@@ -191,11 +191,15 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
     scheduleIngestion();
 
-    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
+      .should('be.visible');
 
     // wait for ingestion to run
     cy.clock();
@@ -318,6 +322,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
       .contains(
         'has been created successfully. This will be picked up in the next run.'
       )
@@ -587,7 +592,9 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/testCase?fields=*', 'testCase');
     interceptURL('GET', '/api/v1/testDefinition/*', 'testCaseDefinition');
 
-    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="success-line"]')
+      .scrollIntoView()
+      .should('be.visible');
     cy.get('[data-testid="view-service-button"]').should('be.visible').click();
 
     verifyResponseStatusCode('@testCase', 200);
