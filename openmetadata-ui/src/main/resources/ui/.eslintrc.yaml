@@ -244,6 +244,15 @@ overrides:
       i18next/no-literal-string:
         - off
 
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
+        - off
+
 globals:
   cypress: true
 

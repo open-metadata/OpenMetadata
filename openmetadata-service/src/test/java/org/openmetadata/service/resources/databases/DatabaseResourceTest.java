@@ -30,7 +30,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.entity.data.Database;
@@ -44,7 +43,6 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);

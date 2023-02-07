@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
 import { entityUrlMap } from '../constants/Feeds.constants';
@@ -87,7 +88,7 @@ export const getFieldThreadElement = (
 };
 
 export const getDefaultValue = (owner: EntityReference) => {
-  const message = 'Can you add a description?';
+  const message = t('message.can-you-add-a-description');
   if (isUndefined(owner)) {
     return `${message}`;
   } else {
