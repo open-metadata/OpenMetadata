@@ -1,4 +1,17 @@
-package org.openmetadata.service.pipelineService;
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.clients.pipeline.noop;
 
 import java.net.http.HttpResponse;
 import java.util.List;
@@ -9,10 +22,13 @@ import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnec
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
-public class MockPipelineServiceClient extends PipelineServiceClient {
+public class NoopClient extends PipelineServiceClient {
 
-  public MockPipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+  String EXCEPTION_MSG = "The NoopClient does not implement the %s method";
+
+  public NoopClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     super(pipelineServiceClientConfiguration);
   }
 
@@ -28,17 +44,17 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
 
   @Override
   public String deployPipeline(IngestionPipeline ingestionPipeline) {
-    return null;
+    throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "deploy"));
   }
 
   @Override
   public String runPipeline(IngestionPipeline ingestionPipeline) {
-    return null;
+    throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "run"));
   }
 
   @Override
   public String deletePipeline(IngestionPipeline ingestionPipeline) {
-    return null;
+    throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "delete"));
   }
 
   @Override
@@ -48,7 +64,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
 
   @Override
   public IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline) {
-    return null;
+    throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "toggle"));
   }
 
   @Override
@@ -58,7 +74,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
 
   @Override
   public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
-    return null;
+    throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "kill"));
   }
 
   @Override
