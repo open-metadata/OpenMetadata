@@ -24,7 +24,6 @@ from airflow import DAG
 
 # Operators; we need this to operate!
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
 
 from airflow_provider_openmetadata.hooks.openmetadata import OpenMetadataHook
 
