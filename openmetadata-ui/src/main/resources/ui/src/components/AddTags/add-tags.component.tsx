@@ -53,8 +53,10 @@ export const AddTags = ({
   }, [tagList]);
 
   const onClickSelect = useCallback(() => {
-    fetchTags();
-  }, []);
+    if (tagList.length === 0) {
+      fetchTags();
+    }
+  }, [tagList]);
 
   const handleChange = useCallback((value: string[]) => {
     setSelectedTags && setSelectedTags(value);
@@ -72,6 +74,7 @@ export const AddTags = ({
 
   return (
     <Select
+      allowClear
       loading={isTagLoading}
       mode="multiple"
       placeholder={t('label.add-entity', {
