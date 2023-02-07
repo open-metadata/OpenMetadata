@@ -16,14 +16,22 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Optional
+from typing import List, Optional
 
 from commonregex import CommonRegex
+from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, OpenMetadataConnection
+
+PII = "PII"
 
 
 class PiiTypes(Enum):
@@ -48,6 +56,17 @@ class PiiTypes(Enum):
     ETHNICITY = auto()
     TAX_ID = auto()
     KEY = auto()
+    BANKACC = auto()
+
+
+class TagType(Enum):
+    SENSITIVE = "Sensitive"
+    NONSENSITIVE = "NonSensitive"
+
+
+class ColumnPIIType(BaseModel):
+    pii_types: PiiTypes
+    tag_type: TagType
 
 
 class Scanner(ABC):
@@ -80,14 +99,22 @@ class ColumnNameScanner(Scanner):
     Column Name Scanner to scan column name
     """
 
-    regex = {
+    sensitive_regex = {
+        PiiTypes.PASSWORD: re.compile("^.*password.*$", re.IGNORECASE),
+        PiiTypes.USER_NAME: re.compile("^.*user(id|name|).*$", re.IGNORECASE),
+        PiiTypes.KEY: re.compile("^.*(key).*$", re.IGNORECASE),
+        PiiTypes.SSN: re.compile("^.*(ssn|social).*$", re.IGNORECASE),
+        PiiTypes.CREDIT_CARD: re.compile("^.*(card).*$", re.IGNORECASE),
+        PiiTypes.BANKACC: re.compile("^.*(bank|acc).*$", re.IGNORECASE),
+        PiiTypes.EMAIL: re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
+    }
+    non_sensitive_regex = {
         PiiTypes.PERSON: re.compile(
             "^.*(firstname|fname|lastname|lname|"
             "fullname|maidenname|_name|"
             "nickname|name_suffix|name).*$",
             re.IGNORECASE,
         ),
-        PiiTypes.EMAIL: re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
         PiiTypes.BIRTH_DATE: re.compile(
             "^.*(date_of_birth|dateofbirth|dob|"
             "birthday|date_of_death|dateofdeath).*$",
@@ -100,21 +127,25 @@ class ColumnNameScanner(Scanner):
             "zipcode|zip|postal|zone|borough).*$",
             re.IGNORECASE,
         ),
-        PiiTypes.USER_NAME: re.compile("^.*user(id|name|).*$", re.IGNORECASE),
-        PiiTypes.PASSWORD: re.compile("^.*pass.*$", re.IGNORECASE),
-        PiiTypes.SSN: re.compile("^.*(ssn|social).*$", re.IGNORECASE),
         PiiTypes.PHONE: re.compile("^.*(phone).*$", re.IGNORECASE),
-        PiiTypes.KEY: re.compile("^.*(key).*$", re.IGNORECASE),
     }
 
-    def scan(self, text):
+    def scan(self, text) -> Optional[List[ColumnPIIType]]:
         types = set()
-        for pii_type_keys, pii_type_pattern in self.regex.items():
+        for pii_type_keys, pii_type_pattern in self.sensitive_regex.items():
             if pii_type_pattern.match(text) is not None:
-                types.add(pii_type_keys)
+                return ColumnPIIType(
+                    pii_types=pii_type_keys, tag_type=TagType.SENSITIVE.value
+                )
+
+        for pii_type_keys, pii_type_pattern in self.non_sensitive_regex.items():
+            if pii_type_pattern.match(text) is None:
+                return ColumnPIIType(
+                    pii_types=pii_type_keys, tag_type=TagType.NONSENSITIVE.value
+                )
 
         logging.debug("PiiTypes are %s", ",".join(str(x) for x in list(types)))
-        return list(types)
+        return None
 
 
 class PiiProcessor(Processor):
@@ -142,15 +173,15 @@ class PiiProcessor(Processor):
     ) -> Optional[CreateTableRequest]:
         for column in table_request.columns:
             pii_tags = []
-            pii_tags += self.column_scanner.scan(column.name.__root__)
+            pii_tags: ColumnPIIType = self.column_scanner.scan(column.name.__root__)
             tag_labels = []
             if pii_tags:
                 tag_labels.append(
                     TagLabel(
-                        tagFQN="PII.Sensitive",
-                        labelType="Automated",
-                        state="Suggested",
-                        source="Tag",
+                        tagFQN=f"{PII}.{pii_tags.tag_type.value}",
+                        labelType=LabelType.Automated.value,
+                        state=State.Suggested.value,
+                        source=TagSource.Tag.value,
                     )
                 )
             if len(tag_labels) > 0 and column.tags:
