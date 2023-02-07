@@ -177,19 +177,9 @@ class SpannerSource(CommonDbSourceService):
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type == TableType.View:
-            try:
-                view_definition = inspector.get_view_definition(
-                    f"{self.context.database.name.__root__}.{schema_name}.{table_name}"
-                )
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
-                )
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-                view_definition = ""
-            return f"CREATE VIEW {schema_name}.{table_name} AS {view_definition}"
-        return None
+        # NOTE sqlalchemy-spanner doesn't support `get_view_names` yet.
+        # SEE https://github.com/googleapis/python-spanner-sqlalchemy/issues/303
+        raise NotImplementedError("get_view_definition isn't supported yet.")
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
