@@ -333,6 +333,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           databaseSchema
         ),
         pageNumber,
+        sortField: 'name.keyword',
+        sortOrder: 'asc',
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TABLE,
         includeDeleted: false,
