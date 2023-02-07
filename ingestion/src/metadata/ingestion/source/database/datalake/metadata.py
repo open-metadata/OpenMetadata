@@ -80,19 +80,29 @@ DATALAKE_SUPPORTED_FILE_TYPES = (
 
 
 def ometa_to_dataframe(config_source, client, table):
+    data = None
     if isinstance(config_source, GCSConfig):
-        return DatalakeSource.get_gcs_files(
+        data = DatalakeSource.get_gcs_files(
             client=client,
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
     if isinstance(config_source, S3Config):
-        return DatalakeSource.get_s3_files(
+        data = DatalakeSource.get_s3_files(
             client=client,
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
-    return None
+    if isinstance(config_source, AzureConfig):
+        data = DatalakeSource.get_azure_files(
+            client=client,
+            key=table.name.__root__,
+            bucket_name=table.databaseSchema.name,
+        )
+
+    if isinstance(data, DatalakeColumnWrapper):
+        data = data.dataframes
+    return data
 
 
 class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
