@@ -14,38 +14,81 @@ Utils module to parse the avro schema
 """
 
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import avro.schema as avroschema
-from avro.schema import ArraySchema
+from avro.schema import ArraySchema, RecordSchema
+from pydantic.main import ModelMetaclass
 
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-def parse_avro_schema(schema: str) -> Optional[List[FieldModel]]:
+def parse_array_fields(
+    field, cls: ModelMetaclass = FieldModel
+) -> Optional[List[Union[FieldModel, Column]]]:
+    field_items = field.type.items
+    child_obj = cls(
+        name=field_items.name,
+        dataType=str(field_items.type).upper(),
+        children=get_avro_fields(field.type.items, cls),
+    )
+
+    obj = cls(
+        name=field.name,
+        dataType=str(field.type.type).upper(),
+    )
+
+    if cls == Column:
+        if str(field_items.type).upper() == "ARRAY":
+            child_obj.arrayDataType = str(field.type.items.type).upper()
+            child_obj.dataTypeDisplay = f"{field_items.type}<{field.type.items.type}>"
+        else:
+            child_obj.dataTypeDisplay = str(field_items.type)
+        if str(field.type.type).upper() == "ARRAY":
+            obj.arrayDataType = str(field_items.type).upper()
+            obj.dataTypeDisplay = f"{field.type.type}<{field_items.type}>"
+        else:
+            obj.dataTypeDisplay = str(field.type.type)
+
+    obj.children = [child_obj]
+
+    return obj
+
+
+def parse_single_field(
+    field, cls: ModelMetaclass = FieldModel
+) -> Optional[List[Union[FieldModel, Column]]]:
+    obj = cls(
+        name=field.name,
+        dataType=str(field.type.type).upper(),
+    )
+    if cls == Column:
+        obj.dataTypeDisplay = str(field.type.type)
+    return obj
+
+
+def parse_avro_schema(
+    schema: str, cls: ModelMetaclass = FieldModel
+) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Method to parse the avro schema
     """
     try:
         parsed_schema = avroschema.parse(schema)
-        field_models = [
-            FieldModel(
-                name=parsed_schema.name,
-                dataType=str(parsed_schema.type).upper(),
-                children=get_avro_fields(parsed_schema),
-            )
-        ]
-        return field_models
+        return get_avro_fields(parsed_schema, cls)
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the avro schema: {exc}")
     return None
 
 
-def get_avro_fields(parsed_schema) -> Optional[List[FieldModel]]:
+def get_avro_fields(
+    parsed_schema, cls: ModelMetaclass = FieldModel
+) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Recursively convert the parsed schema into required models
     """
@@ -54,26 +97,9 @@ def get_avro_fields(parsed_schema) -> Optional[List[FieldModel]]:
     for field in parsed_schema.fields:
         try:
             if isinstance(field.type, ArraySchema):
-                field_items = field.type.items
-                field_models.append(
-                    FieldModel(
-                        name=field.name,
-                        dataType=str(field.type.type).upper(),
-                        children=[
-                            FieldModel(
-                                name=field_items.name,
-                                dataType=str(field_items.type).upper(),
-                                children=get_avro_fields(field.type.items),
-                            )
-                        ],
-                    )
-                )
+                field_models.append(parse_array_fields(field, cls=cls))
             else:
-                field_models.append(
-                    FieldModel(
-                        name=field.name, dataType=str(field.type.fullname).upper()
-                    )
-                )
+                field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to parse the avro schema into models: {exc}")
