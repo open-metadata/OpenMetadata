@@ -90,6 +90,7 @@ MOCK_DASHBOARD = DomoDashboardDetails(
     name="New Dashboard",
     cardIds=["1982511286", "781210736"],
     collection_ids=[],
+    owners=[],
 )
 
 EXPECTED_DASHBOARD = CreateDashboardRequest(

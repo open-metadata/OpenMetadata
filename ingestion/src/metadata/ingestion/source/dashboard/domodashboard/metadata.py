@@ -134,17 +134,17 @@ class DomodashboardSource(DashboardServiceSource):
             )
         except KeyError as err:
             logger.warning(
-                f"Error extracting data from {dashboard_details.get('name', 'unknown')} - {err}"
+                f"Error extracting data from {dashboard_details.name} - {err}"
             )
             logger.debug(traceback.format_exc())
         except ValidationError as err:
             logger.warning(
-                f"Error building pydantic model for {dashboard_details.get('name', 'unknown')} - {err}"
+                f"Error building pydantic model for {dashboard_details.name} - {err}"
             )
             logger.debug(traceback.format_exc())
         except Exception as err:
             logger.warning(
-                f"Wild error ingesting dashboard {dashboard_details.get('name', 'unknown')} - {err}"
+                f"Wild error ingesting dashboard {dashboard_details.name} - {err}"
             )
             logger.debug(traceback.format_exc())
 
