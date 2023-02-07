@@ -611,10 +611,12 @@ const EntityTable = ({
         accessor: 'name',
         width: 300,
         render: (name: Column['name'], record: Column) => (
-          <div className="d-flex break-word">
-            {prepareConstraintIcon(name, record.constraint, tableConstraints)}
-            <span className="m-l-xss">{name}</span>
-          </div>
+          <span className="w-max-90 d-inline-block vertical-align-inherit">
+            <div className="d-flex">
+              {prepareConstraintIcon(name, record.constraint, tableConstraints)}
+              <span className="m-l-xss break-word flex-1">{name}</span>
+            </div>
+          </span>
         ),
       },
       {
