@@ -26,10 +26,8 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
     TestConnectionStep,
     test_connection_db_common,
-    test_connection_steps,
 )
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST,
