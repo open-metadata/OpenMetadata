@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.util;
+package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
@@ -49,7 +49,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UtilResourceTest extends OpenMetadataApplicationTest {
+public class SystemResourceTest extends OpenMetadataApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -57,28 +57,10 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
     entityResourceTest.setup(test);
   }
 
-  public static EntitiesCount getEntitiesCount() throws HttpResponseException {
-    WebTarget target = getResource("util/entities/count");
-    return TestUtils.get(target, EntitiesCount.class, ADMIN_AUTH_HEADERS);
-  }
-
-  public static ServicesCount getServicesCount() throws HttpResponseException {
-    WebTarget target = getResource("util/services/count");
-    return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
-  }
-
   @Test
   public void entitiesCount(TestInfo test) throws HttpResponseException {
-
     // Get count before adding entities
-    int beforeTableCount = getEntitiesCount().getTableCount();
-    int beforeDashboardCount = getEntitiesCount().getDashboardCount();
-    int beforePipelineCount = getEntitiesCount().getPipelineCount();
-    int beforeTopicCount = getEntitiesCount().getTopicCount();
-    int beforeServiceCount = getEntitiesCount().getServicesCount();
-    int beforeUserCount = getEntitiesCount().getUserCount();
-    int beforeTeamCount = getEntitiesCount().getTeamCount();
-    int beforeTestSuiteCount = getEntitiesCount().getTestSuiteCount();
+    EntitiesCount beforeCount = getEntitiesCount();
 
     // Create Table
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -120,36 +102,22 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
 
-    // Get count after adding entities
-    int afterTableCount = getEntitiesCount().getTableCount();
-    int afterDashboardCount = getEntitiesCount().getDashboardCount();
-    int afterPipelineCount = getEntitiesCount().getPipelineCount();
-    int afterTopicCount = getEntitiesCount().getTopicCount();
-    int afterServiceCount = getEntitiesCount().getServicesCount();
-    int afterUserCount = getEntitiesCount().getUserCount();
-    int afterTeamCount = getEntitiesCount().getTeamCount();
-    int afterTestSuiteCount = getEntitiesCount().getTestSuiteCount();
-
-    int actualCount = 1;
-
-    Assertions.assertEquals(afterDashboardCount - beforeDashboardCount, actualCount);
-    Assertions.assertEquals(afterPipelineCount - beforePipelineCount, actualCount);
-    Assertions.assertEquals(afterServiceCount - beforeServiceCount, actualCount);
-    Assertions.assertEquals(afterUserCount - beforeUserCount, actualCount);
-    Assertions.assertEquals(afterTableCount - beforeTableCount, actualCount);
-    Assertions.assertEquals(afterTeamCount - beforeTeamCount, actualCount);
-    Assertions.assertEquals(afterTopicCount - beforeTopicCount, actualCount);
-    Assertions.assertEquals(afterTestSuiteCount - beforeTestSuiteCount, actualCount);
+    // Ensure counts of entities is increased by 1
+    EntitiesCount afterCount = getEntitiesCount();
+    Assertions.assertEquals(beforeCount.getDashboardCount() + 1, afterCount.getDashboardCount());
+    Assertions.assertEquals(beforeCount.getPipelineCount() + 1, afterCount.getPipelineCount());
+    Assertions.assertEquals(beforeCount.getServicesCount() + 1, afterCount.getServicesCount());
+    Assertions.assertEquals(beforeCount.getUserCount() + 1, afterCount.getUserCount());
+    Assertions.assertEquals(beforeCount.getTableCount() + 1, afterCount.getTableCount());
+    Assertions.assertEquals(beforeCount.getTeamCount() + 1, afterCount.getTeamCount());
+    Assertions.assertEquals(beforeCount.getTopicCount() + 1, afterCount.getTopicCount());
+    Assertions.assertEquals(beforeCount.getTestSuiteCount() + 1, afterCount.getTestSuiteCount());
   }
 
   @Test
   public void servicesCount(TestInfo test) throws HttpResponseException {
-
     // Get count before adding services
-    int beforeMessagingServiceCount = getServicesCount().getMessagingServiceCount();
-    int beforeDashboardServiceCount = getServicesCount().getDashboardServiceCount();
-    int beforePipelineServiceCount = getServicesCount().getPipelineServiceCount();
-    int beforeMlModelServiceCount = getServicesCount().getMlModelServiceCount();
+    ServicesCount beforeCount = getServicesCount();
 
     // Create Database Service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
@@ -176,17 +144,12 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
     CreateMlModelService createMlModelService = mlModelServiceResourceTest.createRequest(test);
     mlModelServiceResourceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
-    // Get count after creating services
-    int afterMessagingServiceCount = getServicesCount().getMessagingServiceCount();
-    int afterDashboardServiceCount = getServicesCount().getDashboardServiceCount();
-    int afterPipelineServiceCount = getServicesCount().getPipelineServiceCount();
-    int afterMlModelServiceCount = getServicesCount().getMlModelServiceCount();
-    int actualCount = 1;
-
-    Assertions.assertEquals(afterMessagingServiceCount - beforeMessagingServiceCount, actualCount);
-    Assertions.assertEquals(afterDashboardServiceCount - beforeDashboardServiceCount, actualCount);
-    Assertions.assertEquals(afterPipelineServiceCount - beforePipelineServiceCount, actualCount);
-    Assertions.assertEquals(afterMlModelServiceCount - beforeMlModelServiceCount, actualCount);
+    // Get count after creating services and ensure it increased by 1
+    ServicesCount afterCount = getServicesCount();
+    Assertions.assertEquals(beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
+    Assertions.assertEquals(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
+    Assertions.assertEquals(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
+    Assertions.assertEquals(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
   }
 
   @Test
@@ -212,5 +175,15 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
 
     // The bot user count should not be considered.
     Assertions.assertEquals(beforeUserCount, afterUserCount);
+  }
+
+  private static EntitiesCount getEntitiesCount() throws HttpResponseException {
+    WebTarget target = getResource("system/entities/count");
+    return TestUtils.get(target, EntitiesCount.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private static ServicesCount getServicesCount() throws HttpResponseException {
+    WebTarget target = getResource("system/services/count");
+    return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
   }
 }

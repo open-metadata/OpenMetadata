@@ -36,8 +36,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension";
-  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension";
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers";
 
   public DashboardRepository(CollectionDAO dao) {
     super(

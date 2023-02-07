@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
 
@@ -40,11 +41,11 @@ const Onboarding: FC = () => {
       className="tw-mt-10 tw-text-base tw-font-medium"
       data-testid="onboarding">
       <div className="tw-text-center tw-text-xl tw-font-semibold tw-mb-1">
-        Welcome to OpenMetadata!
+        {t('label.welcome-to-open-metadata')}
       </div>
       <div className="tw-mb-5">
         <div className="tw-mb-3 tw-text-center">
-          A central place to discover and collaborate on all your data
+          {t('message.om-description')}
         </div>
         <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
           {stepsData.map((data) => (

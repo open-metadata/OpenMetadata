@@ -90,7 +90,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             <span
               className="tw-no-description tw-p-2 tw--ml-1.5"
               data-testid="no-description">
-              No description{' '}
+              {t('label.no-description')}
             </span>
           ),
       },

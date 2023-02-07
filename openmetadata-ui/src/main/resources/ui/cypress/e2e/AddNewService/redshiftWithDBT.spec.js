@@ -110,7 +110,7 @@ describe('RedShift Ingestion', () => {
 
     verifyResponseStatusCode('@getServices', 200);
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    interceptURL('GET', '/api/v1/config/airflow', 'airflow');
+    interceptURL('GET', '/api/v1/system/config/airflow', 'airflow');
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
       .should('exist')
       .click();

@@ -14,18 +14,21 @@
 import { Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Column } from '../../../generated/entity/data/table';
 import SVGIcons from '../../../utils/SvgUtils';
 
 const ColumnDetail = ({ column }: { column: Column }) => {
+  const { t } = useTranslation();
+
   return !isEmpty(column) && !isUndefined(column) ? (
     <div className="tw-mb-4" data-testid="column-details">
       <div className="tw-flex">
         <span
           className="tw-text-grey-muted tw-flex-none tw-mr-1"
           data-testid="column-type">
-          Column type:
-        </span>{' '}
+          {`${t('label.column-type')}:`}
+        </span>
         <Typography.Paragraph
           className="ant-typography-ellipsis-custom"
           ellipsis={{ rows: 1, tooltip: true }}>

@@ -254,10 +254,7 @@ public interface CollectionDAO {
   DataInsightChartDAO dataInsightChartDAO();
 
   @CreateSqlObject
-  UtilDAO utilDAO();
-
-  @CreateSqlObject
-  SettingsDAO getSettingsDAO();
+  SystemDAO systemDAO();
 
   @CreateSqlObject
   TokenDAO getTokenDAO();
@@ -3242,7 +3239,7 @@ public interface CollectionDAO {
     }
   }
 
-  interface UtilDAO {
+  interface SystemDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT (SELECT COUNT(*) FROM table_entity <cond>) as tableCount, "
@@ -3288,6 +3285,26 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
+
+    @SqlQuery("SELECT configType,json FROM openmetadata_settings")
+    @RegisterRowMapper(SettingsRowMapper.class)
+    List<Settings> getAllConfig() throws StatementException;
+
+    @SqlQuery("SELECT configType, json FROM openmetadata_settings WHERE configType = :configType")
+    @RegisterRowMapper(SettingsRowMapper.class)
+    Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into openmetadata_settings (configType, json)"
+                + "VALUES (:configType, :json) ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into openmetadata_settings (configType, json)"
+                + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -3317,28 +3334,6 @@ public interface CollectionDAO {
       settings.setConfigValue(value);
       return settings;
     }
-  }
-
-  interface SettingsDAO {
-    @SqlQuery("SELECT configType,json FROM openmetadata_settings")
-    @RegisterRowMapper(SettingsRowMapper.class)
-    List<Settings> getAllConfig() throws StatementException;
-
-    @SqlQuery("SELECT configType, json FROM openmetadata_settings WHERE configType = :configType")
-    @RegisterRowMapper(SettingsRowMapper.class)
-    Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT into openmetadata_settings (configType, json)"
-                + "VALUES (:configType, :json) ON DUPLICATE KEY UPDATE json = :json",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT into openmetadata_settings (configType, json)"
-                + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
-        connectionType = POSTGRES)
-    void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
   }
 
   class TokenRowMapper implements RowMapper<TokenInterface> {

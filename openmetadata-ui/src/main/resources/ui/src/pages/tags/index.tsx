@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -60,6 +60,7 @@ import {
   patchClassification,
   patchTag,
 } from 'rest/tagAPI';
+import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -619,21 +620,22 @@ const TagsPage = () => {
                         })
                       : t('message.no-permission-for-action')
                   }>
-                  <button
-                    className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                  <Button
+                    block
+                    className=" text-primary"
                     data-testid="add-classification"
                     disabled={!createClassificationPermission}
+                    icon={<PlusIcon className="anticon" />}
                     onClick={() => {
                       setIsAddingClassification((prevState) => !prevState);
                       setErrorDataClassification(undefined);
                     }}>
-                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMARY} />{' '}
                     <span>
                       {t('label.add-entity', {
                         entity: t('label.classification'),
                       })}
                     </span>
-                  </button>
+                  </Button>
                 </Tooltip>
               </div>
             </div>
@@ -713,8 +715,7 @@ const TagsPage = () => {
             </div>
             <div className="tw-mt-1" data-testid="usage">
               <span className="tw-text-grey-muted tw-mr-1">
-                {' '}
-                {t('label.usage')}:
+                {`${t('label.usage')}:`}
               </span>
               {record.usageCount ? (
                 <Link
@@ -788,12 +789,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons"
                           data-testid="cancelAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="times"
-                            />
-                          }
+                          icon={<CloseOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleEditNameCancel}
@@ -801,12 +797,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons m-l-xss"
                           data-testid="saveAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="check"
-                            />
-                          }
+                          icon={<CheckOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleRenameSave}
@@ -877,22 +868,33 @@ const TagsPage = () => {
                       })}
                     </Button>
                   </Tooltip>
-
-                  <Button
-                    className="tw-h-8 tw-rounded tw-ml-2"
-                    data-testid="delete-classification-or-tag"
-                    disabled={
-                      currentClassification.provider === ProviderType.System ||
-                      !classificationPermissions.Delete
-                    }
-                    size="small"
-                    onClick={() => {
-                      deleteTagHandler();
-                    }}>
-                    {t('label.delete-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </Button>
+                  <Tooltip
+                    title={
+                      !(
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      )
+                        ? t('label.delete-entity', {
+                            entity: t('label.classification'),
+                          })
+                        : t('message.no-permission-for-action')
+                    }>
+                    <Button
+                      className="add-new-tag-btn tw-ml-2"
+                      data-testid="delete-classification-or-tag"
+                      disabled={
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      }
+                      size="small"
+                      onClick={() => deleteTagHandler()}>
+                      {t('label.delete-entity', {
+                        entity: t('label.classification'),
+                      })}
+                    </Button>
+                  </Tooltip>
                 </div>
               </Space>
             )}

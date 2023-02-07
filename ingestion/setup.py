@@ -213,24 +213,21 @@ dev = {
 }
 
 test = {
+    # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
     "coverage",
-    VERSIONS["google-cloud-storage"],
+    # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto==4.0.8",
-    VERSIONS["neo4j"],
-    VERSIONS["pandas"],
-    VERSIONS["pydomo"],
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    VERSIONS["scikit-learn"],
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.13.2.0.dev0",
+    version="1.0.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
