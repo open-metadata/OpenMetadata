@@ -48,12 +48,12 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public String runPipeline(String pipelineName) {
+  public String runPipeline(IngestionPipeline ingestionPipeline) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "run"));
   }
 
   @Override
-  public String deletePipeline(String pipelineName) {
+  public String deletePipeline(IngestionPipeline ingestionPipeline) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "delete"));
   }
 

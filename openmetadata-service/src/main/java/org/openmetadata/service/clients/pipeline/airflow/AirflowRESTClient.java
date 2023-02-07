@@ -123,7 +123,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String deletePipeline(String pipelineName) {
+  public String deletePipeline(IngestionPipeline ingestionPipeline) {
+    String pipelineName = ingestionPipeline.getName();
     try {
       String deleteEndpoint = "%s/%s/delete?dag_id=%s";
       HttpResponse<String> response =
@@ -136,7 +137,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String runPipeline(String pipelineName) {
+  public String runPipeline(IngestionPipeline ingestionPipeline) {
+    String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
       String triggerEndPoint = "%s/%s/trigger";

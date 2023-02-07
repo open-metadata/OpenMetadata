@@ -440,7 +440,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
-    pipelineServiceClient.runPipeline(ingestionPipeline.getName());
+    pipelineServiceClient.runPipeline(ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
   }

@@ -32,12 +32,12 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public String runPipeline(String pipelineName) {
+  public String runPipeline(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
   @Override
-  public String deletePipeline(String pipelineName) {
+  public String deletePipeline(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

@@ -130,10 +130,10 @@ public abstract class PipelineServiceClient {
   public abstract String deployPipeline(IngestionPipeline ingestionPipeline);
 
   /* Deploy run the pipeline at the pipeline service */
-  public abstract String runPipeline(String pipelineName);
+  public abstract String runPipeline(IngestionPipeline ingestionPipeline);
 
   /* Stop and delete a pipeline at the pipeline service */
-  public abstract String deletePipeline(String pipelineName);
+  public abstract String deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
   public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
