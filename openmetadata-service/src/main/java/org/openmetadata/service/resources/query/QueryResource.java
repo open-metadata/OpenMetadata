@@ -9,20 +9,8 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.schema.api.data.CreateQuery;
-import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.QueryRepository;
-import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
-
+import java.io.IOException;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -43,8 +31,19 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.util.UUID;
+import org.openmetadata.schema.api.data.CreateQuery;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/query")
 @Api(value = "Query collection", tags = "query collection")

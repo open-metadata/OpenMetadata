@@ -1,5 +1,10 @@
 package org.openmetadata.service.jdbi3;
 
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.Relationship;
@@ -9,12 +14,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class QueryRepository extends EntityRepository<Query> {
 
@@ -68,7 +67,8 @@ public class QueryRepository extends EntityRepository<Query> {
       queryList =
           daoCollection
               .queryDao()
-              .listBeforeQueriesByEntityId(id, Entity.QUERY, RestUtil.decodeCursor(before), limit + 1, Relationship.HAS.ordinal());
+              .listBeforeQueriesByEntityId(
+                  id, Entity.QUERY, RestUtil.decodeCursor(before), limit + 1, Relationship.HAS.ordinal());
     } else {
       queryList =
           daoCollection
