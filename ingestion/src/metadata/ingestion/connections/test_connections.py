@@ -53,22 +53,30 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
+    mandatory: bool
 
 
 def test_connection_steps(steps: List[TestConnectionStep]) -> None:
     """
     Run all the function steps and raise any errors
     """
-    error_list = {}
+    errors = {}
     for step in steps:
         try:
             step.function()
         except Exception as exc:
-            msg = f"Faild {step.name} Name"
-            error_list[step.name] = msg
+            msg = f"Faild to {step.name}"
+            if step.mandatory:
+                errors[
+                    step.name
+                ] = f"{msg} This is a mandatory step and we won't be able to extract necessary metadata"
+            else:
+                errors[
+                    step.name
+                ] = f"{msg} This is a optional. The ingestion will continue to work as expected"
 
-    if error_list:
-        raise SourceConnectionException(error_list)
+    if errors:
+        raise SourceConnectionException(errors)
 
 
 @timeout(seconds=120)
@@ -91,14 +99,17 @@ def test_connection_db_common(connection: Engine, steps=None) -> None:
                     TestConnectionStep(
                         function=inspector.get_schema_names,
                         name="Get Schemas",
+                        mandatory=True,
                     ),
                     TestConnectionStep(
                         function=inspector.get_table_names,
                         name="Get Tables",
+                        mandatory=True,
                     ),
                     TestConnectionStep(
                         function=inspector.get_view_names,
                         name="Get Views",
+                        mandatory=True,
                     ),
                 ]
 

@@ -31,7 +31,10 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_common,
     test_connection_steps,
 )
-from metadata.ingestion.source.database.mssql import MSSQL_GET_DATABASE
+from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_DATABASE,
+    MSSQL_SQL_STATEMENT_TEST,
+)
 
 
 def get_connection_url(connection: MssqlConnection) -> str:
@@ -63,24 +66,37 @@ def test_connection(engine: MssqlConnection) -> None:
     inspector = inspect(engine)
     steps = [
         TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=inspector.get_table_names,
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=inspector.get_view_names,
-            name="Get Views",
-        ),
-        TestConnectionStep(
             function=partial(
                 custom_executor,
                 statement=MSSQL_GET_DATABASE,
                 engine=engine,
             ),
             name="Get Databases",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=MSSQL_SQL_STATEMENT_TEST,
+                engine=engine,
+            ),
+            name="Get Usage and Lineage",
+            mandatory=False,
         ),
     ]
 
