@@ -151,6 +151,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     }
   }
 
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
     migrateTags();

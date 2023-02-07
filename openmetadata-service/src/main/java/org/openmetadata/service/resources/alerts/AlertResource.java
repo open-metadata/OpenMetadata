@@ -73,7 +73,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.policies.PolicyResource;
-import org.openmetadata.service.resources.settings.SettingsResource;
+import org.openmetadata.service.resources.system.SystemResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -315,7 +315,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SettingsResource.SettingsList.class)))
+                    schema = @Schema(implementation = SystemResource.SettingsList.class)))
       })
   public List<TriggerConfig> getAlertBootstrapFilters(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -351,7 +351,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "validateCondition",
       summary = "Validate a given condition",
-      tags = "policies",
+      tags = "alerts",
       description = "Validate a given condition expression used in filtering rules.",
       responses = {
         @ApiResponse(responseCode = "204", description = "No value is returned"),

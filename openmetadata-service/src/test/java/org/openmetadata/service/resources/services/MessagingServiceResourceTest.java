@@ -144,7 +144,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                     .withSchemaRegistryURL(new URI("localhost:8081")));
     // Update messaging description and ingestion service that are null
     CreateMessagingService update =
-        createRequest(test).withDescription("description1").withConnection(messagingConnection);
+        createRequest(test)
+            .withName(service.getName())
+            .withDescription("description1")
+            .withConnection(messagingConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
