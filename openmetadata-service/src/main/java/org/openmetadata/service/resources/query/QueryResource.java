@@ -9,8 +9,20 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
-import java.util.UUID;
+import org.openmetadata.schema.api.data.CreateQuery;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.ResultList;
+
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -31,19 +43,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.schema.api.data.CreateQuery;
-import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.QueryRepository;
-import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
+import java.io.IOException;
+import java.util.UUID;
 
 @Path("/v1/query")
 @Api(value = "Query collection", tags = "query collection")
@@ -213,14 +214,14 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       })
   public ResultList<Query> list(
       @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @DefaultValue("3") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
       @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    ResultList<Query> queries = dao.getQueriesByEntityId(id, before, after, limitParam);
+    ResultList<Query> queries = dao.listQueriesByEntityId(id, before, after, limitParam);
     return queries;
   }
 

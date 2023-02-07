@@ -13,23 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
-import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
-import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
-import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
-
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -113,6 +97,23 @@ import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
+import static org.openmetadata.service.jdbi3.ListFilter.escape;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -1947,7 +1948,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(QueryMapper.class)
     @SqlQuery(
         "SELECT query_entity.json, query_entity.fullyQualifiedName FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.fullyQualifiedName > :after order by query_entity.fullyQualifiedName LIMIT :limit")
-    List<QueryList> getAfterQueries(
+    List<QueryList> listAfterQueriesByEntityId(
         @Bind("id") String id,
         @Bind("entity") String entity,
         @Bind("after") String after,
@@ -1957,7 +1958,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(QueryMapper.class)
     @SqlQuery(
         "SELECT query_entity.json, query_entity.fullyQualifiedName FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.fullyQualifiedName < :before order by query_entity.fullyQualifiedName LIMIT :limit")
-    List<QueryList> getBeforeQueries(
+    List<QueryList> listBeforeQueriesByEntityId(
         @Bind("id") String id,
         @Bind("entity") String entity,
         @Bind("before") String before,

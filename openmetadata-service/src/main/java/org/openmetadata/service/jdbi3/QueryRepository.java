@@ -1,10 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.Relationship;
@@ -14,6 +9,12 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class QueryRepository extends EntityRepository<Query> {
 
@@ -59,61 +60,61 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   public void storeRelationships(Query entity) throws IOException {}
 
-  public ResultList<Query> getQueriesByEntityId(String id, String before, String after, int limit) {
+  public ResultList<Query> listQueriesByEntityId(String id, String before, String after, int limit) {
     RestUtil.validateCursors(before, after);
     int totalQueryCount = daoCollection.queryDao().listQueryCount(id, Entity.QUERY, Relationship.HAS.ordinal());
-    List<CollectionDAO.QueryList> queries;
+    List<CollectionDAO.QueryList> queryList;
     if (before != null) {
-      queries =
+      queryList =
           daoCollection
               .queryDao()
-              .getBeforeQueries(id, Entity.QUERY, RestUtil.decodeCursor(before), limit + 1, Relationship.HAS.ordinal());
+              .listBeforeQueriesByEntityId(id, Entity.QUERY, RestUtil.decodeCursor(before), limit + 1, Relationship.HAS.ordinal());
     } else {
-      queries =
+      queryList =
           daoCollection
               .queryDao()
-              .getAfterQueries(
+              .listAfterQueriesByEntityId(
                   id,
                   Entity.QUERY,
                   after == null ? "" : RestUtil.decodeCursor(after),
                   limit + 1,
                   Relationship.HAS.ordinal());
     }
-    ResultList<Query> QueryResultList;
+    ResultList<Query> queryResultList;
     if (before != null) {
-      QueryResultList = getBeforeQueriesList(queries, limit, totalQueryCount);
+      queryResultList = listBeforeQueries(queryList, limit, totalQueryCount);
     } else {
-      QueryResultList = getAfterQueriesList(after, queries, limit, totalQueryCount);
+      queryResultList = listAfterQueries(after, queryList, limit, totalQueryCount);
     }
-    return QueryResultList;
+    return queryResultList;
   }
 
-  private ResultList<Query> getBeforeQueriesList(List<CollectionDAO.QueryList> tableQueries, int limit, int total) {
+  private ResultList<Query> listBeforeQueries(List<CollectionDAO.QueryList> queryList, int limit, int total) {
     String beforeCursor = null;
     String afterCursor;
-    if (tableQueries.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-      tableQueries.remove(0);
-      beforeCursor = tableQueries.get(0).getFqn();
+    if (queryList.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+      queryList.remove(0);
+      beforeCursor = queryList.get(0).getFqn();
     }
-    afterCursor = tableQueries.get(tableQueries.size() - 1).getFqn();
+    afterCursor = queryList.get(queryList.size() - 1).getFqn();
     List<Query> queries = new ArrayList<>();
-    for (CollectionDAO.QueryList queryRow : tableQueries) {
+    for (CollectionDAO.QueryList queryRow : queryList) {
       queries.add(queryRow.getQuery());
     }
     return new ResultList<>(queries, beforeCursor, afterCursor, total);
   }
 
-  private ResultList<Query> getAfterQueriesList(
-      String after, List<CollectionDAO.QueryList> tableQueries, int limit, int total) {
+  private ResultList<Query> listAfterQueries(
+      String after, List<CollectionDAO.QueryList> queryList, int limit, int total) {
     String beforeCursor;
     String afterCursor = null;
-    beforeCursor = after == null ? null : tableQueries.get(0).getFqn();
-    if (tableQueries.size() > limit) { // If extra result exists, then next page exists - return after cursor
-      tableQueries.remove(limit);
-      afterCursor = tableQueries.get(limit - 1).getFqn();
+    beforeCursor = after == null ? null : queryList.get(0).getFqn();
+    if (queryList.size() > limit) { // If extra result exists, then next page exists - return after cursor
+      queryList.remove(limit);
+      afterCursor = queryList.get(limit - 1).getFqn();
     }
     List<Query> queries = new ArrayList<>();
-    for (CollectionDAO.QueryList queryRow : tableQueries) {
+    for (CollectionDAO.QueryList queryRow : queryList) {
       queries.add(queryRow.getQuery());
     }
     return new ResultList<>(queries, beforeCursor, afterCursor, total);
