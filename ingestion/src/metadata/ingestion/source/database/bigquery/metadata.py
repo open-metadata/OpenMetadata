@@ -16,7 +16,6 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 from google import auth
-from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
@@ -58,6 +57,8 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.bigquery_utils import get_bigquery_client
+
 
 logger = ingestion_logger()
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -206,7 +207,16 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        self.client = Client(project=database_name)
+        quota_project_id = self.service_connection.connectionOptions.get("quotaProjectId", None)
+        location = self.service_connection.connectionOptions.get("location", None)
+        impersonate_service_account = self.service_connection.connectionOptions.get("impersonateServiceAccount", None)
+        lifetime = self.service_connection.connectionOptions.get("lifetime", None)
+        self.client = get_bigquery_client(
+            quota_project_id=quota_project_id,
+            project_id=database_name,
+            impersonate_service_account=impersonate_service_account,
+            location=location,
+            lifetime=lifetime)
         if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
             self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
                 __root__=database_name

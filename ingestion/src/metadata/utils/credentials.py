@@ -15,9 +15,12 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict
+from typing import Dict, Optional, List
 
 from cryptography.hazmat.primitives import serialization
+
+from google import auth
+from google.auth import impersonated_credentials
 
 from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentials,
@@ -29,6 +32,11 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
+
+GOOGLE_CLOUD_SCOPES = [
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/drive",
+]
 
 
 class InvalidGcsConfigException(Exception):
@@ -137,3 +145,39 @@ def generate_http_basic_token(username, password):
     """
     token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
     return token
+
+
+def get_default_credentials(quota_project_id: Optional[str] = None,
+                            scopes: Optional[List[str]] = None) -> auth.credentials.Credentials:
+    """Get the default credentials
+
+    Args:
+        quota_project_id: quota project ID
+        scopes: Google Cloud sscopes
+    """
+    if scopes is None:
+        scopes = GOOGLE_CLOUD_SCOPES
+    credentials, _ = auth.default(quota_project_id=quota_project_id, scopes=scopes)
+    return credentials
+
+
+def get_impersonate_credentials(impersonate_service_account: str,
+                                quoted_project_id: Optional[str] = None,
+                                scopes: Optional[List[str]] = None,
+                                lifetime: Optional[int] = None) -> impersonated_credentials.Credentials:
+    """Get the credentials to impersonate"""
+    # Create a impersonated service account
+    if scopes is None:
+        scopes = GOOGLE_CLOUD_SCOPES
+    if lifetime is None:
+        # NOTE The maximum lifetime is 3600 seconds by default.
+        lifetime = 3600
+
+    source_credentials, _ = auth.default()
+    if quoted_project_id is not None:
+        source_credentials, quoted_project_id = auth.default(quota_project_id=quoted_project_id)
+    target_credentials = impersonated_credentials.Credentials(source_credentials=source_credentials,
+                                                              target_principal=impersonate_service_account,
+                                                              target_scopes=scopes,
+                                                              lifetime=lifetime)
+    return target_credentials
