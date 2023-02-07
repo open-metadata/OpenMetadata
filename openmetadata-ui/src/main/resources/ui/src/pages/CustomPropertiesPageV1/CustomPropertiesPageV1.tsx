@@ -26,7 +26,7 @@ import {
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';

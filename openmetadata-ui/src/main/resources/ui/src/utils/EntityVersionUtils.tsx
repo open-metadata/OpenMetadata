@@ -219,7 +219,7 @@ export const getSummary = (
       ) : null}
       {fieldsDeleted?.length ? (
         <p className="tw-mb-2">
-          {`${isPrefix ? '- Removed' : ''} ${fieldsDeleted
+          {`${isPrefix ? `- ${t('label.removed')}` : ''} ${fieldsDeleted
             .map(summaryFormatter)
             .join(', ')} ${
             !isPrefix

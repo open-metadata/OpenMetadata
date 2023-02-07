@@ -18,7 +18,7 @@ import { Button } from 'components/buttons/Button/Button';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
-import { default as React, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
@@ -34,7 +34,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const cookieStorage = new CookieStorage();
 
-const Signup = () => {
+const SignUp = () => {
   const { t } = useTranslation();
   const {
     setIsSigningIn,
@@ -240,4 +240,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default SignUp;
