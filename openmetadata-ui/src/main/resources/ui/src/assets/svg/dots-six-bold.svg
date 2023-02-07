@@ -1,3 +1,1 @@
-<?xml version="1.0" standalone="no"?>
-        <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
-        "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><circle cx="60" cy="92" r="16"/><circle cx="128" cy="92" r="16"/><circle cx="196" cy="92" r="16"/><circle cx="60" cy="164" r="16"/><circle cx="128" cy="164" r="16"/><circle cx="196" cy="164" r="16"/></svg>  
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path fill="none" d="M0 0h256v256H0z"/><circle cx="60" cy="92" r="16"/><circle cx="128" cy="92" r="16"/><circle cx="196" cy="92" r="16"/><circle cx="60" cy="164" r="16"/><circle cx="128" cy="164" r="16"/><circle cx="196" cy="164" r="16"/></svg>
