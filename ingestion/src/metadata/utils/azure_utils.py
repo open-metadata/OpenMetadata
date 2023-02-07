@@ -20,8 +20,6 @@ import zipfile
 from typing import Any
 
 import pandas as pd
-from avro.datafile import DataFileReader
-from avro.io import DatumReader
 
 from metadata.ingestion.source.database.datalake.utils import (
     read_from_avro,
@@ -91,7 +89,7 @@ def read_parquet_from_azure(
         return None
 
 
-def read_avro_from_azure(client: Any, key: str, container_name: str, sample_size=100):
+def read_avro_from_azure(client: Any, key: str, container_name: str):
     """
     Read the avro file from the gcs bucket and return a dataframe
     """

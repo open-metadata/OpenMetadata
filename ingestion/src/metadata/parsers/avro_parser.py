@@ -17,7 +17,7 @@ import traceback
 from typing import List, Optional, Union
 
 import avro.schema as avroschema
-from avro.schema import ArraySchema, RecordSchema
+from avro.schema import ArraySchema
 from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.data.table import Column
@@ -30,6 +30,9 @@ logger = ingestion_logger()
 def parse_array_fields(
     field, cls: ModelMetaclass = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
+    """
+    Parse array field for avro schema
+    """
     field_items = field.type.items
     child_obj = cls(
         name=field_items.name,
@@ -62,6 +65,9 @@ def parse_array_fields(
 def parse_single_field(
     field, cls: ModelMetaclass = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
+    """
+    Parse primitive field for avro schema
+    """
     obj = cls(
         name=field.name,
         dataType=str(field.type.type).upper(),

@@ -75,9 +75,7 @@ def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
-    client: Any, key: str, bucket_name: str
-) -> DataFrame:
+def read_json_from_gcs(client: Any, key: str, bucket_name: str) -> DataFrame:
     """
     Read the json file from the gcs bucket and return a dataframe
     """

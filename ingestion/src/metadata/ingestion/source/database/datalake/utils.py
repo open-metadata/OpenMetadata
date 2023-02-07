@@ -17,7 +17,7 @@ import gzip
 import io
 import json
 import zipfile
-from typing import List
+from typing import List, Union
 
 import pandas as pd
 from avro.datafile import DataFileReader
@@ -42,7 +42,12 @@ PD_AVRO_FIELD_MAP = {
 }
 
 
-def read_from_avro(avro_text: bytes) -> DatalakeColumnWrapper:
+def read_from_avro(
+    avro_text: bytes,
+) -> Union[DatalakeColumnWrapper, List[pd.DataFrame]]:
+    """
+    Method to parse the avro data from storage sources
+    """
     try:
         elements = DataFileReader(io.BytesIO(avro_text), DatumReader())
         if elements.meta.get("avro.schema"):
@@ -52,8 +57,7 @@ def read_from_avro(avro_text: bytes) -> DatalakeColumnWrapper:
                 ),
                 dataframes=[pd.DataFrame.from_records(elements)],
             )
-        else:
-            return [pd.DataFrame.from_records(elements)]
+        return [pd.DataFrame.from_records(elements)]
     except AssertionError:
         columns = parse_avro_schema(schema=avro_text, cls=Column)
         field_map = {

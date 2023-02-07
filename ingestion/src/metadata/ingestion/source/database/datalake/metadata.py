@@ -80,6 +80,9 @@ DATALAKE_SUPPORTED_FILE_TYPES = (
 
 
 def ometa_to_dataframe(config_source, client, table):
+    """
+    Method to get dataframe for profiling
+    """
     data = None
     if isinstance(config_source, GCSConfig):
         data = DatalakeSource.get_gcs_files(
@@ -93,13 +96,6 @@ def ometa_to_dataframe(config_source, client, table):
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
-    if isinstance(config_source, AzureConfig):
-        data = DatalakeSource.get_azure_files(
-            client=client,
-            key=table.name.__root__,
-            bucket_name=table.databaseSchema.name,
-        )
-
     if isinstance(data, DatalakeColumnWrapper):
         data = data.dataframes
     return data
