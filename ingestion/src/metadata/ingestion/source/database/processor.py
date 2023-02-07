@@ -139,7 +139,7 @@ class ColumnNameScanner(Scanner):
                 )
 
         for pii_type_keys, pii_type_pattern in self.non_sensitive_regex.items():
-            if pii_type_pattern.match(text) is None:
+            if pii_type_pattern.match(text) is not None:
                 return ColumnPIIType(
                     pii_types=pii_type_keys, tag_type=TagType.NONSENSITIVE.value
                 )
