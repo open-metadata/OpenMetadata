@@ -259,7 +259,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     }
   }
 
-  public static void validateAirflowConnection(
+  public void validateAirflowConnection(
       AirflowConnection expectedAirflowConnection,
       AirflowConnection actualAirflowConnection,
       Map<String, String> authHeaders) {

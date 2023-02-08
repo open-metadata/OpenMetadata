@@ -322,23 +322,22 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteLineageAndCheck(edge, authHeaders);
   }
 
-  public static void addLineageAndCheck(AddLineage addLineage, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void addLineageAndCheck(AddLineage addLineage, Map<String, String> authHeaders) throws HttpResponseException {
     addLineage(addLineage, authHeaders);
     validateLineage(addLineage, authHeaders);
   }
 
-  public static void deleteLineageAndCheck(EntitiesEdge deleteEdge, Map<String, String> authHeaders)
+  public void deleteLineageAndCheck(EntitiesEdge deleteEdge, Map<String, String> authHeaders)
       throws HttpResponseException {
     deleteLineage(deleteEdge, authHeaders);
     validateLineageDeleted(deleteEdge, authHeaders);
   }
 
-  public static void addLineage(AddLineage addLineage, Map<String, String> authHeaders) throws HttpResponseException {
+  public void addLineage(AddLineage addLineage, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.put(getResource("lineage"), addLineage, Status.OK, authHeaders);
   }
 
-  public static void deleteLineage(EntitiesEdge edge, Map<String, String> authHeaders) throws HttpResponseException {
+  public void deleteLineage(EntitiesEdge edge, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target =
         getResource(
             String.format(
@@ -350,8 +349,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     TestUtils.delete(target, authHeaders);
   }
 
-  private static void validateLineage(AddLineage addLineage, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  private void validateLineage(AddLineage addLineage, Map<String, String> authHeaders) throws HttpResponseException {
     EntityReference from = addLineage.getEdge().getFromEntity();
     EntityReference to = addLineage.getEdge().getToEntity();
     Edge expectedEdge = getEdge(from.getId(), to.getId(), addLineage.getEdge().getLineageDetails());
@@ -365,7 +363,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEdge(lineage, expectedEdge, false);
   }
 
-  private static void validateLineageDeleted(EntitiesEdge deletedEdge, Map<String, String> authHeaders)
+  private void validateLineageDeleted(EntitiesEdge deletedEdge, Map<String, String> authHeaders)
       throws HttpResponseException {
     EntityReference from = deletedEdge.getFromEntity();
     EntityReference to = deletedEdge.getToEntity();
@@ -405,7 +403,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     }
   }
 
-  public static void assertLineage(
+  public void assertLineage(
       String entityType,
       UUID id,
       String fqn,
@@ -424,7 +422,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(lineageById, lineageByName);
   }
 
-  public static EntityLineage getLineage(
+  public EntityLineage getLineage(
       String entity, UUID id, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/" + id);
@@ -435,7 +433,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     return lineage;
   }
 
-  public static EntityLineage getLineageByName(
+  public EntityLineage getLineageByName(
       String entity, String fqn, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/name/" + fqn);
@@ -446,7 +444,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     return lineage;
   }
 
-  public static void assertEdge(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
+  public void assertEdge(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
     if (downstream) {
       assertTrue(lineage.getDownstreamEdges().contains(expectedEdge));
     } else {
@@ -454,7 +452,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     }
   }
 
-  public static void assertDeleted(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
+  public void assertDeleted(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
     if (downstream) {
       assertFalse(lineage.getDownstreamEdges().contains(expectedEdge));
     } else {
@@ -462,7 +460,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     }
   }
 
-  public static void assertEdges(EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
+  public void assertEdges(EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
     assertEquals(lineage.getUpstreamEdges().size(), expectedUpstreamEdges.length);
     for (Edge expectedUpstreamEdge : expectedUpstreamEdges) {
       assertTrue(lineage.getUpstreamEdges().contains(expectedUpstreamEdge));

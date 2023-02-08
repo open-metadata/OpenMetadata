@@ -272,7 +272,9 @@ class DeltalakeSource(DatabaseServiceSource):
                 ),
                 viewDefinition=view_definition,
             )
-
+            self.process_pii_sensitive_column(
+                metadata_config=self.metadata, table_request=table_request
+            )
             yield table_request
             self.register_record(table_request=table_request)
 

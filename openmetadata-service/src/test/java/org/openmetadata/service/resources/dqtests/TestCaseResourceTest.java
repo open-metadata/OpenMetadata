@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -95,7 +94,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     tableReq =
         tableResourceTest
             .createRequest(test)
-            .withName("testCaseTable" + UUID.randomUUID())
+            .withName("testCaseTable")
             .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
             .withColumns(
                 List.of(
@@ -439,7 +438,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     fieldUpdated(change, "description", oldDescription, newDescription);
     testCase =
         updateAndCheckEntity(
-            createRequest(test).withDescription(newDescription), OK, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+            createRequest(test).withDescription(newDescription).withName(testCase.getName()),
+            OK,
+            ownerAuthHeaders,
+            UpdateType.MINOR_UPDATE,
+            change);
 
     // Update description with PATCH
     oldDescription = testCase.getDescription();

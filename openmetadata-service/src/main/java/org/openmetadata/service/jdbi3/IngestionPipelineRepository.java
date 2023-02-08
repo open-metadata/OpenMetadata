@@ -119,7 +119,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void postDelete(IngestionPipeline entity) {
-    pipelineServiceClient.deletePipeline(entity.getName());
+    pipelineServiceClient.deletePipeline(entity);
   }
 
   public void setPipelineServiceClient(PipelineServiceClient client) {

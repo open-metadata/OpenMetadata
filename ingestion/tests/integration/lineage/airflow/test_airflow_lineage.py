@@ -12,7 +12,10 @@
 """
 Test airflow lineage operator and hook.
 
-This test is coupled with the example DAG `lineage_tutorial_operator`
+This test is coupled with the example DAG `lineage_tutorial_operator`.
+
+With the `docker compose up` setup, you can debug the progress
+by setting breakpoints in this file.
 """
 import time
 from datetime import datetime, timedelta
@@ -31,7 +34,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, StatusType
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -279,23 +282,25 @@ class AirflowLineageTest(TestCase):
             get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful
         )
 
-    @pytest.mark.order(2)
+    @pytest.mark.order(3)
     def test_pipeline_lineage(self) -> None:
         """
         Validate that the pipeline has proper lineage
         """
         lineage = self.metadata.get_lineage_by_name(
-            entity=Pipeline,
-            fqn=f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
+            entity=Table,
+            fqn="test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
         )
         node_names = set((node["name"] for node in lineage.get("nodes") or []))
-        self.assertEqual(node_names, {"lineage-test-inlet", "lineage-test-outlet"})
-        self.assertEqual(len(lineage.get("upstreamEdges")), 1)
+        self.assertEqual(node_names, {"lineage-test-outlet"})
         self.assertEqual(len(lineage.get("downstreamEdges")), 1)
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["fromEntity"], str(self.table_inlet.id.__root__)
-        )
         self.assertEqual(
             lineage["downstreamEdges"][0]["toEntity"],
             str(self.table_outlet.id.__root__),
+        )
+        self.assertEqual(
+            lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][
+                "fullyQualifiedName"
+            ],
+            f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
         )
