@@ -10,26 +10,29 @@
 #  limitations under the License.
 
 """
-Validator for column values sum to be between test case
+Validator for column value length to be between test case
 """
 
+import collections
 import traceback
-from ast import literal_eval
 
 from metadata.generated.schema.tests.basic import (TestCaseResult,
                                                    TestCaseStatus,
                                                    TestResultValue)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.base_test_handler import \
+    BaseTestHandler
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
     SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
-from sqlalchemy import Column, inspect
+from sqlalchemy import inspect
 
 logger = test_suite_logger()
 
-class ColumnValuesSumToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column values sum to be between test case"""
+class TableColumnToMatchSetValidator(BaseTestHandler, SQAValidatorMixin):
+    """"Validator for column value mean to be between test case"""
+
+    def compare(self, expected_names, actual_names) -> bool:
+        return collections.Counter(expected_names) == collections.Counter(actual_names)
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -38,11 +41,11 @@ class ColumnValuesSumToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
             TestCaseResult:
         """
         try:
-            column: Column = self.get_column_name(
-                self.test_case.entityLink.__root__,
-                inspect(self.runner.table).c,
-            )
-            res = self.run_query_results(self.runner, Metrics.SUM, column)
+            names = inspect(self.runner.table).c
+            if not names:
+                raise ValueError(
+                    f"Column names for test case {self.test_case.name} returned None"
+                )
         except ValueError as exc:
             msg = (
                 f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
@@ -53,26 +56,41 @@ class ColumnValuesSumToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="sum", value=None)],
+                [TestResultValue(name="columnNameExits", value=None)]
             )
 
-        min_bound = self.get_test_case_param_value(
+        expected_names = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
-            "minValueForColSum",
-            float,
-            default=float("-inf"),
+            "columnNames",
+            str
         )
 
-        max_bound = self.get_test_case_param_value(
+        expected_names = [item.strip() for item in expected_names.split(",")] if expected_names else []
+
+        ordered = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
-            "maxValueForColSum",
-            float,
-            default=float("inf"),
+            "ordered",
+            bool,
+            default=False
+        )
+
+        if ordered:
+            names_match = expected_names == [col.name for col in names]
+        else:
+            names_match = self.compare(expected_names, [col.name for col in names])
+
+
+        status = TestCaseStatus.Success if names_match else TestCaseStatus.Failed
+        result_value = 1 if status == TestCaseStatus.Success else 0
+
+        result = (
+            f"Found {self.format_column_list(status, [col.name for col in names])} column vs. "
+            f"the expected column names {self.format_column_list(status, expected_names)}."
         )
 
         return self.get_test_case_result_object(
             self.execution_date,
-            TestCaseStatus.Success if min_bound <= res <= max_bound else TestCaseStatus.Failed,
-            f"Found sum={res}. the expected min={min_bound}, max={max_bound}.",
-            [TestResultValue(name="countForbiddenValues", value=str(res))],
+            status,
+            result,
+            [TestResultValue(name="columnNames", value=str(result_value))]
         )

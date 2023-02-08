@@ -20,11 +20,10 @@ from metadata.generated.schema.tests.basic import (TestCaseResult,
                                                    TestCaseStatus,
                                                    TestResultValue)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import \
-    BaseTestHandler
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
 from metadata.test_suite.validations.column.column_values_to_be_between import \
     convert_timestamp
-from metadata.test_suite.validations.column.mixins.sqa_validator_mixin import \
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
     SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
 from sqlalchemy import Column, inspect

@@ -14,6 +14,7 @@ Validator Mixin for SQA tests cases
 """
 
 from datetime import datetime
+import reprlib
 from typing import Any, Callable, List, Optional, Union, TypeVar
 
 from sqlalchemy import Column
@@ -120,7 +121,7 @@ class SQAValidatorMixin:
         self,
         runner: QueryRunner,
         metric: Metrics,
-        column: Column,
+        column: Optional[Column] = None,
         **kwargs: Optional[Any],
     ):
         """Run the metric query agains the column
@@ -137,19 +138,27 @@ class SQAValidatorMixin:
         Returns:
             Any: value returned by the metric query
         """
-        if kwargs:
-            metric_obj = add_props(**kwargs)(metric.value)
-        else:
-            metric_obj = metric.value
+        metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
+        metric_fn = metric_obj(column).fn() if column is not None else metric_obj().fn()
 
         value = dict(
-            runner.dispatch_query_select_first(metric_obj(column).fn())  # type: ignore
+            runner.dispatch_query_select_first(metric_fn)  # type: ignore
         )
 
         res = value.get(metric.name)
         if res is None:
             raise ValueError(
-                f"Query on column {column.name} returned None"
+                f"Query on table/column {column.name if column else ''} returned None"
             )
 
         return res
+
+    def format_column_list(self, status: TestCaseStatus, cols: List):
+        """Format column list based on the test status
+
+        Args:
+            cols: list of columns
+        """
+        if status == TestCaseStatus.Success:
+            return reprlib.repr(cols)
+        return cols
