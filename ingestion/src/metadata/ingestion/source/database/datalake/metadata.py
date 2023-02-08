@@ -436,7 +436,8 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 columns = data_frame.columns
             if columns:
                 table_request = CreateTableRequest(
-                    name=table_name,
+                    name=self._clean_name(table_name),
+                    displayName=table_name,
                     tableType=table_type,
                     description="",
                     columns=columns,
@@ -623,3 +624,8 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.connection)
+
+    def _clean_name(self, name: str) -> str:
+        if len(name) > 128:
+            return str(hash(name))
+        return name
