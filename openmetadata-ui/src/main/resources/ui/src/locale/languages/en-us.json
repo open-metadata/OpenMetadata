@@ -501,7 +501,7 @@
     "primary-key": "Primary Key",
     "private-key": "PrivateKey",
     "private-key-id": "Private Key ID",
-    "process-pii-sensitive-column": "Auto PII",
+    "process-pii-sensitive-column": "Auto Tag PII",
     "profile": "Profile",
     "profile-lowercase": "profile",
     "profile-sample-type": "Profile Sample {{type}}",

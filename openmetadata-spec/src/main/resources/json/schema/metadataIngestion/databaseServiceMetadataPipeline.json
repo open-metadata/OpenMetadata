@@ -44,7 +44,7 @@
       "default": true
     },
     "processPiiSensitive": {
-      "description": "Optional configuration to turn off processing of column to apply pii senstive tags",
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
       "type": "boolean",
       "default": true
     },

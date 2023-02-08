@@ -105,7 +105,7 @@ class ColumnNameScanner(Scanner):
         PiiTypes.KEY: re.compile("^.*(key).*$", re.IGNORECASE),
         PiiTypes.SSN: re.compile("^.*(ssn|social).*$", re.IGNORECASE),
         PiiTypes.CREDIT_CARD: re.compile("^.*(card).*$", re.IGNORECASE),
-        PiiTypes.BANKACC: re.compile("^.*(bank|acc).*$", re.IGNORECASE),
+        PiiTypes.BANKACC: re.compile("^.*(bank|acc|amount).*$", re.IGNORECASE),
         PiiTypes.EMAIL: re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
     }
     non_sensitive_regex = {
@@ -185,7 +185,7 @@ class PiiProcessor(Processor):
                     )
                 )
             if len(tag_labels) > 0 and column.tags:
-                column.tags.append(tag_labels)
+                column.tags.extend(tag_labels)
             elif len(tag_labels) > 0:
                 column.tags = tag_labels
             self.status.records.append(column.name.__root__)
