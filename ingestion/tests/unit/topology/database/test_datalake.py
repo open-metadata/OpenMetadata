@@ -1,8 +1,10 @@
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -13,6 +15,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.ingestion.source.database.datalake.utils import (
+    read_from_avro,
+    read_from_json,
+)
 
 mock_datalake_config = {
     "source": {
@@ -94,6 +100,111 @@ MOCK_DATABASE = Database(
     ),
 )
 
+EXAMPLE_JSON_TEST_1 = """
+{"name":"John","age":16,"sex":"M"}
+{"name":"Milan","age":19,"sex":"M"}
+"""
+
+EXAMPLE_JSON_TEST_2 = """
+{"name":"John","age":16,"sex":"M"}
+"""
+
+EXPECTED_AVRO_COL_1 = [
+    Column(name="uid", dataType="INT", dataTypeDisplay="int"),
+    Column(name="somefield", dataType="STRING", dataTypeDisplay="string"),
+    Column(
+        name="options",
+        dataType="ARRAY",
+        dataTypeDisplay="array<record>",
+        arrayDataType="RECORD",
+        children=[
+            Column(
+                name="lvl2_record",
+                dataTypeDisplay="record",
+                dataType="RECORD",
+                children=[
+                    Column(
+                        name="item1_lvl2", dataType="STRING", dataTypeDisplay="string"
+                    ),
+                    Column(
+                        name="item2_lvl2",
+                        dataType="ARRAY",
+                        arrayDataType="RECORD",
+                        dataTypeDisplay="array<record>",
+                        children=[
+                            Column(
+                                name="lvl3_record",
+                                dataType="RECORD",
+                                dataTypeDisplay="record",
+                                children=[
+                                    Column(
+                                        name="item1_lvl3",
+                                        dataType="STRING",
+                                        dataTypeDisplay="string",
+                                    ),
+                                    Column(
+                                        name="item2_lvl3",
+                                        dataType="STRING",
+                                        dataTypeDisplay="string",
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ],
+    ),
+]
+
+
+EXPECTED_AVRO_COL_2 = [
+    Column(
+        name="username",
+        dataType="STRING",
+        dataTypeDisplay="string",
+    ),
+    Column(
+        name="tweet",
+        dataType="STRING",
+        dataTypeDisplay="string",
+    ),
+    Column(
+        name="timestamp",
+        dataType="LONG",
+        dataTypeDisplay="long",
+    ),
+]
+
+avro_schema_data_1 = (
+    Path(__file__).parent.parent.parent / "resources/datasets/avro_schema_file.avro"
+)
+with open(avro_schema_data_1, encoding="utf-8") as file:
+    avro_schema_data_1 = file.buffer.read()
+
+
+avro_schema_data_2 = (
+    Path(__file__).parent.parent.parent / "resources/datasets/avro_data_file.avro"
+)
+with open(avro_schema_data_2, encoding="utf-8") as file:
+    avro_schema_data_2 = file.buffer.read()
+
+
+def _get_str_value(data):
+    if data:
+        if isinstance(data, str):
+            return data
+        return data.value
+
+
+def custom_column_compare(self, other):
+    return (
+        self.name == other.name
+        and self.dataTypeDisplay == other.dataTypeDisplay
+        and self.children == other.children
+        and _get_str_value(self.arrayDataType) == _get_str_value(other.arrayDataType)
+    )
+
 
 class DatalakeUnitTest(TestCase):
     @patch(
@@ -119,3 +230,33 @@ class DatalakeUnitTest(TestCase):
     def test_gcs_schema_filer(self):
         self.datalake_source.client.list_buckets = lambda: MOCK_GCS_SCHEMA
         assert list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_SCHEMA
+
+    def test_json_file_parse(self):
+        import pandas as pd
+
+        sample_dict = {"name": "John", "age": 16, "sex": "M"}
+
+        EXPECTED_DF_1 = pd.DataFrame.from_dict(
+            [
+                {"name": "John", "age": 16, "sex": "M"},
+                {"name": "Milan", "age": 19, "sex": "M"},
+            ]
+        )
+        EXPECTED_DF_2 = pd.DataFrame.from_dict(
+            {key: pd.Series(value) for key, value in sample_dict.items()}
+        )
+
+        actual_df_1 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_1)[0]
+        actual_df_2 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_2)[0]
+
+        assert actual_df_1.compare(EXPECTED_DF_1).empty
+        assert actual_df_2.compare(EXPECTED_DF_2).empty
+
+    def test_avro_file_parse(self):
+        columns = read_from_avro(avro_schema_data_1)
+        Column.__eq__ = custom_column_compare
+
+        assert EXPECTED_AVRO_COL_1 == columns.columns
+
+        columns = read_from_avro(avro_schema_data_2)
+        assert EXPECTED_AVRO_COL_2 == columns.columns
