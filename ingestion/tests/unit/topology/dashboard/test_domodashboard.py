@@ -19,7 +19,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.dashboard.domodashboard.metadata import (
+    DomoDashboardDetails,
     DomodashboardSource,
 )
 
@@ -83,16 +85,18 @@ mock_domopipeline_config = {
     },
 }
 
-MOCK_DASHBOARD = {
-    "id": 552315335,
-    "name": "New Dashboard",
-    "children": [],
-    "cardIds": ["1982511286", "781210736"],
-}
+MOCK_DASHBOARD = DomoDashboardDetails(
+    id=552315335,
+    name="New Dashboard",
+    cardIds=["1982511286", "781210736"],
+    collection_ids=[],
+    owners=[],
+)
+
 EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
-    description="",
+    description=None,
     dashboardUrl="https://domain.domo.com/page/552315335",
     charts=[],
     tags=None,
@@ -110,16 +114,16 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     extension=None,
 )
 
-EXPECTED_DASHBOARDS = [
+EXPECTED_CHARTS = [
     CreateChartRequest(
-        name="Top Salespeople",
-        displayName="Top Salespeople",
+        name="1982511286",
+        displayName="New Dashboard",
         description=(
             "TOP SALESPEOPLE\nDisplays the top 10 salespeople by won revenue."
             " Identify over-performers and understand the secrets to their success."
         ),
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1108771657",
+        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
         tables=None,
         tags=None,
         owner=None,
@@ -135,31 +139,14 @@ EXPECTED_DASHBOARDS = [
         ),
     ),
     CreateChartRequest(
-        name="Milan Datasets",
-        displayName="Milan Datasets",
-        description="",
-        chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1985861713",
-        tables=None,
-        tags=None,
-        owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
+        name="781210736",
+        displayName="New Dashboard",
+        description=(
+            "TOP SALESPEOPLE\nDisplays the top 10 salespeople by won revenue."
+            " Identify over-performers and understand the secrets to their success."
         ),
-    ),
-    CreateChartRequest(
-        name="Page Fans",
-        displayName="Page Fans",
-        description="",
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/2025899139",
+        chartUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
         tables=None,
         tags=None,
         owner=None,
@@ -211,16 +198,38 @@ class DomoDashboardUnitTest(TestCase):
 
     def test_dashboard_name(self):
         assert (
-            self.domodashboard.get_dashboard_name(MOCK_DASHBOARD) == mock_data["title"]
+            self.domodashboard.get_dashboard_name(MOCK_DASHBOARD)
+            == mock_data[0][0]["title"]
         )
 
-    @patch("metadata.clients.domo_client.DomoClient.get_chart_details")
-    def test_chart(self, get_chart_details):
-        get_chart_details.return_value = mock_data
-        results = self.domodashboard.yield_dashboard_chart(MOCK_DASHBOARD)
-        chart_list = []
-        for result in results:
-            if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
-        for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):
-            self.assertEqual(expected, original)
+    def test_chart(self):
+        """
+        Function for testing charts
+        """
+        with patch.object(REST, "_request", return_value=mock_data[0]):
+            results = self.domodashboard.yield_dashboard_chart(MOCK_DASHBOARD)
+            chart_list = []
+            for result in results:
+                if isinstance(result, CreateChartRequest):
+                    chart_list.append(result)
+            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+                self.assertEqual(expected, original)
+
+        with patch.object(REST, "_request", return_value=mock_data[1]):
+            result = self.domodashboard.domo_client.get_chart_details(
+                MOCK_DASHBOARD.cardIds[0]
+            )
+            assert (
+                self.domodashboard.domo_client.get_chart_details(
+                    MOCK_DASHBOARD.cardIds[0]
+                )
+                is None
+            )
+
+        with patch.object(REST, "_request", return_value=mock_data[2]):
+            assert (
+                self.domodashboard.domo_client.get_chart_details(
+                    MOCK_DASHBOARD.cardIds[0]
+                )
+                is None
+            )

@@ -52,7 +52,6 @@ import {
   EntityFieldThreads,
   EntityThreadField,
 } from '../interface/feed.interface';
-import jsonData from '../jsons/en';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -390,9 +389,7 @@ export const deletePost = async (
           });
         });
       } else {
-        throw jsonData['api-error-messages'][
-          'fetch-updated-conversation-error'
-        ];
+        throw i18next.t('server.fetch-updated-conversation-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
