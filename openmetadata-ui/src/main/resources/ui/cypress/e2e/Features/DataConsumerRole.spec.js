@@ -253,7 +253,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
 
-    cy.get('[data-testid="add-new-glossary"]')
+    cy.get('[data-testid="add-glossary"]')
       .should('be.visible')
       .should('be.disabled');
 
