@@ -299,7 +299,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static KpiTarget KPI_TARGET;
 
   public static final String C1 = "c'_+# 1";
-  public static final String C2 = "c2";
+  public static final String C2 = "c2()";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
