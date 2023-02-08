@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -210,6 +211,7 @@ EXPECTED_PIPELINE_STATUS = [
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
     name="dagster_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="dagster_source_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Dagster,
 )

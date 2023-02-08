@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 
@@ -32,6 +33,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="quicksight_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QuickSight,
 )

@@ -262,7 +262,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 description=self.context.table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=self.config.database_schema.fullyQualifiedName,
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
                 viewDefinition=view_definition,
             )
 

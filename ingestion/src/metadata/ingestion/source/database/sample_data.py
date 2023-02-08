@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -94,7 +94,6 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
 from metadata.parsers.schema_parsers import (
@@ -514,7 +513,9 @@ class SampleDataSource(
                 displayName=location["displayName"],
                 description=location["description"],
                 locationType=location["locationType"],
-                service=self.storage_service.fullyQualifiedName,
+                service=EntityReference(
+                    id=self.storage_service.id, type="storageService"
+                ),
             )
             yield location_ev
 
@@ -574,7 +575,9 @@ class SampleDataSource(
 
             location = CreateLocationRequest(
                 name=table["name"],
-                service=self.glue_storage_service.fullyQualifiedName,
+                service=EntityReference(
+                    id=self.glue_storage_service.id, type="storageService"
+                ),
             )
             self.status.scanned("location", location.name)
             yield location
@@ -718,11 +721,7 @@ class SampleDataSource(
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
                 dashboardUrl=dashboard["dashboardUrl"],
-                charts=get_chart_entities_from_id(
-                    dashboard["charts"],
-                    self.metadata,
-                    self.dashboard_service.name.__root__,
-                ),
+                charts=dashboard["charts"],
                 service=self.dashboard_service.fullyQualifiedName,
             )
             self.status.scanned("dashboard", dashboard_ev.name.__root__)
@@ -860,13 +859,13 @@ class SampleDataSource(
                 ]
                 if not self.list_policies:
                     self.list_policies = self.metadata.list_entities(entity=Policy)
-                    role_ref_id = self.list_policies.entities[0].id.__root__
+                    role_name = self.list_policies.entities[0].name
                 roles = (
                     [
                         CreateRoleRequest(
                             name=role,
                             description=f"This is {role} description.",
-                            policies=[EntityReference(id=role_ref_id, type="policies")],
+                            policies=[role_name],
                         )
                         for role in user["roles"]
                     ]
@@ -949,7 +948,7 @@ class SampleDataSource(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
                         description=test_case["description"],
-                        testDefinition="testDefinitionName",
+                        testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
                         testSuite=suite.fullyQualifiedName.__root__,
                         parameterValues=[

@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
@@ -142,7 +142,15 @@ class QuicksightSource(DashboardServiceSource):
             dashboardUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
             description=dashboard_details["Version"].get("Description", ""),
-            charts=[chart.fullyQualifiedName.__root__ for chart in self.context.charts],
+            charts=[
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
+                for chart in self.context.charts
+            ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 

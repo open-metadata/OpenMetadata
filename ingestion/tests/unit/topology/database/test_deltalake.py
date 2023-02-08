@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.deltalake.metadata import DeltalakeSource
 
@@ -70,7 +71,8 @@ MOCK_DELTA_CONFIG = {
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
-    name="delta",
+    name="local_databricks",
+    fullyQualifiedName="local_databricks",
     connection=DatabaseConnection(),
     serviceType=DatabaseServiceType.DeltaLake,
 )
@@ -79,7 +81,9 @@ MOCK_DATABASE = Database(
     id="2004514B-A800-4D92-8442-14B2796F712E",
     name="default",
     fullyQualifiedName="delta.default",
-    service="local_databricks",
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
+    ),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -89,7 +93,9 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     database=EntityReference(
         id="2004514B-A800-4D92-8442-14B2796F712E", type="database"
     ),
-    service="local_databricks",
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
+    ),
 )
 
 
@@ -156,7 +162,7 @@ class DeltaLakeUnitTest(TestCase):
         database_requests = list(self.delta.yield_database(database_name="default"))
         expected_database_request = CreateDatabaseRequest(
             name="default",
-            service="local_databricks",
+            service=FullyQualifiedEntityName(__root__="local_databricks"),
         )
 
         self.assertEqual(database_requests, [expected_database_request])

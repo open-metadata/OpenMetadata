@@ -16,7 +16,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
@@ -97,7 +97,13 @@ class ModeSource(DashboardServiceSource):
             if dashboard_details.get(client.DESCRIPTION)
             else "",
             charts=[
-                chart.fullyQualifiedNamed.__root__ for chart in self.context.charts
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
+                for chart in self.context.charts
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )

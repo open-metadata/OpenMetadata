@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -18,7 +17,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.dashboard.domodashboard.metadata import (
     DomoDashboardDetails,
@@ -34,20 +33,10 @@ with open(mock_file_path, encoding="UTF-8") as file:
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     name="domodashboard_source_test",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.DomoDashboard,
-)
-
-MOCK_DASHBOARD = Dashboard(
-    id="a58b1856-729c-493b-bc87-6d2269b43ec0",
-    name="do_it_all_with_default_config",
-    fullyQualifiedName="domodashboard_source.do_it_all_with_default_config",
-    displayName="do_it_all_with_default_config",
-    description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="dashboardService"
-    ),
 )
 
 mock_domopipeline_config = {
@@ -101,7 +90,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     charts=[],
     tags=None,
     owner=None,
-    service="domodashboard_source_test",
+    service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     extension=None,
 )
 
@@ -118,7 +107,7 @@ EXPECTED_CHARTS = [
         tables=None,
         tags=None,
         owner=None,
-        service="domodashboard_source_test",
+        service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     ),
     CreateChartRequest(
         name="781210736",
@@ -132,7 +121,7 @@ EXPECTED_CHARTS = [
         tables=None,
         tags=None,
         owner=None,
-        service="domodashboard_source_test",
+        service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
     ),
 ]
 

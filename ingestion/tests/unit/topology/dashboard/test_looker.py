@@ -33,9 +33,15 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
@@ -108,6 +114,14 @@ MOCK_LOOKER_DASHBOARD = LookerDashboard(
 
 MOCK_USER = User(email="user@mail.com")
 
+MOCK_DASHBOARD_SERVICE = DashboardService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name="quicksight_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="looker_source_test"),
+    connection=DashboardConnection(),
+    serviceType=DashboardServiceType.Looker,
+)
+
 
 class LookerUnitTest(TestCase):
     """
@@ -128,9 +142,7 @@ class LookerUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.looker.context.__dict__["dashboard_service"] = EntityReference(
-            id=uuid.uuid4(), type="dashboardService"
-        )
+        self.looker.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
 
     def test_create(self):
         """
@@ -276,7 +288,7 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 dashboardUrl="/dashboards/1",
-                service=self.looker.context.__dict__["dashboard_service"],
+                service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
                 owner=None,
             )
 
@@ -364,7 +376,7 @@ class LookerUnitTest(TestCase):
         to_entity = Dashboard(
             id=uuid.uuid4(),
             name="dashboard_name",
-            service=self.looker.context.dashboard_service,
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
 
         # If no from_entity, return none
@@ -408,7 +420,7 @@ class LookerUnitTest(TestCase):
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
             chartUrl="/dashboard_elements/chart_id1",
-            service=self.looker.context.dashboard_service,
+            service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
         self.assertEqual(
@@ -437,7 +449,7 @@ class LookerUnitTest(TestCase):
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
-            service=self.looker.context.dashboard_service,
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
         MOCK_LOOKER_DASHBOARD.view_count = 10
 
@@ -454,7 +466,7 @@ class LookerUnitTest(TestCase):
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
-            service=self.looker.context.dashboard_service,
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=10), date=self.looker.today
             ),
@@ -470,7 +482,7 @@ class LookerUnitTest(TestCase):
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
-            service=self.looker.context.dashboard_service,
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=0), date=self.looker.today
             ),
@@ -488,7 +500,7 @@ class LookerUnitTest(TestCase):
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
-            service=self.looker.context.dashboard_service,
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=5),
                 date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
@@ -508,7 +520,7 @@ class LookerUnitTest(TestCase):
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
-            service=self.looker.context.dashboard_service,
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=1000),
                 date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
