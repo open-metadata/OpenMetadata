@@ -209,3 +209,30 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     )
 
     return _connection_fn
+
+
+def import_test_case_class(
+    test_type: str,
+    runner_type: str,
+    test_definition: str,
+) -> Callable:
+    """_summary_
+
+    Args:
+        test_type (str): column or table
+        runner_type (str): sqlalchemy or pandas
+        test_definition (str): test definition name
+        test_definition_class (str): test definition class name (same as test_definition)
+
+    Returns:
+        Callable: test validator object
+    """
+    test_definition_class = test_definition[0].upper() + test_definition[1:] # change test names to camel case
+    return import_from_module(
+        "metadata.test_suite.validations.{}.{}.{}.{}Validator".format(
+            test_type.lower(),
+            runner_type,
+            test_definition,
+            test_definition_class,
+        )
+    )
