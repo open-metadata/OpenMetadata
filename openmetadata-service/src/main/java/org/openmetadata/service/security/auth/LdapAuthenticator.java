@@ -23,19 +23,14 @@ import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.HostNameSSLSocketVerifier;
-import com.unboundid.util.ssl.HostNameTrustManager;
-import com.unboundid.util.ssl.JVMDefaultTrustManager;
 import com.unboundid.util.ssl.SSLSocketVerifier;
 import com.unboundid.util.ssl.SSLUtil;
 import com.unboundid.util.ssl.TrustAllSSLSocketVerifier;
-import com.unboundid.util.ssl.TrustAllTrustManager;
-import com.unboundid.util.ssl.TrustStoreTrustManager;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.UUID;
-import javax.net.ssl.X509TrustManager;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
@@ -43,10 +38,6 @@ import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
-import org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfig;
-import org.openmetadata.schema.auth.ldapTrustStoreConfig.HostNameConfig;
-import org.openmetadata.schema.auth.ldapTrustStoreConfig.JVMDefaultConfig;
-import org.openmetadata.schema.auth.ldapTrustStoreConfig.TrustAllConfig;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -57,7 +48,7 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EmailUtil;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
@@ -91,45 +82,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
     try {
       if (ldapConfiguration.getSslEnabled()) {
-        X509TrustManager x509TrustManager;
-        SSLSocketVerifier sslSocketVerifier;
         LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
-        LdapConfiguration.TruststoreConfigType configType = ldapConfiguration.getTruststoreConfigType();
-        switch (configType) {
-          case CUSTOM_TRUST_STORE:
-            CustomTrustManagerConfig customTrustManagerConfig =
-                JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig(), CustomTrustManagerConfig.class);
-            x509TrustManager =
-                new TrustStoreTrustManager(
-                    customTrustManagerConfig.getTrustStoreFilePath(),
-                    customTrustManagerConfig.getTrustStoreFilePassword().toCharArray(),
-                    customTrustManagerConfig.getTrustStoreFileFormat(),
-                    customTrustManagerConfig.getExamineValidityDates());
-            sslSocketVerifier = hostNameVerifier(customTrustManagerConfig.getVerifyHostname());
-            connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
-            break;
-          case HOST_NAME:
-            HostNameConfig hostNameConfig =
-                JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig(), HostNameConfig.class);
-            x509TrustManager =
-                new HostNameTrustManager(hostNameConfig.getAllowWildCards(), hostNameConfig.getAcceptableHostNames());
-            break;
-          case JVM_DEFAULT:
-            JVMDefaultConfig jvmDefaultConfig =
-                JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig(), JVMDefaultConfig.class);
-            x509TrustManager = JVMDefaultTrustManager.getInstance();
-            sslSocketVerifier = hostNameVerifier(jvmDefaultConfig.getVerifyHostname());
-            connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
-            break;
-          case TRUST_ALL:
-            TrustAllConfig trustAllConfig =
-                JsonUtils.convertValue(ldapConfiguration.getTrustStoreConfig(), TrustAllConfig.class);
-            x509TrustManager = new TrustAllTrustManager(trustAllConfig.getExamineValidityDates());
-            break;
-          default:
-            throw new IllegalArgumentException("Invalid Truststore type.");
-        }
-        SSLUtil sslUtil = new SSLUtil(x509TrustManager);
+        LdapUtil ldapUtil = new LdapUtil();
+        SSLUtil sslUtil = new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
 
         try (LDAPConnection connection =
             new LDAPConnection(
