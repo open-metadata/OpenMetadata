@@ -52,7 +52,7 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
-    mandatory: bool
+    mandatory: bool = True
 
 
 def test_connection_steps(steps: List[TestConnectionStep]) -> None:
@@ -63,8 +63,8 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
     for step in steps:
         try:
             step.function()
-        except Exception:
-            msg = f"Faild to {step.name}"
+        except Exception as exc:
+            msg = f"Faild to {step.name}, {exc}"
             if step.mandatory:
                 errors[
                     step.name

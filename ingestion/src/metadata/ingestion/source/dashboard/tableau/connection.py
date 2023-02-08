@@ -92,7 +92,6 @@ def test_connection(client: TableauServerConnection) -> None:
         TestConnectionStep(
             function=client.server_info,
             name="Server Info",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=partial(
@@ -101,7 +100,6 @@ def test_connection(client: TableauServerConnection) -> None:
                 parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
             ),
             name="Get Workbooks",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=partial(
@@ -111,7 +109,6 @@ def test_connection(client: TableauServerConnection) -> None:
                 parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
             ),
             name="Get Views",
-            mandatory=True,
         ),
     ]
 

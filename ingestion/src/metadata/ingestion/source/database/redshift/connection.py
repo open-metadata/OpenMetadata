@@ -30,7 +30,10 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_common,
 )
 from metadata.ingestion.source.database.redshift.queries import (
-    REDSHIFT_SQL_STATEMENT_TEST,
+    REDSHIFT_GET_DATABASE_NAMES,
+    REDSHIFT_GET_STL_QUERY,
+    REDSHIFT_GET_STL_QUERYTEXT,
+    REDSHIFT_GET_SVV_TABLE_INFO,
 )
 
 
@@ -59,34 +62,49 @@ def test_connection(engine: Engine) -> None:
         TestConnectionStep(
             function=partial(
                 custom_executor,
-                statement="SELECT datname FROM pg_database",
+                statement=REDSHIFT_GET_DATABASE_NAMES,
                 engine=engine,
             ),
             name="Get Databases",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_schema_names,
             name="Get Schemas",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_table_names,
             name="Get Tables",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_view_names,
             name="Get Views",
-            mandatory=True,
+            mandatory=False,
         ),
         TestConnectionStep(
             function=partial(
                 custom_executor,
-                statement=REDSHIFT_SQL_STATEMENT_TEST,
+                statement=REDSHIFT_GET_SVV_TABLE_INFO,
                 engine=engine,
             ),
-            name="Get Usage and Lineage",
+            name="Get Usage and Lineage Svv Table Info",
+            mandatory=False,
+        ),
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=REDSHIFT_GET_STL_QUERYTEXT,
+                engine=engine,
+            ),
+            name="Get Usage and Lineage Stl Query Text",
+            mandatory=False,
+        ),
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=REDSHIFT_GET_STL_QUERY,
+                engine=engine,
+            ),
+            name="Get Usage and Lineage Stl Query",
             mandatory=False,
         ),
     ]

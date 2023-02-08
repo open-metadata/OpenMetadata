@@ -36,7 +36,7 @@ from metadata.ingestion.source.database.clickhouse.queries import (
 
 def get_connection(connection: ClickhouseConnection) -> Engine:
     """
-    Create MySQL connection
+    Create Clickhouse connection
     """
     return create_generic_db_connection(
         connection=connection,
@@ -47,7 +47,7 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
 
 def test_connection(engine: Engine) -> None:
     """
-    Test MySQL connection
+    Test Clickhouse connection
     """
 
     def custom_executor(engine, statement):
@@ -59,17 +59,15 @@ def test_connection(engine: Engine) -> None:
         TestConnectionStep(
             function=inspector.get_schema_names,
             name="Get Schemas",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_table_names,
             name="Get Tables",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_view_names,
             name="Get Views",
-            mandatory=True,
+            mandatory=False,
         ),
         TestConnectionStep(
             function=partial(

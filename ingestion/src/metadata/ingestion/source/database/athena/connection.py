@@ -69,17 +69,15 @@ def test_connection(engine: Engine) -> None:
         TestConnectionStep(
             function=inspector.get_schema_names,
             name="Get Schemas",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_table_names,
             name="Get Tables",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_view_names,
             name="Get Views",
-            mandatory=True,
+            mandatory=False,
         ),
     ]
     test_connection_db_common(engine, steps)

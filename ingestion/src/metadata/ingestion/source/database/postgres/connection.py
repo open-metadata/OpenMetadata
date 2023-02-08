@@ -65,22 +65,19 @@ def test_connection(engine: Engine) -> None:
                 engine=engine,
             ),
             name="Get Databases",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_schema_names,
             name="Get Schemas",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_table_names,
             name="Get Tables",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_view_names,
             name="Get Views",
-            mandatory=True,
+            mandatory=False,
         ),
         TestConnectionStep(
             function=partial(

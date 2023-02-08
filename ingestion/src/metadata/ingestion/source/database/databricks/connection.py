@@ -70,7 +70,6 @@ def test_connection(engine: Engine) -> None:
                 engine=engine,
             ),
             name="Get Catalogs",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=partial(
@@ -79,17 +78,15 @@ def test_connection(engine: Engine) -> None:
                 engine=engine,
             ),
             name="Get Schemas",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_table_names,
             name="Get Tables",
-            mandatory=True,
         ),
         TestConnectionStep(
             function=inspector.get_view_names,
             name="Get Views",
-            mandatory=True,
+            mandatory=False,
         ),
     ]
 

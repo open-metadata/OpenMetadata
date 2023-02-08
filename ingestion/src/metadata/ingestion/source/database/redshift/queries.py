@@ -216,58 +216,19 @@ REDSHIFT_TABLE_COMMENTS = """
       AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
 """
-REDSHIFT_SQL_STATEMENT_TEST = """
-  WITH
-  queries AS (
-    SELECT *
-      FROM pg_catalog.stl_query
-  ),
-  deduped_querytext AS (
-    -- Sometimes rows are duplicated, causing LISTAGG to fail in the full_queries CTE.
-    SELECT DISTINCT qt.*
-    FROM pg_catalog.stl_querytext AS qt
-        INNER JOIN queries AS q
-            ON qt.query = q.query
-  ),
-  full_queries AS (
-    SELECT
-          query,
-          LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
-            WITHIN GROUP (ORDER BY sequence) AS query_text
-      FROM deduped_querytext
-      WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
-    GROUP BY query
-  ),
-  raw_scans AS (
-    -- We have one row per table per slice so we need to get rid of the dupes
-    SELECT distinct query, tbl
-      FROM pg_catalog.stl_scan
-  ),
-  scans AS (
-  	SELECT DISTINCT
-  		query,
-  		sti.database AS database_name,
-      sti.schema AS schema_name
-  	  FROM raw_scans AS s
-          INNER JOIN pg_catalog.svv_table_info AS sti
-            ON (s.tbl)::oid = sti.table_id
-  )
-  SELECT DISTINCT
-        q.userid,
-        s.query AS query_id,
-        RTRIM(u.usename) AS user_name,
-        fq.query_text,
-        s.database_name,
-        s.schema_name,
-        q.starttime AS start_time,
-        q.endtime AS end_time,
-        datediff(second,q.starttime,q.endtime) AS duration,
-        q.aborted AS aborted
-    FROM scans AS s
-        INNER JOIN queries AS q
-          ON s.query = q.query
-        INNER JOIN full_queries AS fq
-          ON s.query = fq.query
-        INNER JOIN pg_catalog.pg_user AS u
-          ON q.userid = u.usesysid
+
+REDSHIFT_GET_DATABASE_NAMES = """
+SELECT datname FROM pg_database
+"""
+
+REDSHIFT_GET_SVV_TABLE_INFO = """
+select * from pg_catalog.svv_table_info limit 10
+"""
+
+REDSHIFT_GET_STL_QUERYTEXT = """
+select * from pg_catalog.stl_querytext limit 10
+"""
+
+REDSHIFT_GET_STL_QUERY = """
+select * from pg_catalog.stl_query limit 10
 """
