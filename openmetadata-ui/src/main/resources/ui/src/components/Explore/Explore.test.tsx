@@ -47,6 +47,14 @@ jest.mock('components/searched-data/SearchedData', () => {
     ));
 });
 
+jest.mock('./EntitySummaryPanel/EntitySummaryPanel.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="EntitySummaryPanel">EntitySummaryPanel</div>
+    ))
+);
+
 const mockFunction = jest.fn();
 
 describe('Test Explore component', () => {

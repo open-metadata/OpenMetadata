@@ -126,9 +126,9 @@ export const getEntityOverview = (
 
       const usage = !isNil(usageSummary?.weeklyStats?.percentileRank)
         ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
-        : '--';
+        : '-';
 
-      const queries = usageSummary?.weeklyStats?.count.toLocaleString() || '--';
+      const queries = usageSummary?.weeklyStats?.count.toLocaleString() || '-';
 
       const overview = [
         {
@@ -178,14 +178,14 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.owner'),
-          value: getEntityName(owner) || '--',
+          value: getEntityName(owner) || '-',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '-',
           isLink: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
@@ -206,7 +206,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.column-plural'),
-          value: columns ? columns.length : '--',
+          value: columns ? columns.length : '-',
           isLink: false,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -215,7 +215,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.row-plural'),
-          value: profile && profile?.rowCount ? profile.rowCount : '--',
+          value: profile && profile?.rowCount ? profile.rowCount : '-',
           isLink: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
@@ -262,14 +262,14 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.owner'),
-          value: getEntityName(owner) || '--',
+          value: getEntityName(owner) || '-',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '-',
           isLink: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
@@ -322,14 +322,14 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.owner'),
-          value: getEntityName(owner) || '--',
+          value: getEntityName(owner) || '-',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '-',
           isLink: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
@@ -354,7 +354,7 @@ export const getEntityOverview = (
       const overview = [
         {
           name: i18next.t('label.algorithm'),
-          value: algorithm || '--',
+          value: algorithm || '-',
           url: '',
           isLink: false,
           visible: [
@@ -364,7 +364,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.target'),
-          value: target || '--',
+          value: target || '-',
           url: '',
           isLink: false,
           visible: [
@@ -374,7 +374,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.server'),
-          value: server || '--',
+          value: server || '-',
           url: server,
           isLink: true,
           visible: [

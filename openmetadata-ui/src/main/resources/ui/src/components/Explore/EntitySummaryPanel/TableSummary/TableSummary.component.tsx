@@ -38,7 +38,6 @@ import {
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
 import {
@@ -49,7 +48,6 @@ import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import {
   OverallTableSummeryType,
   TableTestsType,
@@ -135,7 +133,7 @@ function TableSummary({
         })
       );
     }
-  }, [entityDetails, isTableDeleted, fetchAllTests]);
+  }, [entityDetails]);
 
   const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
     if (isUndefined(tableDetails.profile)) {
@@ -199,26 +197,15 @@ function TableSummary({
     if (!isEmpty(entityDetails)) {
       setTableDetails(entityDetails);
       fetchAllTests();
-      !isTableDeleted && fetchProfilerData();
+      !isTableDeleted &&
+        entityDetails.service?.type === 'databaseService' &&
+        fetchProfilerData();
     }
   }, [entityDetails]);
 
   return (
     <>
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 4]}>
-        {isExplore ? (
-          <Col span={24}>
-            <TableDataCardTitle
-              dataTestId="summary-panel-title"
-              searchIndex={SearchIndex.TABLE}
-              source={tableDetails}
-            />
-          </Col>
-        ) : null}
+      <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <Row>
             {entityInfo.map((info) =>
@@ -262,11 +249,7 @@ function TableSummary({
         </>
       ) : null}
 
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="text-base text-grey-muted"
@@ -276,11 +259,13 @@ function TableSummary({
         </Col>
         <Col span={24}>
           {isUndefined(overallSummary) ? (
-            <Typography.Text data-testid="no-profiler-enabled-message">
+            <Typography.Text
+              className="text-grey-body"
+              data-testid="no-profiler-enabled-message">
               {t('message.no-profiler-enabled-summary-message')}
             </Typography.Text>
           ) : (
-            <Row gutter={[16, 16]}>
+            <Row gutter={[0, 16]}>
               {overallSummary.map((field) => (
                 <Col key={field.title} span={10}>
                   <Row>
@@ -311,11 +296,7 @@ function TableSummary({
 
       <Divider className="m-y-xs" />
 
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="text-base text-grey-muted"

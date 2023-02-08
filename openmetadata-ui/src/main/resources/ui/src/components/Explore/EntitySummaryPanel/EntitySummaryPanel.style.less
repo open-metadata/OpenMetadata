@@ -22,36 +22,26 @@
 @section-header-color: #6b7280;
 
 .summary-panel-container {
-  background-color: @white;
-  margin-right: -8px;
   position: sticky;
+  position: -webkit-sticky;
   height: calc(100vh - @summary-panel-offset);
   top: 2px; // To show the border properly
-  z-index: 9;
   box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
   font-size: 14px;
   overflow-y: scroll;
   -ms-overflow-style: none;
+  overflow: -moz-scrollbars-none;
   scrollbar-width: none;
 
-  .ant-typography {
-    color: #37352f;
+  .ant-drawer-body {
+    padding: unset;
   }
 
   .summary-panel-statistics-count {
-    color: #37352f;
+    color: @text-color-secondary;
     font-size: 18px;
     line-height: 24px;
     font-weight: 700;
-  }
-
-  .text-gray {
-    color: @label-color;
-  }
-
-  .section-header {
-    font-size: 16px;
-    color: @section-header-color;
   }
 
   .success {
@@ -62,35 +52,6 @@
   }
   .aborted {
     color: @abortedColor;
-  }
-
-  .entity-title {
-    font-weight: 500;
-  }
-
-  .ant-divider-horizontal {
-    margin: 16px 0px;
-  }
-
-  div.ant-typography {
-    margin-top: 16px;
-    margin-bottom: 0px;
-  }
-
-  .close-icon {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-  }
-
-  .summary-schema-editor {
-    margin: 16px 0px;
-    border: 1px solid @gray;
-    border-radius: 4px;
-  }
-
-  .link {
-    color: @primary-color;
   }
 }
 

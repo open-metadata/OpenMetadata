@@ -18,16 +18,6 @@ import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockPipelineEntityDetails } from '../mocks/PipelineSummary.mock';
 import PipelineSummary from './PipelineSummary.component';
 
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
@@ -40,13 +30,11 @@ describe('PipelineSummary component tests', () => {
       wrapper: MemoryRouter,
     });
 
-    const pipelineTitle = screen.getByTestId('TableDataCardTitle');
     const pipelineUrlLabel = screen.getByTestId('pipeline-url-label');
     const pipelineUrlValue = screen.getByTestId('pipeline-link-name');
     const tasksHeader = screen.getByTestId('tasks-header');
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(pipelineTitle).toBeInTheDocument();
     expect(pipelineUrlLabel).toBeInTheDocument();
     expect(pipelineUrlValue).toContainHTML(mockPipelineEntityDetails.name);
     expect(tasksHeader).toBeInTheDocument();
@@ -77,7 +65,6 @@ describe('PipelineSummary component tests', () => {
       }
     );
 
-    const tableTitle = screen.queryByTestId('TableDataCardTitle');
     const schemaHeader = screen.getAllByTestId('schema-header');
     const tags = screen.getByText('label.tag-plural');
     const noTags = screen.getByText('label.no-tags-added');
@@ -93,7 +80,6 @@ describe('PipelineSummary component tests', () => {
       expect(screen.getByTestId(value)).toBeInTheDocument()
     );
 
-    expect(tableTitle).not.toBeInTheDocument();
     expect(schemaHeader[0]).toBeInTheDocument();
     expect(tags).toBeInTheDocument();
     expect(pipelineName[0]).toBeInTheDocument();

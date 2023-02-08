@@ -20,16 +20,6 @@ import {
 } from '../mocks/MlModelSummary.mock';
 import MlModelSummary from './MlModelSummary.component';
 
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
@@ -42,7 +32,6 @@ describe('MlModelSummary component tests', () => {
       wrapper: MemoryRouter,
     });
 
-    const mlModelTitle = screen.getByTestId('TableDataCardTitle');
     const algorithmLabel = screen.getByTestId('label.algorithm-label');
     const targetLabel = screen.getByTestId('label.target-label');
     const serverLabel = screen.getByTestId('label.server-label');
@@ -52,7 +41,6 @@ describe('MlModelSummary component tests', () => {
     const serverValue = screen.getByTestId('label.server-value');
     const dashboardValue = screen.getByTestId('label.dashboard-value');
 
-    expect(mlModelTitle).toBeInTheDocument();
     expect(algorithmLabel).toBeInTheDocument();
     expect(targetLabel).toBeInTheDocument();
     expect(serverLabel).toBeInTheDocument();

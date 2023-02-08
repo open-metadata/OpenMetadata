@@ -29,9 +29,9 @@ const SummaryTagsDescription = ({
 
   return (
     <>
-      <Row gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Text className="text-base text-gray">
+          <Typography.Text className="text-base text-grey-muted">
             {t('label.tag-plural')}
           </Typography.Text>
         </Col>
@@ -40,9 +40,9 @@ const SummaryTagsDescription = ({
             {tags.length > 0 ? (
               <TagsViewer sizeCap={-1} tags={tags} />
             ) : (
-              <p className="text-xs text-grey-muted">
+              <Typography.Text className="text-grey-body">
                 {t('label.no-tags-added')}
-              </p>
+              </Typography.Text>
             )}
           </div>
         </Col>
@@ -50,10 +50,10 @@ const SummaryTagsDescription = ({
 
       <Divider className="m-y-xs" />
 
-      <Row gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-gray"
+            className="text-base text-grey-muted"
             data-testid="schema-header">
             {t('label.description')}
           </Typography.Text>
@@ -63,9 +63,7 @@ const SummaryTagsDescription = ({
             {entityDetail.description?.trim() ? (
               <RichTextEditorPreviewer markdown={entityDetail.description} />
             ) : (
-              <p className="text-xs text-grey-muted">
-                {t('label.no-data-found')}
-              </p>
+              <p className="text-grey-body">{t('label.no-data-found')}</p>
             )}
           </div>
         </Col>

@@ -236,7 +236,7 @@ const EntityInfoDrawer = ({
       default:
         return null;
     }
-  }, [entityDetail, fetchEntityDetail, setEntityDetail, tags, selectedNode]);
+  }, [entityDetail, fetchEntityDetail, tags, selectedNode]);
 
   useEffect(() => {
     fetchEntityDetail(selectedNode);
@@ -245,10 +245,14 @@ const EntityInfoDrawer = ({
   return (
     <Drawer
       destroyOnClose
-      bodyStyle={{ padding: 16 }}
-      className="summary-panel-container"
+      className="entity-panel-container"
       closable={false}
-      extra={<CloseOutlined onClick={onCancel} />}
+      extra={
+        <CloseOutlined
+          data-testid="entity-panel-close-icon"
+          onClick={onCancel}
+        />
+      }
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
@@ -264,7 +268,7 @@ const EntityInfoDrawer = ({
             )}
           </Col>
           <Col span={24}>
-            <p className="flex">
+            <p className="flex items-center">
               <span className="m-r-xs">{getEntityIcon(selectedNode.type)}</span>
               {getHeaderLabel(
                 selectedNode.displayName ?? selectedNode.name,

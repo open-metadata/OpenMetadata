@@ -12,7 +12,6 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
-import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
@@ -24,10 +23,8 @@ import {
 } from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { Pipeline } from '../../../../generated/entity/data/pipeline';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
@@ -61,21 +58,7 @@ function PipelineSummary({
 
   return (
     <>
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 4]}>
-        {isExplore ? (
-          <Col span={24}>
-            <TableDataCardTitle
-              dataTestId="summary-panel-title"
-              searchIndex={SearchIndex.DASHBOARD}
-              source={entityDetails}
-            />
-          </Col>
-        ) : null}
-
+      <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <Row>
             {entityInfo.map((info) =>
@@ -130,11 +113,7 @@ function PipelineSummary({
         </>
       ) : null}
 
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="text-base text-grey-muted"

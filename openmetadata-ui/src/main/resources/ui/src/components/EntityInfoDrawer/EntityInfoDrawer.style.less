@@ -21,12 +21,25 @@
   }
 }
 
-.success {
-  color: @success-color;
-}
-.failed {
-  color: @failed-color;
-}
-.aborted {
-  color: @aborted-color;
+.entity-panel-container {
+  .ant-drawer-body {
+    padding: unset;
+  }
+
+  .summary-panel-statistics-count {
+    color: @text-color-secondary;
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 700;
+  }
+
+  .success {
+    color: @success-color;
+  }
+  .failed {
+    color: @failed-color;
+  }
+  .aborted {
+    color: @aborted-color;
+  }
 }

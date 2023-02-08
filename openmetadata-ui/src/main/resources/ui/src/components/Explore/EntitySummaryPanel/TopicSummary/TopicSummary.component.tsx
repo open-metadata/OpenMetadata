@@ -12,7 +12,6 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,12 +20,10 @@ import { getTopicByFqn } from 'rest/topicsAPI';
 import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -95,20 +92,7 @@ function TopicSummary({
 
   return (
     <>
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 4]}>
-        {isExplore ? (
-          <Col span={24}>
-            <TableDataCardTitle
-              dataTestId="summary-panel-title"
-              searchIndex={SearchIndex.TOPIC}
-              source={entityDetails}
-            />
-          </Col>
-        ) : null}
+      <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <Row>
             {Object.keys(topicConfig).map((fieldName) => {
@@ -147,11 +131,7 @@ function TopicSummary({
         </>
       ) : null}
 
-      <Row
-        className={classNames({
-          'm-md': isExplore,
-        })}
-        gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text
             className="text-base text-grey-muted"
@@ -163,7 +143,7 @@ function TopicSummary({
           {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
             <div className="m-y-md">
               <Typography.Text data-testid="no-data-message">
-                <Typography.Text className="text-grey-muted">
+                <Typography.Text className="text-grey-body">
                   {t('message.no-data-available')}
                 </Typography.Text>
               </Typography.Text>

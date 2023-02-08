@@ -21,16 +21,6 @@ import {
 } from '../mocks/DashboardSummary.mock';
 import DashboardSummary from './DashboardSummary.component';
 
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
@@ -49,7 +39,6 @@ describe('DashboardSummary component tests', () => {
       });
     });
 
-    const dashboardTitle = screen.getByTestId('TableDataCardTitle');
     const dashboardUrlLabel = screen.getByTestId(
       'label.dashboard label.url-uppercase-label'
     );
@@ -58,7 +47,6 @@ describe('DashboardSummary component tests', () => {
     const chartsHeader = screen.getByTestId('charts-header');
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(dashboardTitle).toBeInTheDocument();
     expect(dashboardLinkName).toBeInTheDocument();
     expect(dashboardUrlLabel).toBeInTheDocument();
     expect(dashboardUrlValue).toContainHTML(mockDashboardEntityDetails.name);
@@ -89,7 +77,6 @@ describe('DashboardSummary component tests', () => {
       debug();
     });
 
-    const dashboardTitle = screen.queryByTestId('TableDataCardTitle');
     const dashboardUrlLabel = screen.getByTestId(
       'label.dashboard label.url-uppercase-label'
     );
@@ -109,7 +96,7 @@ describe('DashboardSummary component tests', () => {
     expect(dashboardUrl[0]).toBeInTheDocument();
     expect(dashboardLink[0]).toBeInTheDocument();
     expect(dashboardValue[0]).toBeInTheDocument();
-    expect(dashboardTitle).not.toBeInTheDocument();
+
     expect(tags).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(noDataFound).toBeInTheDocument();

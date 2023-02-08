@@ -32,16 +32,6 @@ jest.mock('rest/tableAPI', () => ({
     .mockImplementation(() => mockTableEntityDetails),
 }));
 
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
@@ -54,7 +44,6 @@ describe('TableSummary component tests', () => {
       render(<TableSummary entityDetails={mockTableEntityDetails} />);
     });
 
-    const tableTitle = screen.getByTestId('TableDataCardTitle');
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getByTestId('schema-header');
     const typeLabel = screen.getByTestId('label.type-label');
@@ -68,7 +57,6 @@ describe('TableSummary component tests', () => {
     );
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(tableTitle).toBeInTheDocument();
     expect(profilerHeader).toBeInTheDocument();
     expect(schemaHeader).toBeInTheDocument();
     expect(typeLabel).toBeInTheDocument();
@@ -110,7 +98,6 @@ describe('TableSummary component tests', () => {
       }
     );
 
-    const tableTitle = screen.queryByTestId('TableDataCardTitle');
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getAllByTestId('schema-header');
     const queriesLabel = screen.getByTestId('label.query-plural-label');
@@ -130,7 +117,6 @@ describe('TableSummary component tests', () => {
       expect(screen.getByTestId(value)).toBeInTheDocument()
     );
 
-    expect(tableTitle).not.toBeInTheDocument();
     expect(profilerHeader).toBeInTheDocument();
     expect(schemaHeader[0]).toBeInTheDocument();
     expect(queriesLabel).toBeInTheDocument();
