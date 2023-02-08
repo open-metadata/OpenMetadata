@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-/// <reference types="Cypress" />
+// / <reference types="Cypress" />
 import {
   descriptionBox,
   interceptURL,
@@ -192,7 +192,7 @@ describe('Glossary page should work properly', () => {
       .type('PersonalData.Personal');
     verifyResponseStatusCode('@fetchTags', 200);
     cy.get('[title="PersonalData.Personal"]').should('be.visible').click();
-    cy.get('body').click();
+    cy.get('#right-panel').click();
 
     cy.get('[data-testid="add-reviewers"]')
       .scrollIntoView()
@@ -261,6 +261,7 @@ describe('Glossary page should work properly', () => {
         tagFQN: 'PersonalData.Personal',
         source: 'Tag',
       });
+
       cy.url().should('include', '/glossary/');
       cy.get('[data-testid="breadcrumb-link"]')
         .scrollIntoView()
