@@ -16,6 +16,7 @@ from urllib.parse import quote_plus
 
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -25,7 +26,10 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionStep,
+    test_connection_db_common,
+)
 
 
 def get_connection_url(connection: HiveConnection) -> str:
@@ -80,4 +84,22 @@ def test_connection(engine: Engine) -> None:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+    inspector = inspect(engine)
+    steps = [
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+            mandatory=True,
+        ),
+    ]
+    test_connection_db_common(engine, steps)

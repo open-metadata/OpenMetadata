@@ -17,7 +17,6 @@ from typing import Callable, List
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.inspection import inspect
 
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.timeout import timeout
@@ -64,7 +63,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
     for step in steps:
         try:
             step.function()
-        except Exception as exc:
+        except Exception:
             msg = f"Faild to {step.name}"
             if step.mandatory:
                 errors[
@@ -91,29 +90,8 @@ def test_connection_db_common(connection: Engine, steps=None) -> None:
     try:
         with connection.connect() as conn:
             conn.execute(ConnTestFn())
-            inspector = inspect(connection)
             if steps:
-                steps = steps
-            else:
-                steps = [
-                    TestConnectionStep(
-                        function=inspector.get_schema_names,
-                        name="Get Schemas",
-                        mandatory=True,
-                    ),
-                    TestConnectionStep(
-                        function=inspector.get_table_names,
-                        name="Get Tables",
-                        mandatory=True,
-                    ),
-                    TestConnectionStep(
-                        function=inspector.get_view_names,
-                        name="Get Views",
-                        mandatory=True,
-                    ),
-                ]
-
-            test_connection_steps(steps)
+                test_connection_steps(steps)
     except SourceConnectionException as exc:
         raise exc
     except OperationalError as err:
