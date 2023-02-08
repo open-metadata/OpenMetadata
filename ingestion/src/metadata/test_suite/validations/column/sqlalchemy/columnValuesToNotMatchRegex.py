@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=invalid-name
 
 """
 Validator for column values to not match regex test case
@@ -90,6 +91,7 @@ class ColumnValuesToNotMatchRegexValidator(BaseTestHandler, SQAValidatorMixin):
         return self.get_test_case_result_object(
             self.execution_date,
             TestCaseStatus.Success if not not_match_count else TestCaseStatus.Failed,
-            f"Found {not_match_count} value(s) matching the forbidden regex pattern vs {not_match_count} value(s) in the column.",
+            f"Found {not_match_count} value(s) matching the forbidden regex pattern vs "
+            f"{not_match_count} value(s) in the column.",
             [TestResultValue(name="notLikeCount", value=str(not_match_count))],
         )

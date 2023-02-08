@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=invalid-name
 
 """
 Validator for column values sum to be between test case
@@ -16,7 +17,6 @@ Validator for column values sum to be between test case
 import traceback
 
 from sqlalchemy import Column, inspect
-from sqlalchemy.sql.sqltypes import DATE, DATETIME, TIMESTAMP
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -25,9 +25,6 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.column.column_values_to_be_between import (
-    convert_timestamp,
-)
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
 

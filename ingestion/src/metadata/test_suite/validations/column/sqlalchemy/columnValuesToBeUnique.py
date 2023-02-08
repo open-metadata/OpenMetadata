@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=invalid-name
 
 """
 Validator for column values sum to be between test case
@@ -39,11 +40,14 @@ class ColumnValuesToBeUniqueValidator(BaseTestHandler, SQAValidatorMixin):
         unique_count = dict(
             self.runner.select_all_from_query(
                 Metrics.UNIQUE_COUNT.value(column).query(
-                    sample=self.runner._sample
-                    if isinstance(self.runner._sample, AliasedClass)
+                    sample=self.runner._sample  # pylint: disable=protected-access
+                    if isinstance(
+                        self.runner._sample,  # pylint: disable=protected-access
+                        AliasedClass,
+                    )
                     else self.runner.table,
-                    session=self.runner._session,
-                )
+                    session=self.runner._session,  # pylint: disable=protected-access
+                )  # type: ignore
             )[
                 0
             ]  # query result is a list of tuples
@@ -81,7 +85,8 @@ class ColumnValuesToBeUniqueValidator(BaseTestHandler, SQAValidatorMixin):
         return self.get_test_case_result_object(
             self.execution_date,
             TestCaseStatus.Success if count == unique_count else TestCaseStatus.Failed,
-            f"Found valuesCount={count} vs. uniqueCount={unique_count}.  Both counts should be equal for column values to be unique.",
+            f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
+            "Both counts should be equal for column values to be unique.",
             [
                 TestResultValue(name="valueCount", value=str(count)),
                 TestResultValue(name="uniqueCount", value=str(unique_count)),

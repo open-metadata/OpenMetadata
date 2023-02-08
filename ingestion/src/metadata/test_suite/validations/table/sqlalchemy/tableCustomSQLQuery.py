@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=invalid-name
 
 """
 Validator for column value length to be between test case
@@ -51,9 +52,9 @@ class TableCustomSQLQueryValidator(BaseTestHandler, SQAValidatorMixin):
         sql_expression = cast(str, sql_expression)  # satisfy mypy
 
         try:
-            rows = self.runner._session.execute(
+            rows = self.runner._session.execute(  # pylint: disable=protected-access
                 text(sql_expression)
-            ).all()  # pylint: disable=protected-access
+            ).all()
         except ValueError as exc:
             msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())

@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=invalid-name
 
 """
 Validator for column value length to be between test case
@@ -81,7 +82,10 @@ class ColumnValuesMissingCountValidator(BaseTestHandler, SQAValidatorMixin):
 
                 null_res += set_res
             except ValueError as exc:
-                msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
+                msg = (
+                    f"Error computing {self.test_case.name} for"
+                    f"{self.runner.table.__tablename__}: {exc}"
+                )  # type: ignore
                 logger.debug(traceback.format_exc())
                 logger.warning(msg)
                 return self.get_test_case_result_object(

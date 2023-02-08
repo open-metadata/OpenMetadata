@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=invalid-name
 
 """
 Validator for column value length to be between test case
@@ -79,7 +80,8 @@ class ColumnValueLengthsToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin)
             TestCaseStatus.Success
             if min_bound <= min_res and max_bound >= max_res
             else TestCaseStatus.Failed,
-            f"Found minLength={min_res}, maxLength={max_res} vs. the expected minLength={min_bound}, maxLength={max_bound}.",
+            f"Found minLength={min_res}, maxLength={max_res} vs. the expected "
+            "minLength={min_bound}, maxLength={max_bound}.",
             [
                 TestResultValue(name="minValueLength", value=str(min_res)),
                 TestResultValue(name="maxValueLength", value=str(max_res)),
