@@ -583,14 +583,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }),
         dataIndex: 'name',
         key: 'name',
-        render: (text: string, record: Table) => {
+        render: (_, record: Table) => {
           return (
             <Link
               to={getEntityLink(
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}>
-              {text}
+              {getEntityName(record)}
             </Link>
           );
         },

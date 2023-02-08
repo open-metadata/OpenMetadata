@@ -198,7 +198,10 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
               <label htmlFor="tags">{t('label.tag-plural')}:</label>
               <AddTags
                 data-testid="tags"

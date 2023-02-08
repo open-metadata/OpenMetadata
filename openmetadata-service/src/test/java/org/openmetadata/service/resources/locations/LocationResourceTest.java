@@ -171,7 +171,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     }
   }
 
-  public static Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)
+  public Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getResource("locations"), create, Location.class, status, authHeaders);
   }
@@ -196,7 +196,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     return location;
   }
 
-  public static LocationList listPrefixes(
+  public LocationList listPrefixes(
       String fields, String fqn, Integer limitParam, String before, String after, Map<String, String> authHeaders)
       throws HttpResponseException {
     String encodedFqn = URLEncoder.encode(fqn, StandardCharsets.UTF_8);

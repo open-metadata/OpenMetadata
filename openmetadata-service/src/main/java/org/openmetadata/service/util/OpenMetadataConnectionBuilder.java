@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.airflow.SSLConfig;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.Bot;
@@ -52,14 +52,17 @@ public class OpenMetadataConnectionBuilder {
       authProvider = extractAuthProvider(botUser);
     }
 
-    AirflowConfiguration airflowConfiguration = openMetadataApplicationConfig.getAirflowConfiguration();
-    openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
-    clusterName = openMetadataApplicationConfig.getClusterName();
-    secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
-    verifySSL = VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
+    openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
+    verifySSL = VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
-            VerifySSL.fromValue(airflowConfiguration.getVerifySSL()), airflowConfiguration.getSslConfig());
+            VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL()),
+            pipelineServiceClientConfiguration.getSslConfig());
+
+    clusterName = openMetadataApplicationConfig.getClusterName();
+    secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
   }
 
   private OpenMetadataConnection.AuthProvider extractAuthProvider(User botUser) {

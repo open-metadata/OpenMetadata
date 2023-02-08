@@ -100,7 +100,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertEquals(deletedTestSuite.getDeleted(), true);
   }
 
-  public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
+  public ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("testSuite");
     target = limit != null ? target.queryParam("limit", limit) : target;
