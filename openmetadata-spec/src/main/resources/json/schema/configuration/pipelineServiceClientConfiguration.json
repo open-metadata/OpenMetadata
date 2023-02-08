@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/pipelineServiceClientConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PipelineServiceClientConfiguration",
+  "description": "This schema defines the Pipeline Service Client Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration",
+  "properties": {
+    "className": {
+      "description": "Class Name for the Pipeline Service Client.",
+      "type": "string"
+    },
+    "apiEndpoint": {
+      "description": "External API root to interact with the Pipeline Service Client",
+      "type": "string"
+    },
+    "hostIp": {
+      "description": "Pipeline Service Client host IP that will be used to connect to the sources.",
+      "type": "string"
+    },
+    "metadataApiEndpoint": {
+      "description": "Metadata api endpoint, e.g., `http://localhost:8585/api`",
+      "type": "string"
+    },
+    "verifySSL": {
+      "description": "Client SSL verification policy: no-ssl, ignore, validate.",
+      "type": "string",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "description": "OpenMetadata Client SSL configuration.",
+      "$ref": "sslConfig.json"
+    },
+    "authProvider": {
+      "description": "Auth Provider like no-auth, azure , google, okta, auth0, customOidc, openmetadata",
+      "type": "string"
+    },
+    "authConfig": {
+      "description": "Auth Provider Configuration.",
+      "$ref": "authConfig.json"
+    },
+    "parameters": {
+      "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters",
+      "description": "Additional parameters to initialize the PipelineServiceClient.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": { "type": "string" }
+      }
+    }
+  },
+  "required": [
+    "className",
+    "apiEndpoint",
+    "metadataApiEndpoint"
+  ],
+  "additionalProperties": false
+}

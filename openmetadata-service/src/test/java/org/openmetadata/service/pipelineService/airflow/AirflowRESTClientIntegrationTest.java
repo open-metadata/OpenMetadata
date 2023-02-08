@@ -19,19 +19,19 @@ import static org.openmetadata.service.resources.services.ingestionpipelines.Ing
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import lombok.SneakyThrows;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
-import org.openmetadata.service.airflow.AirflowRESTClient;
+import org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient;
 
 @ExtendWith(MockitoExtension.class)
 class AirflowRESTClientIntegrationTest {
@@ -53,8 +53,19 @@ class AirflowRESTClientIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    AirflowConfiguration airflowConfiguration = createDefaultAirflowConfiguration();
-    airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
+
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
+    pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
+    pipelineServiceClientConfiguration.setMetadataApiEndpoint("http://openmetadata-server:8585/api");
+
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("username", "user");
+    params.setAdditionalProperty("password", "pass");
+    params.setAdditionalProperty("apiEndpoint", "");
+
+    pipelineServiceClientConfiguration.setParameters(params);
+
+    airflowRESTClient = new AirflowRESTClient(pipelineServiceClientConfiguration);
     httpServerExtension.unregisterHandler();
   }
 
@@ -95,16 +106,6 @@ class AirflowRESTClientIntegrationTest {
     String actualMessage = exception.getMessage();
 
     assertEquals(expectedMessage, actualMessage);
-  }
-
-  @SneakyThrows
-  private AirflowConfiguration createDefaultAirflowConfiguration() {
-    AirflowConfiguration airflowConfiguration = new AirflowConfiguration();
-    airflowConfiguration.setApiEndpoint(HttpServerExtension.getUriFor("").toString());
-    airflowConfiguration.setUsername("user");
-    airflowConfiguration.setPassword("pass");
-    airflowConfiguration.setTimeout(60);
-    return airflowConfiguration;
   }
 
   private void registerMockedEndpoints(int lastDagLogStatusCode) {
