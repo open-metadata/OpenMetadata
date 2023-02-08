@@ -20,7 +20,7 @@ import avro.schema as avroschema
 from avro.schema import ArraySchema
 from pydantic.main import ModelMetaclass
 
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
 
@@ -46,12 +46,12 @@ def parse_array_fields(
     )
 
     if cls == Column:
-        if str(field_items.type).upper() == "ARRAY":
+        if str(field_items.type).upper() == DataType.ARRAY.value:
             child_obj.arrayDataType = str(field.type.items.type).upper()
             child_obj.dataTypeDisplay = f"{field_items.type}<{field.type.items.type}>"
         else:
             child_obj.dataTypeDisplay = str(field_items.type)
-        if str(field.type.type).upper() == "ARRAY":
+        if str(field.type.type).upper() == DataType.ARRAY.value:
             obj.arrayDataType = str(field_items.type).upper()
             obj.dataTypeDisplay = f"{field.type.type}<{field_items.type}>"
         else:

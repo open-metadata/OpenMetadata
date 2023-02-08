@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.parsers.avro_parser import parse_avro_schema
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -41,6 +42,8 @@ PD_AVRO_FIELD_MAP = {
     DataTypeTopic.TIMESTAMPZ.value: "float",
 }
 
+AVRO_SCHEMA = "avro.schema"
+
 
 def read_from_avro(
     avro_text: bytes,
@@ -50,10 +53,10 @@ def read_from_avro(
     """
     try:
         elements = DataFileReader(io.BytesIO(avro_text), DatumReader())
-        if elements.meta.get("avro.schema"):
+        if elements.meta.get(AVRO_SCHEMA):
             return DatalakeColumnWrapper(
                 columns=parse_avro_schema(
-                    schema=elements.meta.get("avro.schema").decode("utf-8"), cls=Column
+                    schema=elements.meta.get(AVRO_SCHEMA).decode(UTF_8), cls=Column
                 ),
                 dataframes=[pd.DataFrame.from_records(elements)],
             )
@@ -76,9 +79,9 @@ def _get_json_text(key: str, text: bytes, decode: bool) -> str:
         return gzip.decompress(text)
     if key.endswith(".zip"):
         with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
-            return zip_file.read(zip_file.infolist()[0]).decode("utf-8")
+            return zip_file.read(zip_file.infolist()[0]).decode(UTF_8)
     if decode:
-        return text.decode("utf-8")
+        return text.decode(UTF_8)
     return text
 
 

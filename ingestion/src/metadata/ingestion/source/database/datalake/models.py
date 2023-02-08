@@ -20,5 +20,12 @@ from metadata.generated.schema.entity.data.table import Column
 
 
 class DatalakeColumnWrapper(BaseModel):
+    """
+    In case of avro files we can directly get the column details and
+    we do not need the dataframe to parse the metadata but profiler
+    need the dataframes hence this model binds the columns details and dataframe
+    which can be used by both profiler and metadata ingestion
+    """
+
     columns: Optional[List[Column]]
     dataframes: Optional[List[Any]]  # pandas.Dataframe does not have any validators
