@@ -88,7 +88,7 @@ CREATE EXTENSION pgcrypto;
 
 INSERT INTO temp_query_migration(tableId,json)
 SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT(checksum, '.', 'table'),'updatedAt',
-floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false,'entityRefrences',json_build_object('id',id,'type','table')) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
+floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
 checksum varchar,duration decimal,queryDate varchar)
 WHERE ee.extension = 'table.tableQueries';
 

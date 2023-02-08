@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -35,7 +36,9 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -43,6 +46,7 @@ import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/query")
@@ -72,7 +76,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     }
   }
 
-  static final String FIELDS = "";
+  static final String FIELDS = "queryUsage";
 
   @GET
   @Operation(
@@ -195,11 +199,11 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
-  @Path("/table/{id}")
+  @Path("/entity/{id}")
   @GET
   @Operation(
       operationId = "listQueries",
-      summary = "List tableSqlQueries",
+      summary = "List Queries",
       tags = "query",
       description = "",
       responses = {
@@ -382,6 +386,31 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
       throws IOException {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/{id}/addQueryUsage")
+  @Operation(
+      operationId = "addQueryUsage",
+      summary = "Add query usage",
+      tags = "query",
+      description = "Add query usage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Query addQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<EntityReference> entityIds)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Query query = dao.addQueryUsage(id, entityIds);
+    return query;
   }
 
   @DELETE

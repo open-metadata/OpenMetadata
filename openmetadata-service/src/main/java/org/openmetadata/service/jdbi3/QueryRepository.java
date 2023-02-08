@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
@@ -17,8 +21,8 @@ import org.openmetadata.service.util.ResultList;
 
 public class QueryRepository extends EntityRepository<Query> {
 
-  private static final String QUERY_PATCH_FIELDS = "";
-  private static final String QUERY_UPDATE_FIELDS = "";
+  private static final String QUERY_PATCH_FIELDS = "vote,queryUsage";
+  private static final String QUERY_UPDATE_FIELDS = "vote,queryUsage";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -33,7 +37,24 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public Query setFields(Query entity, EntityUtil.Fields fields) throws IOException {
+    entity.setQueryUsage(fields.contains("queryUsage") ? this.getQueryUsage(entity) : null);
     return entity;
+  }
+
+  public List<EntityReference> getQueryUsage(Query entity) throws IOException {
+    if (entity == null) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> queryUsage = new ArrayList<>();
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(entity.getId(), Entity.QUERY, Relationship.HAS, entity.getEntityName());
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      EntityReference entityReference = new EntityReference();
+      entityReference.setId(record.getId());
+      entityReference.setType(record.getType());
+      queryUsage.add(entityReference);
+    }
+    return queryUsage;
   }
 
   @Override
@@ -48,7 +69,10 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public void storeEntity(Query entity, boolean update) throws IOException {
+    List<EntityReference> queryUsage = entity.getQueryUsage();
+    entity.withQueryUsage(null);
     store(entity, update);
+    entity.withQueryUsage(queryUsage);
   }
 
   @Override
@@ -57,7 +81,30 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeRelationships(Query entity) throws IOException {}
+  public void storeRelationships(Query entity) throws IOException {
+    if (entity.getQueryUsage() != null) {
+      for (EntityReference entityId : entity.getQueryUsage()) {
+        addRelationship(entityId.getId(), entity.getId(), entityId.getType(), Entity.QUERY, Relationship.HAS);
+      }
+    }
+  }
+
+  @Override
+  public EntityUpdater getUpdater(Query original, Query updated, Operation operation) {
+    return new QueryUpdater(original, updated, operation);
+  }
+
+  public class QueryUpdater extends EntityUpdater {
+    public QueryUpdater(Query original, Query updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("vote", original.getVote(), updated.getVote());
+      recordChange("queryUsage", original.getQueryUsage(), updated.getQueryUsage());
+    }
+  }
 
   public ResultList<Query> listQueriesByEntityId(String id, String before, String after, int limit) {
     RestUtil.validateCursors(before, after);
@@ -118,5 +165,15 @@ public class QueryRepository extends EntityRepository<Query> {
       queries.add(queryRow.getQuery());
     }
     return new ResultList<>(queries, beforeCursor, afterCursor, total);
+  }
+
+  public Query addQueryUsage(UUID queryId, List<EntityReference> entityIds) throws IOException {
+    Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsage", Include.NON_DELETED);
+    for (EntityReference entityId : entityIds) {
+      if (!query.getQueryUsage().contains(entityId.getId())) {
+        addRelationship(entityId.getId(), queryId, entityId.getType(), Entity.QUERY, Relationship.HAS);
+      }
+    }
+    return query.withQueryUsage(entityIds);
   }
 }

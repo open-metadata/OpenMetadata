@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.query;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -8,13 +10,17 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.TestUtils;
@@ -31,13 +37,15 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
    */
   @Override
   public CreateQuery createRequest(String name) {
+    List<EntityReference> queryUsage = new ArrayList<>();
     return new CreateQuery()
         .withName(name)
         .withEntityName(name)
         .withQuery("select * from sales")
         .withDuration(0.0)
         .withQueryDate(1673857635064L)
-        .withVote(1.0);
+        .withVote(1.0)
+        .withQueryUsage(queryUsage);
   }
 
   /**
@@ -119,6 +127,32 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     CreateQuery create1 = createRequest(getEntityName(test));
 
     assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), Response.Status.CONFLICT, "Entity already exists");
+  }
+
+  @Test
+  void put_vote_queryUsage_update(TestInfo test) throws IOException {
+    EntityReference entityReference = new EntityReference();
+    entityReference.setId(UUID.randomUUID());
+    entityReference.setType("table");
+    List<EntityReference> queryUsage = new ArrayList<>();
+    List<EntityReference> queryUsage1 = new ArrayList<>();
+    queryUsage.add(entityReference);
+    queryUsage1.add(entityReference);
+
+    // create query with vote 1.0
+    CreateQuery create = createRequest(getEntityName(test)).withQueryUsage(queryUsage);
+    createEntity(create, ADMIN_AUTH_HEADERS);
+    // update vote to 2.0
+    create.setVote(2.0);
+    // add one more usage for query
+    entityReference.setId(UUID.randomUUID());
+    entityReference.setType("table");
+    queryUsage1.add(entityReference);
+    create.setQueryUsage(queryUsage1);
+
+    updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(2.0, create.getVote());
+    assertEquals(2, create.getQueryUsage().size());
   }
 
   @Override
