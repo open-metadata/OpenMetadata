@@ -1,4 +1,19 @@
-from pathlib import Path
+# pylint: disable=line-too-long
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Unit tests for datalake source
+"""
+
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -176,18 +191,59 @@ EXPECTED_AVRO_COL_2 = [
     ),
 ]
 
-avro_schema_data_1 = (
-    Path(__file__).parent.parent.parent / "resources/datasets/avro_schema_file.avro"
-)
-with open(avro_schema_data_1, encoding="utf-8") as file:
-    avro_schema_data_1 = file.buffer.read()
+AVRO_SCHEMA_FILE = b"""{
+    "namespace": "openmetadata.kafka",
+    "name": "level",
+    "type": "record",
+    "fields": [
+        {
+            "name": "uid",
+            "type": "int"
+        },
+        {
+            "name": "somefield",
+            "type": "string"
+        },
+        {
+            "name": "options",
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "lvl2_record",
+                    "fields": [
+                        {
+                            "name": "item1_lvl2",
+                            "type": "string"
+                        },
+                        {
+                            "name": "item2_lvl2",
+                            "type": {
+                                "type": "array",
+                                "items": {
+                                    "type": "record",
+                                    "name": "lvl3_record",
+                                    "fields": [
+                                        {
+                                            "name": "item1_lvl3",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "name": "item2_lvl3",
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}"""
 
-
-avro_schema_data_2 = (
-    Path(__file__).parent.parent.parent / "resources/datasets/avro_data_file.avro"
-)
-with open(avro_schema_data_2, encoding="utf-8") as file:
-    avro_schema_data_2 = file.buffer.read()
+AVRO_DATA_FILE = b'Obj\x01\x04\x16avro.schema\xe8\x05{"type":"record","name":"twitter_schema","namespace":"com.miguno.avro","fields":[{"name":"username","type":"string","doc":"Name of the user account on Twitter.com"},{"name":"tweet","type":"string","doc":"The content of the user\'s Twitter message"},{"name":"timestamp","type":"long","doc":"Unix epoch time in seconds"}],"doc:":"A basic schema for storing Twitter messages"}\x14avro.codec\x08null\x00g\xc75)s\xef\xdf\x94\xad\xd3\x00~\x9e\xeb\xff\xae\x04\xc8\x01\x0cmigunoFRock: Nerf paper, scissors is fine.\xb2\xb8\xee\x96\n\x14BlizzardCSFWorks as intended.  Terran is IMBA.\xe2\xf3\xee\x96\ng\xc75)s\xef\xdf\x94\xad\xd3\x00~\x9e\xeb\xff\xae'
 
 
 def _get_str_value(data):
@@ -195,6 +251,8 @@ def _get_str_value(data):
         if isinstance(data, str):
             return data
         return data.value
+
+    return None
 
 
 def custom_column_compare(self, other):
@@ -207,6 +265,10 @@ def custom_column_compare(self, other):
 
 
 class DatalakeUnitTest(TestCase):
+    """
+    Datalake Source Unit Teststest_datalake.py:249
+    """
+
     @patch(
         "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
     )
@@ -232,31 +294,31 @@ class DatalakeUnitTest(TestCase):
         assert list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
-        import pandas as pd
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}
 
-        EXPECTED_DF_1 = pd.DataFrame.from_dict(
+        exp_df_list = pd.DataFrame.from_dict(
             [
                 {"name": "John", "age": 16, "sex": "M"},
                 {"name": "Milan", "age": 19, "sex": "M"},
             ]
         )
-        EXPECTED_DF_2 = pd.DataFrame.from_dict(
+        exp_df_obj = pd.DataFrame.from_dict(
             {key: pd.Series(value) for key, value in sample_dict.items()}
         )
 
         actual_df_1 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_1)[0]
         actual_df_2 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_2)[0]
 
-        assert actual_df_1.compare(EXPECTED_DF_1).empty
-        assert actual_df_2.compare(EXPECTED_DF_2).empty
+        assert actual_df_1.compare(exp_df_list).empty
+        assert actual_df_2.compare(exp_df_obj).empty
 
     def test_avro_file_parse(self):
-        columns = read_from_avro(avro_schema_data_1)
+        columns = read_from_avro(AVRO_SCHEMA_FILE)
         Column.__eq__ = custom_column_compare
 
-        assert EXPECTED_AVRO_COL_1 == columns.columns
+        assert EXPECTED_AVRO_COL_1 == columns.columns  # pylint: disable=no-member
 
-        columns = read_from_avro(avro_schema_data_2)
-        assert EXPECTED_AVRO_COL_2 == columns.columns
+        columns = read_from_avro(AVRO_DATA_FILE)
+        assert EXPECTED_AVRO_COL_2 == columns.columns  # pylint: disable=no-member
