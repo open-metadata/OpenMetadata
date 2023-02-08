@@ -15,8 +15,10 @@ Test case validator object
 
 from metadata.generated.schema.tests.basic import TestCaseResult
 
+
 class Validator:
-    """Test case validator object. it take test handler obkect and run validation"""    
+    """Test case validator object. it take test handler obkect and run validation"""
+
     def __init__(self, validator_obj):
         self.validator_obj = validator_obj
 

@@ -16,20 +16,22 @@ Validator for column value length to be between test case
 import collections
 import traceback
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.test_suite.validations.base_test_handler import \
-    BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import inspect
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
+
 class TableColumnToMatchSetValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column value mean to be between test case"""
+    """ "Validator for column value mean to be between test case"""
 
     def compare(self, expected_names, actual_names) -> bool:
         return collections.Counter(expected_names) == collections.Counter(actual_names)
@@ -47,38 +49,37 @@ class TableColumnToMatchSetValidator(BaseTestHandler, SQAValidatorMixin):
                     f"Column names for test case {self.test_case.name} returned None"
                 )
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="columnNameExits", value=None)]
+                [TestResultValue(name="columnNameExits", value=None)],
             )
 
         expected_names = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "columnNames",
-            str
+            self.test_case.parameterValues, "columnNames", str  # type: ignore
         )
 
-        expected_names = [item.strip() for item in expected_names.split(",")] if expected_names else []
+        expected_names = (
+            [item.strip() for item in expected_names.split(",")]
+            if expected_names
+            else []
+        )
 
         ordered = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "ordered",
             bool,
-            default=False
+            default=False,
         )
 
         if ordered:
             names_match = expected_names == [col.name for col in names]
         else:
             names_match = self.compare(expected_names, [col.name for col in names])
-
 
         status = TestCaseStatus.Success if names_match else TestCaseStatus.Failed
         result_value = 1 if status == TestCaseStatus.Success else 0
@@ -92,5 +93,5 @@ class TableColumnToMatchSetValidator(BaseTestHandler, SQAValidatorMixin):
             self.execution_date,
             status,
             result,
-            [TestResultValue(name="columnNames", value=str(result_value))]
+            [TestResultValue(name="columnNames", value=str(result_value))],
         )

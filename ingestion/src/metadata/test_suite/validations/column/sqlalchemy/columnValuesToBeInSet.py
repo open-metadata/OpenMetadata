@@ -16,20 +16,23 @@ Validator for column value to not be in set test case
 import traceback
 from ast import literal_eval
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column, inspect
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
-from sqlalchemy import Column, inspect
 
 logger = test_suite_logger()
 
+
 class ColumnValuesToBeInSetValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column value to be not in set test case"""
+    """ "Validator for column value to be not in set test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -47,11 +50,11 @@ class ColumnValuesToBeInSetValidator(BaseTestHandler, SQAValidatorMixin):
                 self.test_case.entityLink.__root__,
                 inspect(self.runner.table).c,
             )
-            res = self.run_query_results(self.runner, Metrics.COUNT_IN_SET, column, values=allowed_values)
-        except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
+            res = self.run_query_results(
+                self.runner, Metrics.COUNT_IN_SET, column, values=allowed_values
             )
+        except ValueError as exc:
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
@@ -63,7 +66,7 @@ class ColumnValuesToBeInSetValidator(BaseTestHandler, SQAValidatorMixin):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            TestCaseStatus.Success if res >=1 else TestCaseStatus.Failed,
+            TestCaseStatus.Success if res >= 1 else TestCaseStatus.Failed,
             f"Found countInSet={res}.",
             [TestResultValue(name="allowedValueCount", value=str(res))],
         )

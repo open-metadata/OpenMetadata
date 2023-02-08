@@ -227,7 +227,9 @@ def import_test_case_class(
     Returns:
         Callable: test validator object
     """
-    test_definition_class = test_definition[0].upper() + test_definition[1:] # change test names to camel case
+    test_definition_class = (
+        test_definition[0].upper() + test_definition[1:]
+    )  # change test names to camel case
     return import_from_module(
         "metadata.test_suite.validations.{}.{}.{}.{}Validator".format(
             test_type.lower(),

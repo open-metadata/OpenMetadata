@@ -15,21 +15,24 @@ Validator for column values to not match regex test case
 
 import traceback
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import CompileError
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
+
 logger = test_suite_logger()
 
+
 class ColumnValuesToNotMatchRegexValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column values to not match regex test case"""
+    """ "Validator for column values to not match regex test case"""
 
     def get_not_match_count(self, column: Column, regex: str):
         """Not all database engine support REGEXP (e.g. MSSQL) so we'll fallback to LIKE.
@@ -45,10 +48,16 @@ class ColumnValuesToNotMatchRegexValidator(BaseTestHandler, SQAValidatorMixin):
             int
         """
         try:
-            return self.run_query_results(self.runner, Metrics.NOT_REGEX_COUNT, column, expression=regex)
+            return self.run_query_results(
+                self.runner, Metrics.NOT_REGEX_COUNT, column, expression=regex
+            )
         except CompileError as err:
-            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
-            return self.run_query_results(self.runner, Metrics.NOT_LIKE_COUNT, column, expression=regex)
+            logger.warning(
+                f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
+            )
+            return self.run_query_results(
+                self.runner, Metrics.NOT_LIKE_COUNT, column, expression=regex
+            )
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -68,9 +77,7 @@ class ColumnValuesToNotMatchRegexValidator(BaseTestHandler, SQAValidatorMixin):
             )
             not_match_count = self.get_not_match_count(column, forbidden_regex)
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
@@ -84,5 +91,5 @@ class ColumnValuesToNotMatchRegexValidator(BaseTestHandler, SQAValidatorMixin):
             self.execution_date,
             TestCaseStatus.Success if not not_match_count else TestCaseStatus.Failed,
             f"Found {not_match_count} value(s) matching the forbidden regex pattern vs {not_match_count} value(s) in the column.",
-            [TestResultValue(name="notLikeCount", value=str(not_match_count))]
+            [TestResultValue(name="notLikeCount", value=str(not_match_count))],
         )

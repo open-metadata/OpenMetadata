@@ -18,8 +18,8 @@ from datetime import datetime
 
 import pytest
 
-from metadata.test_suite.validations.validator import Validator
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -160,7 +160,6 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "COLUMN",
             (TestCaseResult, "0", None, TestCaseStatus.Success),
         ),
-
         (
             "test_case_table_column_count_to_be_between",
             "tableColumnCountToBeBetween",

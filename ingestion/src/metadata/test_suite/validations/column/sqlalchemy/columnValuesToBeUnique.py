@@ -15,31 +15,38 @@ Validator for column values sum to be between test case
 
 import traceback
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import Column, inspect
 from sqlalchemy.orm.util import AliasedClass
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
+
 logger = test_suite_logger()
 
+
 class ColumnValuesToBeUniqueValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column values sum to be between test case"""
+    """ "Validator for column values sum to be between test case"""
 
     def get_unique_count(self, column: Column):
         """Get unique count of values"""
         unique_count = dict(
             self.runner.select_all_from_query(
                 Metrics.UNIQUE_COUNT.value(column).query(
-                    sample=self.runner._sample if isinstance(self.runner._sample, AliasedClass) else self.runner.table,
+                    sample=self.runner._sample
+                    if isinstance(self.runner._sample, AliasedClass)
+                    else self.runner.table,
                     session=self.runner._session,
                 )
-            )[0]  # query result is a list of tuples
+            )[
+                0
+            ]  # query result is a list of tuples
         )
 
         return unique_count.get(Metrics.UNIQUE_COUNT.name)
@@ -58,9 +65,7 @@ class ColumnValuesToBeUniqueValidator(BaseTestHandler, SQAValidatorMixin):
             count = self.run_query_results(self.runner, Metrics.COUNT, column)
             unique_count = self.get_unique_count(column)
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(

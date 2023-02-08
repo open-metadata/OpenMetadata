@@ -14,25 +14,28 @@ Validator for column values sum to be between test case
 """
 
 import traceback
-from datetime import datetime
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.column.column_values_to_be_between import \
-    convert_timestamp
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import Column, inspect
 from sqlalchemy.sql.sqltypes import DATE, DATETIME, TIMESTAMP
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.column.column_values_to_be_between import (
+    convert_timestamp,
+)
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
+
 logger = test_suite_logger()
 
+
 class ColumnValuesToBeNotNullValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column values sum to be between test case"""
+    """ "Validator for column values sum to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -47,9 +50,7 @@ class ColumnValuesToBeNotNullValidator(BaseTestHandler, SQAValidatorMixin):
             )
             res = self.run_query_results(self.runner, Metrics.NULL_COUNT, column)
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(

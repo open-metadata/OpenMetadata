@@ -15,20 +15,22 @@ Validator for column value length to be between test case
 
 import traceback
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.test_suite.validations.base_test_handler import \
-    BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import inspect
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
+
 class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column value mean to be between test case"""
+    """ "Validator for column value mean to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -43,16 +45,14 @@ class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
                     f"Column Count for test case {self.test_case.name} returned None"
                 )
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="columnCount", value=None)]
+                [TestResultValue(name="columnCount", value=None)],
             )
 
         min_bound = self.get_test_case_param_value(
@@ -71,7 +71,9 @@ class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            TestCaseStatus.Success if min_bound <= count <= max_bound else TestCaseStatus.Failed,
+            TestCaseStatus.Success
+            if min_bound <= count <= max_bound
+            else TestCaseStatus.Failed,
             f"Found columnCount={count} column vs. the expected  min={min_bound} and max={max_bound}].",
-            [TestResultValue(name="columnCount", value=str(count))]
+            [TestResultValue(name="columnCount", value=str(count))],
         )

@@ -13,13 +13,11 @@
 Validator Mixin for SQA tests cases
 """
 
-from datetime import datetime
 import reprlib
-from typing import Any, Callable, List, Optional, Union, TypeVar
+from datetime import datetime
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from sqlalchemy import Column
-
-from metadata.orm_profiler.metrics.core import add_props
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -27,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
@@ -37,8 +36,10 @@ logger = test_suite_logger()
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
 
+
 class SQAValidatorMixin:
-    """Validatori mixin for SQA test cases"""    
+    """Validatori mixin for SQA test cases"""
+
     def get_column_name(self, entity_link: str, columns: List) -> Column:
         """Given a column name get the column object
 
@@ -53,9 +54,7 @@ class SQAValidatorMixin:
             None,
         )
         if column_obj is None:
-            raise ValueError(
-                f"Cannot find column {column}"
-            )
+            raise ValueError(f"Cannot find column {column}")
         return column_obj
 
     def get_test_case_result_object(
@@ -74,7 +73,7 @@ class SQAValidatorMixin:
             test_result_value (List[TestResultValue]): test result value to display in UI
         Returns:
             TestCaseResult:
-        """    
+        """
         return TestCaseResult(
             timestamp=execution_date,  # type: ignore
             testCaseStatus=status,
@@ -90,7 +89,7 @@ class SQAValidatorMixin:
         type_: T,
         default: Optional[R] = None,
         pre_processor: Optional[Callable] = None,
-    ) -> Optional[Union[R,T]]:
+    ) -> Optional[Union[R, T]]:
         """Give a column and a type return the value with the appropriate type casting for the
         test case definition.
 
@@ -141,9 +140,7 @@ class SQAValidatorMixin:
         metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
         metric_fn = metric_obj(column).fn() if column is not None else metric_obj().fn()
 
-        value = dict(
-            runner.dispatch_query_select_first(metric_fn)  # type: ignore
-        )
+        value = dict(runner.dispatch_query_select_first(metric_fn))  # type: ignore
 
         res = value.get(metric.name)
         if res is None:

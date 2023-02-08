@@ -17,20 +17,22 @@ import collections
 import traceback
 from typing import cast
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.test_suite.validations.base_test_handler import \
-    BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import text
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
+
 class TableCustomSQLQueryValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column value mean to be between test case"""
+    """ "Validator for column value mean to be between test case"""
 
     def compare(self, expected_names, actual_names) -> bool:
         return collections.Counter(expected_names) == collections.Counter(actual_names)
@@ -46,21 +48,21 @@ class TableCustomSQLQueryValidator(BaseTestHandler, SQAValidatorMixin):
             "sqlExpression",
             str,
         )
-        sql_expression= cast(str, sql_expression)  # satisfy mypy
+        sql_expression = cast(str, sql_expression)  # satisfy mypy
 
         try:
-            rows = self.runner._session.execute(text(sql_expression)).all()  # pylint: disable=protected-access
+            rows = self.runner._session.execute(
+                text(sql_expression)
+            ).all()  # pylint: disable=protected-access
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="resultRowCount", value=None)]
+                [TestResultValue(name="resultRowCount", value=None)],
             )
 
         if not rows:
@@ -74,5 +76,5 @@ class TableCustomSQLQueryValidator(BaseTestHandler, SQAValidatorMixin):
             self.execution_date,
             status,
             f"Found {result_value} row(s). Test query is expected to return 0 row.",
-            [TestResultValue(name="resultRowCount", value=str(result_value))]
+            [TestResultValue(name="resultRowCount", value=str(result_value))],
         )

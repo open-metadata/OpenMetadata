@@ -16,23 +16,27 @@ Validator for column values sum to be between test case
 import traceback
 from datetime import datetime
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.column.column_values_to_be_between import \
-    convert_timestamp
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import Column, inspect
 from sqlalchemy.sql.sqltypes import DATE, DATETIME, TIMESTAMP
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.column.column_values_to_be_between import (
+    convert_timestamp,
+)
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
+
 logger = test_suite_logger()
 
+
 class ColumnValuesToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
-    """"Validator for column values sum to be between test case"""
+    """ "Validator for column values sum to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -48,9 +52,7 @@ class ColumnValuesToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
             min_res = self.run_query_results(self.runner, Metrics.MIN, column)
             max_res = self.run_query_results(self.runner, Metrics.MAX, column)
         except ValueError as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            )
+            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
@@ -66,22 +68,36 @@ class ColumnValuesToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
         min_bound = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "minValue",
-            datetime.fromtimestamp if isinstance(column.type, (TIMESTAMP, DATE, DATETIME)) else float,
-            default=datetime.min if isinstance(column.type, (TIMESTAMP, DATE, DATETIME)) else float("-inf"),
-            pre_processor=convert_timestamp if isinstance(column.type, (TIMESTAMP, DATE, DATETIME)) else None,
+            datetime.fromtimestamp
+            if isinstance(column.type, (TIMESTAMP, DATE, DATETIME))
+            else float,
+            default=datetime.min
+            if isinstance(column.type, (TIMESTAMP, DATE, DATETIME))
+            else float("-inf"),
+            pre_processor=convert_timestamp
+            if isinstance(column.type, (TIMESTAMP, DATE, DATETIME))
+            else None,
         )
 
         max_bound = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "maxValue",
-            datetime.fromtimestamp if isinstance(column.type, (TIMESTAMP, DATE, DATETIME)) else float,
-            default=datetime.max if isinstance(column.type, (TIMESTAMP, DATE, DATETIME)) else float("-inf"),
-            pre_processor=convert_timestamp if isinstance(column.type, (TIMESTAMP, DATE, DATETIME)) else None,
+            datetime.fromtimestamp
+            if isinstance(column.type, (TIMESTAMP, DATE, DATETIME))
+            else float,
+            default=datetime.max
+            if isinstance(column.type, (TIMESTAMP, DATE, DATETIME))
+            else float("-inf"),
+            pre_processor=convert_timestamp
+            if isinstance(column.type, (TIMESTAMP, DATE, DATETIME))
+            else None,
         )
 
         return self.get_test_case_result_object(
             self.execution_date,
-            TestCaseStatus.Success if min_res >= min_bound and max_res <= max_bound else TestCaseStatus.Failed,
+            TestCaseStatus.Success
+            if min_res >= min_bound and max_res <= max_bound
+            else TestCaseStatus.Failed,
             f"Found min={min_res}, max={max_res} vs. the expected min={min_bound}, max={max_bound}.",
             [
                 TestResultValue(name="min", value=str(min_res)),
