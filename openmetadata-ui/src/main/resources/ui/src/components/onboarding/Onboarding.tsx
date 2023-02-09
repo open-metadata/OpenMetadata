@@ -11,29 +11,10 @@
  *  limitations under the License.
  */
 
+import { ONBOARDING_STEPS_DATA } from 'constants/Onboarding.constants';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
-
-const stepsData = [
-  {
-    step: 1,
-    title: 'Explore Data',
-    description: 'Look at the popular data assets in your organization.',
-  },
-  {
-    step: 2,
-    title: 'Claim Ownership',
-    description:
-      'Data works well when it is owned. Take a look at the data assets that you own and claim ownership.',
-  },
-  {
-    step: 3,
-    title: 'Stay Up-to-date',
-    description:
-      'Follow the datasets that you frequently use to stay informed about it.',
-  },
-];
 
 const Onboarding: FC = () => {
   return (
@@ -48,7 +29,7 @@ const Onboarding: FC = () => {
           {t('message.om-description')}
         </div>
         <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
-          {stepsData.map((data) => (
+          {ONBOARDING_STEPS_DATA.map((data) => (
             <div
               className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
               key={uniqueId()}>
@@ -62,11 +43,11 @@ const Onboarding: FC = () => {
                 <h6
                   className="tw-text-base tw-text-grey-body tw-font-medium"
                   data-testid="service-name">
-                  {data.title}
+                  {t(data.title)}
                 </h6>
 
                 <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {data.description}
+                  {t(data.description)}
                 </p>
               </div>
             </div>

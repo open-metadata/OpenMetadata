@@ -120,7 +120,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                   <RichTextEditor
                     height="208px"
                     initialValue={suggestion}
-                    placeHolder="Add description"
+                    placeHolder={t('label.add-entity', {
+                      entity: t('label.description'),
+                    })}
                     style={{ marginTop: '0px' }}
                     onTextChange={onSuggestionChange}
                   />

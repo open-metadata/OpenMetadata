@@ -112,13 +112,13 @@ const CustomEntityDetailV1 = () => {
 
     return [
       {
-        name: 'Custom Properties',
+        name: t('label.custom-property-plural'),
         isProtected: false,
         position: 1,
         count: (customProperties || []).length,
       },
       {
-        name: 'Schema',
+        name: t('label.schema'),
         isProtected: false,
         position: 2,
       },
