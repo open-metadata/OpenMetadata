@@ -28,6 +28,7 @@ import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.client.JerseyClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
@@ -37,6 +38,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
@@ -58,7 +60,7 @@ public abstract class OpenMetadataApplicationTest {
     JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
-    sqlContainer.withReuse(true);
+    sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();

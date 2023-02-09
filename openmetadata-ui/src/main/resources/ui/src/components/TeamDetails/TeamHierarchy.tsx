@@ -49,7 +49,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   const columns: ColumnsType<Team> = useMemo(() => {
     return [
       {
-        title: 'Teams',
+        title: t('label.team-plural'),
         dataIndex: 'teams',
         key: 'teams',
         render: (_, record) => (
@@ -61,30 +61,30 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         ),
       },
       {
-        title: 'Type',
+        title: t('label.type'),
         dataIndex: 'teamType',
         key: 'teamType',
       },
       {
-        title: 'Sub Teams',
+        title: t('label.sub-team-plural'),
         dataIndex: 'childrenCount',
         key: 'subTeams',
         render: (childrenCount: number) => childrenCount ?? '--',
       },
       {
-        title: 'Users',
+        title: t('label.user-plural'),
         dataIndex: 'userCount',
         key: 'users',
         render: (userCount: number) => userCount ?? '--',
       },
       {
-        title: 'Asset Count',
+        title: t('label.asset-count'),
         dataIndex: 'owns',
         key: 'owns',
         render: (owns) => owns.length,
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (description: string) => description || '--',

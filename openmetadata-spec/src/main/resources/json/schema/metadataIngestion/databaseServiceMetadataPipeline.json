@@ -43,6 +43,11 @@
       "type": "boolean",
       "default": true
     },
+    "processPiiSensitive": {
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+      "type": "boolean",
+      "default": true
+    },
     "useFqnForFiltering": {
       "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
       "type": "boolean",
