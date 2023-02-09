@@ -153,6 +153,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Tests',
         dataIndex: 'testCount',
         key: 'Tests',
+        fixed: 'right',
         render: (_, record) => (
           <Link
             data-testid={`${record.name}-test-count`}
@@ -171,6 +172,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         width: 120,
+        fixed: 'right',
         render: (_, record) => {
           const summary =
             columnTestSummary?.[
@@ -200,6 +202,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
+        fixed: 'right',
         render: (_, record) => (
           <Tooltip
             placement="bottom"
