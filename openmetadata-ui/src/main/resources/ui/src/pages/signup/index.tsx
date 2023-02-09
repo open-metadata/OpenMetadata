@@ -146,7 +146,9 @@ const SignUp = () => {
                       data-testid="full-name-input"
                       id="displayName"
                       name="displayName"
-                      placeholder="Your Full name"
+                      placeholder={t('label.your-entity', {
+                        entity: t('label.full-name'),
+                      })}
                       type="text"
                       value={details.displayName}
                       onChange={onChangeHandler}
@@ -168,7 +170,7 @@ const SignUp = () => {
                       data-testid="username-input"
                       id="name"
                       name="name"
-                      placeholder="Username"
+                      placeholder={t('label.username')}
                       type="text"
                       value={details.name}
                       onChange={onChangeHandler}
@@ -190,7 +192,9 @@ const SignUp = () => {
                       data-testid="email-input"
                       id="email"
                       name="email"
-                      placeholder="Your email address"
+                      placeholder={t('label.your-entity', {
+                        entity: `${t('label.email')} ${t('label.address')}`,
+                      })}
                       type="email"
                       value={details.email}
                       onChange={onChangeHandler}
