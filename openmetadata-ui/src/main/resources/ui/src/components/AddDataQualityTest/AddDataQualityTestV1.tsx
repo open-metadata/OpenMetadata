@@ -31,7 +31,6 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import {
@@ -173,7 +172,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         id: getCurrentUserId(),
         type: OwnerType.USER,
       };
-      const testCasePayload: CreateTestCase = {
+      const testCasePayload: TestCase = {
         name,
         description,
         entityLink,

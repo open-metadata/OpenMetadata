@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import CreateUserComponent from 'components/CreateUser/CreateUser.component';
+import _ from 'lodash';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -100,7 +101,7 @@ const CreateUserPage = () => {
 
           // Create a bot entity with botUser data
           const botResponse = await createBotWithPut({
-            botUser: userResponse.fullyQualifiedName!,
+            botUser: _.toString(userResponse.fullyQualifiedName),
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
