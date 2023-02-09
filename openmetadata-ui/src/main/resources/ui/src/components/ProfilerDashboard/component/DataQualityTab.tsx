@@ -68,7 +68,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <Icon
                 alt="result"
                 component={getTestResultBadgeIcon(result.testCaseStatus)}
-                width={16}
+                style={{ fontSize: '16px' }}
               />
             )}
             <Typography.Text>{result?.testCaseStatus || '--'}</Typography.Text>

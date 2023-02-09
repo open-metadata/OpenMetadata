@@ -192,7 +192,7 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <Icon alt={title} component={icon} width={width} />
+      <Icon alt={title} component={icon} style={{ fontSize: width }} />
     </Tooltip>
   );
 };
