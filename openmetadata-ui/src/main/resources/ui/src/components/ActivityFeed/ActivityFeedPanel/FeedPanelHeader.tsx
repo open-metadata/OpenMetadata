@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PlusOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
@@ -62,7 +62,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
                 onClick={() => {
                   onShowNewConversation?.(true);
                 }}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined />
               </Button>
             </Tooltip>
           ) : null}

@@ -103,7 +103,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // - term1
     //   - term11
     //   - term12
-    Glossary glossary1 = createGlossary("glossary1", null, null);
+    Glossary glossary1 = createGlossary("glossãry1", null, null);
 
     GlossaryTerm term1 = createTerm(glossary1, null, "term1");
     GlossaryTerm term11 = createTerm(glossary1, term1, "term11");
@@ -115,7 +115,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // - term2
     //   - term21
     //   - term22
-    Glossary glossary2 = createGlossary("glossary2", null, null);
+    Glossary glossary2 = createGlossary("词汇表二", null, null);
 
     GlossaryTerm term2 = createTerm(glossary2, null, "term2");
     GlossaryTerm term21 = createTerm(glossary2, term2, "term21");

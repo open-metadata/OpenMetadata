@@ -16,6 +16,7 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { ROUTES } from '../../constants/constants';
@@ -35,6 +36,7 @@ interface SignUpFormData {
 }
 
 const BasicSignUp = () => {
+  const { t } = useTranslation();
   const { authConfig } = useAuthContext();
   const { handleRegister } = useBasicAuth();
   const history = useHistory();
@@ -79,8 +81,7 @@ const BasicSignUp = () => {
           <div className="mt-4 text-center flex-center flex-col">
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-              Centralized Metadata Store, Discover, Collaborate and get your
-              Data Right
+              {t('message.om-description')}
             </Typography.Text>
 
             {isAuthProviderBasic ? (
@@ -155,23 +156,27 @@ const BasicSignUp = () => {
                           className="w-full"
                           htmlType="submit"
                           type="primary">
-                          Create Account
+                          {t('label.create-entity', {
+                            entity: t('label.account'),
+                          })}
                         </Button>
 
                         <Divider className="w-min-0  mt-8 mb-12 justify-center">
-                          <Typography.Text type="secondary">or</Typography.Text>
+                          <Typography.Text type="secondary">
+                            {t('label.or-lowercase')}
+                          </Typography.Text>
                         </Divider>
 
                         <div className="mt-4 d-flex flex-center">
                           <Typography.Text className="mr-4">
-                            Already a user?
+                            {t('message.already-a-user')}
                           </Typography.Text>
                           <Button
                             ghost
                             data-testid="login"
                             type="link"
                             onClick={handleLogin}>
-                            Login
+                            {t('label.login')}
                           </Button>
                         </div>
                       </Form>

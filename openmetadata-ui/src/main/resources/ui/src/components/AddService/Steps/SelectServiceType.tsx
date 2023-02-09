@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -147,7 +148,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          <span>Cancel</span>
+          <span>{t('label.cancel')}</span>
         </Button>
 
         <Button
@@ -156,7 +157,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="contained"
           onClick={onNext}>
-          <span>Next</span>
+          <span>{t('label.next')}</span>
         </Button>
       </Field>
     </div>

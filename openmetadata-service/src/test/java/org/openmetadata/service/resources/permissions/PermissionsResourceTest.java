@@ -51,7 +51,6 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -78,7 +77,6 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static Rule ORG_IS_OWNER_RULE;
   private static Rule ORG_NO_OWNER_RULE;

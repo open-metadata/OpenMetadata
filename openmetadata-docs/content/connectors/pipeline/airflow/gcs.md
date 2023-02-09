@@ -223,7 +223,7 @@ with models.DAG(
         task_id="ingest",
         name="ingest",
         cmds=["python", "main.py"],
-        image="openmetadata/ingestion-base:0.13.1",
+        image="openmetadata/ingestion-base:0.13.2",
         namespace='default',
         env_vars={"config": config, "pipelineType": "metadata"},
         dag=dag,
@@ -238,7 +238,7 @@ You can name the task as you want (`task_id` and `name`). The important points h
 be changed, and the `env_vars`. The `main.py` script that gets shipped within the image will load the env vars
 as they are shown, so only modify the content of the config YAML, but not this dictionary.
 
-Note that the example uses the image `openmetadata/ingestion-base:0.13.1`. Update that accordingly for higher version
+Note that the example uses the image `openmetadata/ingestion-base:0.13.2`. Update that accordingly for higher version
 once they are released. Also, the image version should be aligned with your OpenMetadata server version to avoid
 incompatibilities.
 
@@ -247,7 +247,7 @@ KubernetesPodOperator(
     task_id="ingest",
     name="ingest",
     cmds=["python", "main.py"],
-    image="openmetadata/ingestion-base:0.13.1",
+    image="openmetadata/ingestion-base:0.13.2",
     namespace='default',
     env_vars={"config": config, "pipelineType": "metadata"},
     dag=dag,

@@ -182,18 +182,30 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         runs_data = response.get("data")
         if runs_data:
             run_id = runs_data[0]["id"]
-            logger.debug("Requesting [dbt_catalog]")
-            dbt_catalog = client.get(
-                f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
-            )
+            try:
+                logger.debug("Requesting [dbt_catalog]")
+                dbt_catalog = client.get(
+                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
+                )
+            except Exception as exc:
+                logger.info(
+                    f"dbt catalog file not found, skipping the catalog file: {exc}"
+                )
+                logger.debug(traceback.format_exc())
             logger.debug("Requesting [dbt_manifest]")
             dbt_manifest = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
             )
-            logger.debug("Requesting [dbt_run_results]")
-            dbt_run_results = client.get(
-                f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
-            )
+            try:
+                logger.debug("Requesting [dbt_run_results]")
+                dbt_run_results = client.get(
+                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
+                )
+            except Exception as exc:
+                logger.info(
+                    f"dbt run_results file not found, skipping dbt tests: {exc}"
+                )
+                logger.debug(traceback.format_exc())
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in DBT Cloud")
 

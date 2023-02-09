@@ -469,6 +469,7 @@ const AddAlertPage = () => {
           case AlertActionType.GenericWebhook:
           case AlertActionType.SlackWebhook:
           case AlertActionType.MSTeamsWebhook:
+          case AlertActionType.GChatWebhook:
             return (
               <>
                 <Form.Item

@@ -149,7 +149,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         )}
         <Space
           className="items-center flex-wrap"
-          data-testid="tags"
           onClick={handleTagContainerClick}>
           <TagsContainer
             buttonContainerClass="m-t-0"
@@ -170,7 +169,8 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
             }}>
             {glossary?.tags && glossary?.tags.length ? (
               <Button
-                className="p-0 m-l-xss flex-center"
+                className="p-0 flex-center"
+                data-testid="edit-tag-icon"
                 disabled={!(permissions.EditTags || permissions.EditAll)}
                 icon={
                   <SVGIcons
@@ -180,6 +180,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
                     width="16px"
                   />
                 }
+                size="small"
                 type="text"
               />
             ) : (

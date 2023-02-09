@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { EllipsisOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -318,16 +318,13 @@ const PoliciesDetailPage = () => {
             <Button
               data-testid={`manage-button-${rule.name}`}
               disabled={!policyPermission.EditAll}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
               size="small"
               type="text"
               onClick={(e) => {
                 e.stopPropagation();
-              }}>
-              <FontAwesomeIcon
-                className="text-grey-body"
-                icon="ellipsis-vertical"
-              />
-            </Button>
+              }}
+            />
           </Tooltip>
         </Dropdown>
       );
@@ -443,7 +440,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="description">
                                   <Col span={2}>
                                     <Typography.Text className="text-grey-muted">
-                                      {t('label.description')} :
+                                      {`${t('label.description')}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
@@ -457,7 +454,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="resources">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted m-b-0">
-                                    {t('label.resource-plural')} :
+                                    {`${t('label.resource-plural')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -472,7 +469,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="operations">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {t('label.operation-plural')} :
+                                    {`${t('label.operation-plural')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -484,7 +481,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="effect">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {t('label.effect')} :
+                                    {`${t('label.effect')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -497,7 +494,7 @@ const PoliciesDetailPage = () => {
                                 <Row data-testid="condition">
                                   <Col span={2}>
                                     <Typography.Text className="text-grey-muted">
-                                      {t('label.condition')} :
+                                      {`${t('label.condition')}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>

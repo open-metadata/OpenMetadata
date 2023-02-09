@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+// / <reference types="Cypress" />
 import {
   descriptionBox,
   interceptURL,
@@ -162,12 +163,9 @@ describe('Glossary page should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
 
     // check for no data placeholder
-    cy.get('[data-testid="add-new-glossary"]')
-      .should('be.visible')
-      .as('addNewGlossary');
+    cy.get('[data-testid="add-glossary"]').should('be.visible').click();
 
     // Redirecting to add glossary page
-    cy.get('@addNewGlossary').click();
     cy.get('[data-testid="form-heading"]')
       .contains('Add Glossary')
       .should('be.visible');
@@ -187,6 +185,14 @@ describe('Glossary page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
+    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
+    cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
+      .scrollIntoView()
+      .should('be.visible')
+      .type('PersonalData.Personal');
+    verifyResponseStatusCode('@fetchTags', 200);
+    cy.get('[title="PersonalData.Personal"]').should('be.visible').click();
+    cy.get('#right-panel').click();
 
     cy.get('[data-testid="add-reviewers"]')
       .scrollIntoView()
@@ -199,7 +205,6 @@ describe('Glossary page should work properly', () => {
         cy.get('[role="dialog"]').should('be.visible');
       });
 
-    // Change this once issue related to suggestion API is fixed.
     interceptURL(
       'GET',
       '/api/v1/search/suggest?q=*&index=user_search_index',
@@ -233,7 +238,30 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.wait('@createGlossary').then(() => {
+    cy.wait('@createGlossary').then(({ request }) => {
+      expect(request.body).to.have.all.keys(
+        'description',
+        'displayName',
+        'mutuallyExclusive',
+        'name',
+        'owner',
+        'reviewers',
+        'tags'
+      );
+      expect(request.body.displayName).equals(NEW_GLOSSARY.name);
+      expect(request.body.name).equals(NEW_GLOSSARY.name);
+      expect(request.body.description).equals(NEW_GLOSSARY.description);
+      expect(request.body.mutuallyExclusive).equals(true);
+      expect(request.body.owner).to.have.all.keys('id', 'type');
+      expect(request.body.reviewers).has.length(1);
+      expect(request.body.tags).has.length(1);
+      expect(request.body.tags[0]).to.deep.equal({
+        labelType: 'Manual',
+        state: 'Confirmed',
+        tagFQN: 'PersonalData.Personal',
+        source: 'Tag',
+      });
+
       cy.url().should('include', '/glossary/');
       cy.get('[data-testid="breadcrumb-link"]')
         .scrollIntoView()
@@ -261,7 +289,24 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.wait('@createGlossary').then(() => {
+    cy.wait('@createGlossary').then(({ request }) => {
+      expect(request.body).to.have.all.keys(
+        'description',
+        'displayName',
+        'mutuallyExclusive',
+        'name',
+        'owner',
+        'reviewers',
+        'tags'
+      );
+      expect(request.body.displayName).equals(NEW_GLOSSARY_1.name);
+      expect(request.body.name).equals(NEW_GLOSSARY_1.name);
+      expect(request.body.description).equals(NEW_GLOSSARY_1.description);
+      expect(request.body.mutuallyExclusive).equals(false);
+      expect(request.body.owner).to.have.all.keys('id', 'type');
+      expect(request.body.reviewers).has.length(0);
+      expect(request.body.tags).has.length(0);
+
       cy.url().should('include', '/glossary/');
       cy.get('[data-testid="breadcrumb-link"]')
         .scrollIntoView()
@@ -271,6 +316,36 @@ describe('Glossary page should work properly', () => {
           cy.contains(NEW_GLOSSARY_1.name);
         });
     });
+  });
+
+  it('Search glossary in left panel', () => {
+    cy.get('#left-panelV1').should('be.visible').as('leftPanel');
+    cy.get('@leftPanel').contains(NEW_GLOSSARY.name).should('be.visible');
+    cy.get('@leftPanel').contains(NEW_GLOSSARY_1.name).should('be.visible');
+    cy.get('#left-panelV1 [data-testid="searchbar"]')
+      .should('be.visible')
+      .click()
+      .type(NEW_GLOSSARY_1.name);
+    cy.get('#left-panelV1').should('not.contain', NEW_GLOSSARY.name);
+    cy.get('#left-panelV1').contains(NEW_GLOSSARY_1.name).should('be.visible');
+  });
+
+  it('Verify and Remove Tags from Glossary', () => {
+    // Verify Tags which is added at the time of creating glossary
+    cy.get('[data-testid="glossary-details"]')
+      .contains('PersonalData.Personal')
+      .should('be.visible');
+
+    // Remove Tag
+    cy.get('[data-testid="edit-tag-icon"]').should('be.visible').click();
+    cy.get('.ant-select-selection-item-remove').should('be.visible').click();
+    interceptURL('PATCH', '/api/v1/glossaries/*', 'updateGlossary');
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    verifyResponseStatusCode('@updateGlossary', 200);
+    cy.get('[data-testid="glossary-details"]');
+    cy.get('[data-testid="glossary-details"] [data-testid="tag-container"]')
+      .contains('Add tag')
+      .should('be.visible');
   });
 
   it('Verify added glossary details', () => {

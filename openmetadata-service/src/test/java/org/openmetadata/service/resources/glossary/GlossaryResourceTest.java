@@ -100,7 +100,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .createRequest("g1t1", "", "", null)
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1_REF)
-            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
             .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
@@ -109,7 +108,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g2t1", "", "", null)
+            .createRequest("g1t2", "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
             .withGlossary(GLOSSARY2_REF)
             .withReviewers(GLOSSARY1.getReviewers());

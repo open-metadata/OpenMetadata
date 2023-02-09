@@ -15,6 +15,7 @@ import { Typography } from 'antd';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NoDataFoundPlaceHolder } from '../../../constants/Services.constant';
@@ -57,6 +58,7 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
+  const { t } = useTranslation();
   const { isAuthDisabled } = useAuthContext();
   const getUserDisplayName = () => {
     return isAuthDisabled
@@ -79,11 +81,11 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
         <div className="tw-flex tw-flex-col tw-items-center tw-mt-6 tw-text-base tw-font-medium">
           {query ? (
             <>
-              No matching data assets found
+              {t('label.no-matching-data-asset')}
               {query ? (
                 <>
                   {' '}
-                  for{' '}
+                  {t('label.for-lowercase')}
                   <span className="tw-text-primary tw-font-medium">
                     {query}
                   </span>
@@ -94,18 +96,17 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
             <>
               {' '}
               <Typography.Text className="tw-text-sm">
-                No Data Available
+                {t('message.no-data-available')}
               </Typography.Text>
               <Typography.Text className="tw-text-sm">
-                Start by adding a service connection to ingest data into
-                OpenMetadata.
+                {t('message.add-service-connection')}
               </Typography.Text>
               <Typography.Text className="tw-text-sm">
-                Refer to our{' '}
+                {t('label.refer-to-our')}{' '}
                 <Typography.Link href={CONNECTORS_DOCS} target="_blank">
-                  docs
+                  {t('label.doc-plural')}
                 </Typography.Link>{' '}
-                for more information.
+                {t('label.for-more-info')}
               </Typography.Text>
               <span />
             </>
@@ -123,14 +124,11 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
       <div className="tw-mb-5" data-testid="es-error">
         <div className="tw-mb-3 tw-text-center">
           <p>
-            <span>Welcome to OpenMetadata. </span>
+            <span>{t('label.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">{`We are unable to ${errorText} Elasticsearch for entity indexes.`}</span>
           </p>
 
-          <p>
-            Please follow the instructions here to set up Metadata ingestion and
-            index them into Elasticsearch.
-          </p>
+          <p>{t('message.elasticsearch-setup')}</p>
         </div>
         <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
           {stepsData.map((data) => (
@@ -157,7 +155,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
 
               <p>
                 <a href={data.link} rel="noopener noreferrer" target="_blank">
-                  Click here &gt;&gt;
+                  {`${t('label.click-here')} >>`}
                 </a>
               </p>
             </div>

@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ROUTES } from 'constants/constants';
+import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, {
   FunctionComponent,
@@ -153,20 +150,14 @@ const SampleDataTable: FunctionComponent<Props> = ({
         <button
           className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
           onClick={() => scrollHandler(-50)}>
-          <FontAwesomeIcon
-            className="tw-text-grey-muted"
-            icon={faChevronLeft}
-          />
+          <LeftOutlined className="tw-text-grey-muted" />
         </button>
       ) : null}
       {scrollHandle.right ? (
         <button
           className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
           onClick={() => scrollHandler(50)}>
-          <FontAwesomeIcon
-            className="tw-text-grey-muted"
-            icon={faChevronRight}
-          />
+          <RightOutlined className="tw-text-grey-muted" />
         </button>
       ) : null}
 
@@ -188,7 +179,7 @@ const SampleDataTable: FunctionComponent<Props> = ({
                       <Space direction="vertical" size={0}>
                         <span>{column.name}</span>
                         <span className="tw-text-grey-muted">
-                          ({lowerCase(column.dataType)})
+                          {`(${lowerCase(column.dataType)})`}
                         </span>
                       </Space>
                     </th>
@@ -229,19 +220,18 @@ const SampleDataTable: FunctionComponent<Props> = ({
             <div className="tw-max-w-x tw-text-center">
               <Typography.Paragraph style={{ marginBottom: '4px' }}>
                 {' '}
-                No sample data available
+                {t('message.no-data-available')}
               </Typography.Paragraph>
               <Typography.Paragraph>
                 {' '}
-                To view Sample Data, run the Profiler Ingestion. Please refer to
-                this doc to schedule the{' '}
+                {t('message.view-sample-data')}
                 <Link
                   className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname: WORKFLOWS_PROFILER_DOCS,
                   }}>
-                  Profiler Ingestion
+                  {t('label.profiler-ingestion')}
                 </Link>
               </Typography.Paragraph>
             </div>

@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
@@ -175,7 +176,9 @@ const AddCustomProperty = () => {
           <div
             className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded tw-form-container"
             data-testid="form-container">
-            <h6 className="tw-heading tw-text-base">Add Custom Property</h6>
+            <h6 className="tw-heading tw-text-base">
+              {t('label.add-entity', { entity: t('label.custom-property') })}
+            </h6>
 
             <Field>
               <label className="tw-block tw-form-label" htmlFor="name">
@@ -207,7 +210,11 @@ const AddCustomProperty = () => {
                 placeholder="type"
                 value={formData.type || ''}
                 onChange={onChangeHandler}>
-                <option value="">Select type</option>
+                <option value="">
+                  {t('label.select-field', {
+                    field: t('label.type-lowercase'),
+                  })}
+                </option>
                 {getPropertyTypes().map((propertyType) => (
                   <option key={uniqueId()} value={propertyType.id}>
                     {propertyType.displayName}
@@ -220,7 +227,7 @@ const AddCustomProperty = () => {
               <label
                 className="tw-block tw-form-label tw-mb-0"
                 htmlFor="description">
-                Description:
+                {`${t('label.description')}:`}
               </label>
               <RichTextEditor
                 data-testid="description"
@@ -235,7 +242,7 @@ const AddCustomProperty = () => {
                 theme="primary"
                 variant="text"
                 onClick={onCancel}>
-                Back
+                {t('label.back')}
               </Button>
 
               <Button
@@ -245,7 +252,7 @@ const AddCustomProperty = () => {
                 theme="primary"
                 type="submit"
                 onClick={onSave}>
-                Create
+                {t('label.create')}
               </Button>
             </Field>
           </div>
