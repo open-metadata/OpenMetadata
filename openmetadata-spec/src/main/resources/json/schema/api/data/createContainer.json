@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createMlModel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateContainerRequest",
+  "description": "Create Container Model entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateMlModel",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Container model.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Container model.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Container instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "objectStoreService": {
+      "description": "Link to the object store service where this container is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "parent": {
+      "description": "Link to the parent container under which this entity sits.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "References to child containers residing under this entity.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "dataModel": {
+      "description": "References to the container's data model, if data is structured, or null otherwise",
+      "$ref": "../../entity/data/container.json#/definitions/containerDataModel",
+      "default": null
+    },
+    "prefix": {
+      "description": "Optional prefix path defined for this container",
+      "type": "string",
+      "default": null
+    },
+    "numberOfObjects": {
+      "description": "The number of objects/files this container has.",
+      "type": "number",
+      "default": null
+    },
+    "size": {
+      "description": "The total size in KB this container has.",
+      "type": "number",
+      "default": null
+    },
+    "fileFormats": {
+      "description": "File formats identified for the Container",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "$ref": "../../entity/data/container.json#/definitions/dataFormat"
+          },
+          {
+            "type": "object",
+            "$ref": "../../entity/data/container.json#/definitions/fileFormat"
+          }
+        ]
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this Container Model",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    }
+  },
+  "required": ["name", "objectStoreService"],
+  "additionalProperties": false
+}

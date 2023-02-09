@@ -25,11 +25,7 @@
           "type": "array",
           "items": {
             "$ref": "../data/table.json#/definitions/column"
-          },
-          "default": null
-        },
-        "generatedAt": {
-          "$ref": "../../type/basic.json#/definitions/dateTime"
+          }
         }
       },
       "required": [
@@ -129,10 +125,6 @@
       "description": "Link to the object store service where this container is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
-    "serviceType": {
-      "description": "Service type where this container is hosted in.",
-      "$ref": "../services/objectstoreService.json#/definitions/objectStoreServiceType"
-    },
     "parent": {
       "description": "Link to the parent container under which this entity sits.",
       "$ref": "../../type/entityReference.json"
@@ -207,8 +199,7 @@
   "required": [
     "id",
     "name",
-    "objectStoreService",
-    "serviceType"
+    "objectStoreService"
   ],
   "additionalProperties": false
 }
