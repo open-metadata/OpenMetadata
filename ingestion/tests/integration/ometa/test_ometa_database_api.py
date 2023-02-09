@@ -85,7 +85,7 @@ class OMetaDatabaseTest(TestCase):
         cls.entity = Database(
             id=uuid.uuid4(),
             name="test-db",
-            service=cls.service_entity.fullyQualifiedName,
+            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
             fullyQualifiedName="test-service-db.test-db",
         )
 
@@ -137,7 +137,9 @@ class OMetaDatabaseTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(res.service.id, updated_entity.service.id)
+        self.assertEqual(
+            res.service.fullyQualifiedName, updated_entity.service.__root__
+        )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 

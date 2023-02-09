@@ -108,7 +108,9 @@ class OMetaModelTest(TestCase):
         )
 
         cls.create = CreateMlModelRequest(
-            name="test-model", algorithm="algo", service=cls.service_reference
+            name="test-model",
+            algorithm="algo",
+            service=cls.service_entity.fullyQualifiedName,
         )
 
         cls.entity = MlModel(
@@ -296,7 +298,7 @@ class OMetaModelTest(TestCase):
 
         create_table2 = CreateTableRequest(
             name="another_test-ml",
-            databaseSchema=schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
         table2_entity = self.metadata.create_or_update(data=create_table2)
@@ -348,7 +350,7 @@ class OMetaModelTest(TestCase):
                 MlHyperParameter(name="random", value="hello"),
             ],
             target="myTarget",
-            service=self.service_reference,
+            service=self.service_entity.fullyQualifiedName,
         )
 
         res: MlModel = self.metadata.create_or_update(data=model)

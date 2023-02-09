@@ -104,18 +104,18 @@ class OMetaESTest(TestCase):
             service=cls.service_entity.fullyQualifiedName,
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
+        cls.create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
             name="test-schema-es",
-            database=create_db_entity.fullyQualifiedName,
+            database=cls.create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         create = CreateTableRequest(
             name="test-es",
-            databaseSchema=create_schema_entity.fullyQualifiedName,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -164,7 +164,7 @@ class OMetaESTest(TestCase):
 
         fqn_search_string = fqn._build(
             self.service.name.__root__,
-            self.db_reference.name,
+            self.create_db_entity.name.__root__,
             "*",
             self.entity.name.__root__,
         )
@@ -180,8 +180,8 @@ class OMetaESTest(TestCase):
 
         fqn_search_string = fqn._build(
             self.service.name.__root__,
-            self.db_reference.name,
-            self.schema_reference.name,
+            self.create_db_entity.name.__root__,
+            self.create_schema_entity.name.__root__,
             self.entity.name.__root__,
         )
 

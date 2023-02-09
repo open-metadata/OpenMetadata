@@ -130,19 +130,15 @@ class AirflowLineageTest(TestCase):
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
-        schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-        )
-
         create_inlet = CreateTableRequest(
             name="lineage-test-inlet",
-            databaseSchema=schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         create_outlet = CreateTableRequest(
             name="lineage-test-outlet",
-            databaseSchema=schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
