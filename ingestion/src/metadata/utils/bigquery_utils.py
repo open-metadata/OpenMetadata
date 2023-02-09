@@ -13,19 +13,24 @@
 Utils module of BigQuery
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
 from google.cloud import bigquery
 
-from metadata.utils.credentials import get_default_credentials, get_impersonate_credentials
+from metadata.utils.credentials import (
+    get_default_credentials,
+    get_impersonate_credentials,
+)
 
 
-def get_bigquery_client(project_id: Optional[str] = None,
-                        location: Optional[str] = None,
-                        impersonate_service_account: Optional[str] = None,
-                        quota_project_id: Optional[str] = None,
-                        scopes: Optional[List[str]] = None,
-                        lifetime: Optional[int] = None) -> bigquery.Client:
+def get_bigquery_client(
+    project_id: Optional[str] = None,
+    location: Optional[str] = None,
+    impersonate_service_account: Optional[str] = None,
+    quota_project_id: Optional[str] = None,
+    scopes: Optional[List[str]] = None,
+    lifetime: Optional[int] = None,
+) -> bigquery.Client:
     """Get a BigQuery client
 
     Args:
@@ -42,10 +47,16 @@ def get_bigquery_client(project_id: Optional[str] = None,
     # pylint: disable=R1705
     if impersonate_service_account is None:
         credentials = get_default_credentials(quota_project_id=quota_project_id)
-        return bigquery.Client(credentials=credentials, project=project_id, location=location)
+        return bigquery.Client(
+            credentials=credentials, project=project_id, location=location
+        )
     else:
-        credentials = get_impersonate_credentials(impersonate_service_account=impersonate_service_account,
-                                                  quoted_project_id=quota_project_id,
-                                                  scopes=scopes,
-                                                  lifetime=lifetime)
-        return bigquery.Client(credentials=credentials, project=project_id, location=location)
+        credentials = get_gcp_impersonate_credentials(
+            impersonate_service_account=impersonate_service_account,
+            quoted_project_id=quota_project_id,
+            scopes=scopes,
+            lifetime=lifetime,
+        )
+        return bigquery.Client(
+            credentials=credentials, project=project_id, location=location
+        )

@@ -55,10 +55,9 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
+from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.bigquery_utils import get_bigquery_client
-
 
 logger = ingestion_logger()
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -207,16 +206,19 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        quota_project_id = self.service_connection.connectionOptions.get("quotaProjectId", None)
-        location = self.service_connection.connectionOptions.get("location", None)
-        impersonate_service_account = self.service_connection.connectionOptions.get("impersonateServiceAccount", None)
-        lifetime = self.service_connection.connectionOptions.get("lifetime", None)
+        # TODO support location property in JSON Schema
+        # TODO support OAuth 2.0 scopes
+        impersonate_service_account = (
+            self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+        )
+        lifetime = (
+            self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+        )
         self.client = get_bigquery_client(
-            quota_project_id=quota_project_id,
             project_id=database_name,
             impersonate_service_account=impersonate_service_account,
-            location=location,
-            lifetime=lifetime)
+            lifetime=lifetime,
+        )
         if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
             self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
                 __root__=database_name
