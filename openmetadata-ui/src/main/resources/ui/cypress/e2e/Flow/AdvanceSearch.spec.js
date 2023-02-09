@@ -23,7 +23,6 @@ import {
   FIELDS,
   OPERATOR,
 } from '../../common/advancedSearch';
-
 import {
   deleteCreatedService,
   interceptURL,
@@ -31,7 +30,6 @@ import {
   testServiceCreationAndIngestion,
   verifyResponseStatusCode,
 } from '../../common/common';
-
 import { API_SERVICE } from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
 
@@ -102,7 +100,7 @@ describe('Advance search should work properly for all fields', () => {
           field.responseValueFirstGroup
         );
       });
-      cy.wait(1000);
+
       Object.values(CONDITIONS_MUST_NOT).forEach((condition) => {
         checkmust_notPaths(
           condition.name,

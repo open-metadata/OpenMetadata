@@ -134,7 +134,6 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -151,7 +150,6 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
     }
   });
 
-  cy.wait(1000);
   // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if ($body.find(`.ant-select-dropdown [title="${searchCriteria}"]`).length) {
@@ -179,11 +177,9 @@ export const goToAdvanceSearch = () => {
     .scrollIntoView()
     .should('exist')
     .and('be.visible');
-  cy.wait(1000);
+
   // Click on advance search button
   cy.get('[data-testid="advance-search-button"]').should('be.visible').click();
-
-  cy.wait(1000);
 };
 
 export const checkmustPaths = (
@@ -316,15 +312,11 @@ export const addOwner = (searchTerm, ownerName) => {
 
   verifyResponseStatusCode('@searchOwner', 200);
 
-  interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
+  interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
   // Selecting the user
-  cy.get('[data-testid="user-tag"]')
-    .contains(ownerName)
-    .should('exist')
-    .and('be.visible')
-    .click();
+  cy.get(`[title="${ownerName}"]`).should('exist').and('be.visible').click();
 
-  verifyResponseStatusCode('@validateOwner', 200);
+  verifyResponseStatusCode('@tablePatch', 200);
 
   cy.get('[data-testid="owner-link"]')
     .scrollIntoView()
@@ -352,13 +344,11 @@ export const addTier = (tier) => {
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="select-tier-buuton"]')
+  cy.get('[data-testid="select-tier-button"]')
     .first()
     .should('exist')
     .should('be.visible')
     .click();
-
-  cy.wait(1000);
 
   cy.get('[data-testid="tags"] > [data-testid="add-tag"]').should(
     'contain',
@@ -383,9 +373,8 @@ export const addTag = (tag) => {
     .scrollIntoView()
     .click();
 
-  cy.wait(500);
   cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
-  cy.wait(500);
+
   cy.get('.ant-select-item-option-content').should('be.visible').click();
   cy.get(
     '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
@@ -430,7 +419,6 @@ export const checkAddGroupWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_1}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -447,7 +435,6 @@ export const checkAddGroupWithOperator = (
     }
   });
 
-  cy.wait(1000);
   // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
@@ -483,7 +470,6 @@ export const checkAddGroupWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_2}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -500,7 +486,6 @@ export const checkAddGroupWithOperator = (
     }
   });
 
-  cy.wait(1000);
   // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
@@ -566,7 +551,6 @@ export const checkAddRuleWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_1}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -583,7 +567,6 @@ export const checkAddRuleWithOperator = (
     }
   });
 
-  cy.wait(1000);
   // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (
@@ -619,7 +602,6 @@ export const checkAddRuleWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_2}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -636,7 +618,6 @@ export const checkAddRuleWithOperator = (
     }
   });
 
-  cy.wait(1000);
   // if condition has a dropdown then select value from dropdown
   cy.get('body').then(($body) => {
     if (

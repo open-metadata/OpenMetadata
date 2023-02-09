@@ -21,7 +21,13 @@ import {
 } from 'components/Explore/explore.interface';
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
@@ -100,7 +106,7 @@ const ExplorePage: FunctionComponent = () => {
     setAdvancedSearchQueryFilter(undefined);
   };
 
-  const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
+  const handleQueryFilterChange = useCallback(
     (queryFilter) => {
       history.push({
         pathname: history.location.pathname,
@@ -110,7 +116,9 @@ const ExplorePage: FunctionComponent = () => {
           page: 1,
         }),
       });
-    };
+    },
+    [history, parsedSearch]
+  );
 
   const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
     postFilter
@@ -263,12 +271,13 @@ const ExplorePage: FunctionComponent = () => {
     page,
   ]);
 
-  const handleAdvanceSearchQueryFilterChange = (
-    filter?: Record<string, unknown>
-  ) => {
-    handlePageChange(1);
-    setAdvancedSearchQueryFilter(filter);
-  };
+  const handleAdvanceSearchQueryFilterChange = useCallback(
+    (filter?: Record<string, unknown>) => {
+      handlePageChange(1);
+      setAdvancedSearchQueryFilter(filter);
+    },
+    [setAdvancedSearchQueryFilter]
+  );
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -277,7 +286,6 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
-        advancedSearchJsonTree={queryFilter}
         loading={isLoading}
         page={page}
         postFilter={postFilter}
@@ -287,7 +295,6 @@ const ExplorePage: FunctionComponent = () => {
         sortOrder={sortOrder}
         sortValue={sortValue}
         tabCounts={searchHitCounts}
-        onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
         onChangeAdvancedSearchQueryFilter={handleAdvanceSearchQueryFilterChange}
         onChangePage={handlePageChange}
         onChangePostFilter={handlePostFilterChange}

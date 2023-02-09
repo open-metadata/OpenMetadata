@@ -12,7 +12,6 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { JsonTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -49,8 +48,6 @@ export interface ExploreProps {
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
-  advancedSearchJsonTree?: JsonTree;
-  onChangeAdvancedSearchJsonTree: (jsonTree: JsonTree | undefined) => void;
   onChangeAdvancedSearchQueryFilter: (
     queryFilter: Record<string, unknown> | undefined
   ) => void;
