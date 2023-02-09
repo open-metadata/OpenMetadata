@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -458,5 +459,17 @@ public final class EntityUtil {
     // Note - before calling this method - fullyQualifiedName should set up for the tags
     // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
     tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
+  }
+
+  public static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+    return new ChangeEvent()
+        .withEventType(eventType)
+        .withEntityId(entityInterface.getId())
+        .withEntityType(entityType)
+        .withUserName(entityInterface.getUpdatedBy())
+        .withTimestamp(entityInterface.getUpdatedAt())
+        .withChangeDescription(entityInterface.getChangeDescription())
+        .withCurrentVersion(entityInterface.getVersion())
+        .withEntity(entityInterface);
   }
 }

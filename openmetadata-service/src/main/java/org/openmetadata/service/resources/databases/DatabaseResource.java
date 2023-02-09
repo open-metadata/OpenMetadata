@@ -289,6 +289,12 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(
+              description = "Filter to apply patch to child entities",
+              schema = @Schema(type = "list", example = "false"))
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean isRecursive,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -299,7 +305,11 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (isRecursive) {
+      dao.applyPatchRecursivelyToChildren(id, patch, securityContext);
+    }
+    return response;
   }
 
   @PUT

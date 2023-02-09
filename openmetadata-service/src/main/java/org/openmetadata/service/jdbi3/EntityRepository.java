@@ -26,12 +26,14 @@ import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
@@ -57,7 +59,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -84,6 +88,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -876,6 +881,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public void applyPatchRecursivelyToChildren(UUID rootId, JsonPatch patch, SecurityContext securityContext)
+      throws IOException {
+    // Get the Root Entity
+    T rootEntity = get(null, rootId, getFields("*"));
+    for (JsonValue jsonValue : patch.toJsonArray()) {
+      String pathValue = jsonValue.asJsonObject().getValue("/path").toString();
+      if (pathValue.contains("tags") || pathValue.contains("owner")) {
+        List<EntityRelationshipRecord> records =
+            findTo(rootEntity.getId(), rootEntity.getEntityReference().getType(), Relationship.CONTAINS);
+        for (EntityReference entityReference : getEntityReferences(records)) {
+          EntityRepository<EntityInterface> entityRepository =
+              Entity.getEntityRepositoryWithEntityType(entityReference.getType());
+          if (entityRepository.allowedFields.contains("tags")) {
+            PatchResponse<EntityInterface> patchResponse =
+                entityRepository.patch(
+                    null, entityReference.getId(), securityContext.getUserPrincipal().getName(), patch);
+            EventPubSub.publish(
+                EntityUtil.getChangeEvent(
+                    EventType.ENTITY_UPDATED, entityReference.getType(), patchResponse.getEntity()));
+            entityRepository.applyPatchRecursivelyToChildren(entityReference.getId(), patch, securityContext);
+          }
+        }
+      } else {
+        throw new IllegalArgumentException("Can only update the tags");
+      }
+    }
+  }
+
   void checkMutuallyExclusive(List<TagLabel> tagLabels) {
     Map<String, TagLabel> map = new HashMap<>();
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
@@ -1029,6 +1062,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
   }
 
+  public final List<EntityRelationshipRecord> findTo(UUID fromId, String fromEntityType, Relationship relationship) {
+    return daoCollection.relationshipDAO().findTo(fromId.toString(), fromEntityType, relationship.ordinal());
+  }
+
   public void deleteRelationship(
       UUID fromId, String fromEntityType, UUID toId, String toEntityType, Relationship relationship) {
     daoCollection
@@ -1156,7 +1193,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Entities can be only owned by team of type 'group'
     if (owner.getType().equals(Entity.TEAM)) {
-      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, ALL);
+      Team team = getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
       }

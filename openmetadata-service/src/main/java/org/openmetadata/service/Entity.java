@@ -272,6 +272,17 @@ public final class Entity {
     return entityRepository;
   }
 
+  /** Retrieve the corresponding entity repository for a given entity name. */
+  public static <T extends EntityInterface> EntityRepository<T> getEntityRepositoryWithEntityType(
+      @NonNull String entityType) {
+    @SuppressWarnings("unchecked")
+    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
+    if (entityRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return entityRepository;
+  }
+
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);

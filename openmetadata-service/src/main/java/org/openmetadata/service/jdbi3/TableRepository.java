@@ -719,7 +719,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner,tags", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
@@ -728,6 +728,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Carry forward ownership from database schema
     table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
+
+    // Carry forward tags from databaseSchema at Table Level
+    if (table.getTags() == null && schema.getTags() != null) {
+      table.setTags(schema.getTags());
+    }
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());

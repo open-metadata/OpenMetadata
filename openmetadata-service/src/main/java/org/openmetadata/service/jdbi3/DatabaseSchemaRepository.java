@@ -32,7 +32,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner";
+  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner,tags";
   private static final String DATABASE_SCHEMA_PATCH_FIELDS = DATABASE_SCHEMA_UPDATE_FIELDS;
 
   public DatabaseSchemaRepository(CollectionDAO dao) {
@@ -77,6 +77,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     addRelationship(
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
     storeOwner(schema, schema.getOwner());
+    // Add tag to databaseSchema relationship
+    applyTags(schema);
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {
@@ -113,7 +115,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void populateDatabase(DatabaseSchema schema) throws IOException {
-    Database database = Entity.getEntity(schema.getDatabase(), "owner", ALL);
+    Database database = Entity.getEntity(schema.getDatabase(), "owner,tags", ALL);
     schema
         .withDatabase(database.getEntityReference())
         .withService(database.getService())
@@ -121,5 +123,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
     // Carry forward ownership from database, if necessary
     schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
+
+    // Carry forward tags from database
+    if (schema.getTags() == null && database.getTags() != null) {
+      schema.setTags(database.getTags());
+    }
   }
 }
