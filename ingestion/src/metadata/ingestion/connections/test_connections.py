@@ -52,22 +52,34 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
+    mandatory: bool = True
 
 
 def test_connection_steps(steps: List[TestConnectionStep]) -> None:
     """
     Run all the function steps and raise any errors
     """
+    errors = {}
     for step in steps:
         try:
             step.function()
         except Exception as exc:
-            msg = f"Error validating step [{step.name}] due to: {exc}."
-            raise SourceConnectionException(msg) from exc
+            msg = f"Faild to {step.name}, {exc}"
+            if step.mandatory:
+                errors[
+                    step.name
+                ] = f"{msg} This is a mandatory step and we won't be able to extract necessary metadata"
+            else:
+                errors[
+                    step.name
+                ] = f"{msg} This is a optional. The ingestion will continue to work as expected"
+
+    if errors:
+        raise SourceConnectionException(errors)
 
 
 @timeout(seconds=120)
-def test_connection_db_common(connection: Engine) -> None:
+def test_connection_db_common(connection: Engine, steps=None) -> None:
     """
     Default implementation is the engine to test.
 
@@ -78,6 +90,10 @@ def test_connection_db_common(connection: Engine) -> None:
     try:
         with connection.connect() as conn:
             conn.execute(ConnTestFn())
+            if steps:
+                test_connection_steps(steps)
+    except SourceConnectionException as exc:
+        raise exc
     except OperationalError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err

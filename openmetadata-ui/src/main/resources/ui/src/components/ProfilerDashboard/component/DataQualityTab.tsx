@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
@@ -24,7 +28,6 @@ import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
@@ -62,10 +65,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (result: TestCaseResult) => (
           <Space size={8}>
             {result?.testCaseStatus && (
-              <SVGIcons
+              <Icon
                 alt="result"
-                className="w-4"
-                icon={getTestResultBadgeIcon(result.testCaseStatus)}
+                component={getTestResultBadgeIcon(result.testCaseStatus)}
+                style={{ fontSize: '16px' }}
               />
             )}
             <Typography.Text>{result?.testCaseStatus || '--'}</Typography.Text>
@@ -169,14 +172,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     className="flex-center"
                     data-testid={`edit-${record.name}`}
                     disabled={!hasAccess}
-                    icon={
-                      <SVGIcons
-                        alt="edit"
-                        className="h-4"
-                        icon={Icons.EDIT}
-                        title="Edit"
-                      />
-                    }
+                    icon={<IconEdit width={16} />}
                     type="text"
                     onClick={(e) => {
                       // preventing expand/collapse on click of edit button
@@ -195,13 +191,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   className="flex-center"
                   data-testid={`delete-${record.name}`}
                   disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="h-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
+                  icon={<IconDelete width={16} />}
                   type="text"
                   onClick={(e) => {
                     // preventing expand/collapse on click of delete button

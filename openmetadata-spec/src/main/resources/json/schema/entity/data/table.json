@@ -119,7 +119,11 @@
         "POINT",
         "POLYGON",
         "BYTEA",
-        "AGGREGATEFUNCTION"
+        "AGGREGATEFUNCTION",
+        "ERROR",
+        "FIXED",
+        "RECORD",
+        "NULL"
       ]
     },
     "constraint": {
