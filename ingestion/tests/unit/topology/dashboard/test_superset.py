@@ -255,7 +255,7 @@ class SupersetUnitTest(TestCase):
             SupersetAPIClient, "fetch_dashboards", return_value=MOCK_DASHBOARD_RESP
         ):
             dashboaed_list = self.superset_api.get_dashboards_list()
-            self.assertEqual(list(dashboaed_list), [MOCK_DASHBOARD])
+            self.assertEqual(list(dashboard_list), [MOCK_DASHBOARD])
 
     def test_charts_of_dashboard(self):
         """
