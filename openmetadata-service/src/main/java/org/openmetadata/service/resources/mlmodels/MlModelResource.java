@@ -95,7 +95,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Valid
   @Operation(
       operationId = "listMlModels",
-      summary = "List ML Models",
+      summary = "List ML models",
       tags = "mlModels",
       description =
           "Get a list of mlmodels, optionally filtered by `service` it belongs to. Use `fields` "
@@ -147,9 +147,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "getMlModelByID",
-      summary = "Get an ML Model",
+      summary = "Get an ML model by Id",
       tags = "mlModels",
-      description = "Get an ML Model by `id`.",
+      description = "Get an ML model by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -180,9 +180,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getMlModelByFQN",
-      summary = "Get an ML Model by name",
+      summary = "Get an ML model by fully qualified name",
       tags = "mlModels",
-      description = "Get an ML Model by fully qualified name.",
+      description = "Get an ML model by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -213,9 +213,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @POST
   @Operation(
       operationId = "createMlModel",
-      summary = "Create an ML Model",
+      summary = "Create an ML model",
       tags = "mlModels",
-      description = "Create a new ML Model.",
+      description = "Create a new ML model.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -234,9 +234,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "patchMlModel",
-      summary = "Update an ML Model",
+      summary = "Update an ML model",
       tags = "mlModels",
-      description = "Update an existing ML Model using JsonPatch.",
+      description = "Update an existing ML model using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
@@ -259,9 +259,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @PUT
   @Operation(
       operationId = "createOrUpdateMlModel",
-      summary = "Create or update an ML Model",
+      summary = "Create or update an ML model",
       tags = "mlModels",
-      description = "Create a new ML Model, if it does not exist or update an existing model.",
+      description = "Create a new ML model, if it does not exist or update an existing model.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -327,9 +327,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllMlModelVersion",
-      summary = "List Ml Model versions",
+      summary = "List ML model versions",
       tags = "mlModels",
-      description = "Get a list of all the versions of an Ml Model identified by `id`",
+      description = "Get a list of all the versions of an ML Model identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -348,9 +348,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificMlModelVersion",
-      summary = "Get a version of the ML Model",
+      summary = "Get a version of the ML model",
       tags = "mlModels",
-      description = "Get a version of the ML Model by given `id`",
+      description = "Get a version of the ML model by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -377,9 +377,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "deleteMlModel",
-      summary = "Delete an ML Model",
+      summary = "Delete an ML model by Id",
       tags = "mlModels",
-      description = "Delete an ML Model by `id`.",
+      description = "Delete an ML model by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
@@ -400,9 +400,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteMlModelByFQN",
-      summary = "Delete an ML Model",
+      summary = "Delete a ML model by fully qualified name",
       tags = "mlModels",
-      description = "Delete an ML Model by `fullyQualifiedName`.",
+      description = "Delete an ML model by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "model for instance {fqn} is not found")
@@ -423,9 +423,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted MlModel.",
+      summary = "Restore a soft deleted ML model",
       tags = "mlModels",
-      description = "Restore a soft deleted MlModel.",
+      description = "Restore a soft deleted ML Model.",
       responses = {
         @ApiResponse(
             responseCode = "200",

@@ -95,7 +95,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "listTestDefinitions",
       summary = "List test definitions",
-      tags = "TestDefinitions",
+      tags = "testDefinitions",
       description =
           "Get a list of test definitions, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -167,8 +167,8 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "listAllTestDefinitionVersion",
       summary = "List test definition versions",
-      tags = "TestDefinitions",
-      description = "Get a list of all the versions of a test definition identified by `id`",
+      tags = "testDefinitions",
+      description = "Get a list of all the versions of a test definition identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -186,9 +186,9 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a Test Definition",
-      tags = "TestDefinitions",
-      description = "Get a Test Definition by `id`.",
+      summary = "Get a test definition by Id",
+      tags = "testDefinitions",
+      description = "Get a Test Definition by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -221,7 +221,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "getTestDefinitionByName",
       summary = "Get a test definition by name",
-      tags = "TestDefinitions",
+      tags = "testDefinitions",
       description = "Get a test definition by `name`.",
       responses = {
         @ApiResponse(
@@ -256,9 +256,9 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificTestDefinitionVersion",
-      summary = "Get a version of the TestDefinition",
-      tags = "TestDefinitions",
-      description = "Get a version of the test definition by given `id`",
+      summary = "Get a version of the test definition",
+      tags = "testDefinitions",
+      description = "Get a version of the test definition by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -285,8 +285,8 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @POST
   @Operation(
       operationId = "createTestDefinition",
-      summary = "Create a Test Definition",
-      tags = "TestDefinitions",
+      summary = "Create a test definition",
+      tags = "testDefinitions",
       description = "Create a Test definition.",
       responses = {
         @ApiResponse(
@@ -308,7 +308,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "patchTestDefinition",
       summary = "Update a test definition",
-      tags = "TestDefinitions",
+      tags = "testDefinitions",
       description = "Update an existing topic using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -333,7 +333,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "createOrUpdateTestDefinition",
       summary = "Update test definition",
-      tags = "TestDefinitions",
+      tags = "testDefinitions",
       description = "Create a definition, it it does not exist or update an existing test definition.",
       responses = {
         @ApiResponse(
@@ -353,7 +353,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "deleteTestDefinition",
       summary = "Delete a test definition",
-      tags = "TestDefinitions",
+      tags = "testDefinitions",
       description = "Delete a test definition by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -376,7 +376,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "deleteTestDefinitionByName",
       summary = "Delete a test definition",
-      tags = "TestDefinitions",
+      tags = "testDefinitions",
       description = "Delete a test definition by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -399,8 +399,8 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted TestDefinition.",
-      tags = "TestDefinitions",
+      summary = "Restore a soft deleted test definition",
+      tags = "testDefinitions",
       description = "Restore a soft deleted TestDefinition.",
       responses = {
         @ApiResponse(

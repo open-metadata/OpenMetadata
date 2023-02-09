@@ -163,9 +163,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getChartByID",
-      summary = "Get a Chart",
+      summary = "Get a chart by Id",
       tags = "charts",
-      description = "Get a chart by `id`.",
+      description = "Get a chart by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -232,7 +232,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       operationId = "getSpecificChartVersion",
       summary = "Get a version of the chart",
       tags = "charts",
-      description = "Get a version of the chart by given `id`",
+      description = "Get a version of the chart by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -361,9 +361,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteChart",
-      summary = "Delete a Chart",
+      summary = "Delete a chart by Id",
       tags = "charts",
-      description = "Delete a chart by `id`.",
+      description = "Delete a chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
@@ -384,7 +384,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteChartByFQN",
-      summary = "Delete a Chart",
+      summary = "Delete a chart by fully qualified name",
       tags = "charts",
       description = "Delete a chart by `fullyQualifiedName`.",
       responses = {
@@ -408,7 +408,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted chart.",
+      summary = "Restore a soft deleted chart",
       tags = "charts",
       description = "Restore a soft deleted chart.",
       responses = {

@@ -135,7 +135,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @GET
   @Operation(
       operationId = "listBots",
-      summary = "List Bot",
+      summary = "List bots",
       tags = "bots",
       description = "Get a list of Bot.",
       responses = {
@@ -168,9 +168,9 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getBotByID",
-      summary = "Get a bot",
+      summary = "Get a bot by Id",
       tags = "bots",
-      description = "Get a bot by `id`.",
+      description = "Get a bot by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -221,7 +221,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       operationId = "listAllBotVersion",
       summary = "List bot versions",
       tags = "bots",
-      description = "Get a list of all the versions of a bot identified by `id`",
+      description = "Get a list of all the versions of a bot identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -242,7 +242,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       operationId = "listSpecificBotVersion",
       summary = "Get a version of the bot",
       tags = "bots",
-      description = "Get a version of the bot by given `id`",
+      description = "Get a version of the bot by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -333,9 +333,9 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteBot",
-      summary = "Delete a bot",
+      summary = "Delete a bot by Id",
       tags = "bots",
-      description = "Delete a bot by `id`.",
+      description = "Delete a bot by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
@@ -356,7 +356,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteBotByFQN",
-      summary = "Delete a bot",
+      summary = "Delete a bot by name",
       tags = "bots",
       description = "Delete a bot by `name`.",
       responses = {
@@ -379,7 +379,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted bot.",
+      summary = "Restore a soft deleted bot",
       tags = "bots",
       description = "Restore a soft deleted bot.",
       responses = {

@@ -144,7 +144,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       operationId = "listAllDBSchemaVersion",
       summary = "List schema versions",
       tags = "databaseSchemas",
-      description = "Get a list of all the versions of a schema identified by `id`",
+      description = "Get a list of all the versions of a schema identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -163,9 +163,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/{id}")
   @Operation(
       operationId = "getDBSchemaByID",
-      summary = "Get a schema",
+      summary = "Get a schema by Id",
       tags = "databaseSchemas",
-      description = "Get a database schema by `id`.",
+      description = "Get a database schema by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -197,7 +197,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getDBSchemaByFQN",
-      summary = "Get a schema by name",
+      summary = "Get a schema by fully qualified name",
       tags = "databaseSchemas",
       description = "Get a database schema by fully qualified name.",
       responses = {
@@ -235,7 +235,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       operationId = "getSpecificDBSchemaVersion",
       summary = "Get a version of the schema",
       tags = "databaseSchemas",
-      description = "Get a version of the database schema by given `id`",
+      description = "Get a version of the database schema by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -329,9 +329,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/{id}")
   @Operation(
       operationId = "deleteDBSchema",
-      summary = "Delete a schema",
+      summary = "Delete a schema by Id",
       tags = "databaseSchemas",
-      description = "Delete a schema by `id`. Schema can only be deleted if it has no tables.",
+      description = "Delete a schema by `Id`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Schema for instance {id} is not found")
@@ -356,8 +356,8 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDBSchemaByFQN",
-      summary = "Delete a schema",
-      tags = "databasesSchemas",
+      summary = "Delete a schema by fully qualified name",
+      tags = "databaseSchemas",
       description = "Delete a schema by `fullyQualifiedName`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -379,9 +379,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DatabaseSchema.",
-      tags = "tables",
-      description = "Restore a soft deleted DatabaseSchema.",
+      summary = "Restore a soft deleted database schema.",
+      tags = "databaseSchemas",
+      description = "Restore a soft deleted database schema.",
       responses = {
         @ApiResponse(
             responseCode = "200",

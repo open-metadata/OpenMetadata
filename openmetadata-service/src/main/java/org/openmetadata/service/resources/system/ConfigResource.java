@@ -119,12 +119,12 @@ public class ConfigResource {
   @Path(("/slackChat"))
   @Operation(
       operationId = "getSlackChatConfiguration",
-      summary = "Get Slack Chat Configuration",
+      summary = "Get slack chat configuration",
       tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Get Slack Chat Configuration",
+            description = "Get slack chat configuration",
             content =
                 @Content(
                     mediaType = "application/json",

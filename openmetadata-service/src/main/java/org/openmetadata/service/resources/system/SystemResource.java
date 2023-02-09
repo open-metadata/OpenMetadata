@@ -104,9 +104,9 @@ public class SystemResource {
   @Path("/settings")
   @Operation(
       operationId = "listSettings",
-      summary = "List All Settings",
+      summary = "List all settings",
       tags = "system",
-      description = "Get a List of all OpenMetadata Settings",
+      description = "Get a list of all OpenMetadata settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -122,7 +122,7 @@ public class SystemResource {
   @Path("/settings/{name}")
   @Operation(
       operationId = "getSetting",
-      summary = "Get a Setting",
+      summary = "Get a setting",
       tags = "system",
       description = "Get a OpenMetadata Settings",
       responses = {
@@ -144,9 +144,9 @@ public class SystemResource {
   @Path("/settings")
   @Operation(
       operationId = "createOrUpdate",
-      summary = "Update Setting",
+      summary = "Update setting",
       tags = "system",
-      description = "Update Existing Settings",
+      description = "Update existing settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -163,7 +163,7 @@ public class SystemResource {
   @Path("/settings/{settingName}")
   @Operation(
       operationId = "patchSetting",
-      summary = "Patch a Setting",
+      summary = "Patch a setting",
       tags = "system",
       description = "Update an existing Setting using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -190,9 +190,9 @@ public class SystemResource {
   @Path("/entities/count")
   @Operation(
       operationId = "listEntitiesCount",
-      summary = "List All Entities Counts",
+      summary = "List all entities counts",
       tags = "system",
-      description = "Get a List of all Entities Count",
+      description = "Get a list of all entities count",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -215,9 +215,9 @@ public class SystemResource {
   @Path("/services/count")
   @Operation(
       operationId = "listServicesCount",
-      summary = "List All Services Counts",
+      summary = "List all services counts",
       tags = "system",
-      description = "Get a List of all Entities Count",
+      description = "Get a list of all entities count",
       responses = {
         @ApiResponse(
             responseCode = "200",

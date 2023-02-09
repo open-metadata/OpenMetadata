@@ -101,8 +101,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @GET
   @Operation(
       operationId = "listTestCases",
-      summary = "List testCases",
-      tags = "TestCases",
+      summary = "List test cases",
+      tags = "testCases",
       description =
           "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -179,9 +179,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllTestCaseVersion",
-      summary = "List testCase versions",
-      tags = "TestCases",
-      description = "Get a list of all the versions of a testCases identified by `id`",
+      summary = "List test case versions",
+      tags = "testCases",
+      description = "Get a list of all the versions of a testCases identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -203,9 +203,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a TestCase",
-      tags = "TestCases",
-      description = "Get a TestCase by `id`.",
+      summary = "Get a test case by Id",
+      tags = "testCases",
+      description = "Get a TestCase by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -241,9 +241,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getTestCaseByName",
-      summary = "Get a testCase by fully qualified name",
-      tags = "TestCases",
-      description = "Get a testCase by `fullyQualifiedName`.",
+      summary = "Get a test case by fully qualified name",
+      tags = "testCases",
+      description = "Get a test case by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -281,9 +281,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificTestCaseVersion",
-      summary = "Get a version of the TestCase",
-      tags = "TestCases",
-      description = "Get a version of the TestCase by given `id`",
+      summary = "Get a version of the test case",
+      tags = "testCases",
+      description = "Get a version of the test case by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -311,9 +311,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @POST
   @Operation(
       operationId = "createTestCase",
-      summary = "Create a TestCase",
-      tags = "TestCases",
-      description = "Create a TestCase",
+      summary = "Create a test case",
+      tags = "testCases",
+      description = "Create a test case",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -339,8 +339,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{id}")
   @Operation(
       operationId = "patchTest",
-      summary = "Update a testCase",
-      tags = "TestCases",
+      summary = "Update a test case",
+      tags = "testCases",
       description = "Update an existing test using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -370,8 +370,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @PUT
   @Operation(
       operationId = "createOrUpdateTest",
-      summary = "Update testCase",
-      tags = "TestCases",
+      summary = "Update test case",
+      tags = "testCases",
       description = "Create a TestCase, it it does not exist or update an existing TestCase.",
       responses = {
         @ApiResponse(
@@ -399,12 +399,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{id}")
   @Operation(
       operationId = "deleteTestCase",
-      summary = "Delete a testCase",
-      tags = "TestCases",
-      description = "Delete a testCase by `id`.",
+      summary = "Delete a test case by Id",
+      tags = "testCases",
+      description = "Delete a test case by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "TestCase for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Test case for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -428,8 +428,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTestCaseByName",
-      summary = "Delete a testCase",
-      tags = "TestCases",
+      summary = "Delete a test case by fully qualified name",
+      tags = "testCases",
       description = "Delete a testCase by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -453,9 +453,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted TestCase.",
-      tags = "TestCases",
-      description = "Restore a soft deleted TestCase.",
+      summary = "Restore a soft deleted test case",
+      tags = "testCases",
+      description = "Restore a soft deleted test case.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -473,7 +473,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "addTestCaseResult",
       summary = "Add test case result data",
-      tags = "TestCases",
+      tags = "testCases",
       description = "Add test case result data to the testCase.",
       responses = {
         @ApiResponse(
@@ -500,8 +500,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{fqn}/testCaseResult")
   @Operation(
       operationId = "listTestCaseResults",
-      summary = "List of testCase results",
-      tags = "TestCases",
+      summary = "List of test case results",
+      tags = "testCases",
       description =
           "Get a list of all the test case results for the given testCase id, optionally filtered by  `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
@@ -540,8 +540,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{fqn}/testCaseResult/{timestamp}")
   @Operation(
       operationId = "DeleteTestCaseResult",
-      summary = "Delete testCase result.",
-      tags = "tables",
+      summary = "Delete test case result",
+      tags = "testCases",
       description = "Delete testCase result for a testCase.",
       responses = {
         @ApiResponse(
