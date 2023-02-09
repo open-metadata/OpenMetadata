@@ -9,9 +9,23 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import org.openmetadata.schema.api.data.CreateQuery;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.ResultList;
+
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -32,22 +46,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.schema.api.data.CreateQuery;
-import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.QueryRepository;
-import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.ResultList;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Path("/v1/query")
 @Api(value = "Query collection", tags = "query collection")
@@ -298,6 +300,35 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     Query query = getQuery(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, query);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "createBukQuery",
+      summary = "Add query in bulk",
+      tags = "query",
+      description = "insert bulk query data",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The query",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = QueryResource.queryList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public List<Query> addBulkQueries(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<CreateQuery> createQueryList)
+      throws IOException {
+    List<Query> queryList = new ArrayList<>();
+    for (CreateQuery createQuery : createQueryList) {
+      Query query = getQuery(createQuery, securityContext.getUserPrincipal().getName());
+      Response response = createOrUpdate(uriInfo, securityContext, query);
+      queryList.add((Query) response.getEntity());
+    }
+    return queryList;
   }
 
   @PUT

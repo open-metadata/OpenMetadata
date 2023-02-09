@@ -15,7 +15,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -77,7 +76,7 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public void setFullyQualifiedName(Query entity) {
-    entity.setFullyQualifiedName(FullyQualifiedName.add(entity.getChecksum(), entity.getName()));
+    entity.setFullyQualifiedName(entity.getName() + "_" + entity.getChecksum());
   }
 
   @Override

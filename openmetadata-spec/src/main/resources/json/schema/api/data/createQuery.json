@@ -55,7 +55,7 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "entityName": {
-      "description": "Name of an entity to which the query belongs, to create fqn for eg: checksum.entityName",
+      "description": "Name of an entity to which the query belongs, to create fqn for eg: entityName_checksum",
       "type": "string"
     }
   },

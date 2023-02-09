@@ -73,7 +73,7 @@
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "Fully qualified name of a query in the form `checksum.entityName`.",
+      "description": "Fully qualified name of a query in the form `entityName_checksum`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "deleted": {
