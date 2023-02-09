@@ -1,3 +1,4 @@
+
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -254,7 +255,7 @@ class SupersetUnitTest(TestCase):
         ), patch.object(
             SupersetAPIClient, "fetch_dashboards", return_value=MOCK_DASHBOARD_RESP
         ):
-            dashboaed_list = self.superset_api.get_dashboards_list()
+            dashboard_list = self.superset_api.get_dashboards_list()
             self.assertEqual(list(dashboard_list), [MOCK_DASHBOARD])
 
     def test_charts_of_dashboard(self):
