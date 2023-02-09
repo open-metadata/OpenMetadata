@@ -146,7 +146,7 @@ def generate_http_basic_token(username, password):
     return token
 
 
-def get_default_credentials(
+def get_gcp_default_credentials(
     quota_project_id: Optional[str] = None, scopes: Optional[List[str]] = None
 ) -> auth.credentials.Credentials:
     """Get the default credentials

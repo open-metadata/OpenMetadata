@@ -18,8 +18,8 @@ from typing import List, Optional
 from google.cloud import bigquery
 
 from metadata.utils.credentials import (
-    get_default_credentials,
-    get_impersonate_credentials,
+    get_gcp_default_credentials,
+    get_gcp_impersonate_credentials,
 )
 
 
@@ -46,7 +46,7 @@ def get_bigquery_client(
     """
     # pylint: disable=R1705
     if impersonate_service_account is None:
-        credentials = get_default_credentials(quota_project_id=quota_project_id)
+        credentials = get_gcp_default_credentials(quota_project_id=quota_project_id)
         return bigquery.Client(
             credentials=credentials, project=project_id, location=location
         )
