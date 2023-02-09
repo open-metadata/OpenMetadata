@@ -45,6 +45,7 @@ from metadata.ingestion.source.database.database_service import (
     SQLSourceStatus,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -93,7 +94,7 @@ class DynamodbSource(DatabaseServiceSource):
         apply the necessary filters.
         """
 
-        database_name = "default"
+        database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
