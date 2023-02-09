@@ -20,6 +20,7 @@ import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/a
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
 import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
+import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
 import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
@@ -67,6 +68,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.CustomPipeline: {
       schema = customPipelineConnection;
+
+      break;
+    }
+    case PipelineServiceType.DatabricksPipeline: {
+      schema = databricksPipelineConnection;
 
       break;
     }

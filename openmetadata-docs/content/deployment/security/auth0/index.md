@@ -7,6 +7,16 @@ slug: /deployment/security/auth0
 
 Follow the sections in this guide to set up Auth0 SSO.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Auth0 SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Server Credentials
 
 ### Step 1: Create the Account
@@ -47,9 +57,10 @@ Follow the sections in this guide to set up Auth0 SSO.
 
 <Image src="/images/deployment/security/auth0/credentials.png" alt="credentials"/>
 
-## Create Service Account
+## Create Service Account (optional)
 
-This section will guide to create the Ingestion Bot service account.
+This is a guide to create ingestion bot service account. This step is optional if you configure the ingestion-bot with
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Enable Client-Credential
 

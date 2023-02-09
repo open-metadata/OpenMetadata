@@ -12,6 +12,7 @@
  */
 
 import { Select, Spin, Typography } from 'antd';
+import { t } from 'i18next';
 import { cloneDeep, debounce, includes } from 'lodash';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -150,7 +151,7 @@ const RelatedTerms = ({
             ))
           ) : (
             <Typography.Text type="secondary">
-              No related terms available.
+              {t('message.no-related-terms-available')}
             </Typography.Text>
           )
         ) : (

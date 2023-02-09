@@ -116,7 +116,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
       const hasMore = listLength > LIST_CAP;
 
       if (isUndefined(record.teams) || isEmpty(record.teams)) {
-        return <>No Team</>;
+        return <>{t('label.no-entity', { entity: t('label.team') })}</>;
       } else {
         return (
           <Space wrap data-testid="policy-link" size={4}>
@@ -164,7 +164,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
       const hasMore = listLength > LIST_CAP;
 
       if (isUndefined(record.roles) || isEmpty(record.roles)) {
-        return <>No Role</>;
+        return <>{t('label.no-entity', { entity: t('label.role') })}</>;
       } else {
         return (
           <Space wrap data-testid="policy-link" size={4}>

@@ -15,7 +15,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^[\\w'\\- ./]+$"
+      "pattern": "^(?U)[\\w'\\- ./()$]+$"
     },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
@@ -119,7 +119,11 @@
         "POINT",
         "POLYGON",
         "BYTEA",
-        "AGGREGATEFUNCTION"
+        "AGGREGATEFUNCTION",
+        "ERROR",
+        "FIXED",
+        "RECORD",
+        "NULL"
       ]
     },
     "constraint": {
@@ -162,7 +166,7 @@
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
-      "pattern": "^[\\w'\\-\" .+]+$",
+      "pattern": "^(?U)[\\w'\\-\" .+#]+$",
       "minLength": 1,
       "maxLength": 128
     },

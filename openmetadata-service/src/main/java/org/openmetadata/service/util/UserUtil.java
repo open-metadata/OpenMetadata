@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -62,7 +62,7 @@ public final class UserUtil {
   }
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
       List<String> fields = userRepository.getAllowedFieldsCopy();
@@ -97,7 +97,7 @@ public final class UserUtil {
   }
 
   public static User addOrUpdateUser(User user) {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS
@@ -143,14 +143,16 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     User originalUser = retrieveWithAuthMechanism(user);
-    AirflowConfiguration airflowConfig = openMetadataApplicationConfig.getAirflowConfiguration();
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
-    if (authConfigPresent(airflowConfig) && authMechanism == null) {
-      AuthConfiguration authConfig = airflowConfig.getAuthConfig();
+    if (authConfigPresent(pipelineServiceClientConfiguration) && authMechanism == null) {
+      AuthConfiguration authConfig = pipelineServiceClientConfiguration.getAuthConfig();
       String currentAuthProvider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
       // if the auth provider is "openmetadata" in the configuration set JWT as auth mechanism
-      if ("openmetadata".equals(airflowConfig.getAuthProvider()) && !"basic".equals(currentAuthProvider)) {
+      if ("openmetadata".equals(pipelineServiceClientConfiguration.getAuthProvider())
+          && !"basic".equals(currentAuthProvider)) {
         OpenMetadataJWTClientConfig jwtClientConfig = authConfig.getOpenmetadata();
         authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(jwtClientConfig, user));
         // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
@@ -192,8 +194,8 @@ public final class UserUtil {
     return addOrUpdateUser(user);
   }
 
-  private static boolean authConfigPresent(AirflowConfiguration airflowConfig) {
-    return airflowConfig != null && airflowConfig.getAuthConfig() != null;
+  private static boolean authConfigPresent(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    return pipelineServiceClientConfiguration != null && pipelineServiceClientConfiguration.getAuthConfig() != null;
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {

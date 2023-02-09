@@ -7,6 +7,16 @@ slug: /deployment/security/azure
 
 Follow the sections in this guide to set up Azure SSO.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Azure SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Server Credentials
 
 ### Step 1: Login to Azure Active Directory
@@ -49,7 +59,10 @@ Admin permissions are required to register the application on the Azure portal.
 "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
 ```
 
-## Create Service Application
+## Create Service Application (optional)
+
+This is a guide to create ingestion bot service account. This step is optional if you configure the ingestion-bot with 
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Access Tokens and ID Tokens
 

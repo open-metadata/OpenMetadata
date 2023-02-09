@@ -1,0 +1,72 @@
+{
+  "summary": "Glossary CSV file is used for importing and exporting glossary terms from and to an **existing** glossary.",
+  "headers": [
+    {
+      "name": "parent",
+      "required": false,
+      "description": "Fully qualified name of the parent glossary term. If the glossary term being created is at the root of the glossary without any parent term, leave this as empty.",
+      "examples": [
+        "`\"\"` or empty, if the term is at the root of the glossary.",
+        "`Business terms.Customer` as parent to create a term `CustomerId` under it."
+      ]
+    },
+    {
+      "name": "name",
+      "required": true,
+      "description": "The name of the glossary term being created.",
+      "examples": [
+        "`CustomerId`, `Customer name`"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the term.",
+      "examples": [
+        "`Customer Identifier`, `Customer name`"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the glossary term in markdown format.",
+      "examples": [
+        "`Customer Identifier` as defined by the **Legal Team**."
+      ]
+    },
+    {
+      "name": "synonyms",
+      "required": false,
+      "description": "Synonyms for the glossary term",
+      "examples": [
+        "`Customer Identifier`, `cid`, `customer_id`"
+      ]
+    },
+    {
+      "name": "relatedTerms",
+      "required": false,
+      "description": "List of related glossary term **fully qualified names** separated by `;`.",
+      "examples": [
+        "`Business terms.Client Identifier`, `Support.Subscriber Id`"
+      ]
+    },
+    {
+      "name": "references",
+      "required": false,
+      "description": "External glossary references for the glossary term in the format `name;URL endPoint`.",
+      "examples": [
+        "`customer;http://domain.com/glossaries/customer`",
+        "`term1;http://domain.com/glossaries/term1;term2;http://domain.com/glossaries/term2`"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the glossary term separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
+      "examples": [
+        "`PII.Sensitive`",
+        "`PII.Sensitive;PersonalData.Personal`"
+      ]
+    }
+  ]
+}

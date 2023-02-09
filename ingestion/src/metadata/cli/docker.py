@@ -111,7 +111,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
                     entity=Table, fqn="sample_data.ecommerce_db.shopify.dim_customer"
                 )
                 if not resp:
-                    raise Exception("Error")
+                    raise RuntimeError("Error")
                 break
             except Exception:
                 sys.stdout.write(".")
@@ -223,13 +223,13 @@ def run_docker(  # pylint: disable=too-many-branches too-many-statements
 
         logger.info("Checking if docker compose is installed...")
         if not docker.compose.is_installed():
-            raise Exception("Docker Compose CLI is not installed on the system.")
+            raise RuntimeError("Docker Compose CLI is not installed on the system.")
 
         docker_info = docker.info()
 
         logger.info("Checking if docker service is running...")
         if not docker_info.id:
-            raise Exception("Docker Service is not up and running.")
+            raise RuntimeError("Docker Service is not up and running.")
 
         logger.info("Checking openmetadata memory constraints...")
         if docker_info.mem_total < MIN_MEMORY_LIMIT:

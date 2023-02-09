@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -40,7 +41,6 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -119,7 +119,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void postDelete(IngestionPipeline entity) {
-    pipelineServiceClient.deletePipeline(entity.getName());
+    pipelineServiceClient.deletePipeline(entity);
   }
 
   public void setPipelineServiceClient(PipelineServiceClient client) {

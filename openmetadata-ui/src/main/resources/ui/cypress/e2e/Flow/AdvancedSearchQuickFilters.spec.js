@@ -54,7 +54,7 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
 
         searchAndClickOnOption(optionName1, optionTestId1, true);
 
-        let querySearchURL = `http://localhost:8585/api/v1/search/query?*index=${
+        let querySearchURL = `/api/v1/search/query?*index=${
           asset.searchIndex
         }*query_filter=*should*${filter.key}*${encodeURI(optionName1)}*`;
 

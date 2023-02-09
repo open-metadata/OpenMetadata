@@ -78,9 +78,9 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', () => {
-  interceptURL('GET', '/api/v1/util/entities/count', 'count');
+  interceptURL('GET', '/api/v1/system/entities/count', 'count');
   interceptURL('GET', '/api/v1/feed*', 'feed');
-  interceptURL('GET', '/api/v1/users/name/*?fields=*', 'userProfile');
+  interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
   cy.get('[data-testid="whats-new-dialog"]')
     .should('exist')
     .then(() => {

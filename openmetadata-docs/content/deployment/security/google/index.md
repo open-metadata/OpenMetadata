@@ -7,6 +7,16 @@ slug: /deployment/security/google
 
 Follow the sections in this guide to set up Google SSO.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Google SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Server Credentials
 
 ### Step 1: Create the Account
@@ -72,9 +82,10 @@ After selecting the **Application Type**, name your project and give the authori
 - You will find the **Client ID** and **Client Secret** in the top right corner
 <Image src="/images/deployment/security/google/find-clientid-and-secret.png" alt="find-clientid-and-secret"/>
 
-## Create Service Account
+## Create Service Account (optional)
 
-This is a guide to create ingestion bot service account.
+This is a guide to create ingestion bot service account. This step is optional if you configure the ingestion-bot with 
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
 ### Step 1: Create Service-Account
 - Navigate to your project dashboard

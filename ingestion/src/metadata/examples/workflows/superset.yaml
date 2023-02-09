@@ -16,9 +16,9 @@ source:
       type: Superset
   sourceConfig:
     config:
+      type: DashboardMetadata
       chartFilterPattern: {}
       dashboardFilterPattern: {}
-      type: DashboardMetadata
 sink:
   type: metadata-rest
   config: {}

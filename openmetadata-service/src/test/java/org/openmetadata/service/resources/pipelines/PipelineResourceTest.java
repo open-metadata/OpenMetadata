@@ -58,7 +58,6 @@ import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -548,14 +547,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     return pipeline;
   }
 
-  public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("pipelines/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Pipeline.class, authHeaders);
   }
 
-  public static Pipeline getPipelineByName(String fqn, String fields, Map<String, String> authHeaders)
+  public Pipeline getPipelineByName(String fqn, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("pipelines/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
@@ -563,21 +561,21 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   // Prepare Pipeline status endpoint for PUT
-  public static Pipeline putPipelineStatusData(String fqn, PipelineStatus data, Map<String, String> authHeaders)
+  public Pipeline putPipelineStatusData(String fqn, PipelineStatus data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("pipelines/" + fqn + "/status");
+    WebTarget target = getResource("pipelines/" + fqn + "/status");
     return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
   }
 
-  public static Pipeline deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
+  public Pipeline deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("pipelines/" + fqn + "/status/" + timestamp);
+    WebTarget target = getResource("pipelines/" + fqn + "/status/" + timestamp);
     return TestUtils.delete(target, Pipeline.class, authHeaders);
   }
 
-  public static ResultList<PipelineStatus> getPipelineStatues(
+  public ResultList<PipelineStatus> getPipelineStatues(
       String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("pipelines/" + fqn + "/status");
+    WebTarget target = getResource("pipelines/" + fqn + "/status");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
   }

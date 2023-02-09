@@ -324,15 +324,13 @@ const DataInsightPage = () => {
               </Space>
               <Space>
                 <Typography className="data-insight-label-text text-xs">
-                  {getFormattedDateFromMilliSeconds(
+                  {`${getFormattedDateFromMilliSeconds(
                     chartFilter.startTs,
                     'dd MMM yyyy'
-                  )}{' '}
-                  -{' '}
-                  {getFormattedDateFromMilliSeconds(
+                  )} - ${getFormattedDateFromMilliSeconds(
                     chartFilter.endTs,
                     'dd MMM yyyy'
-                  )}
+                  )}`}
                 </Typography>
                 <Select
                   className="data-insight-select-dropdown"

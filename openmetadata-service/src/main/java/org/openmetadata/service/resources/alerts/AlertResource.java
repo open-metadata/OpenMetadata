@@ -66,14 +66,14 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.ActivityFeedAlertCache;
 import org.openmetadata.service.alerts.AlertUtil;
 import org.openmetadata.service.alerts.AlertsPublisherManager;
+import org.openmetadata.service.jdbi3.AlertActionRepository;
 import org.openmetadata.service.jdbi3.AlertRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.policies.PolicyResource;
-import org.openmetadata.service.resources.settings.SettingsResource;
+import org.openmetadata.service.resources.system.SystemResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -122,9 +122,10 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       activityFeedAlert = JsonUtils.readObjects(alertJson, Alert.class).get(0);
       activityFeedAlert.setId(UUID.randomUUID());
       // populate alert actions
-      EntityRepository<AlertAction> actionEntityRepository = Entity.getEntityRepository(Entity.ALERT_ACTION);
+      AlertActionRepository alertActionRepository =
+          (AlertActionRepository) Entity.getEntityRepository(Entity.ALERT_ACTION);
       AlertAction action =
-          actionEntityRepository.getByName(null, alertActions.getName(), actionEntityRepository.getFields("id"));
+          alertActionRepository.getByName(null, alertActions.getName(), alertActionRepository.getFields("id"));
       activityFeedAlert.setAlertActions(List.of(action.getEntityReference()));
       dao.initializeEntity(activityFeedAlert);
     } catch (Exception e) {
@@ -235,7 +236,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public Alert getAlertById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -252,7 +253,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   }
 
   @GET
-  @Path("/{alertId}/status/{actionId}")
+  @Path("/{id}/status/{actionId}")
   @Valid
   @Operation(
       operationId = "getAlertActionStatus",
@@ -270,14 +271,14 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public AlertActionStatus getAlertActionStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId,
-      @Parameter(description = "alertAction Id", schema = @Schema(type = "UUID")) @PathParam("actionId")
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert action", schema = @Schema(type = "UUID")) @PathParam("actionId")
           UUID alertActionId) {
-    return AlertsPublisherManager.getInstance().getStatus(alertId, alertActionId);
+    return AlertsPublisherManager.getInstance().getStatus(id, alertActionId);
   }
 
   @GET
-  @Path("/allAlertAction/{alertId}")
+  @Path("/allAlertAction/{id}")
   @Valid
   @Operation(
       operationId = "getAllAlertActionForAlert",
@@ -295,9 +296,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public List<AlertAction> getAllAlertActionForAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId)
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.getAllAlertActionForAlert(alertId);
+    return dao.getAllAlertActionForAlert(id);
   }
 
   @GET
@@ -314,7 +315,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SettingsResource.SettingsList.class)))
+                    schema = @Schema(implementation = SystemResource.SettingsList.class)))
       })
   public List<TriggerConfig> getAlertBootstrapFilters(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -350,14 +351,17 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "validateCondition",
       summary = "Validate a given condition",
-      tags = "policies",
+      tags = "alerts",
       description = "Validate a given condition expression used in filtering rules.",
       responses = {
         @ApiResponse(responseCode = "204", description = "No value is returned"),
         @ApiResponse(responseCode = "400", description = "Invalid expression")
       })
   public void validateCondition(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Expression to validate", schema = @Schema(type = "string")) @PathParam("expression")
+          String expression) {
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 
@@ -373,7 +377,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             responseCode = "200",
             description = "alert",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Alert.class))),
-        @ApiResponse(responseCode = "404", description = "Alert for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Alert for instance {name} is not found")
       })
   public Alert getAlertByName(
       @Context UriInfo uriInfo,
@@ -410,7 +414,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public EntityHistory listAlertVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -434,7 +438,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public Alert getAlertVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "alert version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -500,7 +504,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public Response patchAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -534,7 +538,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public Response deleteAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, true, true);
     AlertsPublisherManager.getInstance().deleteAlertAllPublishers(id);

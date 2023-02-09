@@ -35,7 +35,7 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
     def __init__(self, credentials: Optional["AWSCredentials"]):
         super().__init__(credentials, "ssm", SecretsManagerProvider.aws)
 
-    def get_string_value(self, secret_id: str) -> str:
+    def get_string_value(self, secret_id: str) -> Optional[str]:
         """
         :param secret_id: The parameter name to retrieve.
         :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.
@@ -51,13 +51,12 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
             logger.debug(traceback.format_exc())
             logger.error(f"Couldn't get value for parameter [{secret_id}]: {err}")
             raise err
-        else:
-            if "Parameter" in response and "Value" in response["Parameter"]:
-                return (
-                    response["Parameter"]["Value"]
-                    if response["Parameter"]["Value"] != NULL_VALUE
-                    else None
-                )
-            raise ValueError(
-                f"Parameter for parameter name [{secret_id}] not present in the response."
+        if "Parameter" in response and "Value" in response["Parameter"]:
+            return (
+                response["Parameter"]["Value"]
+                if response["Parameter"]["Value"] != NULL_VALUE
+                else None
             )
+        raise ValueError(
+            f"Parameter for parameter name [{secret_id}] not present in the response."
+        )
