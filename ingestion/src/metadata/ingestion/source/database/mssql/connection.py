@@ -12,7 +12,10 @@
 """
 Source connection handler
 """
+from functools import partial
+
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
@@ -22,7 +25,14 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionStep,
+    test_connection_db_common,
+)
+from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_DATABASE,
+    MSSQL_SQL_STATEMENT_TEST,
+)
 
 
 def get_connection_url(connection: MssqlConnection) -> str:
@@ -42,8 +52,47 @@ def get_connection(connection: MssqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: MssqlConnection) -> None:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+
+    def custom_executor(engine, statement):
+        cursor = engine.execute(statement)
+        return list(cursor.all())
+
+    inspector = inspect(engine)
+    steps = [
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=MSSQL_GET_DATABASE,
+                engine=engine,
+            ),
+            name="Get Databases",
+        ),
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+            mandatory=False,
+        ),
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement=MSSQL_SQL_STATEMENT_TEST,
+                engine=engine,
+            ),
+            name="Get Usage and Lineage",
+            mandatory=False,
+        ),
+    ]
+
+    test_connection_db_common(engine, steps)

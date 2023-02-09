@@ -235,7 +235,7 @@ const GlossaryPage = () => {
         buttons={
           <Button
             className="rounded-4 m-y-md"
-            data-testid="add-new-glossary"
+            data-testid="add-glossary"
             disabled={!createGlossaryPermission}
             size="middle"
             type="primary"
