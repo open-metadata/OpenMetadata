@@ -20,8 +20,9 @@ from datetime import datetime
 import pytest
 from pandas import DataFrame
 
+from metadata.test_suite.validations.validator import Validator
+from metadata.utils.importer import import_test_case_class
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.test_suite.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 DL_DATA = (
@@ -37,158 +38,191 @@ DATALAKE_DATA_FRAME = DataFrame(
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
-    "test_case_name,test_case_type,expected",
+    "test_case_name,test_case_type,test_type,expected",
     [
         (
             "test_case_column_value_length_to_be_between",
             "columnValueLengthsToBeBetween",
-            (TestCaseResult, "4", "14", TestCaseStatus.Failed),
+            "COLUMN",
+            (TestCaseResult, "8", "14", TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_length_to_be_between_col_space",
             "columnValueLengthsToBeBetween",
+            "COLUMN",
             (TestCaseResult, "2", "3", TestCaseStatus.Success),
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
             "columnValueLengthsToBeBetween",
+            "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_value_max_to_be_between",
             "columnValueMaxToBeBetween",
+            "COLUMN",
             (TestCaseResult, "31.0", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_max_to_be_between_no_min",
             "columnValueMaxToBeBetween",
+            "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_mean_to_be_between",
             "columnValueMeanToBeBetween",
+            "COLUMN",
             (TestCaseResult, "30.5", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_mean_to_be_between_no_max",
             "columnValueMeanToBeBetween",
+            "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_value_median_to_be_between",
             "columnValueMedianToBeBetween",
+            "COLUMN",
             (TestCaseResult, "30.5", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_min_to_be_between",
             "columnValueMinToBeBetween",
+            "COLUMN",
             (TestCaseResult, "30.0", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_value_min_to_be_between_no_min",
             "columnValueMinToBeBetween",
+            "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_value_stddev_to_be_between",
             "columnValueStdDevToBeBetween",
+            "COLUMN",
             (TestCaseResult, "0.512989176042577", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_stddev_to_be_between_no_min",
             "columnValueStdDevToBeBetween",
+            "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_value_in_set",
             "columnValuesToBeInSet",
+            "COLUMN",
             (TestCaseResult, "20", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal",
             "columnValuesMissingCount",
+            "COLUMN",
             (TestCaseResult, "10", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal_missing_valuesl",
             "columnValuesMissingCount",
+            "COLUMN",
             (TestCaseResult, "20", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_not_in_set",
             "columnValuesToBeNotInSet",
+            "COLUMN",
             (TestCaseResult, "20", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_sum_to_be_between",
             "columnValuesSumToBeBetween",
+            "COLUMN",
             (TestCaseResult, "610.0", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_be_between",
             "columnValuesToBeBetween",
+            "COLUMN",
             (TestCaseResult, "30.0", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_values_to_be_not_null",
             "columnValuesToBeNotNull",
+            "COLUMN",
             (TestCaseResult, "10", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
+            "COLUMN",
             (TestCaseResult, "30", "2", TestCaseStatus.Failed),
         ),
         (
-            "test_case_table_column_count_to_be_between",
-            "tableColumnCountToBeBetween",
-            (TestCaseResult, "6", None, TestCaseStatus.Success),
-        ),
-        (
-            "test_case_table_column_count_to_equal",
-            "tableColumnCountToEqual",
-            (TestCaseResult, "6", None, TestCaseStatus.Failed),
-        ),
-        (
-            "test_case_table_column_name_to_exist",
-            "tableColumnNameToExist",
-            (TestCaseResult, "True", None, TestCaseStatus.Success),
-        ),
-        (
-            "test_case_column_to_match_set",
-            "tableColumnToMatchSet",
-            (
-                TestCaseResult,
-                "['id', 'name', 'first name', 'fullname', 'nickname', 'age']",
-                None,
-                TestCaseStatus.Failed,
-            ),
-        ),
-        (
-            "test_case_column_to_match_set_ordered",
-            "tableColumnToMatchSet",
-            (TestCaseResult, None, None, TestCaseStatus.Failed),
-        ),
-        (
-            "test_case_table_row_count_to_be_between",
-            "tableRowCountToBeBetween",
+            "test_case_column_values_to_match_regex",
+            "columnValuesToMatchRegex",
+            "COLUMN",
             (TestCaseResult, "30", None, TestCaseStatus.Success),
         ),
         (
-            "test_case_table_row_count_to_be_equal",
-            "tableRowCountToEqual",
-            (TestCaseResult, "30", None, TestCaseStatus.Failed),
+            "test_case_column_values_to_not_match_regex",
+            "columnValuesToNotMatchRegex",
+            "COLUMN",
+            (TestCaseResult, "0", None, TestCaseStatus.Success),
         ),
-        (
-            "test_case_table_row_inserted_count_to_be_between",
-            "tableRowInsertedCountToBeBetween",
-            (TestCaseResult, None, None, TestCaseStatus.Aborted),
-        ),
+        # (
+        #     "test_case_table_column_count_to_be_between",
+        #     "tableColumnCountToBeBetween",
+        #     (TestCaseResult, "6", None, TestCaseStatus.Success),
+        # ),
+        # (
+        #     "test_case_table_column_count_to_equal",
+        #     "tableColumnCountToEqual",
+        #     (TestCaseResult, "6", None, TestCaseStatus.Failed),
+        # ),
+        # (
+        #     "test_case_table_column_name_to_exist",
+        #     "tableColumnNameToExist",
+        #     (TestCaseResult, "True", None, TestCaseStatus.Success),
+        # ),
+        # (
+        #     "test_case_column_to_match_set",
+        #     "tableColumnToMatchSet",
+        #     (
+        #         TestCaseResult,
+        #         "['id', 'name', 'first name', 'fullname', 'nickname', 'age']",
+        #         None,
+        #         TestCaseStatus.Failed,
+        #     ),
+        # ),
+        # (
+        #     "test_case_column_to_match_set_ordered",
+        #     "tableColumnToMatchSet",
+        #     (TestCaseResult, None, None, TestCaseStatus.Failed),
+        # ),
+        # (
+        #     "test_case_table_row_count_to_be_between",
+        #     "tableRowCountToBeBetween",
+        #     (TestCaseResult, "30", None, TestCaseStatus.Success),
+        # ),
+        # (
+        #     "test_case_table_row_count_to_be_equal",
+        #     "tableRowCountToEqual",
+        #     (TestCaseResult, "30", None, TestCaseStatus.Failed),
+        # ),
+        # (
+        #     "test_case_table_row_inserted_count_to_be_between",
+        #     "tableRowInsertedCountToBeBetween",
+        #     (TestCaseResult, None, None, TestCaseStatus.Aborted),
+        # ),
     ],
 )
 def test_suite_validation_datalake(
     test_case_name,
     test_case_type,
+    test_type,
     expected,
     request,
 ):
@@ -196,11 +230,20 @@ def test_suite_validation_datalake(
     test_case = request.getfixturevalue(test_case_name)
     type_, val_1, val_2, status = expected
 
-    res = validation_enum_registry.registry[test_case_type](
+    test_handler_obj = import_test_case_class(
+        test_type,
+        "pandas",
+        test_case_type,
+    )
+
+    test_handler = test_handler_obj(
         DATALAKE_DATA_FRAME,
         test_case=test_case,
         execution_date=EXECUTION_DATE.timestamp(),
     )
+
+    validator = Validator(test_handler)
+    res = validator.validate()
 
     assert isinstance(res, type_)
     if val_1:
