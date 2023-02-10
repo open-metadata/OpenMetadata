@@ -563,7 +563,6 @@ class OpenMetadata(
         """
         Return entity by ID or None
         """
-
         return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
@@ -576,6 +575,8 @@ class OpenMetadata(
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
+        print("hello")
+        print(path)
         try:
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
             if not resp:
