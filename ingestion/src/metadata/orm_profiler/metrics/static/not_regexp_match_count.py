@@ -43,6 +43,7 @@ class NotRegexCount(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_REGEX_COUNT)"
@@ -52,4 +53,22 @@ class NotRegexCount(StaticMetric):
                 [(not_(column(self.col.name).regexp_match(self.expression)), 0)],
                 else_=1,
             )
+        )
+
+
+    @_label
+    def df_fn(self, df):  # pylint: disable=invalid-name
+        """pandas function"""
+        from pandas.core.dtypes.common import is_string_dtype  # pylint: disable=import-outside-toplevel
+
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
+            )
+
+        if is_string_dtype(self.col.type):
+            return df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
+
+        raise ValueError(
+            f"Don't know how to process type {self.col.type} when computing REGEX MATCH"
         )

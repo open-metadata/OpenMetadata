@@ -43,10 +43,28 @@ class RegexCount(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
         return SumFn(
             case([(column(self.col.name).regexp_match(self.expression), 1)], else_=0)
+        )
+
+    @_label
+    def df_fn(self, df):  # pylint: disable=invalid-name
+        """pandas function"""
+        from pandas.core.dtypes.common import is_string_dtype  # pylint: disable=import-outside-toplevel
+
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
+            )
+
+        if is_string_dtype(self.col.type):
+            return df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
+
+        raise ValueError(
+            f"Don't know how to process type {self.col.type} when computing REGEX MATCH"
         )

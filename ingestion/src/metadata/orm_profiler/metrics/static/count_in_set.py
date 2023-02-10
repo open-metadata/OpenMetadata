@@ -16,7 +16,6 @@ CountInSet Metric definition
 import traceback
 from typing import List
 
-from pandas import DataFrame
 from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -49,6 +48,7 @@ class CountInSet(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "values"):
             raise AttributeError(
                 "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
@@ -64,14 +64,15 @@ class CountInSet(StaticMetric):
             return None
 
     @_label
-    def dl_fn(self, data_frame: DataFrame):
+    def df_fn(self, df):  # pylint: disable=snaked-case
+        """pandas function"""
+        if not hasattr(self, "values"):
+            raise AttributeError(
+                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
+            )
+
         try:
-            count = 0
-            rows = list(data_frame[self.col.name])
-            for value in self.values:
-                if value in rows:
-                    count = rows.count(value)
-            return count
+            return df[self.col.name][df[self.col.name].isin(list(self.values))].count()
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")

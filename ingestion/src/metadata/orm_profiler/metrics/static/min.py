@@ -14,6 +14,7 @@ Min Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -33,16 +34,24 @@ class Min(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
         return func.min(column(self.col.name))
 
+    # pylint: disable=import-outside-toplevel
     @_label
-    def dl_fn(self, data_frame=None):
-        if is_quantifiable(self.col.datatype):
+    def df_fn(self, df=None):  # pylint: disable=invalid-name
+        """pandas function"""
+        from pandas.core.dtypes.common import is_datetime64_any_dtype
+        from pandas import DataFrame
+
+        df = cast(DataFrame, df)
+
+        if is_quantifiable(self.col.type) or is_datetime64_any_dtype(self.col.type):
             return (
-                data_frame[self.col.name].min()
-                if not isinstance(data_frame[self.col.name].min(), list)
-                else data_frame[self.col.name].min().tolist()
+                df[self.col.name].min()
+                if not isinstance(df[self.col.name].min(), list)
+                else df[self.col.name].apply(max).max()
             )
         return 0
