@@ -99,9 +99,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
+    const testType = initialValue?.fullyQualifiedName ?? selectedTestType;
 
-    return testDefinitions.find((definition) => definition.id === testType);
+    return testDefinitions.find(
+      (definition) => definition.fullyQualifiedName === testType
+    );
   };
 
   const GenerateParamsField = useCallback(() => {
@@ -161,13 +163,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       name: value.testName,
       entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       parameterValues: parameterValues as TestCaseParameterValue[],
-      testDefinition: {
-        id: value.testTypeId,
-        type: 'testDefinition',
-      },
+      testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
       testSuite: {} as EntityReference,
-    };
+    } as unknown as TestCase;
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {
@@ -273,7 +272,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         <Select
           options={testDefinitions.map((suite) => ({
             label: suite.name,
-            value: suite.id,
+            value: suite.fullyQualifiedName,
           }))}
           placeholder="Select test type"
         />

@@ -14,7 +14,7 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createTestCase, createTestSuites } from 'rest/testAPI';
@@ -179,10 +179,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         parameterValues,
         owner,
         testDefinition,
-        testSuite: {
-          id: selectedSuite?.id || '',
-          type: 'testSuite',
-        },
+        testSuite: toString(selectedSuite?.fullyQualifiedName),
       };
       if (isNewTestSuite && isUndefined(testSuiteData)) {
         const testSuitePayload = {

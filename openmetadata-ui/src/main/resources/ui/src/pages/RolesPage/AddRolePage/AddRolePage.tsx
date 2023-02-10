@@ -171,7 +171,7 @@ const AddRolePage = () => {
                   value={selectedPolicies}
                   onChange={(values) => setSelectedPolicies(values)}>
                   {policies.map((policy) => (
-                    <Option key={policy.id}>
+                    <Option key={policy.fullyQualifiedName}>
                       {policy.displayName || policy.name}
                     </Option>
                   ))}
