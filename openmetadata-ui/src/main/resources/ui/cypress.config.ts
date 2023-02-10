@@ -31,8 +31,11 @@ export default defineConfig({
     },
     baseUrl: 'http://localhost:8585',
     specPattern: [
+      'cypress/e2e/AddNewService/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Features/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Pages/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Flow/*.{js,jsx,ts,tsx}',
       'cypress/e2e/**/*.{js,jsx,ts,tsx}',
-      'cypress/e2e/Flow/SearchFlow.spec.js',
     ],
   },
 });
