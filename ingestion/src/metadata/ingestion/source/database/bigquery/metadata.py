@@ -11,6 +11,7 @@
 """
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
+import re
 import os
 import traceback
 from typing import Iterable, List, Optional, Tuple
@@ -84,6 +85,15 @@ def get_columns(bq_schema):
         }
         try:
             if field.policy_tags:
+                taxonomy_name_search = re.search(
+                    ".*taxonomies\/(\d*)\/", field.policy_tags.names[0]
+                )
+                if taxonomy_name_search:
+                    col_obj["taxonomy"] = (
+                        PolicyTagManagerClient()
+                        .get_taxonomy(name=taxonomy_name_search.group(1))
+                        .display_name
+                    )
                 col_obj["policy_tags"] = (
                     PolicyTagManagerClient()
                     .get_policy_tag(name=field.policy_tags.names[0])
@@ -162,11 +172,11 @@ class BigquerySource(CommonDbSourceService):
                     for tag in policy_tags:
                         yield OMetaTagAndClassification(
                             classification_request=CreateClassificationRequest(
-                                name=self.service_connection.classificationName,
+                                name=taxonomy.display_name,
                                 description="",
                             ),
                             tag_request=CreateTagRequest(
-                                classification=self.service_connection.classificationName,
+                                classification=taxonomy.display_name,
                                 name=tag.display_name,
                                 description="Bigquery Policy Tag",
                             ),
@@ -195,7 +205,7 @@ class BigquerySource(CommonDbSourceService):
                     tagFQN=fqn.build(
                         self.metadata,
                         entity_type=Tag,
-                        classification_name=self.service_connection.classificationName,
+                        classification_name=column["taxonomy"],
                         tag_name=column["policy_tags"],
                     ),
                     labelType="Automated",
