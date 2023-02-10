@@ -61,19 +61,8 @@ class ColumnValueLengthsToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin)
                 ],
             )
 
-        min_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "minLength",
-            float,
-            default=float("-inf"),
-        )
-
-        max_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "maxLength",
-            float,
-            default=float("inf"),
-        )
+        min_bound = self.get_min_bound("minLength")
+        max_bound = self.get_max_bound("maxLength")
 
         return self.get_test_case_result_object(
             self.execution_date,

@@ -57,19 +57,8 @@ class ColumnValueMedianToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
                 [TestResultValue(name="median", value=None)],
             )
 
-        min_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "minValueForMedianInCol",
-            float,
-            default=float("-inf"),
-        )
-
-        max_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "maxValueForMedianInCol",
-            float,
-            default=float("inf"),
-        )
+        min_bound = self.get_min_bound("minValueForMedianInCol")
+        max_bound = self.get_max_bound("maxValueForMedianInCol")
 
         return self.get_test_case_result_object(
             self.execution_date,

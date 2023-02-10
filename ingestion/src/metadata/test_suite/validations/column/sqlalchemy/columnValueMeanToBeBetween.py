@@ -57,19 +57,8 @@ class ColumnValueMeanToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
                 [TestResultValue(name="mean", value=None)],
             )
 
-        min_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "minValueForMeanInCol",
-            float,
-            default=float("-inf"),
-        )
-
-        max_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "maxValueForMeanInCol",
-            float,
-            default=float("inf"),
-        )
+        min_bound = self.get_min_bound("minValueForMeanInCol")
+        max_bound = self.get_max_bound("maxValueForMeanInCol")
 
         return self.get_test_case_result_object(
             self.execution_date,
