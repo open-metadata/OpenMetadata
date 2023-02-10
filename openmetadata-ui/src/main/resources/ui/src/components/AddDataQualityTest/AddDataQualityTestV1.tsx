@@ -13,6 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isUndefined, toString } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
@@ -66,7 +67,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [selectedTestSuite, setSelectedTestSuite] =
     useState<SelectTestSuiteType>();
-  const [testCaseData, setTestCaseData] = useState<TestCase>();
+  const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
@@ -149,7 +150,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     setActiveServiceStep((pre) => pre - 1);
   };
 
-  const handleTestCaseBack = (testCase: TestCase) => {
+  const handleTestCaseBack = (testCase: CreateTestCase) => {
     setTestCaseData(testCase);
     handleCancelClick();
   };
@@ -159,7 +160,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     setActiveServiceStep(2);
   };
 
-  const handleFormSubmit = async (data: TestCase) => {
+  const handleFormSubmit = async (data: CreateTestCase) => {
     setTestCaseData(data);
     if (isUndefined(selectedTestSuite)) {
       return;
@@ -172,7 +173,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         id: getCurrentUserId(),
         type: OwnerType.USER,
       };
-      const testCasePayload: TestCase = {
+      const testCasePayload: CreateTestCase = {
         name,
         description,
         entityLink,
@@ -188,10 +189,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           owner,
         };
         const testSuiteResponse = await createTestSuites(testSuitePayload);
-        testCasePayload.testSuite.id = testSuiteResponse.id || '';
+        testCasePayload.testSuite = testSuiteResponse.id || '';
         setTestSuiteData(testSuiteResponse);
       } else if (!isUndefined(testSuiteData)) {
-        testCasePayload.testSuite.id = testSuiteData.id || '';
+        testCasePayload.testSuite = testSuiteData.fullyQualifiedName || '';
       }
 
       const testCaseResponse = await createTestCase(testCasePayload);

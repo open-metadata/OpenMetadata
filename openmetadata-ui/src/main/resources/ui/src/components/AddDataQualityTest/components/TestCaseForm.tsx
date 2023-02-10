@@ -13,6 +13,7 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,7 +22,6 @@ import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
-import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   TestCase,
   TestCaseParameterValue,
@@ -58,7 +58,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
-    initialValue?.testDefinition?.id
+    initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [sqlQuery, setSqlQuery] = useState({
@@ -99,7 +99,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.fullyQualifiedName ?? selectedTestType;
+    const testType = initialValue?.testSuite ?? selectedTestType;
 
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
@@ -165,8 +165,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
-      testSuite: {} as EntityReference,
-    } as unknown as TestCase;
+      testSuite: '',
+    } as CreateTestCase;
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {
@@ -226,7 +226,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       testName: replaceAllSpacialCharWith_(
         initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
       ),
-      testTypeId: initialValue?.testDefinition?.id,
+      testTypeId: initialValue?.testDefinition,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
         : undefined,
