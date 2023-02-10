@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Button, Popover, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -157,18 +158,18 @@ const Description: FC<DescriptionProps> = ({
 
   const getDescriptionTaskElement = () => {
     return !isUndefined(tasks) ? (
-      <button
-        className="tw-w-7 tw-h-7 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+      <Button
+        className="w-7 h-7 m-r-xs p-0"
         data-testid="description-task"
+        type="text"
         onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
-        <span className="tw-flex">
-          <SVGIcons alt="tasks" icon={Icons.TASK_ICON} width="16px" />{' '}
-          <span className="tw-ml-1" data-testid="description-tasks-count">
-            {' '}
+        <Space align="center" className="w-full h-full" size={3}>
+          <IconTaskColor height={16} name="tasks" width={16} />
+          <Typography.Text data-testid="description-tasks-count">
             {tasks.count}
-          </span>
-        </span>
-      </button>
+          </Typography.Text>
+        </Space>
+      </Button>
     ) : null;
   };
 

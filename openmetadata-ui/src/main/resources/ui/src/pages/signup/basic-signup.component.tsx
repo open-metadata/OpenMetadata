@@ -67,11 +67,17 @@ const BasicSignUp = () => {
   const handleLogin = () => history.push(ROUTES.SIGNIN);
 
   const validationMessages = {
-    required: '${label} is required',
+    required: t('message.field-text-is-required', {
+      fieldText: '${label}',
+    }),
     types: {
-      email: '${label} is not valid',
+      email: t('message.entity-is-not-valid', {
+        entity: '${label}',
+      }),
     },
-    whitespace: '${label} should not contain white space',
+    whitespace: t('message.entity-not-contain-whitespace', {
+      entity: '${label}',
+    }),
   };
 
   return (
@@ -97,25 +103,37 @@ const BasicSignUp = () => {
                         validateMessages={validationMessages}
                         onFinish={handleSubmit}>
                         <Form.Item
-                          label="First Name"
+                          label={t('label.entity-name', {
+                            entity: t('label.first-capitalize'),
+                          })}
                           name="firstName"
                           rules={[{ whitespace: true, required: true }]}>
-                          <Input placeholder="Enter first name" />
+                          <Input
+                            placeholder={t('label.enter-entity-name', {
+                              entity: t('label.first-lowercase'),
+                            })}
+                          />
                         </Form.Item>
                         <Form.Item
-                          label="Last Name"
+                          label={t('label.entity-name', {
+                            entity: t('label.last'),
+                          })}
                           name="lastName"
                           rules={[{ whitespace: true, required: true }]}>
-                          <Input placeholder="Enter last name" />
+                          <Input placeholder={t('label.enter-last-name')} />
                         </Form.Item>
                         <Form.Item
-                          label="Email"
+                          label={t('label.email')}
                           name="email"
                           rules={[{ type: 'email', required: true }]}>
-                          <Input placeholder="Enter email" />
+                          <Input
+                            placeholder={t('label.enter-entity', {
+                              entity: t('label.email-lowercase'),
+                            })}
+                          />
                         </Form.Item>
                         <Form.Item
-                          label="Password"
+                          label={t('label.password')}
                           name="password"
                           rules={[
                             {
@@ -126,22 +144,28 @@ const BasicSignUp = () => {
                               message: passwordErrorMessage,
                             },
                           ]}>
-                          <Input.Password placeholder="Enter password" />
+                          <Input.Password
+                            placeholder={t('label.enter-entity', {
+                              entity: t('label.password-lowercase'),
+                            })}
+                          />
                         </Form.Item>
                         <Form.Item
-                          label="Confirm Password"
+                          label={t('label.password-type', {
+                            type: t('label.confirm'),
+                          })}
                           name="confirmPassword"
                           rules={[
                             {
                               validator: (_, value) => {
                                 if (isEmpty(password)) {
                                   return Promise.reject(
-                                    'Please type password first'
+                                    t('label.password-type-first')
                                   );
                                 }
                                 if (value !== password) {
                                   return Promise.reject(
-                                    "Password doesn't match"
+                                    t('label.password-not-match')
                                   );
                                 }
 
@@ -149,7 +173,9 @@ const BasicSignUp = () => {
                               },
                             },
                           ]}>
-                          <Input.Password placeholder="Confirm your password" />
+                          <Input.Password
+                            placeholder={t('label.confirm-password')}
+                          />
                         </Form.Item>
 
                         <Button
