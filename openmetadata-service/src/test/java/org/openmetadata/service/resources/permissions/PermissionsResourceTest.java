@@ -380,7 +380,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   public ResourcePermission getPermissionByName(
       String resource, String name, String user, Map<String, String> authHeaders) throws HttpResponseException {
     // Get permissions for another user for a given resource type and specific resource by name
-    WebTarget target = getResource("permissions/" + resource + "/name/" + name);
+    WebTarget target = getResource("permissions/").path(resource).path("/name/").path(name);
     target = user != null ? target.queryParam("user", user) : target;
     return TestUtils.get(target, ResourcePermission.class, authHeaders);
   }

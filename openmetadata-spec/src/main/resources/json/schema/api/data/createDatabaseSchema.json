@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this database schema instance uniquely.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../entity/data/databaseSchema.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database schema.",
