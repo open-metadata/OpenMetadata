@@ -54,6 +54,14 @@ def test_source_connection(
         )
         test_connection_fn(connection)
 
+        if test_connection_fn(connection):
+            msg = test_connection_fn(connection)
+            return ApiResponse.success(
+                {
+                    "message": f"Connection with {connection} successful!, but optional permissions are missing: {msg}"
+                }
+            )
+
     except SourceConnectionException as exc:
         msg = f"Connection error from [{connection}]: {exc}"
         logger.debug(traceback.format_exc())

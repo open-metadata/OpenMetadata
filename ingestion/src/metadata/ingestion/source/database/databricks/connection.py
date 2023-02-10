@@ -90,4 +90,4 @@ def test_connection(engine: Engine) -> None:
         ),
     ]
 
-    test_connection_db_common(engine, steps)
+    return test_connection_db_common(engine, steps)
