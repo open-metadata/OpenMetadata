@@ -78,7 +78,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         render: (userCount: number) => userCount ?? '--',
       },
       {
-        title: t('label.asset-count'),
+        title: t('label.entity-count', {
+          entity: t('label.asset'),
+        }),
         dataIndex: 'owns',
         key: 'owns',
         render: (owns) => owns.length,

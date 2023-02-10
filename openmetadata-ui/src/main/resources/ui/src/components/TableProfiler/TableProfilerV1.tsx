@@ -168,7 +168,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const overallSummery: OverallTableSummeryType[] = useMemo(() => {
     return [
       {
-        title: t('label.row-count'),
+        title: t('label.entity-count', {
+          entity: t('label.row'),
+        }),
         value: formatNumberWithComma(profile?.rowCount ?? 0),
       },
       {

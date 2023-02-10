@@ -71,6 +71,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   public PipelineResourceTest() {
     super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS);
+    supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   @BeforeAll
@@ -555,7 +556,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   public Pipeline getPipelineByName(String fqn, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("pipelines/name/" + fqn);
+    WebTarget target = getResource("pipelines/name/").path(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Pipeline.class, authHeaders);
   }
@@ -563,19 +564,19 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   // Prepare Pipeline status endpoint for PUT
   public Pipeline putPipelineStatusData(String fqn, PipelineStatus data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("pipelines/" + fqn + "/status");
+    WebTarget target = getResource("pipelines/").path(fqn).path("/status");
     return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
   }
 
   public Pipeline deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("pipelines/" + fqn + "/status/" + timestamp);
+    WebTarget target = getResource("pipelines/").path(fqn).path("/status/").path(String.valueOf(timestamp));
     return TestUtils.delete(target, Pipeline.class, authHeaders);
   }
 
   public ResultList<PipelineStatus> getPipelineStatues(
       String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource("pipelines/" + fqn + "/status");
+    WebTarget target = getResource("pipelines/").path(fqn).path("/status");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
   }
