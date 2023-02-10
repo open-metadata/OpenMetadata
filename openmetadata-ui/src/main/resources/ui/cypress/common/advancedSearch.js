@@ -116,6 +116,7 @@ export const OPERATOR = {
 };
 
 export const searchForField = (condition, fieldid, searchCriteria, index) => {
+  interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
     .eq(index)
@@ -147,13 +148,9 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
         .eq(index)
         .should('be.visible')
         .type(searchCriteria);
-    }
-  });
-
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if ($body.find(`.ant-select-dropdown [title="${searchCriteria}"]`).length) {
-      cy.get(`[title = '${searchCriteria}']`)
+      // select value from dropdown
+      verifyResponseStatusCode('@suggestApi', 200);
+      cy.get(`.ant-select-dropdown [title = '${searchCriteria}']`)
         .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
