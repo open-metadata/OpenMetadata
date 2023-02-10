@@ -298,7 +298,11 @@ const ConfigureIngestion = ({
   const getThreadCount = () => {
     return (
       <div>
-        <label>{t('label.thread-count')}</label>
+        <label>
+          {t('label.entity-count', {
+            thread: t('label.thread'),
+          })}
+        </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.thread-count-message')}
         </p>
