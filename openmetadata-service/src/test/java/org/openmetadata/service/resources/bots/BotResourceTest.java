@@ -32,7 +32,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public BotResourceTest() {
     super(Entity.BOT, Bot.class, BotList.class, "bots", "", INGESTION_BOT);
     supportsFieldsQueryParam = false;
-    supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
+    supportedNameCharacters = "_-.";
   }
 
   public void setupBots() {

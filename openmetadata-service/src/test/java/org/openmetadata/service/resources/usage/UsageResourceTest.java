@@ -312,27 +312,21 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
-  public void reportUsageByName(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/name/" + name);
-    TestUtils.post(target, usage, authHeaders);
-  }
-
   public void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/name/" + name);
+    WebTarget target = getResource("usage/").path(entity).path("/name/").path(name);
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
   public void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/" + id);
+    WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.post(target, usage, authHeaders);
   }
 
   public void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/" + id);
+    WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
@@ -352,7 +346,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   public EntityUsage getUsageByName(
       String entity, String fqn, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return getUsage(getResource("usage/" + entity + "/name/" + fqn), date, days, authHeaders);
+    return getUsage(getResource("usage/" + entity + "/name/").path(fqn), date, days, authHeaders);
   }
 
   public EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)

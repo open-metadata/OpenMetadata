@@ -83,7 +83,7 @@ describe('Team Hierarchy page', () => {
     const typeColumn = await screen.findByText('label.type');
     const subTeamsColumn = await screen.findByText('label.sub-team-plural');
     const usersColumn = await screen.findByText('label.user-plural');
-    const assetCountColumn = await screen.findByText('label.asset-count');
+    const assetCountColumn = await screen.findByText('label.entity-count');
     const descriptionColumn = await screen.findByText('label.description');
     const rows = await screen.findAllByRole('row');
 

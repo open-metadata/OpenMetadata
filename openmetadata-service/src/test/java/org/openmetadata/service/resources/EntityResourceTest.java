@@ -293,7 +293,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static KpiTarget KPI_TARGET;
 
   public static final String C1 = "c'_+# 1";
-  public static final String C2 = "c2";
+  public static final String C2 = "c2()$";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
@@ -806,6 +806,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+
+    // Any entity name that has EntityLink separator must fail
+    final K request3 = createRequest("invalid::Name", "description", "displayName", null);
+    assertResponseContains(() -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   @Test
@@ -936,7 +940,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void post_entityWithDots_200() throws HttpResponseException {
-    if (!supportedNameCharacters.contains(" ")) { // Name does not support space
+    if (!supportedNameCharacters.contains(".")) { // Name does not support dot
       return;
     }
 
