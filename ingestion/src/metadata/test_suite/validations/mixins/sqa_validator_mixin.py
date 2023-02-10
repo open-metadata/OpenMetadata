@@ -15,16 +15,16 @@ Validator Mixin for SQA tests cases
 
 import reprlib
 from datetime import datetime
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, List, Optional, Union
 
 from sqlalchemy import Column
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -33,12 +33,8 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
-T = TypeVar("T", bound=Callable)
-R = TypeVar("R")
-
-
 class SQAValidatorMixin:
-    """Validatori mixin for SQA test cases"""
+    """Validator mixin for SQA test cases"""
 
     def get_column_name(self, entity_link: str, columns: List) -> Column:
         """Given a column name get the column object
@@ -57,65 +53,6 @@ class SQAValidatorMixin:
             raise ValueError(f"Cannot find column {column}")
         return column_obj
 
-    def get_test_case_result_object(
-        self,
-        execution_date: Union[datetime, float],
-        status: TestCaseStatus,
-        result: str,
-        test_result_value: List[TestResultValue],
-    ) -> TestCaseResult:
-        """Returns a TestCaseResult object with the given args
-
-        Args:
-            execution_date (Union[datetime, float]): test case execution datetime
-            status (TestCaseStatus): failed, success, aborted
-            result (str): test case result
-            test_result_value (List[TestResultValue]): test result value to display in UI
-        Returns:
-            TestCaseResult:
-        """
-        return TestCaseResult(
-            timestamp=execution_date,  # type: ignore
-            testCaseStatus=status,
-            result=result,
-            testResultValue=test_result_value,
-            sampleData=None,
-        )
-
-    def get_test_case_param_value(
-        self,
-        test_case_param_vals: list[TestCaseParameterValue],
-        name: str,
-        type_: T,
-        default: Optional[R] = None,
-        pre_processor: Optional[Callable] = None,
-    ) -> Optional[Union[R, T]]:
-        """Give a column and a type return the value with the appropriate type casting for the
-        test case definition.
-
-        Args:
-            test_case: the test case
-            type_ (Union[float, int, str]): type for the value
-            name (str): column name
-            default (_type_, optional): Default value to return if column is not found
-            pre_processor: pre processor function/type to use against the value before casting to type_
-        """
-        value = next(
-            (param.value for param in test_case_param_vals if param.name == name), None
-        )
-
-        if not value and default is not None:
-            return default
-
-        if not value and default is None:
-            return None
-
-        if not pre_processor:
-            return type_(value)
-
-        pre_processed_value = pre_processor(value)
-        return type_(pre_processed_value)
-
     def run_query_results(
         self,
         runner: QueryRunner,
@@ -123,7 +60,7 @@ class SQAValidatorMixin:
         column: Optional[Column] = None,
         **kwargs: Optional[Any],
     ):
-        """Run the metric query agains the column
+        """Run the metric query against the column
 
         Args:
             runner (QueryRunner): runner object witj sqlalchemy session object
@@ -140,9 +77,12 @@ class SQAValidatorMixin:
         metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
         metric_fn = metric_obj(column).fn() if column is not None else metric_obj().fn()
 
-        value = dict(runner.dispatch_query_select_first(metric_fn))  # type: ignore
+        try:
+            value = dict(runner.dispatch_query_select_first(metric_fn))  # type: ignore
+            res = value.get(metric.name)
+        except Exception as exc:
+            raise SQLAlchemyError(exc)
 
-        res = value.get(metric.name)
         if res is None:
             raise ValueError(
                 f"Query on table/column {column.name if column else ''} returned None"
