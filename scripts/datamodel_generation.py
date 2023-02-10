@@ -19,7 +19,6 @@ import datamodel_code_generator.model.pydantic
 from datamodel_code_generator.imports import Import
 
 UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
-    "ingestion/src/metadata/generated/schema/entity/data/location.py",
     "ingestion/src/metadata/generated/schema/entity/classification/tag.py",
     "ingestion/src/metadata/generated/schema/entity/events/webhook.py",
     "ingestion/src/metadata/generated/schema/entity/teams/user.py",
