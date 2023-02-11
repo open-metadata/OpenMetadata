@@ -58,7 +58,7 @@ class OMetaPatchMixin(Generic[T]):
     client: REST
 
     def _validate_instance_description(
-            self, entity: Type[T], entity_id: Union[str, basic.Uuid]
+        self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
         Validates if we can update a description or not. Will return
@@ -85,11 +85,11 @@ class OMetaPatchMixin(Generic[T]):
         return instance
 
     def patch_description(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            description: str,
-            force: bool = False,
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        description: str,
+        force: bool = False,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the description.
@@ -140,11 +140,11 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_column_description(
-            self,
-            entity_id: Union[str, basic.Uuid],
-            column_name: str,
-            description: str,
-            force: bool = False,
+        self,
+        entity_id: Union[str, basic.Uuid],
+        column_name: str,
+        description: str,
+        force: bool = False,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the description of the column
 
@@ -206,12 +206,12 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_tag(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            tag_fqn: str,
-            from_glossary: bool = False,
-            operation: str = ADD
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        tag_fqn: str,
+        from_glossary: bool = False,
+        operation: str = ADD,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the tag.
@@ -236,7 +236,7 @@ class OMetaPatchMixin(Generic[T]):
         try:
             res = None
             if operation == ADD:
-              res = self.client.patch(
+                res = self.client.patch(
                     path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
                     data=json.dumps(
                         [
@@ -262,7 +262,7 @@ class OMetaPatchMixin(Generic[T]):
                         [
                             {
                                 OPERATION: REMOVE,
-                                PATH: ENTITY_TAG.format(tag_index=tag_index)
+                                PATH: ENTITY_TAG.format(tag_index=tag_index),
                             }
                         ]
                     ),
@@ -278,12 +278,12 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_column_tag(
-            self,
-            entity_id: Union[str, basic.Uuid],
-            column_name: str,
-            tag_fqn: str,
-            from_glossary: bool = False,
-            operation: str = ADD
+        self,
+        entity_id: Union[str, basic.Uuid],
+        column_name: str,
+        tag_fqn: str,
+        from_glossary: bool = False,
+        operation: str = ADD,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
 
@@ -319,7 +319,9 @@ class OMetaPatchMixin(Generic[T]):
                         [
                             {
                                 OPERATION: ADD,
-                                PATH: COL_TAG.format(index=col_index, tag_index=tag_index),
+                                PATH: COL_TAG.format(
+                                    index=col_index, tag_index=tag_index
+                                ),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
                                     "source": TagSource.Tag.value
@@ -339,7 +341,9 @@ class OMetaPatchMixin(Generic[T]):
                         [
                             {
                                 OPERATION: REMOVE,
-                                PATH: COL_TAG.format(index=col_index, tag_index=tag_index)
+                                PATH: COL_TAG.format(
+                                    index=col_index, tag_index=tag_index
+                                ),
                             }
                         ]
                     ),
