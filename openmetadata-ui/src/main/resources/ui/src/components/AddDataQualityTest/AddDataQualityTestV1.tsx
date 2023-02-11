@@ -189,7 +189,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           owner,
         };
         const testSuiteResponse = await createTestSuites(testSuitePayload);
-        testCasePayload.testSuite = testSuiteResponse.id || '';
+        testCasePayload.testSuite = testSuiteResponse.fullyQualifiedName || '';
         setTestSuiteData(testSuiteResponse);
       } else if (!isUndefined(testSuiteData)) {
         testCasePayload.testSuite = testSuiteData.fullyQualifiedName || '';
