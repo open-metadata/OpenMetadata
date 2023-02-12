@@ -62,26 +62,30 @@ describe('Login flow should work properly', () => {
 
     // Login with the created user
 
-    // login(CREDENTIALS.email, CREDENTIALS.password);
-    // cy.goToHomePage();
-    // cy.url().should('eq', `${BASE_URL}/my-data`);
+    login(CREDENTIALS.email, CREDENTIALS.password);
+    cy.goToHomePage();
+    cy.url().should('eq', `${BASE_URL}/my-data`);
 
-    // //Verify user profile
-    // cy.get('[data-testid="avatar"]').first().should('be.visible').trigger('mouseover').click();
+    // Verify user profile
+    cy.get('[data-testid="avatar"]')
+      .first()
+      .should('be.visible')
+      .trigger('mouseover')
+      .click();
 
-    // cy.get('[data-testid="user-name"]')
-    //   .should('be.visible')
-    //   .invoke('text')
-    //   .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
-    // interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
-    // cy.get('[data-testid="user-name"]')
-    //   .should('be.visible')
-    //   .click({ force: true });
-    // verifyResponseStatusCode('@getUserPage', 200);
-    // cy.get('[data-testid="left-panel"]').should(
-    //   'contain',
-    //   `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    // );
+    cy.get('[data-testid="user-name"]')
+      .should('be.visible')
+      .invoke('text')
+      .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
+    interceptURL('GET', 'api/v1/users/name/*', 'getUser');
+    cy.get('[data-testid="user-name"]')
+      .should('be.visible')
+      .click({ force: true });
+    verifyResponseStatusCode('@getUser', 200);
+    cy.get('[data-testid="left-panel"]').should(
+      'contain',
+      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
+    );
   });
 
   it('Signin using invalid credentials', () => {

@@ -35,7 +35,7 @@
     "config_value": {
       "oneOf": [
         {
-          "$ref": "../configuration/airflowConfiguration.json"
+          "$ref": "../configuration/pipelineServiceClientConfiguration.json"
         },
         {
           "$ref": "../configuration/authenticationConfiguration.json"

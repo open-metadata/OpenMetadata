@@ -103,7 +103,11 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    interceptURL('GET', '/api/v1/system/config/airflow', 'airflow');
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'airflow'
+    );
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();

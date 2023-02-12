@@ -23,8 +23,8 @@ import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -62,10 +62,8 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @NotNull
-  @Valid
-  @JsonProperty("airflowConfiguration")
-  private AirflowConfiguration airflowConfiguration;
+  @JsonProperty("pipelineServiceClientConfiguration")
+  private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
   @JsonProperty("migrationConfiguration")
   @NotNull
