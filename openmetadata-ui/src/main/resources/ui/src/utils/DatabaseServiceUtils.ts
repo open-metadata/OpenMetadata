@@ -38,6 +38,7 @@ import redshiftConnection from '../jsons/connectionSchemas/connections/database/
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
+import spannerConnection from '../jsons/connectionSchemas/connections/database/spannerConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
@@ -153,6 +154,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Snowflake: {
       schema = snowflakeConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Spanner: {
+      schema = spannerConnection;
 
       break;
     }

@@ -55,6 +55,16 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "instanceId": {
+      "title": "Instance ID",
+      "description": "Spanner Instance ID",
+      "type": "string"
+    },
+    "databaseId": {
+      "title": "Database ID",
+      "description": "Spanner Database ID",
+      "type": "string"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
@@ -66,6 +76,8 @@
   },
   "additionalProperties": false,
   "required": [
-    "credentials"
+    "credentials",
+    "instanceId",
+    "databaseId"
   ]
 }

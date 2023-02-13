@@ -15,7 +15,7 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict
+from typing import Dict, Optional
 
 from cryptography.hazmat.primitives import serialization
 
@@ -95,7 +95,7 @@ def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:
     }
 
 
-def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
+def set_google_credentials(gcs_credentials: GCSCredentials) -> Optional[str]:
     """
     Set GCS credentials environment variable
     :param gcs_credentials: GCSCredentials
@@ -122,7 +122,7 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
         credentials_dict = build_google_credentials_dict(gcs_credentials.gcsConfig)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
-        return
+        return tmp_credentials_file
 
     raise InvalidGcsConfigException(
         f"Error trying to set GCS credentials with {gcs_credentials}."

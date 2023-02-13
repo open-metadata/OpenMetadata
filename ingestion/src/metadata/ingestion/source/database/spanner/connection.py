@@ -12,24 +12,17 @@
 """
 Source connection handler
 """
-import os
 
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.spannerConnection import (
     SpannerConnection,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSValues,
-    MultipleProjectId,
-    SingleProjectId,
-)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.utils.credentials import set_google_credentials
 
 
 def get_connection_url(connection: SpannerConnection) -> str:
@@ -37,36 +30,19 @@ def get_connection_url(connection: SpannerConnection) -> str:
     Build the connection URL and set the project
     environment variable when needed
     """
-
-    if isinstance(connection.credentials.gcsConfig, GCSValues):
-        if isinstance(  # pylint: disable=no-else-return
-            connection.credentials.gcsConfig.projectId, SingleProjectId
-        ):
-            if not connection.credentials.gcsConfig.projectId.__root__:
-                return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
-            if (
-                not connection.credentials.gcsConfig.privateKey
-                and connection.credentials.gcsConfig.projectId.__root__
-            ):
-                project_id = connection.credentials.gcsConfig.projectId.__root__
-                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId.__root__}"
-        elif isinstance(connection.credentials.gcsConfig.projectId, MultipleProjectId):
-            for project_id in connection.credentials.gcsConfig.projectId.__root__:
-                if not connection.credentials.gcsConfig.privateKey and project_id:
-                    # Setting environment variable based on project id given by user / set in ADC
-                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                return f"{connection.scheme.value}://{project_id}"
-            return f"{connection.scheme.value}://"
-
-    return f"{connection.scheme.value}://"
+    # NOTE 'python-spanner-sqlalchemy' requires all of a project ID, an instance ID and a database ID.
+    #      For instance, it is impossible to get a list of databases only by connecting to an instance.
+    schema = connection.schema.value
+    project_id = connection.credentials.gcsConfig.projectId.__root__
+    instance_id = connection.instanceId
+    database_id = connection.databaseId
+    return f"{schema}:///projects/{project_id}/instances/{instance_id}/databases/{database_id}"
 
 
 def get_connection(connection: SpannerConnection) -> Engine:
     """
     Prepare the engine and the GCS credentials
     """
-    set_google_credentials(gcs_credentials=connection.credentials)
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
