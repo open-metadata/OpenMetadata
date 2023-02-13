@@ -63,7 +63,7 @@ describe('Login flow should work properly', () => {
     // Login with the created user
 
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile

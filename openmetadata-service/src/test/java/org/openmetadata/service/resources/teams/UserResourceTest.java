@@ -71,7 +71,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -995,9 +994,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // create bot user
     CreateUser createBotUser = createBotUserRequest("test-bot-user").withBotName(botName);
     User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
     // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUser.getName()).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     // put user with a different bot name
     CreateUser createWrongBotUser = createBotUserRequest("test-bot-user").withBotName("test-bot-user-fail-2");
@@ -1014,9 +1012,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // create bot user
     CreateUser createBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
     User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
     // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUser.getName()).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     // put again user with same bot name
     CreateUser createDifferentBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
