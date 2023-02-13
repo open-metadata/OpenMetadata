@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -33,7 +33,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import FormModal from 'components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -42,6 +42,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
+import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData } from 'Models';
@@ -59,6 +60,7 @@ import {
   patchClassification,
   patchTag,
 } from 'rest/tagAPI';
+import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -75,6 +77,7 @@ import { Paging } from '../../generated/type/paging';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityDeleteMessage,
   getEntityName,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -137,6 +140,9 @@ const TagsPage = () => {
         permissions
       ),
     [permissions]
+  );
+  const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
+    LOADING_STATE.INITIAL
   );
 
   const createTagPermission = useMemo(
@@ -333,7 +339,7 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           setIsLoading(true);
-
+          setDeleteStatus(LOADING_STATE.SUCCESS);
           setClassifications((classifications) => {
             const updatedClassification = classifications.filter(
               (data) => data.id !== classificationId
@@ -360,6 +366,7 @@ const TagsPage = () => {
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
         setIsLoading(false);
+        setDeleteStatus(LOADING_STATE.INITIAL);
       });
   };
 
@@ -373,6 +380,7 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           if (currentClassification) {
+            setDeleteStatus(LOADING_STATE.SUCCESS);
             setCurrentClassification({
               ...currentClassification,
             });
@@ -384,13 +392,17 @@ const TagsPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(err, t('server.delete-tag-error'));
       })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
+      .finally(() => {
+        setDeleteTags({ data: undefined, state: false });
+        setDeleteStatus(LOADING_STATE.INITIAL);
+      });
   };
 
   /**
    * It redirects to respective function call based on tag/Classification
    */
   const handleConfirmClick = () => {
+    setDeleteStatus(LOADING_STATE.WAITING);
     if (deleteTags.data?.isCategory) {
       deleteClassificationById(deleteTags.data.id as string);
     } else {
@@ -608,21 +620,22 @@ const TagsPage = () => {
                         })
                       : t('message.no-permission-for-action')
                   }>
-                  <button
-                    className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                  <Button
+                    block
+                    className=" text-primary"
                     data-testid="add-classification"
                     disabled={!createClassificationPermission}
+                    icon={<PlusIcon className="anticon" />}
                     onClick={() => {
                       setIsAddingClassification((prevState) => !prevState);
                       setErrorDataClassification(undefined);
                     }}>
-                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMARY} />{' '}
                     <span>
                       {t('label.add-entity', {
                         entity: t('label.classification'),
                       })}
                     </span>
-                  </button>
+                  </Button>
                 </Tooltip>
               </div>
             </div>
@@ -702,8 +715,7 @@ const TagsPage = () => {
             </div>
             <div className="tw-mt-1" data-testid="usage">
               <span className="tw-text-grey-muted tw-mr-1">
-                {' '}
-                {t('label.usage')}:
+                {`${t('label.usage')}:`}
               </span>
               {record.usageCount ? (
                 <Link
@@ -777,12 +789,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons"
                           data-testid="cancelAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="times"
-                            />
-                          }
+                          icon={<CloseOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleEditNameCancel}
@@ -790,12 +797,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons m-l-xss"
                           data-testid="saveAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="check"
-                            />
-                          }
+                          icon={<CheckOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleRenameSave}
@@ -804,12 +806,11 @@ const TagsPage = () => {
                     </Row>
                   ) : (
                     <Space>
-                      <Typography.Title
-                        className="m-b-0"
-                        data-testid="classification-name"
-                        level={5}>
+                      <Typography.Text
+                        className="m-b-0 font-bold text-lg"
+                        data-testid="classification-name">
                         {getEntityName(currentClassification)}
-                      </Typography.Title>
+                      </Typography.Text>
                       {currentClassification.provider === ProviderType.User && (
                         <Tooltip
                           title={
@@ -867,26 +868,37 @@ const TagsPage = () => {
                       })}
                     </Button>
                   </Tooltip>
-
-                  <Button
-                    className="tw-h-8 tw-rounded tw-ml-2"
-                    data-testid="delete-classification-or-tag"
-                    disabled={
-                      currentClassification.provider === ProviderType.System ||
-                      !classificationPermissions.Delete
-                    }
-                    size="small"
-                    onClick={() => {
-                      deleteTagHandler();
-                    }}>
-                    {t('label.delete-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </Button>
+                  <Tooltip
+                    title={
+                      !(
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      )
+                        ? t('label.delete-entity', {
+                            entity: t('label.classification'),
+                          })
+                        : t('message.no-permission-for-action')
+                    }>
+                    <Button
+                      className="add-new-tag-btn tw-ml-2"
+                      data-testid="delete-classification-or-tag"
+                      disabled={
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      }
+                      size="small"
+                      onClick={() => deleteTagHandler()}>
+                      {t('label.delete-entity', {
+                        entity: t('label.classification'),
+                      })}
+                    </Button>
+                  </Tooltip>
                 </div>
               </Space>
             )}
-            <div className="m-b-sm" data-testid="description-container">
+            <div className="m-b-sm m-t-xs" data-testid="description-container">
               <Description
                 description={currentClassification?.description || ''}
                 entityName={
@@ -982,20 +994,12 @@ const TagsPage = () => {
               }}
               onSave={(data) => createPrimaryTag(data as Classification)}
             />
-            <ConfirmationModal
-              bodyText={t('message.are-you-sure-delete-tag', {
-                type: deleteTags.data?.isCategory
-                  ? t('label.classification-lowercase')
-                  : t('label.tag-lowercase'),
-                tagName: deleteTags.data?.name,
-              })}
-              cancelText={t('label.cancel')}
-              confirmText={t('label.confirm')}
-              header={t('label.delete-entity', {
-                entity: deleteTags.data?.isCategory
-                  ? t('label.classification')
-                  : t('label.tag'),
-              })}
+
+            <EntityDeleteModal
+              bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+              entityName={deleteTags.data?.name ?? ''}
+              entityType={t('label.classification')}
+              loadingState={deleteStatus}
               visible={deleteTags.state}
               onCancel={() => setDeleteTags({ data: undefined, state: false })}
               onConfirm={handleConfirmClick}

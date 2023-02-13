@@ -17,23 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
-class CsvUtilTest {
-  @Test
-  void testQuoteField() {
-    // Single string field related tests
-    assertEquals("abc", CsvUtil.quoteField("abc")); // Strings without separator is not quoted
-    assertEquals("\"a,bc\"", CsvUtil.quoteField("a,bc")); // Strings with separator are quoted
-
-    // List of strings in a field related tests
-    assertEquals("abc;def;ghi", CsvUtil.quoteField(listOf("abc", "def", "ghi")));
-    assertEquals("\"a;bc\";\"d,ef\";ghi", CsvUtil.quoteField(listOf("a;bc", "d,ef", "ghi")));
-  }
-
+public class CsvUtilTest {
   @Test
   void testAddRecord() {
     List<String> expectedRecord = new ArrayList<>();
@@ -41,7 +31,7 @@ class CsvUtilTest {
 
     // Add string
     expectedRecord.add("");
-    assertEquals(expectedRecord, CsvUtil.addField(actualRecord, null));
+    assertEquals(expectedRecord, CsvUtil.addField(actualRecord, (String) null));
 
     expectedRecord.add("abc");
     assertEquals(expectedRecord, CsvUtil.addField(actualRecord, "abc"));
@@ -78,5 +68,18 @@ class CsvUtilTest {
     expectedRecord.add("t1;t2");
     List<TagLabel> tags = listOf(new TagLabel().withTagFQN("t1"), new TagLabel().withTagFQN("t2"));
     assertEquals(expectedRecord, CsvUtil.addTagLabels(actualRecord, tags));
+  }
+
+  public static void assertCsv(String expectedCsv, String actualCsv) {
+    // Break a csv text into records, sort it and compare
+    List<String> expectedCsvRecords = listOf(expectedCsv.split(CsvUtil.LINE_SEPARATOR));
+    List<String> actualCsvRecords = listOf(actualCsv.split(CsvUtil.LINE_SEPARATOR));
+    assertEquals(
+        expectedCsvRecords.size(), actualCsvRecords.size(), "Expected " + expectedCsv + " actual " + actualCsv);
+    Collections.sort(expectedCsvRecords);
+    Collections.sort(actualCsvRecords);
+    for (int i = 0; i < expectedCsvRecords.size(); i++) {
+      assertEquals(expectedCsvRecords.get(i), actualCsvRecords.get(i));
+    }
   }
 }

@@ -13,16 +13,25 @@
 
 @border-color: #dce3ec;
 @background-color: #ffffff;
-@highlidghted-border-color: #1890ff;
+@active-border-color: #1890ff;
+@active-box-shadow: 4px 6px 8px rgba(0, 0, 0, 0.14);
 
 .data-asset-info-card-container {
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: 4px;
   background-color: @background-color;
   padding: 12px;
+  transition: 0.3s ease-in-out;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+  &:hover {
+    box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.13);
+  }
 }
 
-.highlight-card,
-.table-data-card-container:hover {
-  border: 1px solid @highlidghted-border-color;
+.highlight-card {
+  border-left: 3px solid @active-border-color;
+  box-shadow: @active-box-shadow;
+  &:hover {
+    box-shadow: @active-box-shadow;
+  }
 }

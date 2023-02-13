@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 from sqlparse.sql import Identifier
 
+from metadata.generated.schema.entity.data.table import DmlOperationType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -77,7 +78,7 @@ def _(
     """Compute system metrics for bigquery
 
     Args:
-        dialect (str): bigqeury
+        dialect (str): bigquery
         session (Session): session Object
         table (DeclarativeMeta): orm table
 
@@ -258,6 +259,8 @@ def _(
                 token.value
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML
+                and token.value.upper()
+                in DmlOperationType._member_names_  # pylint: disable=protected-access
             ),
             None,
         )
@@ -319,8 +322,7 @@ def _(
     metric_results: List[Dict] = []
 
     information_schema_query_history = """
-    SELECT * FROM table(information_schema.query_history_by_warehouse(
-        warehouse_name=>CURRENT_WAREHOUSE(),
+    SELECT * FROM table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_start}, CURRENT_TIMESTAMP())),
         end_time_range_end=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_end}, CURRENT_TIMESTAMP())),
         result_limit=>10000

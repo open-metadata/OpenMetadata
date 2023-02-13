@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import Loader from 'components/Loader/Loader';
 import React from 'react';
 import SVGIcons from 'utils/SvgUtils';
@@ -23,7 +23,7 @@ export const getDeleteIcon = (
 ) => {
   if (deleteTags.data?.id === id) {
     if (deleteTags.data?.status === 'success') {
-      return <FontAwesomeIcon icon="check" />;
+      return <CheckOutlined />;
     }
 
     return <Loader size="small" type="default" />;

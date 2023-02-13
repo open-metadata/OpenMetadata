@@ -66,7 +66,9 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   const tableState = useMemo(
     () => [
       {
-        title: t('label.row-count'),
+        title: t('label.entity-count', {
+          entity: t('label.row'),
+        }),
         value: tableProfile?.rowCount || 0,
       },
       {

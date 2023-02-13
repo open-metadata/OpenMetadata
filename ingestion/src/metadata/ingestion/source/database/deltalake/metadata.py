@@ -49,12 +49,11 @@ from metadata.ingestion.source.database.database_service import (
     SQLSourceStatus,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-DEFAULT_DATABASE = "default"
 
 
 class SparkTableType(Enum):
@@ -135,7 +134,7 @@ class DeltalakeSource(DatabaseServiceSource):
         apply the necessary filters.
         """
 
-        yield DEFAULT_DATABASE
+        yield self.service_connection.databaseName or DEFAULT_DATABASE
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
@@ -272,7 +271,9 @@ class DeltalakeSource(DatabaseServiceSource):
                 ),
                 viewDefinition=view_definition,
             )
-
+            self.process_pii_sensitive_column(
+                metadata_config=self.metadata, table_request=table_request
+            )
             yield table_request
             self.register_record(table_request=table_request)
 

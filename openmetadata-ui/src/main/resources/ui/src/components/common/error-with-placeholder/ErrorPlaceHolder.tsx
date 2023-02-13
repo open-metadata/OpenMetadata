@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import React from 'react';
 import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
 import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
@@ -59,15 +60,17 @@ const ErrorPlaceHolder = ({
           <>
             <Paragraph style={{ marginBottom: '4px' }}>
               {' '}
-              Adding a new {heading} is easy, just give it a spin!
+              {t('label.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: heading,
+              })}
             </Paragraph>
             <Paragraph>
               {' '}
-              Still need help? Refer to our{' '}
+              {t('label.refer-to-our')}{' '}
               <Link href={doc} target="_blank">
-                docs
+                {t('label.docs')}
               </Link>{' '}
-              for more information.
+              {t('label.for-more-info')}
             </Paragraph>
           </>
         )}
@@ -93,18 +96,20 @@ const ErrorPlaceHolder = ({
       ) : (
         <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
           <Typography.Text className="tw-text-sm">
-            No Data Available
+            {t('message.no-data-available')}
           </Typography.Text>
           <Typography.Text className="tw-text-sm">
-            Go ahead and add a new {heading}!
+            {t('label.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: heading,
+            })}
           </Typography.Text>
           {doc ? (
             <Typography.Text className="tw-text-sm">
-              Still need help? Refer to our{' '}
+              {t('label.refer-to-our')}{' '}
               <Typography.Link href={doc} target="_blank">
-                docs
+                {t('label.docs')}
               </Typography.Link>{' '}
-              for more information.
+              {t('label.for-more-info')}
             </Typography.Text>
           ) : (
             ''

@@ -60,8 +60,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
     supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
-    // Special characters are not supported in the name
-    supportedNameCharacters = supportedNameCharacters.replaceAll("[ ':&/.]", "");
+    supportedNameCharacters = "_" + RANDOM_STRING_GENERATOR.generate(1); // No other special characters allowed
   }
 
   public void setupTypes() throws HttpResponseException {
@@ -73,9 +72,9 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Test
   public void post_entityCreateWithInvalidName_400() {
     // Names can't start with capital letter, can't have space, hyphen, apostrophe
-    String[] tests = {"Abcd", "a bc", "a-bc", "a'b"};
+    String[] tests = {"a bc", "a-bc", "a'b"};
 
-    String error = "[name must match \"^[a-z][\\w]+$\"]";
+    String error = "[name must match \"^(?U)[\\w]+$\"]";
     CreateType create = createRequest("placeHolder", "", "", null);
     for (String test : tests) {
       LOG.info("Testing with the name {}", test);

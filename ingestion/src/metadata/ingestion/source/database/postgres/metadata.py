@@ -163,7 +163,7 @@ class PostgresSource(CommonDbSourceService):
         """
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES),
-            dict(schema=schema_name),
+            {"schema": schema_name},
         )
 
         return [

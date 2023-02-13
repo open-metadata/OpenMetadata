@@ -17,6 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  NO_DATA_PLACEHOLDER,
   PRIMERY_COLOR,
   SECONDARY_COLOR,
   SUCCESS_COLOR,
@@ -62,9 +63,12 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
+        width: 250,
+        fixed: 'left',
         render: (name: string, record) => {
           return (
             <Link
+              className="break-word"
               to={getProfilerDashboardWithFqnPath(
                 ProfilerDashboardType.COLUMN,
                 record.fullyQualifiedName || ''
@@ -79,11 +83,10 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Data Type',
         dataIndex: 'dataTypeDisplay',
         key: 'dataType',
+        width: 250,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography.Text
-              className="ant-typography-ellipsis-custom w-24"
-              ellipsis={{ tooltip: true }}>
+            <Typography.Text className="break-word">
               {dataTypeDisplay || 'N/A'}
             </Typography.Text>
           );
@@ -141,6 +144,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Value Count',
         dataIndex: 'profile',
         key: 'valuesCount',
+        width: 120,
         render: (profile: ColumnProfile) =>
           formatNumberWithComma(profile?.valuesCount || 0),
         sorter: (col1, col2) =>
@@ -150,6 +154,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Tests',
         dataIndex: 'testCount',
         key: 'Tests',
+        fixed: 'right',
         render: (_, record) => (
           <Link
             data-testid={`${record.name}-test-count`}
@@ -167,6 +172,8 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Status',
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
+        width: 120,
+        fixed: 'right',
         render: (_, record) => {
           const summary =
             columnTestSummary?.[
@@ -188,7 +195,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               ))}
             </Space>
           ) : (
-            <Typography.Text> --- </Typography.Text>
+            <Typography.Text> {NO_DATA_PLACEHOLDER} </Typography.Text>
           );
         },
       },
@@ -196,6 +203,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
+        fixed: 'right',
         render: (_, record) => (
           <Tooltip
             placement="bottom"
@@ -278,6 +286,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         columns={tableColumn}
         dataSource={data}
         pagination={false}
+        scroll={{ x: 1500 }}
         size="small"
       />
     </div>

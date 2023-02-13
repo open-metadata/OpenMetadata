@@ -15,6 +15,7 @@ import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import PageContainer from 'components/containers/PageContainer';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -242,7 +243,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
           ),
       },
       {

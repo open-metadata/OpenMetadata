@@ -190,7 +190,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert action", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -213,7 +213,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             responseCode = "200",
             description = "alert",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AlertAction.class))),
-        @ApiResponse(responseCode = "404", description = "Alert Action for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Alert Action for instance {name} is not found")
       })
   public AlertAction getAlertActionByName(
       @Context UriInfo uriInfo,
@@ -251,7 +251,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public EntityHistory listAlertActionVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the alert action", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -275,7 +275,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public AlertAction getAlertActionVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert action", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "alert version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -371,7 +371,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public Response patchAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the alert action", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -389,7 +389,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Path("/{id}")
   @Valid
   @Operation(
-      operationId = "deleteAlert",
+      operationId = "deleteAlertAction",
       summary = "Delete a Alert Action",
       tags = "alertAction",
       description = "Get a alert action by given Id",
@@ -403,11 +403,30 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public Response deleteAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the alert action", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, true);
     AlertsPublisherManager.getInstance().deleteAlertActionFromAllAlertPublisher((AlertAction) response.getEntity());
     return response;
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteAlertActionByName",
+      summary = "Delete an Alert Action",
+      tags = "alertAction",
+      description = "Delete an alert action by given `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the alert", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
   public AlertAction getAlertAction(CreateAlertAction create, String user) throws IOException {

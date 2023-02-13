@@ -39,7 +39,7 @@ import {
   Table,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -222,7 +222,7 @@ const TourPage = () => {
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
             usageSummary={
-              mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
+              mockDatasetData.usageSummary as unknown as UsageDetails
             }
             versionHandler={handleCountChange}
           />

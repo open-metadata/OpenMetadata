@@ -176,13 +176,7 @@ class ProtobufParser:
                 proto_path=proto_path, file_path=file_path
             )
 
-            field_models = [
-                FieldModel(
-                    name=instance.DESCRIPTOR.name,
-                    dataType="RECORD",
-                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields),
-                )
-            ]
+            field_models = self.get_protobuf_fields(instance.DESCRIPTOR.fields)
 
             # Clean up the tmp folder
             if Path(self.config.base_file_path).exists():

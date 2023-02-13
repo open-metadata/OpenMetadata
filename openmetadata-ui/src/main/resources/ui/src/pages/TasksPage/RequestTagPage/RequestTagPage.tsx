@@ -20,6 +20,7 @@ import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
@@ -54,6 +55,7 @@ import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -105,9 +107,9 @@ const RequestTag = () => {
 
       return (
         <div data-testid="column-details">
-          <p className="tw-font-semibold">Column Details</p>
+          <p className="tw-font-semibold">{t('label.column-details')}</p>
           <p>
-            <span className="tw-text-grey-muted">Type:</span>{' '}
+            <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
           <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
@@ -149,12 +151,16 @@ const RequestTag = () => {
       };
       postThread(data)
         .then((res) => {
-          showSuccessToast('Task Created Successfully');
+          showSuccessToast(
+            t('server.create-entity-success', {
+              entity: t('label.task'),
+            })
+          );
           history.push(getTaskDetailPath(res.task?.id.toFixed() ?? ''));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot create a task without assignee');
+      showErrorToast(t('server.no-task-creation-without-assignee'));
     }
   };
 
@@ -187,7 +193,13 @@ const RequestTag = () => {
       <TitleBreadcrumb
         titleLinks={[
           ...getBreadCrumbList(entityData, entityType as EntityType),
-          { name: 'Create Task', activeTitle: true, url: '' },
+          {
+            name: t('label.create-entity', {
+              entity: t('label.task'),
+            }),
+            activeTitle: true,
+            url: '',
+          },
         ]}
       />
       <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
@@ -195,14 +207,26 @@ const RequestTag = () => {
           className="tw-col-span-2"
           key="request-tags"
           style={{ ...cardStyles }}
-          title="Create Task">
+          title={t('label.create-entity', {
+            entity: t('label.task'),
+          })}>
           <Form form={form} layout="vertical" onFinish={onCreateTask}>
-            <Form.Item data-testid="title" label="Title:" name="title">
-              <Input placeholder="Task title" style={{ margin: '4px 0px' }} />
+            <Form.Item
+              data-testid="title"
+              label={`${t('label.task-entity', {
+                entity: t('label.title'),
+              })}:`}
+              name="title">
+              <Input
+                placeholder={`${t('label.task-entity', {
+                  entity: t('label.title'),
+                })}`}
+                style={{ margin: '4px 0px' }}
+              />
             </Form.Item>
             <Form.Item
               data-testid="assignees"
-              label="Assignees:"
+              label={`${t('label.assignee-plural')}:`}
               name="assignees">
               <Assignees
                 assignees={assignees}
@@ -213,7 +237,9 @@ const RequestTag = () => {
             </Form.Item>
             <Form.Item
               data-testid="tags-label"
-              label="Suggest tags:"
+              label={`${t('label.suggest-entity', {
+                entity: t('label.tag-plural'),
+              })}:`}
               name="suggestTags">
               <TagSuggestion
                 selectedTags={suggestion}
@@ -227,13 +253,13 @@ const RequestTag = () => {
                 data-testid="cta-buttons"
                 size={16}>
                 <Button type="link" onClick={back}>
-                  Back
+                  {t('label.back')}
                 </Button>
                 <Button
                   data-testid="submit-tag-request"
                   htmlType="submit"
                   type="primary">
-                  {suggestion ? 'Suggest' : 'Submit'}
+                  {suggestion ? t('label.suggest') : t('label.submit')}
                 </Button>
               </Space>
             </Form.Item>
@@ -241,9 +267,11 @@ const RequestTag = () => {
         </Card>
 
         <div className="tw-pl-2" data-testid="entity-details">
-          <h6 className="tw-text-base">{capitalize(entityType)} Details</h6>
+          <h6 className="tw-text-base">
+            {capitalize(entityType)} {t('label.detail-plural')}
+          </h6>
           <div className="tw-flex tw-mb-4">
-            <span className="tw-text-grey-muted">Owner:</span>{' '}
+            <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
             <span>
               {entityData.owner ? (
                 <span className="tw-flex tw-ml-1">
@@ -258,7 +286,9 @@ const RequestTag = () => {
                   </span>
                 </span>
               ) : (
-                <span className="tw-text-grey-muted tw-ml-1">No Owner</span>
+                <span className="tw-text-grey-muted tw-ml-1">
+                  {t('label.no-entity', { entity: t('label.owner') })}
+                </span>
               )}
             </span>
           </div>
@@ -267,7 +297,9 @@ const RequestTag = () => {
             {entityTier ? (
               entityTier
             ) : (
-              <span className="tw-text-grey-muted">No Tier</span>
+              <span className="tw-text-grey-muted">
+                {t('label.no-entity', { entity: t('label.tier') })}
+              </span>
             )}
           </p>
 

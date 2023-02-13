@@ -125,7 +125,7 @@ const EdgeInfoDrawer = ({
                 data.value && (
                   <Col key={data.key} span={24}>
                     <Typography.Text className="m-r-sm">
-                      {data.key}:
+                      {`${data.key}:`}
                     </Typography.Text>
 
                     {isUndefined(data.link) ? (
@@ -141,7 +141,7 @@ const EdgeInfoDrawer = ({
           <Col span={24}>
             <Divider />
             <Typography.Paragraph>
-              {t('label.description')}:
+              {`${t('label.description')}:`}
             </Typography.Paragraph>
             {edge?.data.edge?.description?.trim() ? (
               <RichTextEditorPreviewer

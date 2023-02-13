@@ -13,16 +13,13 @@
 
 import {
   act,
-  findByTestId,
   findByText,
   getByTestId,
-  queryByTestId,
   queryByText,
   render,
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { omit } from 'lodash';
 import { LoadingState } from 'Models';
 import React from 'react';
 import {
@@ -138,7 +135,6 @@ const mockProps: GlossaryV1Props = {
   deleteStatus: 'initial' as LoadingState,
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
-  isChildLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
   updateGlossary: jest.fn(),
   onGlossaryDelete: jest.fn(),
@@ -163,11 +159,6 @@ describe('Test Glossary component', () => {
       container,
       /Glossary-Details component/i
     );
-    const updateByContainer = await findByTestId(
-      container,
-      'updated-by-container'
-    );
-    const updateByDetails = await findByTestId(container, 'updated-by-details');
 
     const glossaryTerm = await queryByText(
       container,
@@ -175,11 +166,6 @@ describe('Test Glossary component', () => {
     );
 
     expect(glossaryDetails).toBeInTheDocument();
-    expect(updateByContainer).toBeInTheDocument();
-    expect(updateByDetails).toBeInTheDocument();
-    expect(updateByDetails.textContent).toContain(
-      'mocked_user label.on-lowercase Jan 15, 1970, 12:26 PM'
-    );
     expect(glossaryTerm).not.toBeInTheDocument();
   });
 
@@ -204,29 +190,6 @@ describe('Test Glossary component', () => {
 
     expect(glossaryTerm).toBeInTheDocument();
     expect(glossaryDetails).not.toBeInTheDocument();
-  });
-
-  it('UpdatedBy and updatedAt should not visible if not available', async () => {
-    const updatedData = omit(mockedGlossaryTerms[0], [
-      'updatedAt',
-      'updatedBy',
-    ]);
-    const { container } = render(
-      <GlossaryV1
-        {...mockProps}
-        isGlossaryActive={false}
-        selectedData={updatedData}
-      />
-    );
-
-    const updateByContainer = await findByTestId(
-      container,
-      'updated-by-container'
-    );
-    const updateByDetails = queryByTestId(container, 'updated-by-details');
-
-    expect(updateByContainer).toBeInTheDocument();
-    expect(updateByDetails).not.toBeInTheDocument();
   });
 
   it('Should render import glossary component', async () => {

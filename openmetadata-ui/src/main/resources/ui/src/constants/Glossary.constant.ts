@@ -36,15 +36,11 @@ export const ADD_GLOSSARY_ERROR = {
 
 export const STEPS_FOR_IMPORT_GLOSSARY_TERMS = [
   {
-    name: startCase(t('label.upload-file')),
+    name: startCase(t('label.upload-csv-uppercase-file')),
     step: 1,
   },
   {
-    name: startCase(t('label.preview-uploaded-data')),
+    name: startCase(t('label.preview-data')),
     step: 2,
-  },
-  {
-    name: startCase(t('label.import')),
-    step: 3,
   },
 ];

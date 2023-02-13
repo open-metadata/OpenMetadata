@@ -87,6 +87,9 @@ from metadata.test_suite.validations.table.table_row_count_to_be_between import 
 from metadata.test_suite.validations.table.table_row_count_to_equal import (
     table_row_count_to_equal,
 )
+from metadata.test_suite.validations.table.table_row_inserted_count_to_be_between import (
+    table_row_inserted_count_to_be_between,
+)
 from metadata.utils.dispatch import enum_register
 from metadata.utils.logger import profiler_logger
 
@@ -104,6 +107,9 @@ validation_enum_registry.add("tableColumnCountToBeBetween")(
 validation_enum_registry.add("tableColumnToMatchSet")(table_column_to_match_set)
 validation_enum_registry.add("tableColumnNameToExist")(table_column_name_to_exist)
 validation_enum_registry.add("tableCustomSQLQuery")(table_custom_sql_query)
+validation_enum_registry.add("tableRowInsertedCountToBeBetween")(
+    table_row_inserted_count_to_be_between
+)
 
 # # # Column Tests
 validation_enum_registry.add("columnValuesToBeBetween")(column_values_to_be_between)

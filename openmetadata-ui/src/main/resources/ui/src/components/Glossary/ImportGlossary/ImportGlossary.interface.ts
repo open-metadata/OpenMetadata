@@ -16,7 +16,7 @@ export interface GlossaryCSVRecord {
   parent?: string;
   'name*': string;
   displayName?: string;
-  'description*': string;
+  description: string;
   synonyms?: string;
   relatedTerms?: string;
   references?: string;

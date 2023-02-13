@@ -84,6 +84,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -122,7 +123,6 @@ import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
@@ -142,11 +142,13 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
 
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
+    supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {
@@ -1449,10 +1451,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(3, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1"));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName()));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEquals(1, getGlossaryUsageCount("g2"));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName()));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
@@ -1599,7 +1601,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
     // Column c2 description changed
-    fieldUpdated(change, build("columns", C2, "description"), "c2", "new1");
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
 
     columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
     // Column c3 tags were removed and precision and scale were added
@@ -1638,14 +1640,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void patch_tableColumnTags_200_ok(TestInfo test) throws IOException {
+  void patch_tableColumnsTags_200_ok(TestInfo test) throws IOException {
     Column c1 = getColumn(C1, INT, null);
     CreateTable create = createRequest(test).withColumns(List.of(c1));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add a primary tag and derived tag both. The tag list must include derived tags only once.
     String json = JsonUtils.pojoToJson(table);
-    table.getColumns().get(0).withTags(List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    table
+        .getColumns()
+        .get(0)
+        .withTags(
+            List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
@@ -1671,7 +1677,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TagLabel piiSensitive =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL)).findAny().orElse(null);
     assertNotNull(piiSensitive);
-    assertEquals(LabelType.DERIVED, piiSensitive.getLabelType());
+    assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
   }
 
   @Test
@@ -1744,7 +1750,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private void deleteAndCheckLocation(Table table) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
+    WebTarget target = getResource(table.getId()).path("/location");
     TestUtils.delete(target, TestUtils.TEST_AUTH_HEADERS);
     checkLocationDeleted(table.getId(), TestUtils.TEST_AUTH_HEADERS);
   }
@@ -1756,7 +1762,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
+    WebTarget target = getResource(table.getId()).path("/location");
     TestUtils.put(target, locationId, status, authHeaders);
 
     // GET .../tables/{tableId} returns newly added location
@@ -1901,95 +1907,90 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
 
-  public static Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/joins");
+  public Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/joins");
     return TestUtils.put(target, joins, Table.class, OK, authHeaders);
   }
 
-  public static Table putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
+  public Table putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/sampleData");
+    WebTarget target = getResource(tableId).path("/sampleData");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table getSampleData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/sampleData");
+  public Table getSampleData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/sampleData");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static Table putTableProfilerConfig(UUID tableId, TableProfilerConfig data, Map<String, String> authHeaders)
+  public Table putTableProfilerConfig(UUID tableId, TableProfilerConfig data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+    WebTarget target = getResource(tableId).path("/tableProfilerConfig");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table deleteTableProfilerConfig(UUID tableId, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+  public Table deleteTableProfilerConfig(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/tableProfilerConfig");
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  public static Table getLatestTableProfile(String fqn, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile/latest");
+  public Table getLatestTableProfile(String fqn, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + fqn + "/tableProfile/latest");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static Table putTableProfileData(UUID tableId, CreateTableProfile data, Map<String, String> authHeaders)
+  public Table putTableProfileData(UUID tableId, CreateTableProfile data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfile");
+    WebTarget target = getResource(tableId).path("/tableProfile");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static void deleteTableProfile(String fqn, String entityType, Long timestamp, Map<String, String> authHeaders)
+  public void deleteTableProfile(String fqn, String entityType, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target =
-        OpenMetadataApplicationTest.getResource("tables/" + fqn + "/" + entityType + "/" + timestamp + "/profile");
+    WebTarget target = getCollection().path("/" + fqn + "/" + entityType + "/" + timestamp + "/profile");
     TestUtils.delete(target, authHeaders);
   }
 
-  public static ResultList<TableProfile> getTableProfiles(
+  public ResultList<TableProfile> getTableProfiles(
       String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile");
+    WebTarget target = getCollection().path("/" + fqn + "/tableProfile");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.TableProfileList.class, authHeaders);
   }
 
-  public static ResultList<ColumnProfile> getColumnProfiles(
+  public ResultList<ColumnProfile> getColumnProfiles(
       String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/columnProfile");
+    WebTarget target = getCollection().path("/" + fqn + "/columnProfile");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
-  public static Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
+  public Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
+    WebTarget target = getResource(tableId).path("/tableQuery");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
+  public Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/tableQuery");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)
+  public Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/dataModel");
+    WebTarget target = getResource(tableId).path("/dataModel");
     return TestUtils.put(target, dataModel, Table.class, OK, authHeaders);
   }
 
-  public static Table putCustomMetric(UUID tableId, CreateCustomMetric data, Map<String, String> authHeaders)
+  public Table putCustomMetric(UUID tableId, CreateCustomMetric data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/customMetric");
+    WebTarget target = getResource(tableId).path("/customMetric");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table deleteCustomMetric(
-      UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
+  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target =
-        OpenMetadataApplicationTest.getResource("tables/" + tableId + "/customMetric/" + columnName + "/" + metricName);
+    WebTarget target = getResource(tableId).path("/customMetric/" + columnName + "/" + metricName);
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 

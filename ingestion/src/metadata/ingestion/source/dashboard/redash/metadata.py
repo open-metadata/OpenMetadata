@@ -87,8 +87,8 @@ class RedashSource(DashboardServiceSource):
             for widgets in dashboard_details.get("widgets", []):
                 dashboard_description = widgets.get("text")
             yield CreateDashboardRequest(
-                name=dashboard_details.get("id"),
-                displayName=dashboard_details["name"],
+                name=dashboard_details["id"],
+                displayName=dashboard_details.get("name"),
                 description=dashboard_description,
                 charts=[
                     EntityReference(id=chart.id.__root__, type="chart")

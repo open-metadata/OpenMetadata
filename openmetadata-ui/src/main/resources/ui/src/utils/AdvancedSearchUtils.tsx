@@ -200,15 +200,21 @@ export const getSelectedOptionLabelString = (
 };
 
 export const getOptionFromDashboardSource = (
-  uniqueOptions: FormattedSuggestResponseObject
+  uniqueOption: FormattedSuggestResponseObject
 ): SearchDropdownOption => {
-  const charts = (uniqueOptions.source as Dashboard).charts;
+  const charts = (uniqueOption.source as Dashboard).charts;
   const option: SearchDropdownOption = { key: '', label: '' };
 
   if (charts) {
+    // As of now, the value sent by suggest API in uniqueOption.text is uncertain
+    // It is either from name or sometimes from displayName,
+    // we are checking both for now to figure out which 'Dashboard' has desired chart
     const chart = charts.find(
-      (chart) => chart.displayName === uniqueOptions.text
+      (chart) =>
+        chart.displayName === uniqueOption.text ||
+        chart.name === uniqueOption.text
     );
+
     if (chart) {
       option.key = chart.name ?? '';
       option.label = chart.displayName ?? chart.name ?? '';
@@ -219,13 +225,21 @@ export const getOptionFromDashboardSource = (
 };
 
 export const getOptionFromPipelineSource = (
-  uniqueOptions: FormattedSuggestResponseObject
+  uniqueOption: FormattedSuggestResponseObject
 ): SearchDropdownOption => {
-  const tasks = (uniqueOptions.source as Pipeline).tasks;
+  const tasks = (uniqueOption.source as Pipeline).tasks;
   const option: SearchDropdownOption = { key: '', label: '' };
 
   if (tasks) {
-    const task = tasks.find((task) => task.name === uniqueOptions.text);
+    // As of now, the value sent by suggest API in uniqueOption.text is uncertain
+    // It is either from name or sometimes from displayName,
+    // we are checking both for now to figure out which 'Pipeline' has desired task
+    const task = tasks.find(
+      (task) =>
+        task.name === uniqueOption.text ||
+        task.displayName === uniqueOption.text
+    );
+
     if (task) {
       option.key = task.name;
       option.label = task.displayName ?? task.name;

@@ -13,44 +13,47 @@
 
 import { Button } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';
 import notFoundNumber from '../../assets/svg/404-number.svg';
 import { ROUTES } from '../../constants/constants';
 
 const PageNotFound = () => {
+  const { t } = useTranslation();
+
   return (
     <div
       className="page-not-found-container tw-relative"
       data-testid="no-page-found">
       <div className="tw-flex-center tw-hw-full tw-absolute tw-inset-0">
-        <img alt="not found" src={notFoundNumber} />
+        <img alt={t('label.not-found')} src={notFoundNumber} />
       </div>
       <div className="tw-flex tw-hw-full tw-absolute tw-inset-0">
         <div className="tw-hw-full tw-flex-center">
           <div className="tw-text-center">
             <h4 className="tw-font-bold tw-text-3xl tw-text-grey-muted">
-              Page Not Found
+              {t('label.page-not-found')}
             </h4>
             <p className="tw-text-lg tw-text-grey-muted-muted">
-              The page you are looking for is not available
+              {t('message.page-is-not-available')}
             </p>
             <div className="tw-text-center tw-mt-10" data-testid="route-links">
               <Link to={ROUTES.HOME}>
                 <Button className="tw-mr-5" type="primary">
-                  Go To Homepage
+                  {t('label.go-to-home-page')}
                 </Button>
               </Link>
               <Link to={ROUTES.EXPLORE}>
                 <Button ghost type="primary">
-                  Explore
+                  {t('label.explore')}
                 </Button>
               </Link>
             </div>
           </div>
         </div>
         <div className="tw-hw-full tw-flex-center">
-          <img alt="not found" src={notFoundImage} />
+          <img alt={t('label.not-found')} src={notFoundImage} />
         </div>
       </div>
     </div>

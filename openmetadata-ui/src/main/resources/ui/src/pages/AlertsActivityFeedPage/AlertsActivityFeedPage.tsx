@@ -67,13 +67,11 @@ const AlertsActivityFeedPage = () => {
     fetchActivityFeedAlert();
   }, []);
 
-  const breadcrumb = useMemo(
-    () => [
-      {
-        name: getEntityName(alert),
-        url: '',
-      },
-    ],
+  const pageHeaderData = useMemo(
+    () => ({
+      header: getEntityName(alert),
+      subHeader: alert?.description || '',
+    }),
     [alert]
   );
 
@@ -86,7 +84,7 @@ const AlertsActivityFeedPage = () => {
       alertActions={alertActions}
       alerts={alert}
       allowDelete={false}
-      breadcrumb={breadcrumb}
+      pageHeaderData={pageHeaderData}
       onDelete={noop}
     />
   ) : (

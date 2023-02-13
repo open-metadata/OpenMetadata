@@ -19,11 +19,7 @@ from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import ChartType
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as Lineage_Dashboard,
-)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -61,7 +57,7 @@ class SupersetDBSource(SupersetSourceMixin):
         """
         charts = self.engine.execute(FETCH_ALL_CHARTS)
         for chart in charts:
-            self.all_charts[chart.id] = dict(chart)
+            self.all_charts[chart["id"]] = dict(chart)
 
     def get_dashboards_list(self) -> Optional[List[object]]:
         """
@@ -81,7 +77,7 @@ class SupersetDBSource(SupersetSourceMixin):
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
             description="",
-            dashboardUrl=f"/superset/dashboard/{dashboard_details['id']}",
+            dashboardUrl=f"/superset/dashboard/{dashboard_details['id']}/",
             owner=self.get_owner_details(dashboard_details),
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
@@ -92,46 +88,12 @@ class SupersetDBSource(SupersetSourceMixin):
             ),
         )
 
-    def yield_dashboard_lineage_details(
-        self, dashboard_details: dict, db_service_name: str
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        Get lineage between dashboard and data sources
-        """
-        for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            chart_json = self.all_charts.get(chart_id)
-            if chart_json:
-                datasource_fqn = (
-                    self._get_datasource_fqn(chart_json, db_service_name)
-                    if chart_json.get("table_name")
-                    else None
-                )
-                if not datasource_fqn:
-                    continue
-                from_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=datasource_fqn,
-                )
-                try:
-                    dashboard_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Lineage_Dashboard,
-                        service_name=self.config.serviceName,
-                        dashboard_name=str(dashboard_details["id"]),
-                    )
-                    to_entity = self.metadata.get_by_name(
-                        entity=Lineage_Dashboard,
-                        fqn=dashboard_fqn,
-                    )
-                    if from_entity and to_entity:
-                        yield self._get_add_lineage_request(
-                            to_entity=to_entity, from_entity=from_entity
-                        )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
-                    )
+    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_name):
+        return (
+            self._get_datasource_fqn(chart_json, db_service_name)
+            if chart_json.get("table_name")
+            else None
+        )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -147,7 +109,7 @@ class SupersetDBSource(SupersetSourceMixin):
             chart = CreateChartRequest(
                 name=chart_json["id"],
                 displayName=chart_json.get("slice_name"),
-                description="",
+                description=chart_json.get("description"),
                 chartType=get_standard_chart_type(
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
@@ -180,7 +142,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     service_name=db_service_name,
                 )
                 return dataset_fqn
-            except KeyError as err:
+            except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Failed to fetch Datasource with id [{chart_json.get('table_name')}]: {err}"

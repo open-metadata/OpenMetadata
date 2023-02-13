@@ -101,7 +101,7 @@ public class BuildSearchIndexResource {
       description = "Reindex All job last status",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Run model {runMode} is not found")
       })
   public Response reindexAllJobLastStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("runMode") String runMode)
