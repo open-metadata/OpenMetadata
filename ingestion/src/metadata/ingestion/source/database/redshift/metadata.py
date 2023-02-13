@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.common_db_source import (
 )
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
+    REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
     REDSHIFT_TABLE_COMMENTS,
@@ -431,7 +432,7 @@ class RedshiftSource(CommonDbSourceService):
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute("SELECT datname FROM pg_database")
+            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
             for res in results:
                 row = list(res)
                 new_database = row[0]

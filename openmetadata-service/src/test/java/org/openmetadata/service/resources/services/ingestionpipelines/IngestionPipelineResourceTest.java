@@ -43,7 +43,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -79,7 +78,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   public static SourceConfig DATABASE_METADATA_CONFIG;
   public static SourceConfig DASHBOARD_METADATA_CONFIG;
   public static SourceConfig MESSAGING_METADATA_CONFIG;
-  public static AirflowConfiguration AIRFLOW_CONFIG;
   public static DatabaseServiceResourceTest DATABASE_SERVICE_RESOURCE_TEST;
   public static Date START_DATE;
 
@@ -110,10 +108,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     DATABASE_METADATA_CONFIG = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
     DASHBOARD_METADATA_CONFIG = new SourceConfig().withConfig(dashboardServiceMetadataPipeline);
     MESSAGING_METADATA_CONFIG = new SourceConfig().withConfig(messagingServiceMetadataPipeline);
-    AIRFLOW_CONFIG = new AirflowConfiguration();
-    AIRFLOW_CONFIG.setApiEndpoint("http://localhost:8080");
-    AIRFLOW_CONFIG.setUsername("admin");
-    AIRFLOW_CONFIG.setPassword("admin");
     DATABASE_SERVICE_RESOURCE_TEST = new DatabaseServiceResourceTest();
     START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
   }

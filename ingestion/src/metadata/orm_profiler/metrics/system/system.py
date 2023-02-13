@@ -322,8 +322,7 @@ def _(
     metric_results: List[Dict] = []
 
     information_schema_query_history = """
-    SELECT * FROM table(information_schema.query_history_by_warehouse(
-        warehouse_name=>CURRENT_WAREHOUSE(),
+    SELECT * FROM table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_start}, CURRENT_TIMESTAMP())),
         end_time_range_end=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_end}, CURRENT_TIMESTAMP())),
         result_limit=>10000

@@ -34,7 +34,7 @@ import React, {
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
-import { getLoggedInUser, getUserByName, updateUser } from 'rest/userAPI';
+import { getLoggedInUser, updateUser } from 'rest/userAPI';
 import appState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
@@ -46,7 +46,6 @@ import jsonData from '../../../jsons/en';
 import {
   extractDetailsFromToken,
   getAuthConfig,
-  getNameFromEmail,
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
@@ -329,7 +328,7 @@ export const AuthProvider = ({
       authConfig?.provider === AuthType.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
         : userAPIQueryFields;
-    getUserByName(getNameFromEmail(user.profile.email), fields)
+    getLoggedInUser(fields)
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
