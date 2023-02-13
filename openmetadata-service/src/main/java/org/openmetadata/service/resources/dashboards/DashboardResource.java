@@ -431,8 +431,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   private Dashboard getDashboard(CreateDashboard create, String user) throws IOException {
     return copy(new Dashboard(), create, user)
-        .withService(create.getService())
-        .withCharts(create.getCharts())
+        .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
+        .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
         .withDashboardUrl(create.getDashboardUrl())
         .withTags(create.getTags());
   }

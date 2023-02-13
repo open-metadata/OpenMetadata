@@ -209,10 +209,12 @@ const AddGlossaryTerm = ({
       }))
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
-    const updatedTerms = relatedTerms.map((term) => ({
-      id: term.id,
-      type: 'glossaryTerm',
-    }));
+    const updatedTerms = relatedTerms.map(function (term) {
+      return term.fullyQualifiedName!;
+    });
+    const updatedReviewers = reviewer.map(function (r) {
+      return r.fullyQualifiedName!;
+    });
 
     if (validateForm(updatedReference)) {
       const updatedName = name.trim();
@@ -220,24 +222,15 @@ const AddGlossaryTerm = ({
         name: updatedName,
         displayName: updatedName,
         description: getDescription(),
-        reviewers: reviewer.map((r) => ({
-          id: r.id,
-          type: r.type,
-        })),
+        reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
         references: updatedReference.length > 0 ? updatedReference : undefined,
         parent: !isUndefined(parentGlossaryData)
-          ? {
-              type: 'glossaryTerm',
-              id: parentGlossaryData.id,
-            }
+          ? parentGlossaryData.fullyQualifiedName
           : undefined,
         synonyms: synonyms ? synonyms.split(',') : undefined,
         mutuallyExclusive,
-        glossary: {
-          id: glossaryData.id,
-          type: 'glossary',
-        },
+        glossary: glossaryData.name,
         tags: tags,
       };
 

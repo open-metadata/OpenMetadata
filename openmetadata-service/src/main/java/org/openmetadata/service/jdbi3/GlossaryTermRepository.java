@@ -103,7 +103,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void prepare(GlossaryTerm entity) throws IOException {
     // Validate parent term
     GlossaryTerm parentTerm =
-        entity.getParent() != null ? get(null, entity.getParent().getId(), getFields("owner")) : null;
+        entity.getParent() != null
+            ? getByName(null, entity.getParent().getFullyQualifiedName(), getFields("owner"))
+            : null;
     List<EntityReference> inheritedReviewers = null;
     EntityReference inheritedOwner = null;
     if (parentTerm != null) {

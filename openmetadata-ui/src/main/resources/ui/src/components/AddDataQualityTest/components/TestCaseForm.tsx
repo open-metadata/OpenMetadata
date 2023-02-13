@@ -13,6 +13,7 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,7 +22,6 @@ import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
-import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   TestCase,
   TestCaseParameterValue,
@@ -58,7 +58,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
-    initialValue?.testDefinition?.id
+    initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [sqlQuery, setSqlQuery] = useState({
@@ -99,9 +99,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
+    const testType = initialValue?.testSuite ?? selectedTestType;
 
-    return testDefinitions.find((definition) => definition.id === testType);
+    return testDefinitions.find(
+      (definition) => definition.fullyQualifiedName === testType
+    );
   };
 
   const GenerateParamsField = useCallback(() => {
@@ -161,13 +163,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       name: value.testName,
       entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       parameterValues: parameterValues as TestCaseParameterValue[],
-      testDefinition: {
-        id: value.testTypeId,
-        type: 'testDefinition',
-      },
+      testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
-      testSuite: {} as EntityReference,
-    };
+      testSuite: '',
+    } as CreateTestCase;
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {
@@ -198,7 +197,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
       const testType = testDefinitions.find(
-        (test) => test.id === value.testTypeId
+        (test) => test.fullyQualifiedName === value.testTypeId
       );
       setSelectedTestType(value.testTypeId);
       const testCount = testCases.filter((test) =>
@@ -227,7 +226,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       testName: replaceAllSpacialCharWith_(
         initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
       ),
-      testTypeId: initialValue?.testDefinition?.id,
+      testTypeId: initialValue?.testDefinition,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
         : undefined,
@@ -273,7 +272,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         <Select
           options={testDefinitions.map((suite) => ({
             label: suite.name,
-            value: suite.id,
+            value: suite.fullyQualifiedName,
           }))}
           placeholder="Select test type"
         />

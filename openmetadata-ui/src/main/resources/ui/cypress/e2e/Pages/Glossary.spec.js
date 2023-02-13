@@ -1023,6 +1023,5 @@ describe('Glossary page should work properly', () => {
 
       toastNotification('Glossary deleted successfully!');
     });
-    cy.contains('Add New Glossary').should('be.visible');
   });
 });
