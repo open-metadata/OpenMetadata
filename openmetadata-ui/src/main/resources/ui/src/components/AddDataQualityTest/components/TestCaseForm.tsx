@@ -197,7 +197,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
       const testType = testDefinitions.find(
-        (test) => test.id === value.testTypeId
+        (test) => test.fullyQualifiedName === value.testTypeId
       );
       setSelectedTestType(value.testTypeId);
       const testCount = testCases.filter((test) =>
