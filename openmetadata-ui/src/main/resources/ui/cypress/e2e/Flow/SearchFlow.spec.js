@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+// The spec is related to advance search feature
+
 import {
   addOwner,
   addTag,
@@ -35,7 +38,7 @@ import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
 
-describe('Advance search should work properly for all fields', () => {
+describe('pre-requests for test case', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -88,6 +91,12 @@ describe('Advance search should work properly for all fields', () => {
       service_name
     );
   });
+});
+
+describe('Single filed search', () => {
+  beforeEach(() => {
+    cy.login();
+  });
 
   Object.values(FIELDS).forEach((field) => {
     it(`Verify advance search results for ${field.name} field and all condition`, () => {
@@ -118,7 +127,7 @@ describe('Advance search should work properly for all fields', () => {
   });
 });
 
-describe('Advance search should work properly for Add Group functionality', () => {
+describe('Group search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -196,7 +205,7 @@ describe('Advance search should work properly for Add Group functionality', () =
   });
 });
 
-describe('Advance search should work properly for Add Rule functionality', () => {
+describe('Search with additional rule', () => {
   beforeEach(() => {
     cy.login();
   });

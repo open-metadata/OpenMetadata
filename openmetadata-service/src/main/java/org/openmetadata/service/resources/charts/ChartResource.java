@@ -56,6 +56,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -425,10 +426,10 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   private Chart getChart(CreateChart create, String user) throws IOException {
     return copy(new Chart(), create, user)
-        .withService(create.getService())
+        .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withChartUrl(create.getChartUrl())
-        .withTables(create.getTables())
+        .withTables(getEntityReferences(Entity.TABLE, create.getTables()))
         .withTags(create.getTags());
   }
 }

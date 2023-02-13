@@ -29,9 +29,7 @@ export const VALIDATION_MESSAGES = {
   }),
 };
 
-export const LOGIN_FAILED_ERROR = i18n.t(
-  'message.invalid-username-or-password'
-);
+export const LOGIN_FAILED_ERROR = i18n.t('server.invalid-username-or-password');
 
 export const HTTP_STATUS_CODE = {
   BAD_REQUEST: 400, // The request cannot be fulfilled due to bad syntax

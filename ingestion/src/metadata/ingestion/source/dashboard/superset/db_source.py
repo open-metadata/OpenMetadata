@@ -19,7 +19,7 @@ from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_ALL_CHARTS,
@@ -80,12 +79,15 @@ class SupersetDBSource(SupersetSourceMixin):
             dashboardUrl=f"/superset/dashboard/{dashboard_details['id']}/",
             owner=self.get_owner_details(dashboard_details),
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
                 for chart in self.context.charts
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def _get_datasource_fqn_for_lineage(self, chart_json, db_service_name):
@@ -114,10 +116,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
                 chartUrl=f"/explore/?slice_id={chart_json['id']}",
-                service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__,
-                    type="dashboardService",
-                ),
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart
 

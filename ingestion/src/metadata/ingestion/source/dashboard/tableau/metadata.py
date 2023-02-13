@@ -27,6 +27,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -298,14 +299,17 @@ class TableauSource(DashboardServiceSource):
             description=dashboard_details.description,
             owner=self.get_owner_details(dashboard_details),
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
                 for chart in self.context.charts
             ],
             tags=self.get_tag_labels(dashboard_details.tags),
             dashboardUrl=f"#{workbook_url}",
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_lineage_details(
@@ -387,10 +391,7 @@ class TableauSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(chart.sheet_type),
                     chartUrl=chart_url,
                     tags=self.get_tag_labels(chart.tags),
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)
             except Exception as exc:

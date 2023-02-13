@@ -38,7 +38,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -49,12 +48,11 @@ from metadata.ingestion.source.database.database_service import (
     SQLSourceStatus,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-DEFAULT_DATABASE = "default"
 
 
 class SparkTableType(Enum):
@@ -135,7 +133,7 @@ class DeltalakeSource(DatabaseServiceSource):
         apply the necessary filters.
         """
 
-        yield DEFAULT_DATABASE
+        yield self.service_connection.databaseName or DEFAULT_DATABASE
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
@@ -144,10 +142,7 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -182,7 +177,7 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -266,10 +261,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 description=self.context.table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
                 viewDefinition=view_definition,
             )
             self.process_pii_sensitive_column(

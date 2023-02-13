@@ -16,11 +16,11 @@ package org.openmetadata.service.resources.databases;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -35,7 +35,6 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -46,25 +45,13 @@ import org.openmetadata.service.util.TestUtils;
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
-  }
-
-  @Test
-  void post_databaseWithInvalidServiceType_4xx(TestInfo test) {
-    // Create a database with entity reference to databaseServiceType having invalid serviceType
-    CreateDatabase create = createRequest(test);
-    EntityReference invalidService = new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("invalid");
-    create.withService(invalidService);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidServiceEntity("invalid", Entity.DATABASE, Entity.DATABASE_SERVICE));
+    supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   @Test
   void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create database with different optional fields
-    CreateDatabase create = createRequest(test);
-    create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
+    CreateDatabase create = createRequest(test).withService(SNOWFLAKE_REFERENCE.getName());
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
@@ -84,7 +71,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // Create database for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
+      createAndCheckEntity(createRequest(test).withService(service.getName()), ADMIN_AUTH_HEADERS);
 
       // List databases by filtering on service name and ensure right databases in the response
       Map<String, String> queryParams = new HashMap<>();
@@ -103,7 +90,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     if (database.getDatabaseSchemas() == null) {
       DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
       CreateDatabaseSchema create =
-          databaseSchemaResourceTest.createRequest("schema", "", "", null).withDatabase(database.getEntityReference());
+          databaseSchemaResourceTest.createRequest("schema", "", "", null).withDatabase(getFqn(database));
       databaseSchemaResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
@@ -131,7 +118,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
   @Override
   public CreateDatabase createRequest(String name) {
-    return new CreateDatabase().withName(name).withService(getContainer());
+    return new CreateDatabase().withName(name).withService(getContainer().getName());
   }
 
   @Override

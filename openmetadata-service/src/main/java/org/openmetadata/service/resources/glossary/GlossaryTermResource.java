@@ -450,13 +450,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {
+    // TODO fix this
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
-        .withGlossary(create.getGlossary())
-        .withParent(create.getParent())
-        .withRelatedTerms(create.getRelatedTerms())
+        .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))
+        .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
+        .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(create.getReviewers())
+        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

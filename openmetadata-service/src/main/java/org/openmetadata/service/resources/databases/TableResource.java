@@ -1072,7 +1072,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
             .withTableProfilerConfig(create.getTableProfilerConfig())
-            .withDatabaseSchema(create.getDatabaseSchema()));
+            .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())));
   }
 
   private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {

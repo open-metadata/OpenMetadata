@@ -22,10 +22,10 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -118,16 +118,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private void populateService(Database database) throws IOException {
-    DatabaseService service = getService(database.getService().getId(), database.getService().getType());
+    DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
-  }
-
-  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE, Entity.DATABASE_SERVICE));
   }
 }

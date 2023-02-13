@@ -1138,7 +1138,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
     // check if the bot user exists
-    if (!botHasRelationshipWithUser(bot, original)
+    if (original != null && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
+      throw new IllegalArgumentException(String.format("User [%s] already exists.", original.getName()));
+    } else if (!botHasRelationshipWithUser(bot, original)
         && original != null
         && userHasRelationshipWithAnyBot(original, bot)) {
       // throw an exception if user already has a relationship with a bot

@@ -104,7 +104,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           {requiredField('dbt Manifest File Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('label.dbt-manifest-file-path')}
+          {t('message.dbt-manifest-file-path')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
