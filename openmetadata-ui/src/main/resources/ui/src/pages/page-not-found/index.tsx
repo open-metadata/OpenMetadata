@@ -27,7 +27,7 @@ const PageNotFound = () => {
       className="page-not-found-container tw-relative"
       data-testid="no-page-found">
       <div className="tw-flex-center tw-hw-full tw-absolute tw-inset-0">
-        <img alt="not found" src={notFoundNumber} />
+        <img alt={t('label.not-found')} src={notFoundNumber} />
       </div>
       <div className="tw-flex tw-hw-full tw-absolute tw-inset-0">
         <div className="tw-hw-full tw-flex-center">
@@ -53,7 +53,7 @@ const PageNotFound = () => {
           </div>
         </div>
         <div className="tw-hw-full tw-flex-center">
-          <img alt="not found" src={notFoundImage} />
+          <img alt={t('label.not-found')} src={notFoundImage} />
         </div>
       </div>
     </div>

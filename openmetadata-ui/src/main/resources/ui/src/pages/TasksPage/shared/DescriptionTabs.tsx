@@ -89,7 +89,7 @@ export const DescriptionTabs = ({
           className="tw-my-0"
           height="208px"
           initialValue={suggestion}
-          placeHolder={placeHolder ?? 'Update description'}
+          placeHolder={placeHolder ?? t('label.update-description')}
           ref={markdownRef}
           onTextChange={onChange}
         />

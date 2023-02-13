@@ -208,7 +208,9 @@ export const INITIAL_SUM_METRIC_VALUE = {
 export const INITIAL_ROW_METRIC_VALUE = {
   information: [
     {
-      title: t('label.row-count'),
+      title: t('label.entity-count', {
+        entity: t('label.row'),
+      }),
       dataKey: 'rowCount',
       color: '#008376',
     },
@@ -313,7 +315,9 @@ export const PROFILE_SAMPLE_OPTIONS = [
     value: ProfileSampleType.Percentage,
   },
   {
-    label: t('label.row-count'),
+    label: t('label.entity-count', {
+      entity: t('label.row'),
+    }),
     key: ProfileSampleType.Rows,
     value: ProfileSampleType.Rows,
   },
