@@ -13,6 +13,7 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
+import classNames from 'classnames';
 import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from 'components/Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
@@ -110,7 +111,7 @@ const EntityInfoDrawer = ({
 
       case EntityType.TOPIC: {
         setIsLoading(true);
-        getTopicByFqn(selectedNode.fqn ?? '', '')
+        getTopicByFqn(selectedNode.fqn ?? '', ['tags', 'owner'])
           .then((res) => {
             setEntityDetail(res);
           })
@@ -259,7 +260,7 @@ const EntityInfoDrawer = ({
       open={show}
       style={{ position: 'absolute' }}
       title={
-        <Row gutter={[0, 6]}>
+        <Row gutter={[0, isMainNode ? 6 : 0]}>
           <Col span={24}>
             {'databaseSchema' in entityDetail && 'database' in entityDetail && (
               <span
@@ -268,7 +269,10 @@ const EntityInfoDrawer = ({
             )}
           </Col>
           <Col span={24}>
-            <p className="flex items-center">
+            <p
+              className={classNames('flex items-center text-base', {
+                'entity-info-header-link': !isMainNode,
+              })}>
               <span className="m-r-xs">{getEntityIcon(selectedNode.type)}</span>
               {getHeaderLabel(
                 selectedNode.displayName ?? selectedNode.name,

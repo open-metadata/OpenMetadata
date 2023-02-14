@@ -81,10 +81,10 @@ export const getEntityTags = (
 
       return tableTags;
     }
-    case EntityType.PIPELINE: {
-      return entityDetail.tags || [];
-    }
-    case EntityType.DASHBOARD: {
+    case EntityType.PIPELINE:
+    case EntityType.DASHBOARD:
+    case EntityType.TOPIC:
+    case EntityType.MLMODEL: {
       return entityDetail.tags || [];
     }
 

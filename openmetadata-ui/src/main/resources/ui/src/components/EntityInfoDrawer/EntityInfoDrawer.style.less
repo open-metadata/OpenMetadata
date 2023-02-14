@@ -26,6 +26,19 @@
     padding: unset;
   }
 
+  .entity-info-header-link {
+    &:hover {
+      color: @primary-color;
+    }
+
+    .ant-btn-link > span {
+      color: @text-color-secondary;
+      &:hover {
+        color: @primary-color;
+      }
+    }
+  }
+
   .summary-panel-statistics-count {
     color: @text-color-secondary;
     font-size: 18px;

@@ -97,6 +97,7 @@ export default function EntitySummaryPanel({
         <Row gutter={[0, 6]}>
           <Col span={24}>
             <TableDataCardTitle
+              isPanel
               dataTestId="summary-panel-title"
               searchIndex={currentSearchIndex as EntityType}
               source={entityDetails.details}
