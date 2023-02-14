@@ -104,7 +104,7 @@ const BasicSignUp = () => {
                         onFinish={handleSubmit}>
                         <Form.Item
                           label={t('label.entity-name', {
-                            entity: t('label.first-capitalize'),
+                            entity: t('label.first'),
                           })}
                           name="firstName"
                           rules={[{ whitespace: true, required: true }]}>
@@ -160,7 +160,7 @@ const BasicSignUp = () => {
                               validator: (_, value) => {
                                 if (isEmpty(password)) {
                                   return Promise.reject(
-                                    t('label.password-type-first')
+                                    t('label.please-password-type-first')
                                   );
                                 }
                                 if (value !== password) {
