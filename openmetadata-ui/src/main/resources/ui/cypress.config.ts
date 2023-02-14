@@ -30,6 +30,6 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: 'cypress/e2e/Flow/AdvanceSearch.spec.js',
+    specPattern: 'cypress/e2e/Flow/SearchFlow.spec.js',
   },
 });
