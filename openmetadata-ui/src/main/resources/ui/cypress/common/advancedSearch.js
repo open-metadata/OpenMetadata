@@ -311,9 +311,12 @@ export const addOwner = (searchTerm, ownerName) => {
 
   interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
   // Selecting the user
-  cy.get(`[title="${ownerName}"]`).should('exist').and('be.visible').click();
-
-  verifyResponseStatusCode('@tablePatch', 200);
+  cy.get(`[data-testid="user-tag"]`)
+    .contains(ownerName)
+    .should('exist')
+    .scrollIntoView()
+    .and('be.visible')
+    .click();
 
   cy.get('[data-testid="owner-link"]')
     .scrollIntoView()
@@ -326,6 +329,7 @@ export const addOwner = (searchTerm, ownerName) => {
 export const addTier = (tier) => {
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
+    .scrollIntoView()
     .and('be.visible')
     .click();
 

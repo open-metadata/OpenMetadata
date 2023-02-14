@@ -21,7 +21,7 @@ export default defineConfig({
   defaultCommandTimeout: 5000,
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
-  numTestsKeptInMemory: 0,
+  //   numTestsKeptInMemory: 0,
   e2e: {
     experimentalSessionAndOrigin: true,
     // We've imported your old cypress plugins here.
@@ -30,6 +30,6 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: 'cypress/e2e/Flow/SearchFlow.spec.js',
+    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
   },
 });
