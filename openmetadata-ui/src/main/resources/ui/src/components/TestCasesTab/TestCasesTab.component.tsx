@@ -65,7 +65,7 @@ const TestCasesTab = ({
   return (
     <TestCaseCommonTabContainer
       isPaging
-      buttonName="Add Test"
+      buttonName={t('label.add-entity', { entity: t('label.test') })}
       currentPage={currentPage}
       hasAccess={createPermission}
       paging={testCasesPaging}

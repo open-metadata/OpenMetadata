@@ -30,7 +30,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 export const userPageFilterList = [
   {
-    name: 'My Data',
+    name: t('label.my-data'),
     value: 'OWNER',
     icon: (
       <SVGIcons
@@ -42,7 +42,7 @@ export const userPageFilterList = [
     ),
   },
   {
-    name: 'Mentions',
+    name: t('label.mention-plural'),
     value: 'MENTIONS',
     icon: (
       <SVGIcons
@@ -54,7 +54,7 @@ export const userPageFilterList = [
     ),
   },
   {
-    name: 'Following',
+    name: t('label.following'),
     value: 'FOLLOWS',
     icon: (
       <SVGIcons
