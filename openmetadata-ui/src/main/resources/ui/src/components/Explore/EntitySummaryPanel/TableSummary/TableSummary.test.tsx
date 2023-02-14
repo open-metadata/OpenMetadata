@@ -140,7 +140,7 @@ describe('TableSummary component tests', () => {
       render(<TableSummary entityDetails={mockTableEntityDetails} />);
     });
 
-    const rowCountLabel = screen.getByTestId('label.row-count-label');
+    const rowCountLabel = screen.getByTestId('label.entity-count-label');
     const colCountLabel = screen.getByTestId('label.column-entity-label');
     const tableSampleLabel = screen.getByTestId(
       'label.table-entity-text %-label'
@@ -154,7 +154,7 @@ describe('TableSummary component tests', () => {
     const testsFailedLabel = screen.getByTestId(
       'label.test-plural label.failed-label'
     );
-    const rowCountValue = screen.getByTestId('label.row-count-value');
+    const rowCountValue = screen.getByTestId('label.entity-count-value');
     const colCountValue = screen.getByTestId('label.column-entity-value');
     const tableSampleValue = screen.getByTestId(
       'label.table-entity-text %-value'

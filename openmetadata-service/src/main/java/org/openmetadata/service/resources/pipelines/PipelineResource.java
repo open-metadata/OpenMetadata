@@ -550,7 +550,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   private Pipeline getPipeline(CreatePipeline create, String user) throws IOException {
     return copy(new Pipeline(), create, user)
-        .withService(create.getService())
+        .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
         .withTasks(create.getTasks())
         .withPipelineUrl(create.getPipelineUrl())
         .withTags(create.getTags())

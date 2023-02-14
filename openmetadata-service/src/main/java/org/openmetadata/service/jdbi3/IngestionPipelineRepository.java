@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
@@ -75,7 +76,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
-    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
+    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
   }
 

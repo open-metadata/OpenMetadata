@@ -20,13 +20,15 @@
       "type": "string"
     },
     "testDefinition": {
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of the test definition.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "entityLink": {
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "testSuite": {
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of the testSuite",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parameterValues": {
       "type": "array",

@@ -13,6 +13,7 @@
 
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { getTagSuggestions } from 'rest/miscAPI';
@@ -100,7 +101,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       filterOption={false}
       mode="multiple"
       notFoundContent={null}
-      placeholder="Search to Select"
+      placeholder={t('label.select-to-search')}
       showArrow={false}
       value={!isEmpty(selectedOptions()) ? selectedOptions() : undefined}
       onChange={handleOnChange}

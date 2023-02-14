@@ -440,8 +440,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   private MlModel getMlModel(CreateMlModel create, String user) throws IOException {
     return copy(new MlModel(), create, user)
-        .withService(create.getService())
-        .withDashboard(create.getDashboard())
+        .withService(getEntityReference(Entity.MLMODEL_SERVICE, create.getService()))
+        .withDashboard(getEntityReference(Entity.DASHBOARD, create.getDashboard()))
         .withAlgorithm(create.getAlgorithm())
         .withMlFeatures(create.getMlFeatures())
         .withMlHyperParameters(create.getMlHyperParameters())

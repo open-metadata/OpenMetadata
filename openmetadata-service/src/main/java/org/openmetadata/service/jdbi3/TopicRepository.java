@@ -71,7 +71,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException {
-    MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+    MessagingService messagingService = Entity.getEntity(topic.getService(), "", Include.ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     // Validate field tags

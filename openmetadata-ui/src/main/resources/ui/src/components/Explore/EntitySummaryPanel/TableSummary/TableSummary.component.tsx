@@ -142,7 +142,9 @@ function TableSummary({
 
     return [
       {
-        title: t('label.row-count'),
+        title: t('label.entity-count', {
+          entity: t('label.row'),
+        }),
         value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
       },
       {

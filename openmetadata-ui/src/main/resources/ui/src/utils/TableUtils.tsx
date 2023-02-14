@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -22,7 +22,15 @@ import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
 import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
 import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
+
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
@@ -57,7 +65,6 @@ import {
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
-import SVGIcons, { Icons } from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -145,33 +152,33 @@ export const getConstraintIcon = (
   className = '',
   width = '16px'
 ) => {
-  let title: string, icon: string;
+  let title: string, icon: SvgComponent;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = t('label.primary-key');
-        icon = Icons.KEY;
+        icon = IconKey;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = t('label.unique');
-        icon = Icons.UNIQUE;
+        icon = IconUnique;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = t('label.not-null');
-        icon = Icons.NOT_NULL;
+        icon = IconNotNull;
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
         title = t('label.foreign-key');
-        icon = Icons.FOREGIN_KEY;
+        icon = IconForeignKey;
       }
 
       break;
@@ -185,7 +192,7 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <SVGIcons alt={title} icon={icon} width={width} />
+      <Icon alt={title} component={icon} style={{ fontSize: width }} />
     </Tooltip>
   );
 };
@@ -356,16 +363,16 @@ export const getEntityFqnFromEntityLink = (
 export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   switch (status) {
     case TestCaseStatus.Success:
-      return Icons.SUCCESS_BADGE;
+      return IconSuccessBadge;
 
     case TestCaseStatus.Failed:
-      return Icons.FAIL_BADGE;
+      return IconFailBadge;
 
     case TestCaseStatus.Aborted:
-      return Icons.PENDING_BADGE;
+      return IconPendingBadge;
 
     default:
-      return '';
+      return IconPendingBadge;
   }
 };
 

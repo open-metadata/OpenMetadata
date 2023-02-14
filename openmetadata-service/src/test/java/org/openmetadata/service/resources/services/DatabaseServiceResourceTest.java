@@ -48,7 +48,6 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -188,7 +187,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Create database service without any database connection
     CreateDatabaseService create = createRequest(test);
     DatabaseService service = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    EntityReference serviceRef = service.getEntityReference();
     DatabaseConnection oldDatabaseConnection = create.getConnection();
 
     SnowflakeConnection snowflakeConnection =
@@ -221,7 +219,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Add ingestion pipeline to the database service
     IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
     CreateIngestionPipeline createIngestionPipeline =
-        ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
+        ingestionPipelineResourceTest.createRequest(test).withService(service.getEntityReference());
 
     DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
         new DatabaseServiceMetadataPipeline()

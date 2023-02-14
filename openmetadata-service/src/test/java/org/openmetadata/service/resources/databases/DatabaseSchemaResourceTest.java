@@ -46,6 +46,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
         DatabaseSchemaList.class,
         "databaseSchemas",
         DatabaseSchemaResource.FIELDS);
+    supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   @Test
@@ -61,7 +62,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     if (schema.getTables() == null) {
       TableResourceTest tableResourceTest = new TableResourceTest();
       CreateTable create =
-          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getEntityReference());
+          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getFullyQualifiedName());
       tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
       create.withName("t2");
@@ -92,12 +93,12 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
 
   @Override
   public CreateDatabaseSchema createRequest(String name) {
-    return new CreateDatabaseSchema().withName(name).withDatabase(getContainer());
+    return new CreateDatabaseSchema().withName(name).withDatabase(getContainer().getFullyQualifiedName());
   }
 
   @Override
   public EntityReference getContainer() {
-    return DATABASE_REFERENCE;
+    return DATABASE.getEntityReference();
   }
 
   @Override
