@@ -123,9 +123,7 @@ class AirbyteSource(PipelineServiceSource):
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
             ),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
 
     def yield_pipeline_status(
