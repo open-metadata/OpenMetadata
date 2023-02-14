@@ -33,7 +33,9 @@ const TeamsSelectable = ({
   showTeamsAlert,
   onSelectionChange,
   filterJoinable,
-  placeholder = 'Search for teams',
+  placeholder = t('label.search-for-type', {
+    type: t('label.team-plural-lowercase'),
+  }),
 }: Props) => {
   const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
