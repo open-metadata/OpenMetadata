@@ -59,6 +59,12 @@
       "type": "string",
       "default": "PostgresPolicyTags"
     },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -94,5 +100,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["hostPort", "username", "database"]
 }
