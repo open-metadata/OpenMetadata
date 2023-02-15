@@ -1,0 +1,22 @@
+version: '2'
+services:
+ pgspider_server:
+    build: .
+    image: pgspider_server
+    container_name: pgspider_server_for_openmetadata
+    restart: always
+    privileged: true
+    expose: 
+      - "3001"
+    ports:
+      - 4813:4813
+    networks:
+      static-network:
+        ipv4_address: 172.39.0.2
+
+networks:
+  static-network:
+    ipam:
+      config:
+        - subnet: 172.39.0.0/16
+          gateway: 172.39.0.1

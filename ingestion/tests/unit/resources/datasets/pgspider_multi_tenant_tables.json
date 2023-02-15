@@ -1,0 +1,12 @@
+[
+    {
+      "relname": "test1",
+      "nspname": "public",
+      "database": "pgspider"
+    },
+    {
+      "relname": "test2",
+      "nspname": "public",
+      "database": "pgspider"
+    }
+]

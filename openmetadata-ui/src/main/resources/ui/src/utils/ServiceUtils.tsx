@@ -78,6 +78,7 @@ import {
   MYSQL,
   NIFI,
   ORACLE,
+  PGSPIDER,
   PINOT,
   PIPELINE_DEFAULT,
   POSTGRES,
@@ -149,6 +150,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Impala:
       return IMPALA;
+
+    case DatabaseServiceType.PGSpider:
+      return PGSPIDER;
 
     case DatabaseServiceType.Postgres:
       return POSTGRES;
