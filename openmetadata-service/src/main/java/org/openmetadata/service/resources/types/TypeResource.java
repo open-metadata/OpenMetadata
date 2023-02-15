@@ -353,7 +353,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteType",
-      summary = "Delete a type",
+      summary = "Delete a type by id",
       tags = "metadata",
       description = "Delete a type by `id`.",
       responses = {
@@ -372,7 +372,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteTypeByName",
-      summary = "Delete a type",
+      summary = "Delete a type by name",
       tags = "metadata",
       description = "Delete a type by `name`.",
       responses = {

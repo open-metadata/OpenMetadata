@@ -128,7 +128,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @GET
   @Operation(
       operationId = "listDataInsightChart",
-      summary = "List data charts",
+      summary = "List data insight charts",
       tags = "dataInsight",
       description = "Get a list of data insight charts",
       responses = {
@@ -201,9 +201,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/{id}")
   @Operation(
       operationId = "listDataInsightChartId",
-      summary = "Get a Data Insight Chart",
+      summary = "Get a data insight chart by Id",
       tags = "dataInsight",
-      description = "Get a Data Insight Chart by `id`.",
+      description = "Get a Data Insight Chart by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -272,9 +272,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificDataInsightChartVersion",
-      summary = "Get a version of the DataInsight",
+      summary = "Get a version of the data insight chart",
       tags = "dataInsight",
-      description = "Get a version of the data insight by given `id`",
+      description = "Get a version of the data insight by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -302,9 +302,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @POST
   @Operation(
       operationId = "createDataInsightChart",
-      summary = "Create a Data Insight Chart",
+      summary = "Create a data insight chart",
       tags = "dataInsight",
-      description = "Create a Data Insight Chart.",
+      description = "Create a data insight chart.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -371,9 +371,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/{id}")
   @Operation(
       operationId = "deleteDataInsightChart",
-      summary = "Delete a data insight chart",
+      summary = "Delete a data insight chart by Id",
       tags = "dataInsight",
-      description = "Delete a data insight chart by `id`.",
+      description = "Delete a data insight chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Data insight chart for instance {id} is not found")
@@ -395,7 +395,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDataInsightChartByName",
-      summary = "Delete a data insight chart",
+      summary = "Delete a data insight chart by fully qualified name",
       tags = "dataInsight",
       description = "Delete a data insight chart by `fullyQualifiedName`.",
       responses = {
@@ -420,9 +420,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DataInsightChart.",
+      summary = "Restore a soft deleted data insight chart",
       tags = "dataInsight",
-      description = "Restore a soft deleted DataInsightChart.",
+      description = "Restore a soft deleted data insight chart.",
       responses = {
         @ApiResponse(
             responseCode = "200",

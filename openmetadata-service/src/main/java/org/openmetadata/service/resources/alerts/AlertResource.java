@@ -177,7 +177,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       operationId = "listAlerts",
       summary = "List alerts",
       tags = "alerts",
-      description = "Get a list of Alerts",
+      description = "Get a list of alerts",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -223,9 +223,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Valid
   @Operation(
       operationId = "getAlertByID",
-      summary = "Get a alert",
+      summary = "Get an alert by Id",
       tags = "alerts",
-      description = "Get a alert by given Id",
+      description = "Get an alert by given Id",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -257,9 +257,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Valid
   @Operation(
       operationId = "getAlertActionStatus",
-      summary = "Get alert Action status for an alert",
+      summary = "Get alert action status for an alert",
       tags = "alerts",
-      description = "Get a alert actions status by given Id , and id of the alert it is bound to",
+      description = "Get an alert action status by given Id , and id of the alert it is bound to",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -282,9 +282,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Valid
   @Operation(
       operationId = "getAllAlertActionForAlert",
-      summary = "Get all alert Action of an alert",
+      summary = "Get all alert actions of an alert",
       tags = "alerts",
-      description = "Get all alert Action of alert by given Id , and id of the alert it is bound to",
+      description = "Get all alert actions of an alert by given Id , and id of the alert it is bound to",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -305,13 +305,13 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Path("/defaultTriggers")
   @Operation(
       operationId = "defaultTriggers",
-      summary = "List All Default Triggers Config",
+      summary = "List all default triggers config",
       tags = "alerts",
-      description = "Get a List of all OpenMetadata Bootstrapped Alert Filters",
+      description = "Get a list of all OpenMetadata bootstrapped alert filters",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of Settings",
+            description = "List of settings",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -327,9 +327,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Path("/functions")
   @Operation(
       operationId = "listAlertFunctions",
-      summary = "Get list of Alert functions used in filtering alert.",
+      summary = "Get list of alert functions used in filtering alert",
       tags = "alerts",
-      description = "Get list of Alert functions used in filtering conditions in alerts")
+      description = "Get list of alert functions used in filtering conditions in alerts")
   public List<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
   }
@@ -338,9 +338,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Path("/entityFunctions")
   @Operation(
       operationId = "listAlertFunctions",
-      summary = "Get list of Alert functions used in filtering alert.",
+      summary = "Get list of alert functions used in filtering alert",
       tags = "alerts",
-      description = "Get list of Alert functions used in filtering conditions in alerts")
+      description = "Get list of alert functions used in filtering conditions in alerts")
   public Map<String, EntitySpelFilters> listEntityAlertFunctions(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return entitySpelFiltersList;
@@ -369,9 +369,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "getAlertByFQN",
-      summary = "Get a alert by name",
+      summary = "Get an alert by name",
       tags = "alerts",
-      description = "Get a alert by name.",
+      description = "Get an alert by name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -404,7 +404,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       operationId = "listAllAlertVersion",
       summary = "List alert versions",
       tags = "alerts",
-      description = "Get a list of all the versions of a alert identified by `id`",
+      description = "Get a list of all the versions of an alert identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -425,7 +425,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       operationId = "getSpecificAlertVersion",
       summary = "Get a version of the alert",
       tags = "alerts",
-      description = "Get a version of the alert by given `id`",
+      description = "Get a version of the alert by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -451,9 +451,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @POST
   @Operation(
       operationId = "createAlert",
-      summary = "Create a new Alert",
+      summary = "Create a new alert",
       tags = "alerts",
-      description = "Create a new Alert",
+      description = "Create a new alert",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -473,9 +473,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @PUT
   @Operation(
       operationId = "createOrUpdateAlert",
-      summary = "Updated an existing or create a new Alert",
+      summary = "Update an existing or create a new alert",
       tags = "alerts",
-      description = "Updated an existing or create a new alert",
+      description = "Update an existing or create a new alert",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -496,7 +496,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "patchAlert",
-      summary = "Update a Alert",
+      summary = "Update an alert",
       tags = "alerts",
       description = "Update an existing alert using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -525,9 +525,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Valid
   @Operation(
       operationId = "deleteAlert",
-      summary = "Delete an Alert",
+      summary = "Delete an alert by Id",
       tags = "alerts",
-      description = "Delete an Alert",
+      description = "Delete an alert",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -549,9 +549,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteAlertByName",
-      summary = "Delete an Alert",
+      summary = "Delete an alert by name",
       tags = "alerts",
-      description = "Delete an Alert by given `name`.",
+      description = "Delete an alert by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Entity for instance {name} is not found")

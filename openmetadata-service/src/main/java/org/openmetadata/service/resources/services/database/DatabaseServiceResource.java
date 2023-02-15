@@ -150,7 +150,7 @@ public class DatabaseServiceResource
       operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
       tags = "databaseServices",
-      description = "Get a database service by `id`.",
+      description = "Get a database service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -221,7 +221,7 @@ public class DatabaseServiceResource
       operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
       tags = "databaseServices",
-      description = "Get a list of all the versions of a database service identified by `id`",
+      description = "Get a list of all the versions of a database service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -257,7 +257,7 @@ public class DatabaseServiceResource
       operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
       tags = "databaseServices",
-      description = "Get a version of the database service by given `id`",
+      description = "Get a version of the database service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -358,7 +358,7 @@ public class DatabaseServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteDatabaseService",
-      summary = "Delete a database service",
+      summary = "Delete a database service by Id",
       tags = "databaseServices",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
@@ -386,7 +386,7 @@ public class DatabaseServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDatabaseServiceByName",
-      summary = "Delete a database service",
+      summary = "Delete a database service by name",
       tags = "databaseServices",
       description =
           "Delete a database services by `name`. If databases (and tables) belong the service, it can't be "
@@ -414,9 +414,9 @@ public class DatabaseServiceResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DatabaseService.",
+      summary = "Restore a soft deleted database service",
       tags = "databaseServices",
-      description = "Restore a soft deleted DatabaseService.",
+      description = "Restore a soft deleted database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

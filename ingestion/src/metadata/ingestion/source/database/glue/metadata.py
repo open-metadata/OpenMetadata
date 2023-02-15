@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -308,7 +309,9 @@ class GlueSource(DatabaseServiceSource):
                 path=table["StorageDescriptor"]["Location"],
                 description=table.get("Description", ""),
                 locationType=location_type,
-                service=self.context.storage_service.fullyQualifiedName,
+                service=EntityReference(
+                    id=self.context.storage_service.id, type="storageService"
+                ),
             )
             yield location_request
         except Exception as exc:
