@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static java.util.List.of;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -222,6 +223,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
+  }
+
+  @Test
+  void test_userEmailUnique(TestInfo test) throws IOException {
+    // Create user with different optional fields
+    CreateUser create = createRequest(test, 1).withName("userEmailTest").withEmail("user@domainx.com");
+    createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Creating another user with the same email address must fail
+    create.withName("userEmailTest1");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
   }
 
   @Test
@@ -950,7 +962,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Add new users
     String user2 = "userImportExport2,displayName2,,userImportExport2@domain.com,,,teamImportExport1,";
-    String user21 = "userImportExport21,displayName21,,userImportExport11@domain.com,,,teamImportExport11,";
+    String user21 = "userImportExport21,displayName21,,userImportExport21@domain.com,,,teamImportExport11,";
     List<String> newRecords = listOf(user2, user21);
     testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
 
