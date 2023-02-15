@@ -263,9 +263,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/generateRandomPwd")
   @Operation(
       operationId = "generateRandomPwd",
-      summary = "generateRandomPwd",
+      summary = "Generate a random password",
       tags = "users",
-      description = "Generate a random pwd",
+      description = "Generate a random password",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);

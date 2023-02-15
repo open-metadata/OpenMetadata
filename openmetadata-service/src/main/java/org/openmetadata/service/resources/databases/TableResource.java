@@ -185,9 +185,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getTableByID",
-      summary = "Get a table",
+      summary = "Get a table by Id",
       tags = "tables",
-      description = "Get a table by `id`",
+      description = "Get a table by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -218,7 +218,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getTableByFQN",
-      summary = "Get a table by name",
+      summary = "Get a table by fully qualified name",
       tags = "tables",
       description = "Get a table by fully qualified table name.",
       responses = {
@@ -254,7 +254,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       operationId = "listAllTableVersion",
       summary = "List table versions",
       tags = "tables",
-      description = "Get a list of all the versions of a table identified by `id`",
+      description = "Get a list of all the versions of a table identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -275,7 +275,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the table",
       tags = "tables",
-      description = "Get a version of the table by given `id`",
+      description = "Get a version of the table by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -367,9 +367,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteTable",
-      summary = "Delete a table",
+      summary = "Delete a table by Id",
       tags = "tables",
-      description = "Delete a table by `id`.",
+      description = "Delete a table by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
@@ -390,7 +390,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTable",
-      summary = "Delete a table",
+      summary = "Delete a table by fully qualified name",
       tags = "tables",
       description = "Delete a table by `fullyQualifiedName`.",
       responses = {
@@ -413,7 +413,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted table.",
+      summary = "Restore a soft deleted table",
       tags = "tables",
       description = "Restore a soft deleted table.",
       responses = {
@@ -510,9 +510,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/sampleData")
   @Operation(
       operationId = "getSampleData",
-      summary = "get sample data",
+      summary = "Get sample data",
       tags = "tables",
-      description = "get sample data from the table.",
+      description = "Get sample data from the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -534,9 +534,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/sampleData")
   @Operation(
       operationId = "deleteSampleData",
-      summary = "delete sample data",
+      summary = "Delete sample data",
       tags = "tables",
-      description = "delete sample data from the table.",
+      description = "Delete sample data from the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -559,7 +559,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/tableProfilerConfig")
   @Operation(
       operationId = "addDataProfilerConfig",
-      summary = "Add table profile Config",
+      summary = "Add table profile config",
       tags = "tables",
       description = "Add table profile config to the table.",
       responses = {
@@ -584,7 +584,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/tableProfilerConfig")
   @Operation(
       operationId = "getDataProfilerConfig",
-      summary = "Get table profile Config",
+      summary = "Get table profile config",
       tags = "tables",
       description = "Get table profile config to the table.",
       responses = {
@@ -608,7 +608,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/tableProfilerConfig")
   @Operation(
       operationId = "delete DataProfilerConfig",
-      summary = "delete table profiler config",
+      summary = "Delete table profiler config",
       tags = "tables",
       description = "delete table profile config to the table.",
       responses = {
@@ -632,7 +632,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{fqn}/tableProfile/latest")
   @Operation(
       operationId = "Get the latest table and column profile",
-      summary = "get the latest tableProfile",
+      summary = "Get the latest table profile",
       tags = "tables",
       description = "Get the latest table and column profile ",
       responses = {
@@ -793,9 +793,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{fqn}/{entityType}/{timestamp}/profile")
   @Operation(
       operationId = "deleteDataProfiler",
-      summary = "delete table profile data",
+      summary = "Delete table profile data",
       tags = "tables",
-      description = "delete table profile data to the table.",
+      description = "Delete table profile data to the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -874,9 +874,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/tableQuery")
   @Operation(
       operationId = "getTableQuery",
-      summary = "get table query data",
+      summary = "Get table query data",
       tags = "tables",
-      description = "get table query data from the table.",
+      description = "Get table query data from the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -899,9 +899,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/getTableQueries")
   @Operation(
       operationId = "getTableQueryList",
-      summary = "get table query data",
+      summary = "Get table query data",
       tags = "tables",
-      description = "get table query data from the table.",
+      description = "Get table query data from the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -981,7 +981,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
       operationId = "deleteCustomMetric",
-      summary = "delete custom metric from a column",
+      summary = "Delete custom metric from a column",
       tags = "tables",
       description = "Delete a custom metric from a column.",
       responses = {

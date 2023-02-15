@@ -71,7 +71,7 @@ public class BuildSearchIndexResource {
   @Path("/reindex")
   @Operation(
       operationId = "reindexEntities",
-      summary = "Reindex Entities",
+      summary = "Reindex entities",
       tags = "indexResource",
       description = "Reindex Elastic Search Entities",
       responses = {
@@ -96,9 +96,9 @@ public class BuildSearchIndexResource {
   @Path("/reindex/status/{runMode}")
   @Operation(
       operationId = "getReindexAllLastJobStatus",
-      summary = "Get Last Run Reindex All Job Status",
+      summary = "Get last run reindex all job status",
       tags = "indexResource",
-      description = "Reindex All job last status",
+      description = "Reindex all job last status",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Run model {runMode} is not found")

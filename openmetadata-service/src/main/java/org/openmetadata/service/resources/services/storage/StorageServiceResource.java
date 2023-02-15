@@ -132,9 +132,9 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Path("/{id}")
   @Operation(
       operationId = "getStorageServiceByID",
-      summary = "Get a storage service",
+      summary = "Get a storage service by Id",
       tags = "storageServices",
-      description = "Get a storage service by `id`.",
+      description = "Get a storage service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -203,7 +203,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       operationId = "listAllStorageServiceVersion",
       summary = "List storage service versions",
       tags = "storageServices",
-      description = "Get a list of all the versions of a storage service identified by `id`",
+      description = "Get a list of all the versions of a storage service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -224,7 +224,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       operationId = "getSpecificStorageServiceVersion",
       summary = "Get a version of the storage service",
       tags = "storageServices",
-      description = "Get a version of the storage service by given `id`",
+      description = "Get a version of the storage service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -274,7 +274,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       operationId = "createOrUpdateStorageService",
       summary = "Update storage service",
       tags = "storageServices",
-      description = "Update an existing storage service identified by `id`.",
+      description = "Update an existing storage service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -346,9 +346,9 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted StorageService.",
+      summary = "Restore a soft deleted storage service",
       tags = "storageServices",
-      description = "Restore a soft deleted StorageService.",
+      description = "Restore a soft deleted storage service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
