@@ -9,14 +9,14 @@
     "pgspiderType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["PGSpider"],
-      "default": "PGSpider"
+      "enum": ["Postgres"],
+      "default": "Postgres"
     },
     "pgspiderScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["pgspider+psycopg2"],
-      "default": "pgspider+psycopg2"
+      "enum": ["postgresql+psycopg2"],
+      "default": "postgresql+psycopg2"
     }
   },
   "properties": {
@@ -24,13 +24,13 @@
       "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/pgspiderType",
-      "default": "PGSpider"
+      "default": "Postgres"
     },
     "scheme": {
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/pgspiderScheme",
-      "default": "pgspider+psycopg2"
+      "default": "postgresql+psycopg2"
     },
     "username": {
       "title": "Username",
