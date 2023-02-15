@@ -52,6 +52,7 @@ import mode from '../assets/img/service-icon-mode.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import oracle from '../assets/img/service-icon-oracle.png';
+import pgspider from '../assets/img/service-icon-pgspider.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import powerbi from '../assets/img/service-icon-power-bi.png';
@@ -150,6 +151,7 @@ export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
 export const LOGO = logo;
+export const PGSPIDER = pgspider;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
