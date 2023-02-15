@@ -622,7 +622,7 @@ export const restoreUser = (username) => {
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@restoreUser', 200);
-  toastNotification('User restored successfully.');
+  toastNotification('User restored successfully');
 
   // Verifying the restored user
   cy.get('.ant-switch').should('exist').should('be.visible').click();
