@@ -130,7 +130,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "getClassificationByID",
-      summary = "Get a classification",
+      summary = "Get a classification by id",
       tags = "classification",
       description = "Get a classification by `id`",
       responses = {
@@ -164,7 +164,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("name/{name}")
   @Operation(
       operationId = "getClassificationByName",
-      summary = "Get a classification",
+      summary = "Get a classification by name",
       tags = "classification",
       description =
           "Get a classification identified by name. The response includes classification information along "
@@ -202,7 +202,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "listAllClassificationVersion",
       summary = "List classification versions",
-      tags = "glossaries",
+      tags = "classification",
       description = "Get a list of all the versions of a classification identified by `id`",
       responses = {
         @ApiResponse(
@@ -223,7 +223,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "getSpecificClassificationVersion",
       summary = "Get a version of the classification",
-      tags = "glossaries",
+      tags = "classification",
       description = "Get a version of the classification by given `id`",
       responses = {
         @ApiResponse(
@@ -288,7 +288,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "patchClassification",
-      summary = "Update a Classification",
+      summary = "Update a classification",
       tags = "classification",
       description = "Update an existing classification using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -314,7 +314,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "deleteClassification",
-      summary = "Delete classification",
+      summary = "Delete classification by id",
       tags = "classification",
       description = "Delete a classification and all the tags under it.")
   public Response delete(
@@ -337,7 +337,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteClassificationByName",
-      summary = "Delete classification",
+      summary = "Delete classification by name",
       tags = "classification",
       description = "Delete a classification by `name` and all the tags under it.",
       responses = {
@@ -361,7 +361,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/restore")
   @Operation(
       operationId = "restoreClassification",
-      summary = "Restore a soft deleted classification.",
+      summary = "Restore a soft deleted classification",
       tags = "classification",
       description = "Restore a soft deleted classification.",
       responses = {

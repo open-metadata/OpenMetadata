@@ -92,7 +92,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @GET
   @Operation(
       operationId = "listKpis",
-      summary = "List Kpi",
+      summary = "List kpi",
       tags = "kpi",
       description =
           "Get a list of kpi. Use `fields` "
@@ -159,9 +159,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a Kpi",
+      summary = "Get a kpi by Id",
       tags = "kpi",
-      description = "Get a Kpi by `id`.",
+      description = "Get a Kpi by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -192,9 +192,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "getKpiByName",
-      summary = "Get a Kpi by name",
+      summary = "Get a kpi by name",
       tags = "kpi",
-      description = "Get a Kpi by `name`.",
+      description = "Get a kpi by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -225,9 +225,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificKpiVersion",
-      summary = "Get a version of the Kpi",
+      summary = "Get a version of the kpi",
       tags = "kpi",
-      description = "Get a version of the Kpi by given `id`",
+      description = "Get a version of the kpi by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -253,9 +253,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @POST
   @Operation(
       operationId = "createKpi",
-      summary = "Create a Kpi",
+      summary = "Create a kpi",
       tags = "kpi",
-      description = "Create a Kpi.",
+      description = "Create a kpi.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -276,7 +276,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "patchKpi",
-      summary = "Update a Kpi",
+      summary = "Update a kpi",
       tags = "kpi",
       description = "Update an existing Kpi using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -301,7 +301,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @PUT
   @Operation(
       operationId = "createOrUpdateKpi",
-      summary = "Update Kpi",
+      summary = "Update kpi",
       tags = "kpi",
       description = "Create a Kpi, it it does not exist or update an existing Kpi.",
       responses = {
@@ -330,9 +330,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteKpiByName",
-      summary = "Delete a Kpi",
+      summary = "Delete a kpi by name",
       tags = "kpi",
-      description = "Delete a Kpi by `name`.",
+      description = "Delete a kpi by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Kpi for instance {name} is not found")
@@ -353,9 +353,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteKpi",
-      summary = "Delete a Kpi",
+      summary = "Delete a Kpi by Id",
       tags = "kpi",
-      description = "Delete a Kpi by `id`.",
+      description = "Delete a Kpi by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Kpi for instance {id} is not found")
@@ -380,7 +380,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted Kpi.",
+      summary = "Restore a soft deleted Kpi",
       tags = "kpi",
       description = "Restore a soft deleted Kpi.",
       responses = {
@@ -483,7 +483,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/{name}/kpiResult/{timestamp}")
   @Operation(
       operationId = "deleteKpiResult",
-      summary = "Delete kpi result.",
+      summary = "Delete kpi result",
       tags = "kpi",
       description = "Delete kpi result for a kpi.",
       responses = {

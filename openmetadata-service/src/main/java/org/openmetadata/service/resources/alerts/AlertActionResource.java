@@ -172,9 +172,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Valid
   @Operation(
       operationId = "getAlertActionByID",
-      summary = "Get a alert alert action",
+      summary = "Get an alert action by Id",
       tags = "alertAction",
-      description = "Get a alert action by given Id",
+      description = "Get an alert action by given Id",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -205,15 +205,15 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Path("/name/{name}")
   @Operation(
       operationId = "getAlertActionByFQN",
-      summary = "Get a alert action by name",
+      summary = "Get an alert action by name",
       tags = "alertAction",
-      description = "Get a alert action by name.",
+      description = "Get an alert action by name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "alert",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AlertAction.class))),
-        @ApiResponse(responseCode = "404", description = "Alert Action for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "Alert action for instance {name} is not found")
       })
   public AlertAction getAlertActionByName(
       @Context UriInfo uriInfo,
@@ -241,7 +241,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
       operationId = "listAllAlertVersion",
       summary = "List alert versions",
       tags = "alertAction",
-      description = "Get a list of all the versions of a alert action identified by `id`",
+      description = "Get a list of all the versions of an alert action identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -262,7 +262,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
       operationId = "getSpecificAlertActionVersion",
       summary = "Get a version of the alert action",
       tags = "alertAction",
-      description = "Get a version of the alert action by given `id`",
+      description = "Get a version of the alert action by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -288,9 +288,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @POST
   @Operation(
       operationId = "createAlertAction",
-      summary = "Create a new alert Action",
+      summary = "Create a new alert action",
       tags = "alertAction",
-      description = "Create a new Alert Action",
+      description = "Create a new alert action",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -311,9 +311,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Path("/bulk")
   @Operation(
       operationId = "bulkCreateAlertAction",
-      summary = "Create new alert Action with Bulk",
+      summary = "Create new alert action with bulk",
       tags = "alertAction",
-      description = "Create new alert Action with Bulk",
+      description = "Create new alert action with bulk",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -338,9 +338,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @PUT
   @Operation(
       operationId = "createOrUpdateAlertAction",
-      summary = "Updated an existing or create a new Alert Action",
+      summary = "Updated an existing or create a new alert action",
       tags = "alertAction",
-      description = "Updated an existing or create a new alert Action",
+      description = "Updated an existing or create a new alert action",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -363,7 +363,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Path("/{id}")
   @Operation(
       operationId = "patchAlertAction",
-      summary = "Update a Alert Action",
+      summary = "Update an alert action",
       tags = "alertAction",
       description = "Update an existing alert using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -390,9 +390,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Valid
   @Operation(
       operationId = "deleteAlertAction",
-      summary = "Delete a Alert Action",
+      summary = "Delete an alert action by Id",
       tags = "alertAction",
-      description = "Get a alert action by given Id",
+      description = "Get an alert action by given Id",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -414,7 +414,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteAlertActionByName",
-      summary = "Delete an Alert Action",
+      summary = "Delete an alert action by name",
       tags = "alertAction",
       description = "Delete an alert action by given `name`.",
       responses = {
