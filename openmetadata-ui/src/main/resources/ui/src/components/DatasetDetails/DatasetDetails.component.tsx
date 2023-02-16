@@ -732,7 +732,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <Col offset={1} span={6}>
                     <div className="border-1 border-main rounded-6">
                       <FrequentlyJoinedTables
-                        header="Frequently Joined Tables"
+                        header={t('label.frequently-joined-tables')}
                         tableList={getFrequentlyJoinedWithTables()}
                       />
                     </div>

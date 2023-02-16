@@ -66,7 +66,8 @@ const SummaryDetail = ({
           )}
         </div>
         {showIcon ? (
-          <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip
+            title={hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION}>
             <Button
               className="cursor-pointer m--t-xss"
               data-testid="edit-button"

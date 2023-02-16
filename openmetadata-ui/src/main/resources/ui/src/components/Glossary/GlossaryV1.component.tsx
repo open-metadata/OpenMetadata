@@ -325,8 +325,10 @@ const GlossaryV1 = ({
               title={
                 glossaryPermission.Delete || glossaryTermPermission.Delete
                   ? isGlossaryActive
-                    ? 'Manage Glossary'
-                    : 'Manage GlossaryTerm'
+                    ? t('label.manage-entity', { entity: t('label.glossary') })
+                    : t('label.manage-entity', {
+                        entity: t('label.glossary-term'),
+                      })
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
