@@ -100,14 +100,14 @@ const Description: FC<DescriptionProps> = ({
           destroyTooltipOnHide
           content={
             hasDescription
-              ? 'Request update description'
-              : 'Request description'
+              ? t('message.request-update-description')
+              : t('message.request-description')
           }
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
           <SVGIcons
-            alt="request-description"
+            alt={t('message.request-description')}
             icon={Icons.REQUEST}
             width="16px"
           />
