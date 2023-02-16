@@ -268,7 +268,7 @@ const AddService = ({
 
           {activeServiceStep === 3 && (
             <ConnectionConfigForm
-              cancelText="Back"
+              cancelText={t('label.back')}
               serviceCategory={serviceCategory}
               serviceType={selectServiceType}
               status={saveServiceState}
@@ -327,7 +327,9 @@ const AddService = ({
               activeIngestionStep={activeIngestionStep}
               handleCancelClick={() => handleAddIngestion(false)}
               handleViewServiceClick={handleViewServiceClick}
-              heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+              heading={`${t('label.add-workflow-ingestion', {
+                workflow: capitalize(PipelineType.Metadata),
+              })}`}
               ingestionAction={ingestionAction}
               ingestionProgress={ingestionProgress}
               isIngestionCreated={isIngestionCreated}

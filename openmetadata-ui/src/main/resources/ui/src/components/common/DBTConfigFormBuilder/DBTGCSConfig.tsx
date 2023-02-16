@@ -384,7 +384,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           data-testid="gcs-config"
           id="gcs-config"
           options={GCSCreds}
-          placeholder="Select GCS Config Type"
+          placeholder={t('message.select-gcs-config-type')}
           value={gcsType}
           onChange={(value) => {
             handleGcsTypeChange && handleGcsTypeChange(value as GCS_CONFIG);
