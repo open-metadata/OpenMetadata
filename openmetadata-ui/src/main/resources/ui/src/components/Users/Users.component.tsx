@@ -171,12 +171,12 @@ const Users = ({
       if (response.data) {
         setTeams(response.data);
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-teams-error']
+        t('server.entity-fetch-error', { entity: t('label.team') })
       );
     } finally {
       setIsTeamsLoading(false);
@@ -268,7 +268,7 @@ const Users = ({
       await changePassword(sendData);
       setIsChangePassword(false);
       showSuccessToast(
-        jsonData['api-success-messages']['update-password-success']
+        t('server.update-entity-success', { entity: t('label.password') })
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -292,7 +292,7 @@ const Users = ({
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
-                placeholder="displayName"
+                placeholder={t('label.display-name')}
                 type="text"
                 value={displayName}
                 onChange={onDisplayNameChange}
@@ -321,7 +321,8 @@ const Users = ({
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
-                {userData.displayName || 'Add display name'}
+                {userData.displayName ||
+                  t('label.add-entity', { entity: t('label.display-name') })}
               </span>
               <button
                 className="tw-ml-2 focus:tw-outline-none"

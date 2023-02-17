@@ -23,9 +23,15 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
@@ -115,7 +121,13 @@ MOCK_SUPERSET_DB_CONFIG = {
     },
 }
 
-EXPECTED_DASH_SERVICE = EntityReference(id=uuid.uuid4(), type="dashboardService")
+EXPECTED_DASH_SERVICE = DashboardService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_supserset"),
+    name="test_supserset",
+    connection=DashboardConnection(),
+    serviceType=DashboardServiceType.Superset,
+)
 EXPECTED_USER = EntityReference(id=uuid.uuid4(), type="user")
 
 
@@ -123,7 +135,10 @@ EXPECTED_CHATRT_ENTITY = [
     Chart(
         id=uuid.uuid4(),
         name=37,
-        service=EXPECTED_DASH_SERVICE,
+        fullyQualifiedName=FullyQualifiedEntityName(__root__="test_supserset.37"),
+        service=EntityReference(
+            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
+        ),
     )
 ]
 
@@ -133,11 +148,8 @@ EXPECTED_DASH = CreateDashboardRequest(
     description="",
     dashboardUrl="/superset/dashboard/14/",
     owner=EXPECTED_USER,
-    charts=[
-        EntityReference(id=chart.id.__root__, type="chart")
-        for chart in EXPECTED_CHATRT_ENTITY
-    ],
-    service=EXPECTED_DASH_SERVICE,
+    charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
+    service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
 EXPECTED_CHART = CreateChartRequest(
@@ -146,7 +158,7 @@ EXPECTED_CHART = CreateChartRequest(
     description="TEST DESCRIPTION",
     chartType=ChartType.Other.value,
     chartUrl="/explore/?slice_id=37",
-    service=EXPECTED_DASH_SERVICE,
+    service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
 EXPECTED_ALL_CHARTS = {37: MOCK_CHART}

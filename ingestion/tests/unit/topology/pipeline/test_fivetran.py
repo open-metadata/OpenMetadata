@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.fivetran.metadata import (
     FivetranPipelineDetails,
@@ -83,14 +84,13 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             description="",
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=FullyQualifiedEntityName(__root__="fivetran_source"),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="fivetran_source",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="fivetran_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Fivetran,
 )

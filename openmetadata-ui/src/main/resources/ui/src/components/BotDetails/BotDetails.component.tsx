@@ -27,7 +27,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
@@ -151,7 +150,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           name: botData.name,
           description: botData.description,
           displayName: botData.displayName,
-          botUser: { id: response.id, type: EntityType.USER },
+          botUser: response.name,
         });
         fetchAuthMechanismForBot();
       }
