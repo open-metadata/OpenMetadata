@@ -18,7 +18,7 @@ from metadata.ingestion.source.database.pgspider.query_parser import (
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 
-class PGSpiderUsageSource(PGSpiderQueryParserSource, UsageSource):
+class PgspiderUsageSource(PGSpiderQueryParserSource, UsageSource):
     """
     PGSpider class for Usage
     """
