@@ -119,7 +119,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
-          name: 'Add Column Test',
+          name: t('message.add-entity-test', { entity: t('label.column') }),
           url: '',
           activeTitle: true,
         },
@@ -127,7 +127,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       data.push(...colVal);
     } else {
       data.push({
-        name: 'Add Table Test',
+        name: t('message.add-entity-test', { entity: t('label.table') }),
         url: '',
         activeTitle: true,
       });
@@ -216,7 +216,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     } else if (activeServiceStep > 2) {
       const successName = selectedTestSuite?.isNewTestSuite
         ? `${testSuiteData?.name} & ${testCaseRes?.name}`
-        : testCaseRes?.name || 'Test case';
+        : testCaseRes?.name || t('label.test-case') || '';
 
       const successMessage = selectedTestSuite?.isNewTestSuite ? undefined : (
         <span>
@@ -237,7 +237,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
-          viewServiceText="View Test Suite"
+          viewServiceText={t('message.view-test-suite')}
         />
       );
     }
@@ -286,7 +286,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
             <Typography.Paragraph
               className="tw-heading tw-text-base"
               data-testid="header">
-              {`Add ${isColumnFqn ? 'Column' : 'Table'} Test`}
+              {t('message.add-entity-test', {
+                entity: isColumnFqn ? t('label.column') : t('label.table'),
+              })}
             </Typography.Paragraph>
           </Col>
           <Col span={24}>
