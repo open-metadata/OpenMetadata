@@ -124,7 +124,11 @@ const PoliciesListPage = () => {
           <Tooltip
             placement="left"
             title={
-              addPolicyPermission ? 'Add Policy' : NO_PERMISSION_FOR_ACTION
+              addPolicyPermission
+                ? t('label.add-entity', {
+                    entity: t('label.policy'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               data-testid="add-policy"
