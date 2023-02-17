@@ -9,8 +9,8 @@
     "pgspiderType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Postgres"],
-      "default": "Postgres"
+      "enum": ["PGSpider"],
+      "default": "PGSpider"
     },
     "pgspiderScheme": {
       "description": "SQLAlchemy driver scheme options.",
@@ -24,7 +24,7 @@
       "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/pgspiderType",
-      "default": "Postgres"
+      "default": "PGSpider"
     },
     "scheme": {
       "title": "Connection Scheme",
