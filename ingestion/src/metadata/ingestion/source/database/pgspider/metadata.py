@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Postgres source module
+PGSpider source module
 """
 import traceback
 from collections import namedtuple
@@ -31,8 +31,8 @@ from metadata.generated.schema.entity.data.table import (
     TablePartition,
     TableType,
 )
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
+from metadata.generated.schema.entity.services.connections.database.pgspiderConnection import (
+    PGSpiderConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -46,12 +46,12 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.postgres.queries import (
-    POSTGRES_GET_ALL_TABLE_PG_POLICY,
-    POSTGRES_GET_TABLE_NAMES,
-    POSTGRES_PARTITION_DETAILS,
-    POSTGRES_TABLE_COMMENTS,
-    POSTGRES_VIEW_DEFINITIONS,
+from metadata.ingestion.source.database.pgspider.queries import (
+    PGSPIDER_GET_ALL_TABLE_PG_POLICY,
+    PGSPIDER_GET_TABLE_NAMES,
+    PGSPIDER_PARTITION_DETAILS,
+    PGSPIDER_TABLE_COMMENTS,
+    PGSPIDER_VIEW_DEFINITIONS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -111,7 +111,7 @@ def get_table_comment(
         connection,
         table_name=table_name,
         schema=schema,
-        query=POSTGRES_TABLE_COMMENTS,
+        query=PGSPIDER_TABLE_COMMENTS,
     )
 
 
@@ -128,7 +128,7 @@ def get_view_definition(
         connection,
         table_name=table_name,
         schema=schema,
-        query=POSTGRES_VIEW_DEFINITIONS,
+        query=PGSPIDER_VIEW_DEFINITIONS,
     )
 
 
@@ -138,19 +138,19 @@ PGDialect.get_all_view_definitions = get_all_view_definitions
 PGDialect.ischema_names = ischema_names
 
 
-class PostgresSource(CommonDbSourceService):
+class PgspiderSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
-    Database metadata from Postgres Source
+    Database metadata from PGSpider Source
     """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PostgresConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, PostgresConnection):
+        connection: PGSpiderConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PGSpiderConnection):
             raise InvalidSourceException(
-                f"Expected PostgresConnection, but got {connection}"
+                f"Expected PGSpiderConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -162,7 +162,7 @@ class PostgresSource(CommonDbSourceService):
         and foreign types
         """
         result = self.connection.execute(
-            sql.text(POSTGRES_GET_TABLE_NAMES),
+            sql.text(PGSPIDER_GET_TABLE_NAMES),
             dict(schema=schema_name),
         )
 
@@ -214,7 +214,7 @@ class PostgresSource(CommonDbSourceService):
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
-            POSTGRES_PARTITION_DETAILS.format(
+            PGSPIDER_PARTITION_DETAILS.format(
                 table_name=table_name, schema_name=schema_name
             )
         ).all()
@@ -234,7 +234,7 @@ class PostgresSource(CommonDbSourceService):
         """
         try:
             result = self.engine.execute(
-                POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
+                PGSPIDER_GET_ALL_TABLE_PG_POLICY.format(
                     database_name=self.context.database.name.__root__,
                     schema_name=schema_name,
                 )
@@ -249,12 +249,12 @@ class PostgresSource(CommonDbSourceService):
                     ),
                     classification_request=CreateClassificationRequest(
                         name=self.service_connection.classificationName,
-                        description="Postgres Tag Name",
+                        description="PGSpider Tag Name",
                     ),
                     tag_request=CreateTagRequest(
                         classification=self.service_connection.classificationName,
                         name=row[1],
-                        description="Postgres Tag Value",
+                        description="PGSpider Tag Value",
                     ),
                 )
 

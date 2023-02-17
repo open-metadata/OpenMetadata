@@ -9,21 +9,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Postgres usage module
+PGSpider usage module
 """
-from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
-from metadata.ingestion.source.database.postgres.query_parser import (
-    PostgresQueryParserSource,
+from metadata.ingestion.source.database.pgspider.queries import PGSPIDER_SQL_STATEMENT
+from metadata.ingestion.source.database.pgspider.query_parser import (
+    PGSpiderQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 
-class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
+class PGSpiderUsageSource(PGSpiderQueryParserSource, UsageSource):
     """
-    Postgres class for Usage
+    PGSpider class for Usage
     """
 
-    sql_stmt = POSTGRES_SQL_STATEMENT
+    sql_stmt = PGSPIDER_SQL_STATEMENT
     filters = ""
     database_field = "d.datname"
     schema_field = ""  # schema filtering not available

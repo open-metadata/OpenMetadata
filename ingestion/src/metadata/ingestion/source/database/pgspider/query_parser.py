@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Postgres Query parser module
+PGSpider Query parser module
 """
 import csv
 import traceback
@@ -19,8 +19,8 @@ from typing import Iterable, Optional
 
 from sqlalchemy.engine.base import Engine
 
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
+from metadata.generated.schema.entity.services.connections.database.pgspiderConnection import (
+    PGSpiderConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -38,9 +38,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class PostgresQueryParserSource(QueryParserSource, ABC):
+class PGSpiderQueryParserSource(QueryParserSource, ABC):
     """
-    Postgres base for Usage and Lineage
+    PGSpider base for Usage and Lineage
     """
 
     filters: str
@@ -48,7 +48,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 
-        # Postgres does not allow retrieval of data older than 7 days
+        # PGSpider does not allow retrieval of data older than 7 days
         # Update start and end based on this
         duration = min(self.source_config.queryLogDuration, 6)
         self.start, self.end = get_start_and_end(duration)
@@ -56,10 +56,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PostgresConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, PostgresConnection):
+        connection: PGSpiderConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PGSpiderConnection):
             raise InvalidSourceException(
-                f"Expected PostgresConnection, but got {connection}"
+                f"Expected PGSpiderConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 

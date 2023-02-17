@@ -14,7 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-POSTGRES_SQL_STATEMENT = textwrap.dedent(
+PGSPIDER_SQL_STATEMENT = textwrap.dedent(
     """
       SELECT
         u.usename,
@@ -35,13 +35,13 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
 
 # https://www.postgresql.org/docs/current/catalog-pg-class.html
 # r = ordinary table, v = view, m = materialized view, c = composite type, f = foreign table, p = partitioned table,
-POSTGRES_GET_TABLE_NAMES = """
+PGSPIDER_GET_TABLE_NAMES = """
     SELECT c.relname, c.relkind FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND relispartition = false
 """
 
-POSTGRES_PARTITION_DETAILS = textwrap.dedent(
+PGSPIDER_PARTITION_DETAILS = textwrap.dedent(
     """
     select
         par.relnamespace::regnamespace::text as schema,
@@ -73,7 +73,7 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
     """
 )
 
-POSTGRES_GET_ALL_TABLE_PG_POLICY = """
+PGSPIDER_GET_ALL_TABLE_PG_POLICY = """
 SELECT oid, polname, table_catalog , table_schema ,table_name  
 FROM information_schema.tables AS it
 JOIN (SELECT pc.relname, pp.*
@@ -83,7 +83,7 @@ JOIN (SELECT pc.relname, pp.*
 WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
 """
 
-POSTGRES_TABLE_COMMENTS = """
+PGSPIDER_TABLE_COMMENTS = """
     SELECT n.nspname as schema,
             c.relname as table_name,
             pgd.description as table_comment
@@ -97,7 +97,7 @@ POSTGRES_TABLE_COMMENTS = """
 """
 
 
-POSTGRES_VIEW_DEFINITIONS = """
+PGSPIDER_VIEW_DEFINITIONS = """
 SELECT 
 	n.nspname schema,
 	c.relname view_name,

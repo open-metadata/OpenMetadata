@@ -6,13 +6,13 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.database.PGSpiderConnection",
   "definitions": {
-    "pgspiderType": {
+    "PGSpiderType": {
       "description": "Service type.",
       "type": "string",
       "enum": ["PGSpider"],
       "default": "PGSpider"
     },
-    "pgspiderScheme": {
+    "PgspiderScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": ["postgresql+psycopg2"],
@@ -23,13 +23,13 @@
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/pgspiderType",
+      "$ref": "#/definitions/PGSpiderType",
       "default": "PGSpider"
     },
     "scheme": {
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
-      "$ref": "#/definitions/pgspiderScheme",
+      "$ref": "#/definitions/PgspiderScheme",
       "default": "postgresql+psycopg2"
     },
     "username": {
