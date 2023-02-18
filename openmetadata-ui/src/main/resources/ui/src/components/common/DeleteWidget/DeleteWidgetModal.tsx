@@ -15,6 +15,7 @@ import { Modal, Radio, RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
@@ -41,6 +42,7 @@ const DeleteWidgetModal = ({
   isRecursiveDelete,
   afterDeleteAction,
 }: DeleteWidgetModalProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
@@ -195,7 +197,7 @@ const DeleteWidgetModal = ({
           theme="primary"
           variant="text"
           onClick={handleOnEntityDeleteCancel}>
-          Cancel
+          {t('label.cancel')}
         </Button>
         {entityDeleteState.loading === 'waiting' ? (
           <Button
@@ -216,7 +218,7 @@ const DeleteWidgetModal = ({
             theme="primary"
             variant="contained"
             onClick={handleOnEntityDeleteConfirm}>
-            Confirm
+            {t('label.confirm')}
           </Button>
         )}
       </div>
@@ -255,7 +257,9 @@ const DeleteWidgetModal = ({
       </Radio.Group>
       <div>
         <p className="tw-mb-2">
-          Type <strong>DELETE</strong> to confirm
+          {t('label.type')} <strong>{t('label.delete-uppercase')}</strong>{' '}
+          {t('label.to-lowercase')}
+          {t('label.confirm-lowercase')}
         </p>
         <input
           autoComplete="off"

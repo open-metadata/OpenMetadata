@@ -634,13 +634,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add policies to the team
-    create = createRequest(getEntityName(test)).withPolicies(List.of(POLICY1.getId(), POLICY2.getId()));
+    create =
+        createRequest(getEntityName(test))
+            .withPolicies(List.of(POLICY1.getId(), POLICY2.getId()))
+            .withName(team.getName());
     ChangeDescription change = getChangeDescription(team.getVersion());
     fieldAdded(change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
     team = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove policies from the team
-    create = createRequest(getEntityName(test));
+    create = createRequest(getEntityName(test)).withName(team.getName());
     change = getChangeDescription(team.getVersion());
     fieldDeleted(change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
     updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -948,10 +951,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create TeamManager role with the policy to update team
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     CreateRole createRole =
-        roleResourceTest
-            .createRequest(testInfo)
-            .withName("TeamManager")
-            .withPolicies(List.of(policy.getEntityReference()));
+        roleResourceTest.createRequest(testInfo).withName("TeamManager").withPolicies(List.of(policy.getName()));
     Role teamManager = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     // Create a user with TeamManager role.

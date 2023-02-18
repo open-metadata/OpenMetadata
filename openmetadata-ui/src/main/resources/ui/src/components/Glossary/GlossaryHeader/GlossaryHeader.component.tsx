@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
 import Description from 'components/common/description/Description';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
@@ -245,9 +245,8 @@ const GlossaryHeader = ({
               onChange={(e) => onDisplayNameChange(e.target.value)}
             />
             <Button
-              className="m-r-xs"
               data-testid="cancelAssociatedTag"
-              icon={<FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />}
+              icon={<CloseOutlined />}
               size="small"
               type="primary"
               onMouseDown={() => setIsNameEditing(false)}
@@ -255,7 +254,7 @@ const GlossaryHeader = ({
 
             <Button
               data-testid="saveAssociatedTag"
-              icon={<FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />}
+              icon={<CheckOutlined />}
               size="small"
               type="primary"
               onMouseDown={onDisplayNameSave}
@@ -286,7 +285,7 @@ const GlossaryHeader = ({
         <Space className="flex-wrap" direction="horizontal">
           <div className="flex items-center">
             <Typography.Text className="text-grey-muted m-r-xs">
-              Owner:
+              {`${t('label.owner')}:`}
             </Typography.Text>
 
             {selectedData.owner && getEntityName(selectedData.owner) ? (
@@ -358,7 +357,7 @@ const GlossaryHeader = ({
             className="flex items-center tw-flex-wrap"
             data-testid="reviewer-card-container">
             <Typography.Text className="text-grey-muted m-r-xs">
-              Reviewer:
+              {`${t('label.reviewer')}:`}
             </Typography.Text>{' '}
             {selectedData.reviewers && selectedData.reviewers.length ? (
               <>
@@ -389,12 +388,7 @@ const GlossaryHeader = ({
                           className="p-0 flex-center"
                           data-testid="remove"
                           disabled={!permissions.EditAll}
-                          icon={
-                            <FontAwesomeIcon
-                              className="tw-cursor-pointer"
-                              icon="remove"
-                            />
-                          }
+                          icon={<CloseOutlined />}
                           size="small"
                           type="text"
                           onClick={() => handleRemoveReviewer(reviewer.id)}

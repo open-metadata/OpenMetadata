@@ -293,9 +293,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     CHART_REFERENCES = new ArrayList<>();
     ChartResourceTest chartResourceTest = new ChartResourceTest();
     for (int i = 0; i < 3; i++) {
-      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(METABASE_REFERENCE);
+      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(METABASE_REFERENCE.getName());
       Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
-      CHART_REFERENCES.add(chart.getEntityReference());
+      CHART_REFERENCES.add(chart.getFullyQualifiedName());
     }
   }
 }

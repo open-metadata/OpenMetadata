@@ -18,11 +18,11 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.13.2-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <properties>
-    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>2.1.4-1</dropwizard.swagger.version>
   </properties>
 
   <artifactId>common</artifactId>

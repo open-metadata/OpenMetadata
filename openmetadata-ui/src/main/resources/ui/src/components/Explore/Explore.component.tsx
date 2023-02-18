@@ -12,10 +12,9 @@
  */
 
 import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+} from '@ant-design/icons';
 import { Card, Col, Row, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
@@ -271,23 +270,17 @@ const Explore: React.FC<ExploreProps> = ({
 
             <div className="tw-flex">
               {sortOrder === 'asc' ? (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('desc')}>
-                  <FontAwesomeIcon
+                <button onClick={() => onChangeSortOder('desc')}>
+                  <SortAscendingOutlined
                     className="tw-text-base tw-text-primary"
                     data-testid="last-updated"
-                    icon={faSortAmountUpAlt}
                   />
                 </button>
               ) : (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('asc')}>
-                  <FontAwesomeIcon
+                <button onClick={() => onChangeSortOder('asc')}>
+                  <SortDescendingOutlined
                     className="tw-text-base tw-text-primary"
                     data-testid="last-updated"
-                    icon={faSortAmountDownAlt}
                   />
                 </button>
               )}

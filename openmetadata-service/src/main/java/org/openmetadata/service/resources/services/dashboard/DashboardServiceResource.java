@@ -143,9 +143,9 @@ public class DashboardServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getDashboardServiceByID",
-      summary = "Get a dashboard service",
+      summary = "Get a dashboard service by Id",
       tags = "dashboardServices",
-      description = "Get a dashboard service by `id`.",
+      description = "Get a dashboard service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -216,7 +216,7 @@ public class DashboardServiceResource
       operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
       tags = "dashboardServices",
-      description = "Get a list of all the versions of a dashboard service identified by `id`",
+      description = "Get a list of all the versions of a dashboard service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -252,7 +252,7 @@ public class DashboardServiceResource
       operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
       tags = "dashboardServices",
-      description = "Get a version of the dashboard service by given `id`",
+      description = "Get a version of the dashboard service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -303,9 +303,9 @@ public class DashboardServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateDashboardService",
-      summary = "Update a Dashboard service",
+      summary = "Update a dashboard service",
       tags = "dashboardServices",
-      description = "Update an existing dashboard service identified by `id`.",
+      description = "Update an existing dashboard service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -353,7 +353,7 @@ public class DashboardServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteDashboardService",
-      summary = "Delete a Dashboard service",
+      summary = "Delete a dashboard service by Id",
       tags = "dashboardServices",
       description =
           "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
@@ -381,7 +381,7 @@ public class DashboardServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDashboardServiceByName",
-      summary = "Delete a Dashboard service",
+      summary = "Delete a dashboard service by name",
       tags = "dashboardServices",
       description =
           "Delete a Dashboard services by `name`. If dashboard (and charts) belong to the service, it can't be "
@@ -409,9 +409,9 @@ public class DashboardServiceResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DashboardService.",
+      summary = "Restore a soft deleted dashboard service",
       tags = "dashboardServices",
-      description = "Restore a soft deleted DashboardService.",
+      description = "Restore a soft deleted dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

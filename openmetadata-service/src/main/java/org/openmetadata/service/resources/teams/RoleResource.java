@@ -194,7 +194,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getRoleByID",
-      summary = "Get a role",
+      summary = "Get a role by id",
       tags = "roles",
       description = "Get a role by `id`.",
       responses = {
@@ -411,7 +411,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted role.",
+      summary = "Restore a soft deleted role",
       tags = "roles",
       description = "Restore a soft deleted role.",
       responses = {
@@ -430,7 +430,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
-    return copy(new Role(), create, user).withPolicies(create.getPolicies());
+    return copy(new Role(), create, user).withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
   }
 
   public static EntityReference getRole(String roleName) {

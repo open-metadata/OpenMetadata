@@ -44,7 +44,6 @@ import {
   SUPPORTED_CHARTS_FOR_KPI,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import { EntityType } from '../../enums/entity.enum';
 import {
   CreateKpiRequest,
   KpiTargetType,
@@ -192,10 +191,8 @@ const AddKPIPage = () => {
     const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
     const formData: CreateKpiRequest = {
-      dataInsightChart: {
-        id: values.dataInsightChart,
-        type: EntityType.DATA_INSIGHT_CHART,
-      },
+      // TODO: this needs to be fullyQualifiedName of the dataInsightChart
+      dataInsightChart: values.dataInsightChart,
       description,
       name: kebabCase(`${values.displayName} ${selectedMetric?.name}`),
       displayName: values.displayName,

@@ -38,7 +38,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   center = false,
 }: PageLayoutProp) => {
   return (
-    <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
+    <Row
+      className={className}
+      data-testid="page-layout-v1"
+      gutter={[16, 16]}
+      style={pageContainerStyles}>
       {leftPanel && (
         <Col
           className="page-layout-v1-vertical-scroll"

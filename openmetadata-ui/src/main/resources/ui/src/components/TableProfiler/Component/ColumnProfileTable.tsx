@@ -17,6 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  NO_DATA_PLACEHOLDER,
   PRIMERY_COLOR,
   SECONDARY_COLOR,
   SUCCESS_COLOR,
@@ -153,6 +154,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Tests',
         dataIndex: 'testCount',
         key: 'Tests',
+        fixed: 'right',
         render: (_, record) => (
           <Link
             data-testid={`${record.name}-test-count`}
@@ -171,6 +173,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         width: 120,
+        fixed: 'right',
         render: (_, record) => {
           const summary =
             columnTestSummary?.[
@@ -192,7 +195,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               ))}
             </Space>
           ) : (
-            <Typography.Text> --- </Typography.Text>
+            <Typography.Text> {NO_DATA_PLACEHOLDER} </Typography.Text>
           );
         },
       },
@@ -200,6 +203,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
+        fixed: 'right',
         render: (_, record) => (
           <Tooltip
             placement="bottom"

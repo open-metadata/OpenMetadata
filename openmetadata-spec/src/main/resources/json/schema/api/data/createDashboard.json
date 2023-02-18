@@ -24,10 +24,10 @@
       "type": "string"
     },
     "charts": {
-      "description": "All the charts included in this Dashboard.",
+      "description": "List of fully qualified name of charts included in this Dashboard.",
       "type": "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
     },
@@ -44,8 +44,8 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the dashboard service where this dashboard is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the dashboard service fully qualified name where this dashboard is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",

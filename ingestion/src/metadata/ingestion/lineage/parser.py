@@ -18,7 +18,7 @@ from logging.config import DictConfigurator
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from cached_property import cached_property
-from sqlparse.sql import Comparison, Identifier, Statement
+from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
@@ -261,10 +261,18 @@ class LineageParser:
         :param statement: Parsed sql statement to process
         :return: for each table name, list all joins against other tables
         """
-        # Here we want to get tokens such as `tableA.col1 = tableB.col2`
-        comparisons = [
-            sub for sub in statement.get_sublists() if isinstance(sub, Comparison)
-        ]
+        # Here we want to get tokens such as `(tableA.col1 = tableB.col2)`
+        comparisons: List[Comparison] = []
+        for sub in statement.get_sublists():
+            if isinstance(sub, Parenthesis):
+                sub = (
+                    sub._groupable_tokens[0]  # pylint: disable=protected-access
+                    if len(sub._groupable_tokens)  # pylint: disable=protected-access
+                    else sub
+                )
+            if isinstance(sub, Comparison):
+                comparisons.append(sub)
+
         for comparison in comparisons:
             if "." not in comparison.left.value or "." not in comparison.right.value:
                 logger.debug(f"Ignoring comparison {comparison}")

@@ -110,7 +110,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "listGlossaryTerm",
       summary = "List glossary terms",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description =
           "Get a list of glossary terms. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -199,9 +199,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Path("/{id}")
   @Operation(
       operationId = "getGlossaryTermByID",
-      summary = "Get a glossary term",
-      tags = "glossaryTerm",
-      description = "Get a glossary term by `id`.",
+      summary = "Get a glossary term by Id",
+      tags = "glossaries",
+      description = "Get a glossary term by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -233,7 +233,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "getGlossaryTermByFQN",
       summary = "Get a glossary term by fully qualified name",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description = "Get a glossary term by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -268,7 +268,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "listAllGlossaryTermVersion",
       summary = "List glossary term versions",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description = "Get a list of all the versions of a glossary terms identified by `id`",
       responses = {
         @ApiResponse(
@@ -289,8 +289,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "getSpecificGlossaryTermVersion",
       summary = "Get a version of the glossary term",
-      tags = "glossaryTerm",
-      description = "Get a version of the glossary term by given `id`",
+      tags = "glossaries",
+      description = "Get a version of the glossary term by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -317,7 +317,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "createGlossaryTerm",
       summary = "Create a glossary term",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description = "Create a new glossary term.",
       responses = {
         @ApiResponse(
@@ -338,7 +338,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "patchGlossaryTerm",
       summary = "Update a glossary term",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description = "Update an existing glossary term using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -363,7 +363,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "createOrUpdateGlossaryTerm",
       summary = "Create or update a glossary term",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description = "Create a new glossary term, if it does not exist or update an existing glossary term.",
       responses = {
         @ApiResponse(
@@ -382,9 +382,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @DELETE
   @Path("/{id}")
   @Operation(
-      summary = "Delete a glossary term",
-      tags = "glossaryTerm",
-      description = "Delete a glossary term by `id`.",
+      summary = "Delete a glossary term by Id",
+      tags = "glossaries",
+      description = "Delete a glossary term by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "glossaryTerm for instance {id} is not found")
@@ -410,7 +410,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "deleteGlossaryTermByName",
       summary = "Delete a glossary term by fully qualified name",
-      tags = "glossaryTerm",
+      tags = "glossaries",
       description = "Delete a glossary term by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -434,9 +434,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted GlossaryTerm.",
-      tags = "glossaryTerm",
-      description = "Restore a soft deleted GlossaryTerm.",
+      summary = "Restore a soft deleted glossary term",
+      tags = "glossaries",
+      description = "Restore a soft deleted glossary term.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -450,13 +450,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {
+    // TODO fix this
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
-        .withGlossary(create.getGlossary())
-        .withParent(create.getParent())
-        .withRelatedTerms(create.getRelatedTerms())
+        .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))
+        .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
+        .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(create.getReviewers())
+        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

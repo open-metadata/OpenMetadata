@@ -31,7 +31,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import log_ansi_encoded_string
 
@@ -81,10 +80,9 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
     log_ansi_encoded_string(message=databases[0])
-    db_ref = EntityReference(
-        id=databases[0].id.__root__, name=databases[0].name.__root__, type="database"
+    table = CreateTableRequest(
+        name="test1", columns=columns, database=databases[0].fullyQualifiedName
     )
-    table = CreateTableRequest(name="test1", columns=columns, database=db_ref)
     created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:
         client.delete(entity=Table, entity_id=str(created_table.id.__root__))
@@ -104,7 +102,8 @@ def create_delete_database(client: OpenMetadata, databases: List[Database]):
     create_trino_service = CreateDatabaseServiceRequest(**data)
     trino_service = client.create_or_update(create_trino_service)
     create_database_request = CreateDatabaseRequest(
-        name="dwh", service=EntityReference(id=trino_service.id, type="databaseService")
+        name="dwh",
+        service=trino_service.fullyQualifiedName,
     )
     created_database = client.create_or_update(create_database_request)
     resp = create_delete_table(client, databases)

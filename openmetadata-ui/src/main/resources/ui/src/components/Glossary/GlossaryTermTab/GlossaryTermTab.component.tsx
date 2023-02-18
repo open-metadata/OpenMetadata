@@ -251,11 +251,10 @@ const GlossaryTermTab = ({
               : NO_PERMISSION_FOR_ACTION
           }>
           <Button
-            ghost
-            className="m-t-xs"
+            className="m-t-md"
             data-testid="add-new-tag-button"
             disabled={!createGlossaryTermPermission}
-            size="small"
+            size="middle"
             type="primary"
             onClick={handleAddGlossaryTermClick}>
             {t('label.add-entity', { entity: t('label.term-lowercase') })}

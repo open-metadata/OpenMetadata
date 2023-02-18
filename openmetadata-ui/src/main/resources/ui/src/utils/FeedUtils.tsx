@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
@@ -31,6 +29,7 @@ import {
   searchData,
 } from 'rest/miscAPI';
 
+import { RightOutlined } from '@ant-design/icons';
 import React from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -53,7 +52,6 @@ import {
   EntityFieldThreads,
   EntityThreadField,
 } from '../interface/feed.interface';
-import jsonData from '../jsons/en';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -391,9 +389,7 @@ export const deletePost = async (
           });
         });
       } else {
-        throw jsonData['api-error-messages'][
-          'fetch-updated-conversation-error'
-        ];
+        throw i18next.t('server.fetch-updated-conversation-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -410,10 +406,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
       <span className="tw-px-1">
-        <FontAwesomeIcon
-          className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-          icon={faAngleRight}
-        />
+        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
       </span>
     );
 

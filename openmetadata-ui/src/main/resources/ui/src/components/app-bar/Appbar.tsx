@@ -23,6 +23,10 @@ import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
 import { extractDetailsFromToken } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
+import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
+import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
+import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
+import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
 import {
   getExplorePathWithSearch,
   getTeamAndUserDetailsPath,
@@ -94,11 +98,11 @@ const Appbar: React.FC = (): JSX.Element => {
       isOpenNewTab: true,
       disabled: false,
       icon: (
-        <SVGIcons
-          alt="Version icon"
+        <IconVersionBlack
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon={Icons.VERSION_BLACK}
-          width="12"
+          height={12}
+          name="Version icon"
+          width={12}
         />
       ),
     },
@@ -108,11 +112,11 @@ const Appbar: React.FC = (): JSX.Element => {
       isOpenNewTab: true,
       disabled: false,
       icon: (
-        <SVGIcons
-          alt="Doc icon"
+        <IconDoc
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon={Icons.DOC}
-          width="12"
+          height={12}
+          name="Doc icon"
+          width={12}
         />
       ),
     },
@@ -121,11 +125,11 @@ const Appbar: React.FC = (): JSX.Element => {
       to: ROUTES.SWAGGER,
       disabled: false,
       icon: (
-        <SVGIcons
-          alt="API icon"
+        <IconAPI
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon={Icons.API}
-          width="12"
+          height={12}
+          name="API icon"
+          width={12}
         />
       ),
     },
@@ -135,11 +139,11 @@ const Appbar: React.FC = (): JSX.Element => {
       disabled: false,
       isOpenNewTab: true,
       icon: (
-        <SVGIcons
-          alt="slack icon"
-          className="tw-align-middle tw-mr-0.5"
-          icon={Icons.SLACK_GREY}
-          width="12"
+        <IconSlackGrey
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          height={12}
+          name="slack icon"
+          width={12}
         />
       ),
     },
@@ -244,7 +248,9 @@ const Appbar: React.FC = (): JSX.Element => {
           : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-text-grey-muted tw-text-xs">Teams</span>
+            <span className="tw-text-grey-muted tw-text-xs">
+              {t('label.team-plural')}
+            </span>
             {teams.map((t, i) => (
               <Typography.Paragraph
                 className="ant-typography-ellipsis-custom text-sm"

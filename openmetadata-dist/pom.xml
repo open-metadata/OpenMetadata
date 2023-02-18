@@ -20,7 +20,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.13.2-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>openmetadata-dist</artifactId>
@@ -63,6 +63,7 @@
             <configuration>
               <attach>true</attach>
               <runOnlyAtExecutionRoot>false</runOnlyAtExecutionRoot>
+              <tarLongFileMode>posix</tarLongFileMode>
               <descriptors>
                 <descriptor>${project.basedir}/src/main/assembly/binary.xml</descriptor>
               </descriptors>

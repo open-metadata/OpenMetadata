@@ -143,9 +143,9 @@ public class PipelineServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getPipelineServiceByID",
-      summary = "Get a pipeline service",
+      summary = "Get a pipeline service by Id",
       tags = "pipelineServices",
-      description = "Get a pipeline service by `id`.",
+      description = "Get a pipeline service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -217,7 +217,7 @@ public class PipelineServiceResource
       operationId = "listAllPipelineServiceVersion",
       summary = "List pipeline service versions",
       tags = "pipelineServices",
-      description = "Get a list of all the versions of a pipeline service identified by `id`",
+      description = "Get a list of all the versions of a pipeline service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -253,7 +253,7 @@ public class PipelineServiceResource
       operationId = "getSpecificPipelineService",
       summary = "Get a version of the pipeline service",
       tags = "pipelineServices",
-      description = "Get a version of the pipeline service by given `id`",
+      description = "Get a version of the pipeline service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -328,7 +328,7 @@ public class PipelineServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "patchPipelineService",
-      summary = "Update a Pipeline Service",
+      summary = "Update a pipeline service",
       tags = "pipelineServices",
       description = "Update an existing pipeline service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -354,7 +354,7 @@ public class PipelineServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deletePipelineService",
-      summary = "Delete a pipeline service",
+      summary = "Delete a pipeline service by Id",
       tags = "pipelineServices",
       description =
           "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
@@ -382,7 +382,7 @@ public class PipelineServiceResource
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deletePipelineServiceByName",
-      summary = "Delete a pipeline service",
+      summary = "Delete a pipeline service by fully qualified name",
       tags = "pipelineServices",
       description =
           "Delete a pipeline services by `fullyQualifiedName`. If pipelines (and tasks) belong to the service, it can't be "
@@ -409,9 +409,9 @@ public class PipelineServiceResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted PipelineService.",
+      summary = "Restore a soft deleted pipeline service.",
       tags = "pipelineServices",
-      description = "Restore a soft deleted PipelineService.",
+      description = "Restore a soft deleted pipeline service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

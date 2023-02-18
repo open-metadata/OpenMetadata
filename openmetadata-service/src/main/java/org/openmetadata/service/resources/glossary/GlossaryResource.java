@@ -97,7 +97,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Valid
   @Operation(
       operationId = "listGlossaries",
-      summary = "List Glossaries",
+      summary = "List glossaries",
       tags = "glossaries",
       description =
           "Get a list of glossaries. Use `fields` parameter to get only necessary fields. "
@@ -144,9 +144,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/{id}")
   @Operation(
       operationId = "getGlossaryByID",
-      summary = "Get a glossary",
+      summary = "Get a glossary by Id",
       tags = "glossaries",
-      description = "Get a glossary by `id`.",
+      description = "Get a glossary by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -234,7 +234,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       operationId = "getSpecificGlossaryVersion",
       summary = "Get a version of the glossaries",
       tags = "glossaries",
-      description = "Get a version of the glossary by given `id`",
+      description = "Get a version of the glossary by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -327,9 +327,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/{id}")
   @Operation(
       operationId = "deleteGlossary",
-      summary = "Delete a Glossary",
+      summary = "Delete a glossary by Id",
       tags = "glossaries",
-      description = "Delete a glossary by `id`.",
+      description = "Delete a glossary by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "glossary for instance {id} is not found")
@@ -354,7 +354,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteGlossaryByName",
-      summary = "Delete a Glossary",
+      summary = "Delete a glossary by name",
       tags = "glossaries",
       description = "Delete a glossary by `name`.",
       responses = {
@@ -378,7 +378,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted Glossary.",
+      summary = "Restore a soft deleted glossary",
       tags = "glossaries",
       description = "Restore a soft deleted Glossary.",
       responses = {
@@ -433,7 +433,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Valid
   @Operation(
       operationId = "importGlossary",
-      summary = "Import glossary terms from CSV to create, and update glossary terms.",
+      summary = "Import glossary terms from CSV to create, and update glossary terms",
       tags = "glossaries",
       responses = {
         @ApiResponse(
@@ -460,7 +460,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
     return copy(new Glossary(), create, user)
-        .withReviewers(create.getReviewers())
+        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

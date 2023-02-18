@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button as AntDButton,
   Card,
@@ -171,12 +171,12 @@ const Users = ({
       if (response.data) {
         setTeams(response.data);
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-teams-error']
+        t('server.entity-fetch-error', { entity: t('label.team') })
       );
     } finally {
       setIsTeamsLoading(false);
@@ -268,7 +268,7 @@ const Users = ({
       await changePassword(sendData);
       setIsChangePassword(false);
       showSuccessToast(
-        jsonData['api-success-messages']['update-password-success']
+        t('server.update-entity-success', { entity: t('label.password') })
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -292,7 +292,7 @@ const Users = ({
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
-                placeholder="displayName"
+                placeholder={t('label.display-name')}
                 type="text"
                 value={displayName}
                 onChange={onDisplayNameChange}
@@ -305,7 +305,7 @@ const Users = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={() => setIsDisplayNameEdit(false)}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+                  <CloseOutlined />
                 </Button>
                 <Button
                   className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -314,14 +314,15 @@ const Users = ({
                   theme="primary"
                   variant="contained"
                   onClick={handleDisplayNameChange}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+                  <CheckOutlined />
                 </Button>
               </div>
             </Space>
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
-                {userData.displayName || 'Add display name'}
+                {userData.displayName ||
+                  t('label.add-entity', { entity: t('label.display-name') })}
               </span>
               <button
                 className="tw-ml-2 focus:tw-outline-none"
@@ -386,7 +387,7 @@ const Users = ({
         <Typography.Text
           className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
-          Change Password
+          {t('label.change-password')}
         </Typography.Text>
 
         <ChangePasswordForm
@@ -417,7 +418,9 @@ const Users = ({
           </div>
         ))}
         {isEmpty(userData.teams) && (
-          <span className="tw-no-description ">No teams found</span>
+          <span className="tw-no-description ">
+            {t('message.no-team-found')}
+          </span>
         )}
       </Fragment>
     );
@@ -433,7 +436,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
             </div>
           }>
           <div className="tw-mb-4">{teamsElement}</div>
@@ -450,7 +453,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
@@ -493,10 +496,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onMouseDown={() => setIsTeamsEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
+                    <CloseOutlined />
                   </Button>
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -505,10 +505,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onClick={handleTeamsChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
+                    <CheckOutlined />
                   </Button>
                 </div>
               </Space>
@@ -629,10 +626,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onMouseDown={() => setIsRolesEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
+                    <CloseOutlined />
                   </Button>
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -641,10 +635,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onClick={handleRolesChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
+                    <CheckOutlined />
                   </Button>
                 </div>
               </Space>
