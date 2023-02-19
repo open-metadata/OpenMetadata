@@ -35,7 +35,6 @@ import {
 } from '../../../constants/constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useAuth } from '../../../hooks/authHooks';
-import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -133,13 +132,15 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
         }
       }}>
       <Form.Item
-        label="Test Suite:"
+        label={`${t('label.test-suite')}:`}
         name="testSuiteId"
         rules={[
           {
             required:
               !isNewTestSuite || !isEmpty(form.getFieldValue('testSuiteId')),
-            message: 'Test suite is required',
+            message: `${t('message.field-text-is-required', {
+              fieldText: t('label.test-suite'),
+            })}`,
           },
         ]}>
         <Select
@@ -147,7 +148,9 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
             label: suite.name,
             value: suite.id,
           }))}
-          placeholder="Select test suite"
+          placeholder={t('label.select-field', {
+            field: t('label.test-suite'),
+          })}
         />
       </Form.Item>
       {hasAccess && (
@@ -162,21 +165,27 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                 {t('label.new-test-suite')}
               </Typography.Paragraph>
               <Form.Item
-                label="Name:"
+                label={`${t('label.name')}:`}
                 name="testSuiteName"
                 rules={[
                   {
                     required: isEmpty(form.getFieldValue('testSuiteId')),
-                    message: 'Name is required!',
+                    message: `${t('message.field-text-is-required', {
+                      fieldText: t('label.name'),
+                    })}`,
                   },
                   {
                     pattern: /^[A-Za-z0-9_]*$/g,
-                    message: jsonData.label['special-character-error'],
+                    message: t('message.special-character-not-allowed'),
                   },
                   {
                     validator: (_, value) => {
                       if (testSuites.some((suite) => suite.name === value)) {
-                        return Promise.reject('Name already exist!');
+                        return Promise.reject(
+                          t('message.entity-already-exists', {
+                            entity: t('label.name'),
+                          })
+                        );
                       }
 
                       return Promise.resolve();
@@ -185,11 +194,11 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                 ]}>
                 <Input
                   data-testid="test-suite-name"
-                  placeholder="Enter test suite name"
+                  placeholder={t('message.enter-test-suite-name')}
                 />
               </Form.Item>
               <Form.Item
-                label="Description:"
+                label={`${t('label.description')}:`}
                 name="description"
                 rules={[
                   {
@@ -199,7 +208,11 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                         isEmpty(getDescription()) &&
                         isEmpty(form.getFieldValue('testSuiteId'))
                       ) {
-                        return Promise.reject('Description is required!');
+                        return Promise.reject(
+                          `${t('message.field-text-is-required', {
+                            fieldText: t('label.description'),
+                          })}`
+                        );
                       }
 
                       return Promise.resolve();

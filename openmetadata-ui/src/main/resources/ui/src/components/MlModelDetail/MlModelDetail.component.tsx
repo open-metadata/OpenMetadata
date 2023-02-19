@@ -48,7 +48,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import {
   getEmptyPlaceholder,
   getEntityName,
@@ -131,7 +130,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       setPipelinePermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.ml-model'),
+        })
       );
     }
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
