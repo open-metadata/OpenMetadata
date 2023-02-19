@@ -53,6 +53,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
@@ -781,20 +782,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     yield CreateTestCaseRequest(
                         name=manifest_node.name,
                         description=manifest_node.description,
-                        testDefinition=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=manifest_node.name,
-                                entity=TestDefinition,
-                            ).id.__root__,
-                            type="testDefinition",
+                        testDefinition=FullyQualifiedEntityName(
+                            __root__=manifest_node.name
                         ),
                         entityLink=entity_link,
-                        testSuite=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=test_suite_name, entity=TestSuite
-                            ).id.__root__,
-                            type="testSuite",
-                        ),
+                        testSuite=FullyQualifiedEntityName(__root__=test_suite_name),
                         parameterValues=self.create_test_case_parameter_values(
                             dbt_test
                         ),

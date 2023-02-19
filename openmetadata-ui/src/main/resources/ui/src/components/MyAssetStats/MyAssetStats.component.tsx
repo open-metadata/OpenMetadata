@@ -14,6 +14,7 @@
 import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getExplorePath, ROUTES } from '../../constants/constants';
 import {
@@ -31,55 +32,56 @@ import { MyAssetStatsProps } from './MyAssetStats.interface';
 const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
   entityState,
 }: MyAssetStatsProps) => {
+  const { t } = useTranslation();
   const { entityCounts, entityCountLoading } = entityState;
 
   const dataSummary = useMemo(
     () => ({
       tables: {
         icon: Icons.TABLE_GREY,
-        data: 'Tables',
+        data: t('label.table-plural'),
         count: entityCounts.tableCount,
         link: getExplorePath({ tab: 'tables' }),
         dataTestId: 'tables',
       },
       topics: {
         icon: Icons.TOPIC_GREY,
-        data: 'Topics',
+        data: t('label.topic-plural'),
         count: entityCounts.topicCount,
         link: getExplorePath({ tab: 'topics' }),
         dataTestId: 'topics',
       },
       dashboards: {
         icon: Icons.DASHBOARD_GREY,
-        data: 'Dashboards',
+        data: t('label.dashboard-plural'),
         count: entityCounts.dashboardCount,
         link: getExplorePath({ tab: 'dashboards' }),
         dataTestId: 'dashboards',
       },
       pipelines: {
         icon: Icons.PIPELINE_GREY,
-        data: 'Pipelines',
+        data: t('label.pipeline-plural'),
         count: entityCounts.pipelineCount,
         link: getExplorePath({ tab: 'pipelines' }),
         dataTestId: 'pipelines',
       },
       mlModal: {
         icon: Icons.MLMODAL,
-        data: 'ML Models',
+        data: t('label.ml-model-plural'),
         count: entityCounts.mlmodelCount,
         link: getExplorePath({ tab: 'mlmodels' }),
         dataTestId: 'mlmodels',
       },
       testSuite: {
         icon: Icons.TEST_SUITE,
-        data: 'Test Suites',
+        data: t('label.test-suite-plural'),
         count: entityCounts.testSuiteCount,
         link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
       service: {
         icon: Icons.SERVICE,
-        data: 'Services',
+        data: t('label.service-plural'),
         count: entityCounts.servicesCount,
         link: getSettingPath(
           GlobalSettingsMenuCategory.SERVICES,
@@ -89,7 +91,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
       },
       user: {
         icon: Icons.USERS,
-        data: 'Users',
+        data: t('label.user-plural'),
         count: entityCounts.userCount,
         link: getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
@@ -100,7 +102,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
       },
       teams: {
         icon: Icons.TEAMS_GREY,
-        data: 'Teams',
+        data: t('label.team-plural'),
         count: entityCounts.teamCount,
         link: getTeamsWithFqnPath(TeamType.Organization),
         dataTestId: 'terms',

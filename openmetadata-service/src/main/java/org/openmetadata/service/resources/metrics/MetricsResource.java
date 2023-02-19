@@ -110,9 +110,9 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "getMetricByID",
-      summary = "Get a metric",
+      summary = "Get a metric by Id",
       tags = "metrics",
-      description = "Get a metric by `id`.",
+      description = "Get a metric by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",

@@ -147,7 +147,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       operationId = "listAllLocationVersion",
       summary = "List location versions",
       tags = "locations",
-      description = "Get a list of all the versions of a location identified by `id`",
+      description = "Get a list of all the versions of a location identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -166,9 +166,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/{id}")
   @Operation(
       operationId = "getLocationByID",
-      summary = "Get a location",
+      summary = "Get a location by Id",
       tags = "locations",
-      description = "Get a location by `id`.",
+      description = "Get a location by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -253,7 +253,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getLocationByFQN",
-      summary = "Get a location by name",
+      summary = "Get a location by fully qualified name",
       tags = "locations",
       description = "Get a location by fully qualified name.",
       responses = {
@@ -292,7 +292,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       operationId = "getEntityByLocation",
       summary = "Get a table associated with location",
       tags = "locations",
-      description = "Get a table associated with location by given `id`",
+      description = "Get a table associated with location by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -314,7 +314,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       operationId = "getSpecificLocationVersion",
       summary = "Get a version of the location",
       tags = "locations",
-      description = "Get a version of the location by given `id`",
+      description = "Get a version of the location by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -407,7 +407,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteLocationByFQN",
-      summary = "Delete a location",
+      summary = "Delete a location by fully qualified name",
       tags = "locations",
       description = "Delete a location by `fullyQualifiedName`.",
       responses = {
@@ -432,9 +432,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/{id}")
   @Operation(
       operationId = "deleteLocation",
-      summary = "Delete a location",
+      summary = "Delete a location by Id",
       tags = "locations",
-      description = "Delete a location by `id`.",
+      description = "Delete a location by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")

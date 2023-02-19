@@ -199,7 +199,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     CreateIngestionPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
-            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
+            .withService(BIGQUERY_REFERENCE)
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("5 * * * *"));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -233,7 +233,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     CreateIngestionPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
-            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
+            .withService(BIGQUERY_REFERENCE)
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -269,7 +269,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineUrlUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
+            .withService(BIGQUERY_REFERENCE)
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -328,7 +328,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineForDashboardSourceUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(reduceEntityReference(METABASE_REFERENCE))
+            .withService(METABASE_REFERENCE)
             .withDescription("description")
             .withSourceConfig(DASHBOARD_METADATA_CONFIG)
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
@@ -380,7 +380,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineForMessagingSourceUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
-            .withService(reduceEntityReference(KAFKA_REFERENCE))
+            .withService(KAFKA_REFERENCE)
             .withDescription("description")
             .withSourceConfig(MESSAGING_METADATA_CONFIG)
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
@@ -433,7 +433,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     CreateIngestionPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
-            .withService(reduceEntityReference(BIGQUERY_REFERENCE))
+            .withService(BIGQUERY_REFERENCE)
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE))
             .withOwner(USER1_REF);
@@ -509,22 +509,20 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService snowflakeDatabaseService =
         databaseServiceResourceTest.createEntity(createSnowflakeService, ADMIN_AUTH_HEADERS);
-    EntityReference snowflakeRef = snowflakeDatabaseService.getEntityReference();
 
     CreateDatabaseService createBigQueryService =
         new CreateDatabaseService()
             .withName("bigquery_test_list")
             .withServiceType(CreateDatabaseService.DatabaseServiceType.BigQuery)
             .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
-    DatabaseService databaseService =
+    DatabaseService bigqueryDatabaseService =
         databaseServiceResourceTest.createEntity(createBigQueryService, ADMIN_AUTH_HEADERS);
-    EntityReference bigqueryRef = databaseService.getEntityReference();
 
     CreateIngestionPipeline requestPipeline_1 =
         createRequest(test)
             .withName("ingestion_1")
             .withPipelineType(PipelineType.METADATA)
-            .withService(bigqueryRef)
+            .withService(bigqueryDatabaseService.getEntityReference())
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     IngestionPipeline pipelineBigquery1 = createAndCheckEntity(requestPipeline_1, ADMIN_AUTH_HEADERS);
@@ -532,7 +530,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         createRequest(test)
             .withName("ingestion_2")
             .withPipelineType(PipelineType.METADATA)
-            .withService(bigqueryRef)
+            .withService(bigqueryDatabaseService.getEntityReference())
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     IngestionPipeline pipelineBigquery2 = createAndCheckEntity(requestPipeline_2, ADMIN_AUTH_HEADERS);
@@ -540,13 +538,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         createRequest(test)
             .withName("ingestion_2")
             .withPipelineType(PipelineType.METADATA)
-            .withService(snowflakeRef)
+            .withService(snowflakeDatabaseService.getEntityReference())
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     IngestionPipeline IngestionPipeline3 = createAndCheckEntity(requestPipeline_3, ADMIN_AUTH_HEADERS);
     // List charts by filtering on service name and ensure right charts in the response
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("service", bigqueryRef.getName());
+    queryParams.put("service", bigqueryDatabaseService.getName());
 
     Predicate<IngestionPipeline> isPipelineBigquery1 = p -> p.getId().equals(pipelineBigquery1.getId());
     Predicate<IngestionPipeline> isPipelineBigquery2 = u -> u.getId().equals(pipelineBigquery2.getId());
@@ -556,7 +554,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery1));
     assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery2));
     queryParams = new HashMap<>();
-    queryParams.put("service", snowflakeRef.getName());
+    queryParams.put("service", snowflakeDatabaseService.getName());
 
     List<IngestionPipeline> actualSnowflakePipelines = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     assertEquals(1, actualSnowflakePipelines.size());

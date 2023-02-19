@@ -466,11 +466,19 @@ const TagsPage = () => {
     if (errorDataTag || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
+        errData['name'] = t('label.field-required', {
+          field: t('label.name'),
+        });
       } else if (delimiterRegex.test(data.name)) {
-        errData['name'] = 'Name with delimiters are not allowed';
+        errData['name'] = t('message.entity-delimiters-not-allowed', {
+          entity: t('label.name'),
+        });
       } else if (data.name.length < 2 || data.name.length > 64) {
-        errData['name'] = 'Name size must be between 2 and 64';
+        errData['name'] = t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 64,
+          min: 2,
+        });
       }
       setErrorDataTag(errData);
 

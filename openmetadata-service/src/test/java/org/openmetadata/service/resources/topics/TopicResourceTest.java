@@ -98,19 +98,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
+    String[] differentServices = {PULSAR_REFERENCE.getName(), KAFKA_REFERENCE.getName()};
 
     // Create topic for each service and test APIs
-    for (EntityReference service : differentServices) {
+    for (String service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List topics by filtering on service name and ensure right topics in the response
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("service", service.getName());
+      queryParams.put("service", service);
 
       ResultList<Topic> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Topic topic : list.getData()) {
-        assertEquals(service.getName(), topic.getService().getName());
+        assertEquals(service, topic.getService().getName());
       }
     }
   }
@@ -300,7 +300,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Override
   public CreateTopic createRequest(String name) {
-    return new CreateTopic().withName(name).withService(getContainer()).withPartitions(1);
+    return new CreateTopic().withName(name).withService(getContainer().getFullyQualifiedName()).withPartitions(1);
   }
 
   @Override

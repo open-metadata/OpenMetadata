@@ -66,7 +66,7 @@ public class UsageResource {
   @Path("/{entity}/{id}")
   @Operation(
       operationId = "getEntityUsageByID",
-      summary = "Get usage",
+      summary = "Get usage by id",
       tags = "usage",
       description = "Get usage details for an entity identified by `id`.",
       responses = {
@@ -107,7 +107,7 @@ public class UsageResource {
   @Path("/{entity}/name/{fqn}")
   @Operation(
       operationId = "getEntityUsageByFQN",
-      summary = "Get usage by name",
+      summary = "Get usage by fully qualified name",
       tags = "usage",
       description = "Get usage details for an entity identified by fully qualified name.",
       responses = {
@@ -212,7 +212,7 @@ public class UsageResource {
   @Path("/{entity}/name/{fqn}")
   @Operation(
       operationId = "reportEntityUsageWithFQN",
-      summary = "Report usage by name",
+      summary = "Report usage by fully qualified name",
       tags = "usage",
       description =
           "Report usage information for an entity by name on a given date. System stores last 30 days "
@@ -247,7 +247,7 @@ public class UsageResource {
   @Path("/{entity}/name/{fqn}")
   @Operation(
       operationId = "reportEntityUsageWithFQN",
-      summary = "Report usage by name",
+      summary = "Report usage by fully qualified name",
       tags = "usage",
       description =
           "Report usage information for an entity by name on a given date. System stores last 30 days "

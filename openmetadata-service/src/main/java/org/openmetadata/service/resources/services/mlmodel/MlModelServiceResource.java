@@ -95,7 +95,7 @@ public class MlModelServiceResource
   @GET
   @Operation(
       operationId = "listMlModelService",
-      summary = "List mlModel services",
+      summary = "List ML model services",
       tags = "mlModelServices",
       description =
           "Get a list of mlModel services. Use cursor-based pagination to limit the number "
@@ -144,9 +144,9 @@ public class MlModelServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getMlModelServiceByID",
-      summary = "Get a mlModel service",
+      summary = "Get an ML model service by Id",
       tags = "mlModelServices",
-      description = "Get a mlModel service by `id`.",
+      description = "Get a mlModel service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -179,7 +179,7 @@ public class MlModelServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "getMlModelServiceByFQN",
-      summary = "Get mlModel service by name",
+      summary = "Get an ML model service by name",
       tags = "mlModelServices",
       description = "Get a mlModel service by the service `name`.",
       responses = {
@@ -215,9 +215,9 @@ public class MlModelServiceResource
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllMlModelServiceVersion",
-      summary = "List mlModel service versions",
+      summary = "List ML model service versions",
       tags = "mlModelServices",
-      description = "Get a list of all the versions of a mlModel service identified by `id`",
+      description = "Get a list of all the versions of a mlModel service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -251,9 +251,9 @@ public class MlModelServiceResource
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificMlModelService",
-      summary = "Get a version of the mlModel service",
+      summary = "Get a version of the ML model service",
       tags = "mlModelServices",
-      description = "Get a version of the mlModel service by given `id`",
+      description = "Get a version of the mlModel service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -281,8 +281,8 @@ public class MlModelServiceResource
   @POST
   @Operation(
       operationId = "createMlModelService",
-      summary = "Create a mlModel service",
-      tags = "mlModelService",
+      summary = "Create an ML model service",
+      tags = "mlModelServices",
       description = "Create a new mlModel service.",
       responses = {
         @ApiResponse(
@@ -304,9 +304,9 @@ public class MlModelServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateMlModelService",
-      summary = "Update mlModel service",
+      summary = "Update ML model service",
       tags = "mlModelServices",
-      description = "Create a new mlModel service or update an existing mlModel service identified by `id`.",
+      description = "Create a new mlModel service or update an existing mlModel service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -328,7 +328,7 @@ public class MlModelServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "patchMlModelService",
-      summary = "Update a MlModel service",
+      summary = "Update an ML model service",
       tags = "mlModelServices",
       description = "Update an existing MlModelService service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -354,7 +354,7 @@ public class MlModelServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteMlModelService",
-      summary = "Delete a mlModel service",
+      summary = "Delete an ML model service by Id",
       tags = "mlModelServices",
       description =
           "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be " + "deleted.",
@@ -382,7 +382,7 @@ public class MlModelServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteMlModelServiceByName",
-      summary = "Delete a mlModel service",
+      summary = "Delete an ML model service by name",
       tags = "mlModelServices",
       description =
           "Delete a mlModel services by `name`. If mlModels (and tasks) belong to the service, it can't be "
@@ -408,9 +408,9 @@ public class MlModelServiceResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted MlModelService.",
+      summary = "Restore a soft deleted ML model service",
       tags = "mlModelServices",
-      description = "Restore a soft deleted MlModelService.",
+      description = "Restore a soft deleted Ml model service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
