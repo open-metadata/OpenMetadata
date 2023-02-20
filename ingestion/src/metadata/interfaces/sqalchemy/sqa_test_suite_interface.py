@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.table import PartitionProfilerConfig,
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -38,7 +39,6 @@ from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.timeout import cls_timeout
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 
 logger = test_suite_logger()
 
@@ -151,8 +151,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         try:
             TestHandler = import_test_case_class(  # pylint: disable=invalid-name
                 self.ometa_client.get_by_id(
-                    TestDefinition,
-                    test_case.testDefinition.id
+                    TestDefinition, test_case.testDefinition.id
                 ).entityType.value,
                 "sqlalchemy",
                 test_case.testDefinition.fullyQualifiedName,

@@ -23,13 +23,12 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
 from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
-from metadata.generated.schema.tests.testDefinition import TestDefinition
-
 
 logger = test_suite_logger()
 
@@ -70,8 +69,7 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         try:
             TestHandler = import_test_case_class(  # pylint: disable=invalid-name
                 self.ometa_client.get_by_id(
-                    TestDefinition,
-                    test_case.testDefinition.id
+                    TestDefinition, test_case.testDefinition.id
                 ).entityType.value,
                 "pandas",
                 test_case.testDefinition.fullyQualifiedName,
@@ -89,5 +87,5 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
                 f"Test definition {test_case.testDefinition.fullyQualifiedName} not registered in OpenMetadata "
                 f"TestDefintion registry. Skipping test case {test_case.name.__root__} - {err}"
             )
-            
+
             raise RuntimeError(err)
