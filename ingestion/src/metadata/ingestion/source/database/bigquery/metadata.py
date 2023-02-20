@@ -84,16 +84,20 @@ def get_columns(bq_schema):
         }
         try:
             if field.policy_tags:
+                policy_tag_name = field.policy_tags.names[0]
+                taxonomy_name = (
+                    policy_tag_name.split("/policyTags/") if policy_tag_name else ""
+                )
+                if not len(taxonomy_name):
+                    raise Exception(f"Taxonomy Name not present for {field.name}")
                 col_obj["taxonomy"] = (
                     PolicyTagManagerClient()
-                    .get_taxonomy(
-                        name=field.policy_tags.names[0].split("/policyTags/")[0]
-                    )
+                    .get_taxonomy(name=taxonomy_name)
                     .display_name
                 )
                 col_obj["policy_tags"] = (
                     PolicyTagManagerClient()
-                    .get_policy_tag(name=field.policy_tags.names[0])
+                    .get_policy_tag(name=policy_tag_name)
                     .display_name
                 )
         except Exception as exc:
