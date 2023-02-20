@@ -33,10 +33,11 @@ from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
 from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.test_suite.validations.core import validation_enum_registry
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.timeout import cls_timeout
+from metadata.test_suite.validations.validator import Validator
+from metadata.utils.importer import import_test_case_class
 
 logger = test_suite_logger()
 
@@ -147,13 +148,19 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         """
 
         try:
-            return validation_enum_registry.registry[
-                test_case.testDefinition.fullyQualifiedName
-            ](
+            TestHandler = import_test_case_class(  # pylint: disable=invalid-name
+                test_case.testDefinition.fullyQualifiedName,
+                "sqlalchemy",
+                test_case.testDefinition.entityType
+            )
+
+            test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
             )
+
+            return Validator(validator_obj=test_handler).validate()
         except KeyError as err:
             logger.warning(
                 f"Test definition {test_case.testDefinition.fullyQualifiedName} not registered in OpenMetadata "
