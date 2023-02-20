@@ -86,7 +86,9 @@ def get_columns(bq_schema):
             if field.policy_tags:
                 col_obj["taxonomy"] = (
                     PolicyTagManagerClient()
-                    .get_taxonomy(name=field.policy_tags.names[0].split('/policyTags/')[0])
+                    .get_taxonomy(
+                        name=field.policy_tags.names[0].split("/policyTags/")[0]
+                    )
                     .display_name
                 )
                 col_obj["policy_tags"] = (
