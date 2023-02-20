@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.bigquery.client import Client
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient, GetTaxonomyRequest
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
