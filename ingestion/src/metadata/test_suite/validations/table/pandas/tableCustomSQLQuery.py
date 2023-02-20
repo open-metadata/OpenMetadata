@@ -15,22 +15,21 @@ Validator for column value length to be between test case
 """
 
 import traceback
+from typing import cast
 
-from sqlalchemy import inspect
-
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
+from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
+class TableCustomSQLQueryValidator(BaseTestHandler, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
@@ -39,29 +38,36 @@ class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
         Returns:
             TestCaseResult:
         """
+        sql_expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "sqlExpression",
+            str,
+        )
+        sql_expression = cast(str, sql_expression)  # satisfy mypy
+
         try:
-            count = len(inspect(self.runner.table).c)
-            if count is None:
-                raise ValueError(
-                    f"Column Count for test case {self.test_case.name} returned None"
-                )
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
+            rows = self.runner.query(sql_expression)
+        except Exception as exc:
+            msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="columnCount", value=None)],
+                [TestResultValue(name="resultRowCount", value=None)],
             )
 
-        min_bound = self.get_min_bound("minColValue")
-        max_bound = self.get_max_bound("maxColValue")
+        if rows.empty:
+            status = TestCaseStatus.Success
+            result_value = 0
+        else:
+            status = TestCaseStatus.Failed
+            result_value = len(rows)
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(min_bound <= count <= max_bound),
-            f"Found columnCount={count} column vs. the expected  min={min_bound} and max={max_bound}].",
-            [TestResultValue(name="columnCount", value=str(count))],
+            status,
+            f"Found {result_value} row(s). Test query is expected to return 0 row.",
+            [TestResultValue(name="resultRowCount", value=str(result_value))],
         )

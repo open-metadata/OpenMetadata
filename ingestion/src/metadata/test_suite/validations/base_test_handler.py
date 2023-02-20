@@ -15,6 +15,7 @@ Base validator class
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+import reprlib
 from typing import Callable, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.tests.basic import (TestCaseResult,
@@ -108,6 +109,15 @@ class BaseTestHandler(ABC):
             sampleData=None,
         )
 
+    def format_column_list(self, status: TestCaseStatus, cols: List):
+        """Format column list based on the test status
+
+        Args:
+            cols: list of columns
+        """
+        if status == TestCaseStatus.Success:
+            return reprlib.repr(cols)
+        return cols
     
     def get_test_case_status(self, condition: bool) -> TestCaseStatus:
         """Returns TestCaseStatus based on condition

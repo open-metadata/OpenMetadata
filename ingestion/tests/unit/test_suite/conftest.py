@@ -20,16 +20,15 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sqa
-from sqlalchemy.orm import declarative_base
-
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
-    SQLiteScheme,
-)
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+    SQLiteConnection, SQLiteScheme)
+from metadata.generated.schema.tests.testCase import (TestCase,
+                                                      TestCaseParameterValue)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
+from metadata.interfaces.sqalchemy.sqa_test_suite_interface import \
+    SQATestSuiteInterface
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -587,3 +586,33 @@ def test_case_table_row_inserted_count_to_be_between():
             TestCaseParameterValue(name="rangeInterval", value="1"),
         ],
     )  # type: ignore
+
+@pytest.fixture
+def test_case_table_custom_sql_query_failed_dl():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression", value="age > 30"
+            ),
+        ],
+    )
+
+@pytest.fixture
+def test_case_table_custom_sql_query_success_dl():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression", value="age < 0"
+            ),
+        ],
+    )

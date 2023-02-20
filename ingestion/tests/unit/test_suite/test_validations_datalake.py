@@ -15,7 +15,7 @@ Test Table and Column Tests' validate implementations.
 Each test should validate the Success, Failure and Aborted statuses
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from pandas import DataFrame
@@ -26,14 +26,14 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 DL_DATA = (
-    ["1", "John", "Jo", "John Doe", "johnny b goode", 30],
-    ["2", "Jane", "Ja", "Jone Doe", "Johnny d", 31],
-    ["3", "John", "Joh", "John Doe", None, None],
+    ["1", "John", "Jo", "John Doe", "johnny b goode", 30, datetime.today() - timedelta(days=1)],
+    ["2", "Jane", "Ja", "Jone Doe", "Johnny d", 31, datetime.today() - timedelta(days=2)],
+    ["3", "John", "Joh", "John Doe", None, None, datetime.today() - timedelta(days=3)],
 ) * 10
 
 
 DATALAKE_DATA_FRAME = DataFrame(
-    DL_DATA, columns=["id", "name", "first name", "fullname", "nickname", "age"]
+    DL_DATA, columns=["id", "name", "first name", "fullname", "nickname", "age", "inserted_date"]
 )
 
 # pylint: disable=line-too-long
@@ -172,51 +172,71 @@ DATALAKE_DATA_FRAME = DataFrame(
             "COLUMN",
             (TestCaseResult, "0", None, TestCaseStatus.Success),
         ),
-        # (
-        #     "test_case_table_column_count_to_be_between",
-        #     "tableColumnCountToBeBetween",
-        #     (TestCaseResult, "6", None, TestCaseStatus.Success),
-        # ),
-        # (
-        #     "test_case_table_column_count_to_equal",
-        #     "tableColumnCountToEqual",
-        #     (TestCaseResult, "6", None, TestCaseStatus.Failed),
-        # ),
-        # (
-        #     "test_case_table_column_name_to_exist",
-        #     "tableColumnNameToExist",
-        #     (TestCaseResult, "True", None, TestCaseStatus.Success),
-        # ),
-        # (
-        #     "test_case_column_to_match_set",
-        #     "tableColumnToMatchSet",
-        #     (
-        #         TestCaseResult,
-        #         "['id', 'name', 'first name', 'fullname', 'nickname', 'age']",
-        #         None,
-        #         TestCaseStatus.Failed,
-        #     ),
-        # ),
-        # (
-        #     "test_case_column_to_match_set_ordered",
-        #     "tableColumnToMatchSet",
-        #     (TestCaseResult, None, None, TestCaseStatus.Failed),
-        # ),
-        # (
-        #     "test_case_table_row_count_to_be_between",
-        #     "tableRowCountToBeBetween",
-        #     (TestCaseResult, "30", None, TestCaseStatus.Success),
-        # ),
-        # (
-        #     "test_case_table_row_count_to_be_equal",
-        #     "tableRowCountToEqual",
-        #     (TestCaseResult, "30", None, TestCaseStatus.Failed),
-        # ),
-        # (
-        #     "test_case_table_row_inserted_count_to_be_between",
-        #     "tableRowInsertedCountToBeBetween",
-        #     (TestCaseResult, None, None, TestCaseStatus.Aborted),
-        # ),
+        (
+            "test_case_table_column_count_to_be_between",
+            "tableColumnCountToBeBetween",
+            "TABLE",
+            (TestCaseResult, "7", None, TestCaseStatus.Success),
+        ),
+        (
+            "test_case_table_column_count_to_equal",
+            "tableColumnCountToEqual",
+            "TABLE",
+            (TestCaseResult, "7", None, TestCaseStatus.Failed),
+        ),
+        (
+            "test_case_table_column_name_to_exist",
+            "tableColumnNameToExist",
+            "TABLE",
+            (TestCaseResult, "1", None, TestCaseStatus.Success),
+        ),
+        (
+            "test_case_column_to_match_set",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (
+                TestCaseResult,
+                "0",
+                None,
+                TestCaseStatus.Failed,
+            ),
+        ),
+        (
+            "test_case_column_to_match_set_ordered",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (TestCaseResult, None, None, TestCaseStatus.Failed),
+        ),
+        (
+            "test_case_table_custom_sql_query_failed_dl",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, None, None, TestCaseStatus.Failed),
+        ),
+        (
+            "test_case_table_custom_sql_query_success_dl",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, None, None, TestCaseStatus.Success),
+        ),
+        (
+            "test_case_table_row_count_to_be_between",
+            "tableRowCountToBeBetween",
+            "TABLE",
+            (TestCaseResult, "30", None, TestCaseStatus.Success),
+        ),
+        (
+            "test_case_table_row_count_to_be_equal",
+            "tableRowCountToEqual",
+            "TABLE",
+            (TestCaseResult, "30", None, TestCaseStatus.Failed),
+        ),
+        (
+            "test_case_table_row_inserted_count_to_be_between",
+            "tableRowInsertedCountToBeBetween",
+            "TABLE",
+            (TestCaseResult, "10", None, TestCaseStatus.Success),
+        ),
     ],
 )
 def test_suite_validation_datalake(

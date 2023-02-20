@@ -16,21 +16,20 @@ Validator for column value length to be between test case
 
 import traceback
 
-from sqlalchemy import inspect
-
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.utils.entity_link import get_table_fqn
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
+class TableColumnCountToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
@@ -40,13 +39,9 @@ class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
             TestCaseResult:
         """
         try:
-            count = len(inspect(self.runner.table).c)
-            if count is None:
-                raise ValueError(
-                    f"Column Count for test case {self.test_case.name} returned None"
-                )
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
+            count = len(self.runner.columns)
+        except Exception as exc:
+            msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(

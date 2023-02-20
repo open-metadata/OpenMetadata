@@ -16,21 +16,23 @@ Validator for column value length to be between test case
 
 import traceback
 
-from sqlalchemy import inspect
-
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.utils.entity_link import get_table_fqn
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
+class TableRowCountToEqualValidator(BaseTestHandler, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
@@ -40,28 +42,28 @@ class TableColumnCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
             TestCaseResult:
         """
         try:
-            count = len(inspect(self.runner.table).c)
-            if count is None:
-                raise ValueError(
-                    f"Column Count for test case {self.test_case.name} returned None"
-                )
+            res = self.run_dataframe_results(self.runner, Metrics.ROW_COUNT)
         except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
+            msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="columnCount", value=None)],
+                [TestResultValue(name="rowCount", value=None)],
             )
 
-        min_bound = self.get_min_bound("minColValue")
-        max_bound = self.get_max_bound("maxColValue")
+        expected_count = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "value",
+            float,
+            default=float("-inf"),
+        )
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(min_bound <= count <= max_bound),
-            f"Found columnCount={count} column vs. the expected  min={min_bound} and max={max_bound}].",
-            [TestResultValue(name="columnCount", value=str(count))],
+            self.get_test_case_status(expected_count == res),
+            f"Found rowCount={res} rows vs. the expected {expected_count}",
+            [TestResultValue(name="rowCount", value=str(res))],
         )

@@ -16,28 +16,46 @@ Validator for column value length to be between test case
 
 import traceback
 from typing import cast
+from datetime import datetime
 
-from sqlalchemy import Column, text
+from dateutil.relativedelta import relativedelta
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.sqa_utils import (
-    dispatch_to_date_or_datetime,
-    get_partition_col_type,
-)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin, SQALikeColumn
 
 logger = test_suite_logger()
 
 
-class TableRowInsertedCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
+class TableRowInsertedCountToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
+
+    def get_threshold_date(self, range_type: str, range_interval: int):
+        """returns the threshold datetime in utc to count the numbers of rows inserted
+
+        Args:
+            range_type (str): type of range (i.e. HOUR, DAY, MONTH, YEAR)
+            range_interval (int): interval of range (i.e. 1, 2, 3, 4)
+        """
+        interval_type_matching_table = {
+            "HOUR": relativedelta(hours=range_interval),
+            "DAY": relativedelta(days=range_interval),
+            "MONTH": relativedelta(months=range_interval),
+            "YEAR": relativedelta(years=range_interval),
+        }  
+        utc_now = datetime.utcnow()
+        threshold_date = utc_now - interval_type_matching_table[range_type]
+        if range_type == "HOUR":
+            threshold_date = threshold_date.replace(minute=0, second=0, microsecond=0)
+        else:
+            threshold_date = threshold_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        return threshold_date.strftime("%Y%m%d%H%M%S")
+
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -48,7 +66,7 @@ class TableRowInsertedCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMix
         column_name = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "columnName",
-            Column,
+            str,
         )
         range_type = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -70,21 +88,9 @@ class TableRowInsertedCountToBeBetweenValidator(BaseTestHandler, SQAValidatorMix
             range_interval = cast(int, range_interval)
             range_type = cast(str, range_type)
 
-            date_or_datetime_fn = dispatch_to_date_or_datetime(
-                range_interval,
-                text(range_type),
-                get_partition_col_type(column_name.name, self.runner.table.__table__.c),  # type: ignore
-            )
+            threshold_date = self.get_threshold_date(range_type, range_interval)
 
-            res = dict(
-                self.runner.dispatch_query_select_first(
-                    Metrics.ROW_COUNT.value().fn(),
-                    query_filter_={
-                        "filters": [(column_name, "ge", date_or_datetime_fn)],
-                        "or_filter": False,
-                    },
-                )  # type: ignore
-            ).get(Metrics.ROW_COUNT.name)
+            res = len(self.runner.query(f"{column_name} >= {threshold_date}"))
 
         except Exception as exc:
             msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore

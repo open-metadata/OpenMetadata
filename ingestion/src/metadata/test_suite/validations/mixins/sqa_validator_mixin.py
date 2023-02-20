@@ -89,13 +89,3 @@ class SQAValidatorMixin:
             )
 
         return res
-
-    def format_column_list(self, status: TestCaseStatus, cols: List):
-        """Format column list based on the test status
-
-        Args:
-            cols: list of columns
-        """
-        if status == TestCaseStatus.Success:
-            return reprlib.repr(cols)
-        return cols

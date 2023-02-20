@@ -62,9 +62,7 @@ class TableColumnCountToEqualValidator(BaseTestHandler, SQAValidatorMixin):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            TestCaseStatus.Success
-            if count == expected_count
-            else TestCaseStatus.Failed,
+            self.get_test_case_status(count == expected_count),
             f"Found {count} columns vs. the expected {expected_count}",
             [TestResultValue(name="columnCount", value=str(count))],
         )

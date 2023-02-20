@@ -27,7 +27,7 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.column.column_values_to_be_between import (
+from metadata.utils.time_utils import (
     convert_timestamp,
 )
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
