@@ -78,14 +78,13 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> str:
     msg_nonmandatory = ", ".join(errors["nonmandatory"])
     msg = f"{msg_mandatory}, {msg_nonmandatory}"
 
-    if not (errors["mandatory"] and errors["nonmandatory"]):
-        return None
-
-    elif errors["mandatory"]:
+    if errors["mandatory"]:
         raise SourceConnectionException(msg)
 
-    elif errors["nonmandatory"]:
+    if errors["nonmandatory"]:
         return msg_nonmandatory
+
+    return None
 
 
 @timeout(seconds=120)
@@ -110,3 +109,5 @@ def test_connection_db_common(connection: Engine, steps=None) -> str:
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+    return None

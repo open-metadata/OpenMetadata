@@ -47,7 +47,7 @@ def get_connection(connection: PostgresConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine) -> str:
     """
     Test connection
     """
