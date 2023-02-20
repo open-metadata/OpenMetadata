@@ -12,7 +12,6 @@
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
-import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
