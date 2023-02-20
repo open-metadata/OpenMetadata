@@ -13,30 +13,29 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional
 
 from metadata.generated.schema.entity.data.table import DataType
+from metadata.ingestion.source.database.datalake.metadata import DATALAKE_DATA_TYPES
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.utils.entity_link import get_decoded_column
-
-@dataclass
-class SQALikeColumn():
-    """Replicate somehow the behavior of SQLAlchemy Column object to have constant API access"""
-    name: str
-    type: Union[DataType, str]
+from metadata.utils.sqa_like_column import SQALikeColumn, Type
 
 
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
 
-    def get_column_name(self, entity_link: str, data_frame) -> SQALikeColumn:
-        column = data_frame[get_decoded_column(entity_link)]
-        return SQALikeColumn(
+    # pylint: disable=invalid-name
+    def get_column_name(self, entity_link: str, df) -> SQALikeColumn:
+        column = df[get_decoded_column(entity_link)]
+        _type = DATALAKE_DATA_TYPES.get(column.dtypes.name, DataType.STRING.value)
+        sqa_like_column = SQALikeColumn(
             name=column.name,
-            type=column.dtype.name,
+            type=Type(_type),
         )
+        sqa_like_column.type.__class__ = _type
+        return sqa_like_column
 
     def run_dataframe_results(
         self,

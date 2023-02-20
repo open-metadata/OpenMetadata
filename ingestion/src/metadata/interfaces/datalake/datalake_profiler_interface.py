@@ -32,9 +32,11 @@ from metadata.interfaces.profiler_protocol import (
 from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
-from metadata.utils.column_base_model import ColumnBaseModel
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.ingestion.source.database.datalake.metadata import DATALAKE_DATA_TYPES
+from metadata.generated.schema.entity.data.table import DataType
 
 logger = profiler_interface_registry_logger()
 
@@ -188,7 +190,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         """
         col_metric = None
         for data_frame in data_frame_list:
-            col_metric = metrics(column).dl_query(data_frame)
+            col_metric = metrics(column).df_fn(data_frame)
         if not col_metric:
             return None
         return {metrics.name(): col_metric}
@@ -319,7 +321,15 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         return self._table
 
     def get_columns(self):
-        return ColumnBaseModel.col_base_model_list(self.data_frame_list)
+        if self.data_frame_list:
+            df = self.data_frame_list[0]  # pylint: disable=invalid-name
+            return [
+                SQALikeColumn(
+                    column_name,
+                    DATALAKE_DATA_TYPES.get(df[column_name].dtypes.name, DataType.STRING.value)
+                )
+                for column_name in df.columns
+            ]
 
     def close(self):
         pass

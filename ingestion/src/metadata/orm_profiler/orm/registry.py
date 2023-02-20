@@ -76,22 +76,26 @@ NOT_COMPUTE = {
     sqa_types.SQASet,
     sqa_types.SQAUnion,
     sqa_types.SQASGeography,
+    DataType.ARRAY.value,
+    DataType.JSON.value,
 }
 
-NOT_COMPUTE_OM = {
-    DataType.ARRAY,
-    DataType.JSON,
+QUANTIFIABLE_SET = {
+    DataType.INT.value,
+    DataType.BIGINT.value,
+    DataType.SMALLINT.value,
+    DataType.NUMERIC.value,
+    DataType.NUMBER.value,
+    DataType.DECIMAL.value,
+    DataType.FLOAT.value,
+    DataType.TINYINT.value,
+    DataType.DOUBLE.value,
+    DataType.LONG.value,
 }
 
-QUANTIFIABLE_DICT = {
-    DataType.INT,
-    DataType.BIGINT,
-    DataType.SMALLINT,
-    DataType.NUMERIC,
-    DataType.NUMBER,
-}
+CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
 
-CONCATENABLE_DICT = {DataType.STRING, DataType.TEXT}
+DATATIME_SET = {DataType.DATETIME.value}
 
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type
@@ -113,22 +117,24 @@ def is_date_time(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
-    return (
-        issubclass(_type.__class__, Date)
-        or issubclass(_type.__class__, Time)
-        or issubclass(_type.__class__, DateTime)
-    )
+    try:
+        return (
+            issubclass(_type.__class__, Date)
+            or issubclass(_type.__class__, Time)
+            or issubclass(_type.__class__, DateTime)
+        )
+    except TypeError:
+        return _type.__class__ in DATATIME_SET
 
 
 def is_quantifiable(_type) -> bool:
     """
     Check if sqlalchemy _type is either integer or numeric
     """
-    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
-        is_numeric_dtype,
-    )
-
-    return is_numeric(_type) or is_integer(_type) or is_numeric_dtype(_type)
+    try:
+        return is_numeric(_type) or is_integer(_type)
+    except TypeError:
+        return _type.__class__ in QUANTIFIABLE_SET
 
 
 def is_concatenable(_type) -> bool:
@@ -136,8 +142,7 @@ def is_concatenable(_type) -> bool:
     Check if sqlalchemy _type is derived from Concatenable
     e.g., strings or text
     """
-    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
-        is_string_dtype,
-    )
-
-    return issubclass(_type.__class__, Concatenable) or is_string_dtype(_type)
+    try:
+        return issubclass(_type.__class__, Concatenable)
+    except TypeError:
+        return _type.__class__ in CONCATENABLE_SET

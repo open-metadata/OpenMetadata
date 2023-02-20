@@ -66,9 +66,4 @@ class NotRegexCount(StaticMetric):
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
 
-        if is_string_dtype(self.col.type):
-            return df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
-
-        raise ValueError(
-            f"Don't know how to process type {self.col.type} when computing REGEX MATCH"
-        )
+        return df[self.col.name][df[self.col.name].str.contains(self.expression)].count()

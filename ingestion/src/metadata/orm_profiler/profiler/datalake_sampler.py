@@ -81,14 +81,12 @@ class DatalakeSampler:
         cols = []
         chunk = None
         if isinstance(data_frame, DataFrame):
-            table_columns = DatalakeSource.get_columns(data_frame=data_frame)
             return (
-                [col.name.__root__ for col in table_columns],
+                [column_name for column_name in data_frame.columns],
                 self._fetch_rows(data_frame),
             )
         chunk_limit = math.ceil(self.profile_sample / CHUNKSIZE)
-        table_columns = DatalakeSource.get_columns(data_frame=data_frame[0])
-        cols = [col.name.__root__ for col in table_columns]
+        cols = [column_name for column_name in data_frame[0].columns]
         rows = []
         for index, chunk in enumerate(data_frame):
             if index >= chunk_limit:

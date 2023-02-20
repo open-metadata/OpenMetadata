@@ -48,7 +48,7 @@ class Min(StaticMetric):
 
         df = cast(DataFrame, df)
 
-        if is_quantifiable(self.col.type) or is_datetime64_any_dtype(self.col.type):
+        if is_quantifiable(self.col.type) or is_date_time(self.col.type):
             return (
                 df[self.col.name].min()
                 if not isinstance(df[self.col.name].min(), list)
