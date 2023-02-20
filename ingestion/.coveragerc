@@ -1,0 +1,11 @@
+[run]
+source = env/lib/python3.9/site-packages/metadata
+relative_files = True
+branch = True
+[report]
+omit =
+    *__init__*
+    */generated/*
+    tests/*
+    ingestion/src/*
+    */src/metadata/ingestion/source/database/sample_*
