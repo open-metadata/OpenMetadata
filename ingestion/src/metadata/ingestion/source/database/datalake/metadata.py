@@ -43,7 +43,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -54,6 +53,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -143,7 +143,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        database_name = "default"
+        database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
@@ -153,10 +153,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def fetch_gcs_bucket_names(self):
@@ -256,7 +253,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
@@ -441,10 +438,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=EntityReference(
-                        id=self.context.database_schema.id,
-                        type="databaseSchema",
-                    ),
+                    databaseSchema=self.context.database_schema.fullyQualifiedName,
                 )
                 self.process_pii_sensitive_column(
                     metadata_config=self.metadata, table_request=table_request

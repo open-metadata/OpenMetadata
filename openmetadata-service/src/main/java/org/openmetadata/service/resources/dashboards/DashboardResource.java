@@ -92,7 +92,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Valid
   @Operation(
       operationId = "listDashboards",
-      summary = "List Dashboards",
+      summary = "List dashboards",
       tags = "dashboards",
       description =
           "Get a list of dashboards, optionally filtered by `service` it belongs to. Use `fields` "
@@ -146,7 +146,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       operationId = "listAllDashboardVersion",
       summary = "List dashboard versions",
       tags = "dashboards",
-      description = "Get a list of all the versions of a dashboard identified by `id`",
+      description = "Get a list of all the versions of a dashboard identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -165,9 +165,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Path("/{id}")
   @Operation(
       operationId = "getDashboardByID",
-      summary = "Get a dashboard",
+      summary = "Get a dashboard by Id",
       tags = "dashboards",
-      description = "Get a dashboard by `id`.",
+      description = "Get a dashboard by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -198,7 +198,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getDashboardByFQN",
-      summary = "Get a dashboard by name",
+      summary = "Get a dashboard by fully qualified name",
       tags = "dashboards",
       description = "Get a dashboard by fully qualified name.",
       responses = {
@@ -282,7 +282,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Path("/{id}")
   @Operation(
       operationId = "patchDashboard",
-      summary = "Update a Dashboard",
+      summary = "Update a dashboard",
       tags = "dashboards",
       description = "Update an existing dashboard using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -366,9 +366,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Path("/{id}")
   @Operation(
       operationId = "deleteDashboard",
-      summary = "Delete a Dashboard",
+      summary = "Delete a dashboard by Id",
       tags = "dashboards",
-      description = "Delete a dashboard by `id`.",
+      description = "Delete a dashboard by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
@@ -389,7 +389,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDashboardByFQN",
-      summary = "Delete a Dashboard",
+      summary = "Delete a dashboard by fully qualified name",
       tags = "dashboards",
       description = "Delete a dashboard by `fullyQualifiedName`.",
       responses = {
@@ -414,7 +414,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted dashboard.",
+      summary = "Restore a soft deleted dashboard",
       tags = "dashboards",
       description = "Restore a soft deleted dashboard.",
       responses = {
@@ -431,8 +431,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   private Dashboard getDashboard(CreateDashboard create, String user) throws IOException {
     return copy(new Dashboard(), create, user)
-        .withService(create.getService())
-        .withCharts(create.getCharts())
+        .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
+        .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
         .withDashboardUrl(create.getDashboardUrl())
         .withTags(create.getTags());
   }

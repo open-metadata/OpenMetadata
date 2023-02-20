@@ -330,9 +330,7 @@ class AirflowSource(PipelineServiceSource):
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=dag.start_date.isoformat() if dag.start_date else None,
                 tasks=self.get_tasks_from_dag(dag),
-                service=EntityReference(
-                    id=self.context.pipeline_service.id.__root__, type="pipelineService"
-                ),
+                service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
         except TypeError as err:
             logger.debug(traceback.format_exc())

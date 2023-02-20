@@ -2,7 +2,7 @@
 	"charts": [
 		{
 			"id": "2841fdb1-e378-4a2c-94f8-27c9f5d6ef8e",
-			"name": "101",
+			"name": "114",
 			"displayName": "# of Games That Hit 100k in Sales By Release Year",
 			"fullyQualifiedName": "local_superset.101",
 			"description": "",
@@ -13,7 +13,7 @@
 		},
 		{
 			"id": "3bcba490-9e5c-4946-a0e3-41e8ff8f4aa4",
-			"name":"110",
+			"name":"166",
 			"displayName": "% Rural",
 			"fullyQualifiedName": "local_superset.110",
 			"description": "",
@@ -35,7 +35,7 @@
 		},
 		{
 			"id": "62b31dcc-4619-46a0-99b1-0fa7cd6f93da",
-			"name": "11",
+			"name": "117",
 			"displayName": "Age distribution of respondents",
 			"fullyQualifiedName": "local_superset.11",
 			"description": "",

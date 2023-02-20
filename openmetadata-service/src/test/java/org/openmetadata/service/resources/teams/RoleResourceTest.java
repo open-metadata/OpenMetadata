@@ -47,13 +47,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource.RoleList;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, DATA_CONSUMER_ROLE_NAME);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", RoleResource.FIELDS, DATA_CONSUMER_ROLE_NAME);
   }
 
   public void setupRoles(TestInfo test) throws HttpResponseException {
@@ -200,12 +201,12 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public CreateRole createRequest(String name) {
-    return new CreateRole().withName(name).withPolicies(DATA_CONSUMER_ROLE.getPolicies());
+    return new CreateRole().withName(name).withPolicies(EntityUtil.getFqns(DATA_CONSUMER_ROLE.getPolicies()));
   }
 
   @Override
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
-    TestUtils.assertEntityReferences(role.getPolicies(), createRequest.getPolicies());
+    TestUtils.assertEntityReferenceNames(createRequest.getPolicies(), role.getPolicies());
   }
 
   @Override

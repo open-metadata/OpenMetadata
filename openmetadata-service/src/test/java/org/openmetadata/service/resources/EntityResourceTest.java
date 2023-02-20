@@ -145,6 +145,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
@@ -263,27 +264,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TagLabel TIER2_TAG_LABEL;
 
   public static Glossary GLOSSARY1;
-  public static EntityReference GLOSSARY1_REF;
   public static Glossary GLOSSARY2;
-  public static EntityReference GLOSSARY2_REF;
 
   public static GlossaryTerm GLOSSARY1_TERM1;
-  public static EntityReference GLOSSARY1_TERM1_REF;
   public static TagLabel GLOSSARY1_TERM1_LABEL;
 
   public static GlossaryTerm GLOSSARY2_TERM1;
-  public static EntityReference GLOSSARY2_TERM1_REF;
   public static TagLabel GLOSSARY2_TERM1_LABEL;
 
   public static EntityReference METABASE_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
-  public static List<EntityReference> CHART_REFERENCES;
+  public static List<String> CHART_REFERENCES;
 
   public static Database DATABASE;
-  public static EntityReference DATABASE_REFERENCE;
-
   public static DatabaseSchema DATABASE_SCHEMA;
-  public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
   public static Table TEST_TABLE1;
   public static Table TEST_TABLE2;
@@ -299,7 +293,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static KpiTarget KPI_TARGET;
 
   public static final String C1 = "c'_+# 1";
-  public static final String C2 = "c2";
+  public static final String C2 = "c2()$";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
@@ -365,6 +359,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();
+    new BotResourceTest().setupBots();
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -811,6 +806,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+
+    // Any entity name that has EntityLink separator must fail
+    final K request3 = createRequest("invalid::Name", "description", "displayName", null);
+    assertResponseContains(() -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   @Test
@@ -941,7 +940,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void post_entityWithDots_200() throws HttpResponseException {
-    if (!supportedNameCharacters.contains(" ")) { // Name does not support space
+    if (!supportedNameCharacters.contains(".")) { // Name does not support dot
       return;
     }
 
@@ -2201,6 +2200,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .withFieldsDeleted(new ArrayList<>());
   }
 
+  /** Compare fullyQualifiedName in the entityReference */
+  protected static void assertReference(String expected, EntityReference actual) {
+    if (expected != null) {
+      assertNotNull(actual);
+      TestUtils.validateEntityReference(actual);
+      assertEquals(expected, actual.getFullyQualifiedName());
+    } else {
+      assertNull(actual);
+    }
+  }
+
+  /** Compare entity Id and types in the entityReference */
   protected static void assertReference(EntityReference expected, EntityReference actual) {
     if (expected != null) {
       assertNotNull(actual);

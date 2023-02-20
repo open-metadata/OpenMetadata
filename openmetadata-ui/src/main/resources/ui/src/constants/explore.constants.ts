@@ -61,7 +61,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.TABLE,
   },
   [SearchIndex.TOPIC]: {
-    label: t('label.topics'),
+    label: t('label.topic-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'topics',

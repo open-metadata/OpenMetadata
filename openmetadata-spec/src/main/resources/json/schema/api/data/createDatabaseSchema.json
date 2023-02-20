@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this database schema instance uniquely.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../entity/data/databaseSchema.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database schema.",
@@ -25,8 +25,8 @@
       "$ref": "../../type/entityReference.json"
     },
     "database": {
-      "description": "Link to the database where this schema is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the database fully qualified name where this schema is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["name", "database"],

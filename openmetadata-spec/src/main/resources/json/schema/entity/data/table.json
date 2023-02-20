@@ -15,7 +15,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^(?U)[\\w'\\- ./()$]+$"
+      "pattern": "^((?!::).)*$"
     },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
@@ -166,9 +166,9 @@
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
-      "pattern": "^(?U)[\\w'\\-\" .+#]+$",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
     },
     "tablePartition": {
       "type": "object",
@@ -411,7 +411,7 @@
           "type": "number"
         },
         "valuesPercentage": {
-          "description": "Percentage of values in this column with respect to rowcount.",
+          "description": "Percentage of values in this column with respect to row count.",
           "type": "number"
         },
         "validCount": {

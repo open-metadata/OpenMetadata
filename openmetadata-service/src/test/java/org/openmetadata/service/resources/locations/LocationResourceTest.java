@@ -50,6 +50,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
     // TODO quoted location is not allowed by the Location listPrefix APIs
     // TODO "." is not allowed
+    // supportedNameCharacters = "_'+#- .()$/" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportedNameCharacters = "_'-";
   }
 
@@ -73,12 +74,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
       throws HttpResponseException {
     assertEquals(createRequest.getPath(), location.getPath());
     // Validate service
-    EntityReference expectedService = createRequest.getService();
-    if (expectedService != null) {
-      TestUtils.validateEntityReference(location.getService());
-      assertEquals(expectedService.getId(), location.getService().getId());
-      assertEquals(expectedService.getType(), location.getService().getType());
-    }
+    assertReference(createRequest.getService(), location.getService());
     TestUtils.validateTags(createRequest.getTags(), location.getTags());
   }
 

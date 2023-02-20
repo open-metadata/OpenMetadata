@@ -13,8 +13,9 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createTestCase, createTestSuites } from 'rest/testAPI';
@@ -31,7 +32,6 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import {
@@ -67,7 +67,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [selectedTestSuite, setSelectedTestSuite] =
     useState<SelectTestSuiteType>();
-  const [testCaseData, setTestCaseData] = useState<TestCase>();
+  const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
@@ -119,7 +119,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
-          name: 'Add Column Test',
+          name: t('message.add-entity-test', { entity: t('label.column') }),
           url: '',
           activeTitle: true,
         },
@@ -127,7 +127,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       data.push(...colVal);
     } else {
       data.push({
-        name: 'Add Table Test',
+        name: t('message.add-entity-test', { entity: t('label.table') }),
         url: '',
         activeTitle: true,
       });
@@ -150,7 +150,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     setActiveServiceStep((pre) => pre - 1);
   };
 
-  const handleTestCaseBack = (testCase: TestCase) => {
+  const handleTestCaseBack = (testCase: CreateTestCase) => {
     setTestCaseData(testCase);
     handleCancelClick();
   };
@@ -160,7 +160,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     setActiveServiceStep(2);
   };
 
-  const handleFormSubmit = async (data: TestCase) => {
+  const handleFormSubmit = async (data: CreateTestCase) => {
     setTestCaseData(data);
     if (isUndefined(selectedTestSuite)) {
       return;
@@ -180,10 +180,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         parameterValues,
         owner,
         testDefinition,
-        testSuite: {
-          id: selectedSuite?.id || '',
-          type: 'testSuite',
-        },
+        testSuite: toString(selectedSuite?.fullyQualifiedName),
       };
       if (isNewTestSuite && isUndefined(testSuiteData)) {
         const testSuitePayload = {
@@ -192,10 +189,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           owner,
         };
         const testSuiteResponse = await createTestSuites(testSuitePayload);
-        testCasePayload.testSuite.id = testSuiteResponse.id || '';
+        testCasePayload.testSuite = testSuiteResponse.fullyQualifiedName || '';
         setTestSuiteData(testSuiteResponse);
       } else if (!isUndefined(testSuiteData)) {
-        testCasePayload.testSuite.id = testSuiteData.id || '';
+        testCasePayload.testSuite = testSuiteData.fullyQualifiedName || '';
       }
 
       const testCaseResponse = await createTestCase(testCasePayload);
@@ -219,7 +216,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     } else if (activeServiceStep > 2) {
       const successName = selectedTestSuite?.isNewTestSuite
         ? `${testSuiteData?.name} & ${testCaseRes?.name}`
-        : testCaseRes?.name || 'Test case';
+        : testCaseRes?.name || t('label.test-case') || '';
 
       const successMessage = selectedTestSuite?.isNewTestSuite ? undefined : (
         <span>
@@ -240,7 +237,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
-          viewServiceText="View Test Suite"
+          viewServiceText={t('message.view-test-suite')}
         />
       );
     }
@@ -289,7 +286,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
             <Typography.Paragraph
               className="tw-heading tw-text-base"
               data-testid="header">
-              {`Add ${isColumnFqn ? 'Column' : 'Table'} Test`}
+              {t('message.add-entity-test', {
+                entity: isColumnFqn ? t('label.column') : t('label.table'),
+              })}
             </Typography.Paragraph>
           </Col>
           <Col span={24}>

@@ -81,12 +81,12 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   void post_testWithInvalidValues_4xx() {
     String uuid = "Test2" + UUID.randomUUID();
     CreateKpiRequest create1 = createRequest(uuid);
-    create1.withDataInsightChart(USER1_REF);
+    create1.withDataInsightChart(USER1_REF.getName());
 
     assertResponseContains(
         () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        "dataInsightChart instance for " + USER1_REF.getId() + " not found");
+        "dataInsightChart instance for " + USER1_REF.getName() + " not found");
     CreateKpiRequest create2 = createRequest(String.format("Test%s", UUID.randomUUID()));
     KpiTarget target = new KpiTarget().withName("Test").withValue("Test");
     create2.withTargetDefinition(List.of(target));
@@ -231,7 +231,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .withDisplayName(name)
         .withStartDate(0L)
         .withEndDate(30L)
-        .withDataInsightChart(DI_CHART1.getEntityReference())
+        .withDataInsightChart(DI_CHART1.getFullyQualifiedName())
         .withOwner(USER1_REF)
         .withMetricType(KpiTargetType.PERCENTAGE)
         .withTargetDefinition(List.of(KPI_TARGET));
@@ -242,7 +242,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getStartDate(), createdEntity.getStartDate());
     assertEquals(request.getEndDate(), createdEntity.getEndDate());
-    assertEquals(request.getDataInsightChart(), createdEntity.getDataInsightChart());
+    assertReference(request.getDataInsightChart(), createdEntity.getDataInsightChart());
     assertEquals(request.getMetricType(), createdEntity.getMetricType());
     assertEquals(request.getTargetDefinition(), createdEntity.getTargetDefinition());
   }

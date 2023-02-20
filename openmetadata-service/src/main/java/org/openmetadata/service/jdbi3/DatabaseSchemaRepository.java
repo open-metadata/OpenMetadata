@@ -100,7 +100,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   private void setDefaultFields(DatabaseSchema schema) throws IOException {
     EntityReference databaseRef = getContainer(schema.getId());
-    Database database = Entity.getEntity(databaseRef, Fields.EMPTY_FIELDS, Include.ALL);
+    Database database = Entity.getEntity(databaseRef, "", Include.ALL);
     schema.withDatabase(databaseRef).withService(database.getService());
   }
 

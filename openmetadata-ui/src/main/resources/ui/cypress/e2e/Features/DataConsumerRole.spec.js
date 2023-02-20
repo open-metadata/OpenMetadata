@@ -151,7 +151,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     // Login with the created user
 
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
@@ -182,7 +182,7 @@ describe('DataConsumer Edit policy should work properly', () => {
 
   it('Check if the new user has only edit access on description and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     Object.values(ENTITIES).forEach((entity) => {
@@ -241,7 +241,7 @@ describe('DataConsumer Edit policy should work properly', () => {
 
   it('Check for CRUD operations to be disabled for the user for glossary and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
@@ -279,7 +279,7 @@ describe('DataConsumer Edit policy should work properly', () => {
 
   it('Check CRUD operations for settings page', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
     // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();

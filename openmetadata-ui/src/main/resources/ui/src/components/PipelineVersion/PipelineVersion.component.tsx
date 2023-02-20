@@ -62,7 +62,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   );
   const tabs = [
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -133,7 +133,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
     const extraInfo: Array<ExtraInfo> = [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           !isUndefined(ownerDiff.added) ||
           !isUndefined(ownerDiff.deleted) ||
@@ -149,7 +149,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
-        key: 'Tier',
+        key: t('label.tier'),
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
@@ -218,7 +218,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
-        title: 'Task Name',
+        title: t('label.task-name'),
         dataIndex: 'displayName',
         key: 'displayName',
         render: (text, record) => (
@@ -236,7 +236,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
@@ -249,7 +249,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           ),
       },
       {
-        title: 'Task Type',
+        title: t('label.task-type'),
         dataIndex: 'taskType',
         key: 'taskType',
       },

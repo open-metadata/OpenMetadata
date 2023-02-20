@@ -1121,6 +1121,8 @@ site_menu:
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
+  - category: SDK / Python SDK / Ingestion / Tags
+    url: /sdk/python/ingestion/tags
   - category: SDK / Python SDK / Build a Connector
     url: /sdk/python/build-connector
   - category: SDK / Python SDK / Build a Connector / Source

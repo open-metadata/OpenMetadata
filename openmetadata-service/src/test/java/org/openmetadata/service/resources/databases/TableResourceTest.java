@@ -51,7 +51,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
@@ -148,19 +147,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
-    supportedNameCharacters = "_'- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
-    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
-    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    DATABASE_REFERENCE = DATABASE.getEntityReference();
+    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getName());
+    DATABASE = databaseResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
     DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
-    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
-    DATABASE_SCHEMA_REFERENCE = DATABASE_SCHEMA.getEntityReference();
+    CreateDatabaseSchema createSchema =
+        databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE.getFullyQualifiedName());
+    DATABASE_SCHEMA = databaseSchemaResourceTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
     COLUMNS =
         Arrays.asList(
@@ -494,12 +492,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void post_tableWithInvalidDatabase_404(TestInfo test) {
-    EntityReference schema = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE_SCHEMA);
-    CreateTable create = createRequest(test).withDatabaseSchema(schema);
+    CreateTable create = createRequest(test).withDatabaseSchema("nonExistentSchema");
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(Entity.DATABASE_SCHEMA, NON_EXISTENT_ENTITY));
+        entityNotFound(Entity.DATABASE_SCHEMA, "nonExistentSchema"));
   }
 
   @Test
@@ -1514,7 +1511,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertEquals(USER1_REF, table.getOwner());
-      assertReference(DATABASE_REFERENCE, table.getDatabase());
+      assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
     // List tables with databaseFQN as filter
@@ -1601,7 +1598,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
     // Column c2 description changed
-    fieldUpdated(change, build("columns", C2, "description"), "c2", "new1");
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
 
     columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
     // Column c3 tags were removed and precision and scale were added
@@ -1739,13 +1736,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema =
-        schemaTest.createRequest(test).withDatabase(db.getEntityReference()).withOwner(null);
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
     assertEquals(USER1_REF, schema.getOwner()); // Ensure databaseSchema owner is inherited from database
 
     Table table =
         createEntity(
-            createRequest(test).withOwner(null).withDatabaseSchema(schema.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
     assertEquals(USER1_REF, table.getOwner()); // Ensure table owner is inherited from databaseSchema
   }
 
@@ -1902,7 +1899,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     Database database =
         databaseResourceTest.createAndCheckEntity(
-            databaseResourceTest.createRequest(test).withService(reduceEntityReference(service)), ADMIN_AUTH_HEADERS);
+            databaseResourceTest.createRequest(test).withService(service.getName()), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
@@ -2081,7 +2078,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
     return new CreateTable()
         .withName(name)
-        .withDatabaseSchema(getContainer())
+        .withDatabaseSchema(getContainer().getFullyQualifiedName())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));
   }
@@ -2098,7 +2095,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Override
   public EntityReference getContainer() {
-    return DATABASE_SCHEMA_REFERENCE;
+    return DATABASE_SCHEMA.getEntityReference();
   }
 
   @Override
