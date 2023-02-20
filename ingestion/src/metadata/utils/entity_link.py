@@ -57,6 +57,7 @@ def get_decoded_column(entity_link: str) -> str:
 
     return unquote_plus(entity_link.split("::")[-1].replace(">", ""))
 
+
 def get_table_fqn(entity_link: str) -> str:
     """From an entity link get the table fqn
 

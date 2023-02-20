@@ -15,6 +15,7 @@ Table Column Count Metric definition
 # pylint: disable=duplicate-code
 
 from typing import cast
+
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeMeta

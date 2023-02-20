@@ -20,15 +20,16 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sqa
+from sqlalchemy.orm import declarative_base
+
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection, SQLiteScheme)
-from metadata.generated.schema.tests.testCase import (TestCase,
-                                                      TestCaseParameterValue)
+    SQLiteConnection,
+    SQLiteScheme,
+)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_test_suite_interface import \
-    SQATestSuiteInterface
-from sqlalchemy.orm import declarative_base
+from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 
 Base = declarative_base()
 
@@ -587,6 +588,7 @@ def test_case_table_row_inserted_count_to_be_between():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_custom_sql_query_failed_dl():
     """Test case for test custom SQL table test"""
@@ -596,11 +598,10 @@ def test_case_table_custom_sql_query_failed_dl():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(
-                name="sqlExpression", value="age > 30"
-            ),
+            TestCaseParameterValue(name="sqlExpression", value="age > 30"),
         ],
     )
+
 
 @pytest.fixture
 def test_case_table_custom_sql_query_success_dl():
@@ -611,8 +612,6 @@ def test_case_table_custom_sql_query_success_dl():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(
-                name="sqlExpression", value="age < 0"
-            ),
+            TestCaseParameterValue(name="sqlExpression", value="age < 0"),
         ],
     )

@@ -27,11 +27,9 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.utils.time_utils import (
-    convert_timestamp,
-)
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.time_utils import convert_timestamp
 
 logger = test_suite_logger()
 

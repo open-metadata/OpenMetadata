@@ -13,16 +13,17 @@
 Base validator class
 """
 
+import reprlib
 from abc import ABC, abstractmethod
 from datetime import datetime
-import reprlib
 from typing import Callable, List, Optional, TypeVar, Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.generated.schema.tests.testCase import (TestCase,
-                                                      TestCaseParameterValue)
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.orm_profiler.profiler.runner import QueryRunner
 
 T = TypeVar("T", bound=Callable)
@@ -30,7 +31,8 @@ R = TypeVar("R")
 
 
 class BaseTestHandler(ABC):
-    """Abstract class for test case handlers"""    
+    """Abstract class for test case handlers"""
+
     def __init__(
         self,
         runner: QueryRunner,
@@ -118,10 +120,10 @@ class BaseTestHandler(ABC):
         if status == TestCaseStatus.Success:
             return reprlib.repr(cols)
         return cols
-    
+
     def get_test_case_status(self, condition: bool) -> TestCaseStatus:
         """Returns TestCaseStatus based on condition
-        
+
         Args:
             condition (bool): condition to check
         Returns:
@@ -129,21 +131,20 @@ class BaseTestHandler(ABC):
         """
         return TestCaseStatus.Success if condition else TestCaseStatus.Failed
 
-
     def get_min_bound(self, param_name: str):
         """get min value for max value in column test case"""
         return self.get_test_case_param_value(
-                            self.test_case.parameterValues,  # type: ignore
-                            param_name,
-                            float,
-                            default=float("-inf"),
-                )
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            float,
+            default=float("-inf"),
+        )
 
     def get_max_bound(self, param_name: str):
         """get max value for max value in column test case"""
         return self.get_test_case_param_value(
-                        self.test_case.parameterValues,  # type: ignore
-                        param_name,
-                        float,
-                        default=float("inf"),
-                    )
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            float,
+            default=float("inf"),
+        )

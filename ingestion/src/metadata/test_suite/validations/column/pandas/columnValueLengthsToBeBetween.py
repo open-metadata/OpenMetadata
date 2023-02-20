@@ -16,15 +16,19 @@ Validator for column value length to be between test case
 
 import traceback
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
-from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
@@ -43,8 +47,12 @@ class ColumnValueLengthsToBeBetweenValidator(BaseTestHandler, PandasValidatorMix
                 self.test_case.entityLink.__root__,
                 self.runner,
             )
-            max_res = self.run_dataframe_results(self.runner, Metrics.MAX_LENGTH, column)
-            min_res = self.run_dataframe_results(self.runner, Metrics.MIN_LENGTH, column)
+            max_res = self.run_dataframe_results(
+                self.runner, Metrics.MAX_LENGTH, column
+            )
+            min_res = self.run_dataframe_results(
+                self.runner, Metrics.MIN_LENGTH, column
+            )
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
             logger.debug(traceback.format_exc())

@@ -15,6 +15,7 @@ MAX_LENGTH Metric definition
 # pylint: disable=duplicate-code
 
 from typing import cast
+
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -47,7 +48,7 @@ class MaxLength(StaticMetric):
 
     @_label
     def fn(self):
-        """sqlalchemy function"""  
+        """sqlalchemy function"""
         if self._is_concatenable():
             return func.max(LenFn(column(self.col.name)))
 
@@ -61,13 +62,15 @@ class MaxLength(StaticMetric):
     def df_fn(self, df=None):  # pylint: disable=snaked-case
         """dataframe function"""
         import pandas as pd
-        from numpy import vectorize   
+        from numpy import vectorize
 
         df = cast(pd.DataFrame, df)  # satisfy mypy
 
         if self._is_concatenable():
             length_vector_fn = vectorize(len)
-            return length_vector_fn(df[self.col.name][~df[self.col.name].isnull()]).max()
+            return length_vector_fn(
+                df[self.col.name][~df[self.col.name].isnull()]
+            ).max()
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )

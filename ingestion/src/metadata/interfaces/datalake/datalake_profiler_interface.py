@@ -21,10 +21,13 @@ from typing import Dict, List
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import DataType, TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
+from metadata.ingestion.source.database.datalake.metadata import (
+    DATALAKE_DATA_TYPES,
+    ometa_to_dataframe,
+)
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -35,8 +38,6 @@ from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.ingestion.source.database.datalake.metadata import DATALAKE_DATA_TYPES
-from metadata.generated.schema.entity.data.table import DataType
 
 logger = profiler_interface_registry_logger()
 
@@ -326,7 +327,9 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             return [
                 SQALikeColumn(
                     column_name,
-                    DATALAKE_DATA_TYPES.get(df[column_name].dtypes.name, DataType.STRING.value)
+                    DATALAKE_DATA_TYPES.get(
+                        df[column_name].dtypes.name, DataType.STRING.value
+                    ),
                 )
                 for column_name in df.columns
             ]

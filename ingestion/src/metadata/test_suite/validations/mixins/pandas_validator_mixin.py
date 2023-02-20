@@ -53,10 +53,11 @@ class PandasValidatorMixin:
         """
 
         metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
-        metric_fn = metric_obj(column).df_fn if column is not None else metric_obj().df_fn
+        metric_fn = (
+            metric_obj(column).df_fn if column is not None else metric_obj().df_fn
+        )
 
         try:
             return metric_fn(runner)
         except Exception as exc:
             raise RuntimeError(exc)
-

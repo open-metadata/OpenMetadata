@@ -59,7 +59,6 @@ class ColumnValueMaxToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
         min_bound = self.get_min_bound("minValueForMaxInCol")
         max_bound = self.get_max_bound("maxValueForMaxInCol")
 
-
         return self.get_test_case_result_object(
             self.execution_date,
             TestCaseStatus.Success

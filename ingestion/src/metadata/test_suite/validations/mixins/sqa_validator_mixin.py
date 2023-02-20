@@ -13,9 +13,7 @@
 Validator Mixin for SQA tests cases
 """
 
-import reprlib
-from datetime import datetime
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
 
 from sqlalchemy import Column
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,6 +30,7 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
 
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""

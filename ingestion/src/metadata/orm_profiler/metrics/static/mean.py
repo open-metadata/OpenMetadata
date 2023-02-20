@@ -14,7 +14,6 @@ AVG Metric definition
 """
 # pylint: disable=duplicate-code
 
-import traceback
 
 from typing import cast
 
@@ -66,7 +65,7 @@ class Mean(StaticMetric):
 
     @_label
     def fn(self):
-        """sqlalchemy function"""    
+        """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return func.avg(column(self.col.name))
 
@@ -82,7 +81,7 @@ class Mean(StaticMetric):
     @_label
     def df_fn(self, df=None):  # pylint: disable=snaked-case
         """dataframe function"""
-        import pandas as pd 
+        import pandas as pd
         from numpy import vectorize
 
         df = cast(pd.DataFrame, df)  # satisfy mypy

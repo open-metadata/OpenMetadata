@@ -15,8 +15,8 @@ Validator for column value length to be between test case
 """
 
 import traceback
-from typing import cast
 from datetime import datetime
+from typing import cast
 
 from dateutil.relativedelta import relativedelta
 
@@ -26,8 +26,10 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.logger import test_suite_logger
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
 
 logger = test_suite_logger()
 
@@ -47,15 +49,16 @@ class TableRowInsertedCountToBeBetweenValidator(BaseTestHandler, PandasValidator
             "DAY": relativedelta(days=range_interval),
             "MONTH": relativedelta(months=range_interval),
             "YEAR": relativedelta(years=range_interval),
-        }  
+        }
         utc_now = datetime.utcnow()
         threshold_date = utc_now - interval_type_matching_table[range_type]
         if range_type == "HOUR":
             threshold_date = threshold_date.replace(minute=0, second=0, microsecond=0)
         else:
-            threshold_date = threshold_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            threshold_date = threshold_date.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
         return threshold_date.strftime("%Y%m%d%H%M%S")
-
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case

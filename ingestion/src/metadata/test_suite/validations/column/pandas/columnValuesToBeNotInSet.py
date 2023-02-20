@@ -17,8 +17,6 @@ Validator for column value min to be between test case
 import traceback
 from ast import literal_eval
 
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
-from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -26,8 +24,12 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
@@ -63,12 +65,12 @@ class ColumnValuesToBeNotInSetValidator(BaseTestHandler, PandasValidatorMixin):
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="countForbiddenValues", value=None)]
+                [TestResultValue(name="countForbiddenValues", value=None)],
             )
 
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(res == 0),
             f"Found countInSet={res}. It should be 0",
-            [TestResultValue(name="countForbiddenValues", value=str(res))]
+            [TestResultValue(name="countForbiddenValues", value=str(res))],
         )

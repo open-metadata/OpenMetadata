@@ -18,6 +18,7 @@ from typing import Union
 
 from metadata.generated.schema.entity.data.table import DataType
 
+
 @dataclass
 class Type:
     name: Union[DataType, str]
@@ -27,7 +28,8 @@ class Type:
 
 
 @dataclass
-class SQALikeColumn():
+class SQALikeColumn:
     """Replicate somehow the behavior of SQLAlchemy Column object to have constant API access"""
+
     name: str
     type: Type

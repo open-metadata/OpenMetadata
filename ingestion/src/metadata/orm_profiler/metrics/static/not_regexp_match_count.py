@@ -55,15 +55,18 @@ class NotRegexCount(StaticMetric):
             )
         )
 
-
     @_label
     def df_fn(self, df):  # pylint: disable=invalid-name
         """pandas function"""
-        from pandas.core.dtypes.common import is_string_dtype  # pylint: disable=import-outside-toplevel
+        from pandas.core.dtypes.common import (
+            is_string_dtype,  # pylint: disable=import-outside-toplevel
+        )
 
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
 
-        return df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
+        return df[self.col.name][
+            df[self.col.name].str.contains(self.expression)
+        ].count()

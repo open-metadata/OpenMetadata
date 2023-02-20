@@ -14,19 +14,18 @@ Validate the names in the registry match the ones of the test definition
 """
 
 
-from unittest import TestCase
 import pkgutil
+from unittest import TestCase
 
+import metadata.test_suite.validations.column.pandas as pandas_column
+import metadata.test_suite.validations.column.sqlalchemy as sqa_column
+import metadata.test_suite.validations.table.pandas as pandas_table
+import metadata.test_suite.validations.table.sqlalchemy as sqa_table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-import metadata.test_suite.validations.column.sqlalchemy as sqa_column
-import metadata.test_suite.validations.table.sqlalchemy as sqa_table
-import metadata.test_suite.validations.column.pandas as pandas_column
-import metadata.test_suite.validations.table.pandas as pandas_table
-
 
 test_suite_config = {
     "source": {
@@ -70,7 +69,9 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
             )
         }
 
-        column_tests =  [name for _, name, _ in pkgutil.iter_modules(sqa_column.__path__)]
+        column_tests = [
+            name for _, name, _ in pkgutil.iter_modules(sqa_column.__path__)
+        ]
         table_tests = [name for _, name, _ in pkgutil.iter_modules(sqa_table.__path__)]
 
         registry_test_name = set(column_tests + table_tests)
@@ -87,8 +88,12 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
             )
         }
 
-        column_tests =  [name for _, name, _ in pkgutil.iter_modules(pandas_column.__path__)]
-        table_tests = [name for _, name, _ in pkgutil.iter_modules(pandas_table.__path__)]
+        column_tests = [
+            name for _, name, _ in pkgutil.iter_modules(pandas_column.__path__)
+        ]
+        table_tests = [
+            name for _, name, _ in pkgutil.iter_modules(pandas_table.__path__)
+        ]
 
         registry_test_name = set(column_tests + table_tests)
 

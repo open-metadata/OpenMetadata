@@ -20,20 +20,45 @@ from datetime import datetime, timedelta
 import pytest
 from pandas import DataFrame
 
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 DL_DATA = (
-    ["1", "John", "Jo", "John Doe", "johnny b goode", 30, datetime.today() - timedelta(days=1)],
-    ["2", "Jane", "Ja", "Jone Doe", "Johnny d", 31, datetime.today() - timedelta(days=2)],
+    [
+        "1",
+        "John",
+        "Jo",
+        "John Doe",
+        "johnny b goode",
+        30,
+        datetime.today() - timedelta(days=1),
+    ],
+    [
+        "2",
+        "Jane",
+        "Ja",
+        "Jone Doe",
+        "Johnny d",
+        31,
+        datetime.today() - timedelta(days=2),
+    ],
     ["3", "John", "Joh", "John Doe", None, None, datetime.today() - timedelta(days=3)],
 ) * 10
 
 
 DATALAKE_DATA_FRAME = DataFrame(
-    DL_DATA, columns=["id", "name", "first name", "fullname", "nickname", "age", "inserted_date"]
+    DL_DATA,
+    columns=[
+        "id",
+        "name",
+        "first name",
+        "fullname",
+        "nickname",
+        "age",
+        "inserted_date",
+    ],
 )
 
 # pylint: disable=line-too-long

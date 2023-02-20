@@ -17,9 +17,6 @@ Validator for column values sum to be between test case
 import traceback
 from datetime import datetime
 
-
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
-from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -27,11 +24,13 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.utils.time_utils import (
-    convert_timestamp,
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
 )
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.time_utils import convert_timestamp
 
 logger = test_suite_logger()
 
@@ -72,23 +71,25 @@ class ColumnValuesToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
         min_bound = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "minValue",
-            datetime.fromtimestamp
-            if is_datetime64_any_dtype(column.type) else float,
+            datetime.fromtimestamp if is_datetime64_any_dtype(column.type) else float,
             default=datetime.min
-            if is_datetime64_any_dtype(column.type) else float("-inf"),
+            if is_datetime64_any_dtype(column.type)
+            else float("-inf"),
             pre_processor=convert_timestamp
-            if is_datetime64_any_dtype(column.type) else None,
+            if is_datetime64_any_dtype(column.type)
+            else None,
         )
 
         max_bound = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "maxValue",
-            datetime.fromtimestamp
-            if is_datetime64_any_dtype(column.type) else float,
+            datetime.fromtimestamp if is_datetime64_any_dtype(column.type) else float,
             default=datetime.max
-            if is_datetime64_any_dtype(column.type) else float("inf"),
+            if is_datetime64_any_dtype(column.type)
+            else float("inf"),
             pre_processor=convert_timestamp
-            if is_datetime64_any_dtype(column.type) else None,
+            if is_datetime64_any_dtype(column.type)
+            else None,
         )
 
         return self.get_test_case_result_object(

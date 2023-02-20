@@ -15,6 +15,7 @@ Min Metric definition
 # pylint: disable=duplicate-code
 
 from typing import cast
+
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -43,8 +44,8 @@ class Min(StaticMetric):
     @_label
     def df_fn(self, df=None):  # pylint: disable=invalid-name
         """pandas function"""
-        from pandas.core.dtypes.common import is_datetime64_any_dtype
         from pandas import DataFrame
+        from pandas.core.dtypes.common import is_datetime64_any_dtype
 
         df = cast(DataFrame, df)
 

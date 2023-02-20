@@ -16,8 +16,6 @@ Validator for column values sum to be between test case
 
 import traceback
 
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
-from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -25,8 +23,12 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
@@ -54,13 +56,12 @@ class ColumnValuesToBeNotNullValidator(BaseTestHandler, PandasValidatorMixin):
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="nullCount", value=None)]
+                [TestResultValue(name="nullCount", value=None)],
             )
 
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(res == 0),
             f"Found nullCount={res}. It should be 0",
-            [TestResultValue(name="nullCount", value=str(res))]
+            [TestResultValue(name="nullCount", value=str(res))],
         )
-
