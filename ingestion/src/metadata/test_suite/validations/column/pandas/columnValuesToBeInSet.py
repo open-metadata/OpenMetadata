@@ -58,7 +58,10 @@ class ColumnValuesToBeInSetValidator(BaseTestHandler, PandasValidatorMixin):
                 self.runner, Metrics.COUNT_IN_SET, column, values=allowed_values
             )
         except (ValueError, RuntimeError) as exc:
-            msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+            msg = (
+                f"Error computing {self.test_case.name} for "
+                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+            )
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(

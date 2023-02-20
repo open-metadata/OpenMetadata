@@ -65,7 +65,7 @@ class UniqueCount(QueryMetric):
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
-    def df_fn(self, df=None):
+    def df_fn(self, df=None):  # pylint: disable=invalid-name
         """
         Build the Unique Count metric
         """

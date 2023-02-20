@@ -79,7 +79,7 @@ class Mean(StaticMetric):
 
     # pylint: disable=import-outside-toplevel
     @_label
-    def df_fn(self, df=None):  # pylint: disable=snaked-case
+    def df_fn(self, df=None):  # pylint: disable=invalid-name
         """dataframe function"""
         import pandas as pd
         from numpy import vectorize

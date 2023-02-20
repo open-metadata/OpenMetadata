@@ -333,6 +333,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
                 )
                 for column_name in df.columns
             ]
+        return []
 
     def close(self):
         pass

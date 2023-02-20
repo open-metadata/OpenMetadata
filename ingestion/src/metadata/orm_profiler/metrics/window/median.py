@@ -57,7 +57,7 @@ class Median(StaticMetric):
         return None
 
     @_label
-    def df_fn(self, df=None):  # pylint: disable=snaked-case
+    def df_fn(self, df=None):  # pylint: disable=invalid-name
         """Dataframe function"""
         if is_quantifiable(self.col.type):
             return df[self.col.name].median().tolist()

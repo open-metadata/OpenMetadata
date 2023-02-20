@@ -42,10 +42,9 @@ class Max(StaticMetric):
 
     # pylint: disable=import-outside-toplevel
     @_label
-    def df_fn(self, df=None):  # pylint: disable=snaked-case
+    def df_fn(self, df=None):  # pylint: disable=invalid-name
         """pandas function"""
         from pandas import DataFrame
-        from pandas.core.dtypes.common import is_datetime64_any_dtype
 
         df = cast(DataFrame, df)
 

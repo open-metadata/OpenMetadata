@@ -18,11 +18,6 @@ from typing import Any, List, Optional
 from sqlalchemy import Column
 from sqlalchemy.exc import SQLAlchemyError
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner

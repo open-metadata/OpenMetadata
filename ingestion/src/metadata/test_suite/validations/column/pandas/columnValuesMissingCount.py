@@ -27,7 +27,6 @@ from metadata.test_suite.validations.base_test_handler import BaseTestHandler
 from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -53,7 +52,10 @@ class ColumnValuesMissingCountValidator(BaseTestHandler, PandasValidatorMixin):
                 self.runner, Metrics.NULL_COUNT, column
             )
         except (ValueError, RuntimeError) as exc:
-            msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+            msg = (
+                f"Error computing {self.test_case.name} for "
+                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+            )
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
@@ -85,7 +87,10 @@ class ColumnValuesMissingCountValidator(BaseTestHandler, PandasValidatorMixin):
 
                 null_res += set_res
             except (ValueError, RuntimeError) as exc:
-                msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+                msg = (
+                    f"Error computing {self.test_case.name} for "
+                    f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
+                )
                 logger.debug(traceback.format_exc())
                 logger.warning(msg)
                 return self.get_test_case_result_object(

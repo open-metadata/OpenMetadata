@@ -17,7 +17,6 @@ import random
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.utils.constants import CHUNKSIZE
 
@@ -82,11 +81,11 @@ class DatalakeSampler:
         chunk = None
         if isinstance(data_frame, DataFrame):
             return (
-                [column_name for column_name in data_frame.columns],
+                data_frame.columns.tolist(),
                 self._fetch_rows(data_frame),
             )
         chunk_limit = math.ceil(self.profile_sample / CHUNKSIZE)
-        cols = [column_name for column_name in data_frame[0].columns]
+        cols = data_frame[0].columns.tolist()
         rows = []
         for index, chunk in enumerate(data_frame):
             if index >= chunk_limit:

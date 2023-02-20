@@ -64,7 +64,7 @@ class CountInSet(StaticMetric):
             return None
 
     @_label
-    def df_fn(self, df):  # pylint: disable=snaked-case
+    def df_fn(self, df):  # pylint: disable=invalid-name
         """pandas function"""
         if not hasattr(self, "values"):
             raise AttributeError(
