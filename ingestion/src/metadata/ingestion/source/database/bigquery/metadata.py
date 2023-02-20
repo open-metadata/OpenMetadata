@@ -11,14 +11,14 @@
 """
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
-import re
 import os
+import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.bigquery.client import Client
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient, GetTaxonomyRequest
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
@@ -85,15 +85,11 @@ def get_columns(bq_schema):
         }
         try:
             if field.policy_tags:
-                taxonomy_name_search = re.search(
-                    ".*taxonomies\/(\d*)\/", field.policy_tags.names[0]
+                col_obj["taxonomy"] = (
+                    PolicyTagManagerClient()
+                    .get_taxonomy(name=field.policy_tags.names[0].split('/policyTags/')[0])
+                    .display_name
                 )
-                if taxonomy_name_search:
-                    col_obj["taxonomy"] = (
-                        PolicyTagManagerClient()
-                        .get_taxonomy(name=taxonomy_name_search.group(1))
-                        .display_name
-                    )
                 col_obj["policy_tags"] = (
                     PolicyTagManagerClient()
                     .get_policy_tag(name=field.policy_tags.names[0])
