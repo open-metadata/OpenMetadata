@@ -31,3 +31,8 @@ class QueryLogUsageSource(UsageSource):
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         return cls(config, metadata_config)
+
+    def prepare(self):
+        """
+        Nothing to prepare for Query Log Usage
+        """

@@ -1,4 +1,4 @@
-query,database_name,schema_name
+query_text,database_name,schema_name
 "select * from sales",default,information_schema
 "select * from marketing",default,information_schema
 "insert into marketing select * from sales",default,information_schema
