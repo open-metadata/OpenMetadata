@@ -21,8 +21,8 @@ from metadata.generated.schema.tests.basic import (TestCaseResult,
                                                    TestResultValue)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin, SQALikeColumn)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
+from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 

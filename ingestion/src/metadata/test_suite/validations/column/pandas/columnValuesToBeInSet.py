@@ -17,8 +17,8 @@ Validator for column value to not be in set test case
 import traceback
 from ast import literal_eval
 
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin, SQALikeColumn)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import PandasValidatorMixin
+from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
