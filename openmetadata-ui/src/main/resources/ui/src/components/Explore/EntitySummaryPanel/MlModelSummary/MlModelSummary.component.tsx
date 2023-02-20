@@ -69,12 +69,12 @@ function MlModelSummary({
               info.visible?.includes(componentType) ? (
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
-                    <Col data-testid={`${info.name}-label`} span={10}>
+                    <Col data-testid={`${info.name}-label`} span={8}>
                       <Typography.Text className="text-grey-muted">
                         {info.name}
                       </Typography.Text>
                     </Col>
-                    <Col data-testid={`${info.name}-value`} span={12}>
+                    <Col data-testid={`${info.name}-value`} span={16}>
                       {info.isLink ? (
                         <Link
                           target={info.isExternal ? '_blank' : '_self'}

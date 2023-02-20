@@ -22,17 +22,12 @@
 @section-header-color: #6b7280;
 
 .summary-panel-container {
-  position: sticky;
-  position: -webkit-sticky;
   height: calc(100vh - @summary-panel-offset);
-  top: 2px; // To show the border properly
-  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
-  font-size: 14px;
-  overflow-y: scroll;
-  -ms-overflow-style: none;
-  overflow: -moz-scrollbars-none;
-  scrollbar-width: none;
+  position: sticky;
 
+  .ant-drawer-content-wrapper {
+    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+  }
   .ant-drawer-body {
     padding: unset;
   }

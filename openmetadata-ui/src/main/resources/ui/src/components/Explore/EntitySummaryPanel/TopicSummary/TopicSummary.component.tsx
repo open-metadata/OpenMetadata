@@ -57,15 +57,6 @@ function TopicSummary({
     };
   }, [topicDetails]);
 
-  const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
-        SummaryEntityType.SCHEMAFIELD,
-        entityDetails.messageSchema?.schemaFields
-      ),
-    [entityDetails]
-  );
-
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
       const res = await getTopicByFqn(
@@ -85,6 +76,15 @@ function TopicSummary({
       );
     }
   }, [entityDetails]);
+
+  const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        topicDetails.messageSchema?.schemaFields
+      ),
+    [topicDetails]
+  );
 
   useEffect(() => {
     isExplore && fetchExtraTopicInfo();
@@ -109,7 +109,7 @@ function TopicSummary({
                         {fieldName}
                       </Typography.Text>
                     </Col>
-                    <Col data-testid={`${fieldName}-value`} span={12}>
+                    <Col data-testid={`${fieldName}-value`} span={14}>
                       {fieldValue ? fieldValue : '-'}
                     </Col>
                   </Row>

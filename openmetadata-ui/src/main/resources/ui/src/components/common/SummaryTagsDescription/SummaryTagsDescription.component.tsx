@@ -15,6 +15,7 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { TagLabel } from 'generated/type/tagLabel';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as TagIcon } from '../../../assets/svg/tag-grey.svg';
 import { EntityData } from '../PopOverCard/EntityPopOverCard';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
@@ -36,9 +37,12 @@ const SummaryTagsDescription = ({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <div className="flex flex-wrap">
+          <div className="flex flex-wrap items-center">
             {tags.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={tags} />
+              <>
+                <TagIcon className="m-r-xs" data-testid="tag-grey-icon" />
+                <TagsViewer sizeCap={-1} tags={tags} />
+              </>
             ) : (
               <Typography.Text className="text-grey-body">
                 {t('label.no-tags-added')}

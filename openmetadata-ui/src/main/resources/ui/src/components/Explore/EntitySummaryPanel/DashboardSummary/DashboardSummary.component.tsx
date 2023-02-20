@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -95,29 +95,28 @@ function DashboardSummary({
               info.visible?.includes(componentType) ? (
                 <Col key={info.name} span={24}>
                   <Row gutter={16}>
-                    <Col data-testid={`${info.name}-label`} span={10}>
+                    <Col data-testid={`${info.name}-label`} span={8}>
                       <Typography.Text className="text-grey-muted">
                         {info.name}
                       </Typography.Text>
                     </Col>
-                    <Col data-testid="dashboard-url-value" span={12}>
+                    <Col data-testid="dashboard-url-value" span={16}>
                       {info.isLink ? (
                         <Link
                           component={Typography.Link}
                           target="_blank"
                           to={{ pathname: info.url }}>
-                          <Space align="start">
-                            <Typography.Link
-                              className="text-primary"
-                              data-testid="dashboard-link-name">
-                              {entityDetails.displayName}
-                            </Typography.Link>
-                            <SVGIcons
-                              alt="external-link"
-                              icon="external-link"
-                              width="12px"
-                            />
-                          </Space>
+                          <Typography.Link
+                            className="text-primary"
+                            data-testid="dashboard-link-name">
+                            {info.value}
+                          </Typography.Link>
+                          <SVGIcons
+                            alt="external-link"
+                            className="m-l-xs"
+                            icon="external-link"
+                            width="12px"
+                          />
                         </Link>
                       ) : (
                         info.value

@@ -69,12 +69,12 @@ function PipelineSummary({
                       data-testid={
                         info.dataTestId ? info.dataTestId : `${info.name}-label`
                       }
-                      span={10}>
+                      span={8}>
                       <Typography.Text className="text-grey-muted">
                         {info.name}
                       </Typography.Text>
                     </Col>
-                    <Col data-testid={`${info.name}-value`} span={12}>
+                    <Col data-testid={`${info.name}-value`} span={16}>
                       {info.isLink ? (
                         <Space align="start">
                           <Typography.Link
