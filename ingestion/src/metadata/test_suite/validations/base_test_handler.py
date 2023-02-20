@@ -13,6 +13,8 @@
 Base validator class
 """
 
+from __future__ import annotations
+
 import reprlib
 from abc import ABC, abstractmethod
 from datetime import datetime
