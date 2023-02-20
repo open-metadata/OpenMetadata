@@ -86,7 +86,7 @@ def get_columns(bq_schema):
             if field.policy_tags:
                 policy_tag_name = field.policy_tags.names[0]
                 taxonomy_name = (
-                    policy_tag_name.split("/policyTags/") if policy_tag_name else ""
+                    policy_tag_name.split("/policyTags/") if policy_tag_name else []
                 )
                 if len(taxonomy_name) == 0:
                     raise NotImplementedError(
