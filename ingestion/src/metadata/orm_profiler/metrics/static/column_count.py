@@ -14,6 +14,7 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeMeta
@@ -73,6 +74,7 @@ class ColumnCount(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "table"):
             raise AttributeError(
                 "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
@@ -80,5 +82,10 @@ class ColumnCount(StaticMetric):
         return ColunCountFn(literal(len(inspect(self.table).c)))
 
     @_label
-    def dl_fn(self, data_frame=None):
-        return len(data_frame.columns)
+    def df_fn(self, df=None):  # pylint: disable=invalid-name
+        """dataframe function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
+        return len(df.columns)

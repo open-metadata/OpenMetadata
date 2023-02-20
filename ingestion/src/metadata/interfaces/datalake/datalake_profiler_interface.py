@@ -103,7 +103,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             for metric in metrics:
                 for data_frame in data_frame_list:
                     row.append(
-                        metric().dl_fn(
+                        metric().df_fn(
                             data_frame.astype(object).where(
                                 pd.notnull(data_frame), None
                             )
@@ -150,7 +150,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             for metric in metrics:
                 for data_frame in data_frame_list:
                     row.append(
-                        metric(column).dl_fn(
+                        metric(column).df_fn(
                             data_frame.astype(object).where(
                                 pd.notnull(data_frame), None
                             )
