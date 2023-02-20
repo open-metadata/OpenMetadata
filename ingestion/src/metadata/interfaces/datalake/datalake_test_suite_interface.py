@@ -25,7 +25,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
-from metadata.test_suite.validations.core import validation_enum_registry
 from metadata.utils.logger import test_suite_logger
 from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
@@ -69,7 +68,7 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         try:
             TestHandler = import_test_case_class(  # pylint: disable=invalid-name
                 test_case.testDefinition.fullyQualifiedName,
-                "sqlalchemy",
+                "pandas",
                 test_case.testDefinition.entityType
             )
 
