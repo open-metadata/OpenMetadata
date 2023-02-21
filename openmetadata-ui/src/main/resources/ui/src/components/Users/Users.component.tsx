@@ -484,8 +484,8 @@ const Users = ({
                     label: getEntityName(team as unknown as EntityReference),
                     value: team.id,
                   }))}
-                  placeholder={`${t('label.team-plural')}...`}
-                  value={selectedTeams}
+                  placeholder={t('label.team-plural')}
+                  value={!isTeamsLoading ? selectedTeams : []}
                   onChange={handleOnTeamsChange}
                 />
                 <div className="tw-flex tw-justify-end" data-testid="buttons">
@@ -613,8 +613,8 @@ const Users = ({
                   loading={isRolesLoading}
                   mode="multiple"
                   options={userRolesOption}
-                  placeholder={`${t('label.team-plural')}...`}
-                  value={selectedRoles}
+                  placeholder={t('label.role-plural')}
+                  value={!isRolesLoading ? selectedRoles : []}
                   onChange={handleOnRolesChange}
                 />
 
