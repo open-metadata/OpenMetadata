@@ -19,22 +19,18 @@ from datetime import datetime
 from typing import cast
 
 from dateutil.relativedelta import relativedelta
-
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
+from metadata.test_suite.validations.base_test_handler import BaseTestValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableRowInsertedCountToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
+class TableRowInsertedCountToBeBetweenValidator(BaseTestValidator, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def get_threshold_date(self, range_type: str, range_interval: int):

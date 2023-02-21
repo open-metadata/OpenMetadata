@@ -18,21 +18,19 @@ import collections
 import traceback
 from typing import cast
 
-from sqlalchemy import text
-
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
+from metadata.test_suite.validations.base_test_handler import BaseTestValidator
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
+    SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
+from sqlalchemy import text
 
 logger = test_suite_logger()
 
 
-class TableCustomSQLQueryValidator(BaseTestHandler, SQAValidatorMixin):
+class TableCustomSQLQueryValidator(BaseTestValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def compare(self, expected_names, actual_names) -> bool:

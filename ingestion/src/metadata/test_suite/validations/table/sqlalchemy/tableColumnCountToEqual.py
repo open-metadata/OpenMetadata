@@ -16,21 +16,19 @@ Validator for column value length to be between test case
 
 import traceback
 
-from sqlalchemy import inspect
-
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
+from metadata.test_suite.validations.base_test_handler import BaseTestValidator
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
+    SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
+from sqlalchemy import inspect
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToEqualValidator(BaseTestHandler, SQAValidatorMixin):
+class TableColumnCountToEqualValidator(BaseTestValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def run_validation(self) -> TestCaseResult:

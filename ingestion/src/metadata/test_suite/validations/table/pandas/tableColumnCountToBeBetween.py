@@ -16,22 +16,19 @@ Validator for column value length to be between test case
 
 import traceback
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
+from metadata.test_suite.validations.base_test_handler import BaseTestValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
+class TableColumnCountToBeBetweenValidator(BaseTestValidator, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
