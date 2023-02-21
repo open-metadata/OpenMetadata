@@ -152,8 +152,8 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
   ldapConfiguration:
-    host: ${AUTHENTICATION_LDAP_HOST:-0.0.0.0}
-    port: ${AUTHENTICATION_LDAP_PORT:-10636}
+    host: ${AUTHENTICATION_LDAP_HOST:-}
+    port: ${AUTHENTICATION_LDAP_PORT:-}
     dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
     dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
     userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
