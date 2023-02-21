@@ -1,0 +1,210 @@
+{
+  "$id": "https://open-metadata.org/schema/events/eventSubscription.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventSubscription",
+  "description": "This schema defines the EventSubscription entity. An Event Subscription has trigger, filters and Subscription",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "subscriptionConfig": {
+      "oneOf": [
+        {
+          "$ref": "../entity/events/webhook.json"
+        },
+        {
+          "$ref": "./emailAlertConfig.json"
+        },
+        {
+          "$ref": "#/definitions/feedSubscriptionConfig"
+        }
+      ]
+    },
+    "subscriptionType": {
+      "description": "Subscription Endpoint Type",
+      "type": "string",
+      "enum": [
+        "GenericWebhook",
+        "SlackWebhook",
+        "MsTeamsWebhook",
+        "GChatWebhook",
+        "Email",
+        "ActivityFeed"
+      ]
+    },
+    "status": {
+      "description": "Status is `disabled`, when event Subscription was created with `enabled` set to false and it never started publishing events. Status is `active` when eventSubscription is normally functioning and 200 OK response was received for callback notification. Status is `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received for callback notification. Status is `awaitingRetry` when previous attempt at callback timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
+      "type": "string",
+      "enum": [
+        "disabled",
+        "failed",
+        "retryLimitReached",
+        "awaitingRetry",
+        "active"
+      ]
+    },
+    "subscriptionStatus": {
+      "description": "Subscription Current Status",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.SubscriptionStatus",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "lastSuccessfulAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "lastFailedAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "lastFailedStatusCode": {
+          "description": "Last non-successful activity response code received during callback.",
+          "type": "integer"
+        },
+        "lastFailedReason": {
+          "description": "Last non-successful activity response reason received during callback.",
+          "type": "string"
+        },
+        "nextAttempt": {
+          "description": "Next retry will be done at this time in Unix epoch time milliseconds. Only valid is `status` is `awaitingRetry`.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "timestamp": {
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "feedSubscriptionConfig": {
+      "description": "Activity Feed Subscription Endpoint Config",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.FeedSubscriptionConfig",
+      "properties": {
+        "description": {
+          "description": "Description",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "filteringRules": {
+      "description": "Filtering Rules for Event Subscription",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.FilteringRules",
+      "properties": {
+        "resources": {
+          "description": "Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rules": {
+          "description": "A set of filter rules associated with the Alert.",
+          "type": "array",
+          "items": {
+            "$ref": "./eventFilterRule.json"
+          }
+        }
+      },
+      "required": ["resources"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that uniquely identifies this Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for this Event Subscription.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A short description of the Event Subscription, comprehensible to regular users.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this Event Subscription.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "version": {
+      "description": "Metadata version of the Event Subscription.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the Event Subscription in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the Event Subscription.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "filteringRules": {
+      "description": "Set of rules that the Event Subscription Contains to allow conditional control for alerting.",
+      "$ref": "#/definitions/filteringRules"
+    },
+    "subscriptionType": {
+      "$ref": "#/definitions/subscriptionType"
+    },
+    "subscriptionConfig": {
+      "$ref": "#/definitions/subscriptionConfig"
+    },
+    "enabled": {
+      "description": "Is the event Subscription enabled.",
+      "type": "boolean",
+      "default": true
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer",
+      "default": 10
+    },
+    "timeout": {
+      "description": "Connection timeout in seconds. (Default 10s).",
+      "type": "integer",
+      "default": 10
+    },
+    "readTimeout": {
+      "description": "Read timeout in seconds. (Default 12s).",
+      "type": "integer",
+      "default": 12
+    },
+    "statusDetails": {
+      "$ref": "#/definitions/subscriptionStatus"
+    },
+    "requiresDisruptor": {
+      "description": "When `true` indicates the subscription will use the Disruptor to generate a BatchEventProcessor",
+      "type": "boolean"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "provider" : {
+      "$ref": "../type/basic.json#/definitions/providerType"
+    }
+  },
+  "required": ["id", "name", "triggerConfig"],
+  "additionalProperties": false
+}

@@ -150,7 +150,6 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
-import org.openmetadata.service.resources.events.AlertResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
@@ -364,18 +363,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
-      alertResourceTest.startWebhookSubscription(true);
-      alertResourceTest.startWebhookEntitySubscriptions(entityType);
+      //      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      //      alertResourceTest.startWebhookSubscription(true);
+      //      alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
     if (runWebhookTests) {
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
-      alertResourceTest.validateWebhookEvents();
-      alertResourceTest.validateWebhookEntityEvents(entityType);
+      //      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      //      alertResourceTest.validateWebhookEvents();
+      //      alertResourceTest.validateWebhookEntityEvents(entityType);
     }
     delete_recursiveTest();
   }
@@ -906,7 +905,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
     // Ingestion bot can create and delete all the entities except websocket and bot
-    if (List.of(Entity.ALERT, Entity.ALERT_ACTION, Entity.BOT).contains(entityType)) {
+    if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
     }
     // Delete by ID

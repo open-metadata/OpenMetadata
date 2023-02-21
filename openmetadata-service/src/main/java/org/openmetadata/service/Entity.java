@@ -89,7 +89,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   public static final String BOT = "bot";
-  public static final String ALERT = "alert";
+  public static final String EVENT_SUBSCRIPTION = "eventSubscription";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
   public static final String GLOSSARY = "glossary";
