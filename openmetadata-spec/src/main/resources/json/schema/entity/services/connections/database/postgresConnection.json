@@ -61,7 +61,7 @@
     },
     "ingestAllDatabases": {
       "title": "Ingest All Databases",
-      "description": "Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of this.",
+      "description": "Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.",
       "type": "boolean",
       "default": false
     },
