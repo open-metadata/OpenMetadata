@@ -91,7 +91,7 @@ class StdDev(StaticMetric):
         return None
 
     @_label
-    def df_fn(self, df=None):  # pylint: disable=invalid-name
+    def df_fn(self, df=None):
         """pandas function"""
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 

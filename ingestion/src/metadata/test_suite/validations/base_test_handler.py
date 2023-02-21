@@ -77,10 +77,7 @@ class BaseTestHandler(ABC):
         )
 
         if not value and default is not None:
-            return default
-
-        if not value and default is None:
-            return None
+            return default if default is not None else None
 
         if not pre_processor:
             return type_(value)

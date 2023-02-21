@@ -85,7 +85,7 @@ class ColumnNames(StaticMetric):
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
 
     @_label
-    def df_fn(self, df=None):  # pylint: disable=invalid-name
+    def df_fn(self, df=None):
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         df = cast(DataFrame, df)

@@ -40,7 +40,6 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
     against a Datalake source.
     """
 
-    # pylint: disable=invalid-name
     def __init__(
         self,
         ometa_client: OpenMetadata = None,
@@ -84,8 +83,7 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
             return Validator(validator_obj=test_handler).validate()
         except Exception as err:
             logger.error(
-                f"Test definition {test_case.testDefinition.fullyQualifiedName} not registered in OpenMetadata "
-                f"TestDefintion registry. Skipping test case {test_case.name.__root__} - {err}"
+                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             )
 
             raise RuntimeError(err)

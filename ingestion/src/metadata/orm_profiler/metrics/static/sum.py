@@ -43,7 +43,7 @@ class Sum(StaticMetric):
         return None
 
     @_label
-    def df_fn(self, df):  # pylint: disable=invalid-name
+    def df_fn(self, df):
         """pandas function"""
         if is_quantifiable(self.col.type):
             return (

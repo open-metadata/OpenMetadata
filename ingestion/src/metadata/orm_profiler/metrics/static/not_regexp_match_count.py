@@ -56,7 +56,7 @@ class NotRegexCount(StaticMetric):
         )
 
     @_label
-    def df_fn(self, df):  # pylint: disable=invalid-name
+    def df_fn(self, df):
         """pandas function"""
         if not hasattr(self, "expression"):
             raise AttributeError(

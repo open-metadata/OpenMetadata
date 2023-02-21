@@ -323,7 +323,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
 
     def get_columns(self):
         if self.data_frame_list:
-            df = self.data_frame_list[0]  # pylint: disable=invalid-name
+            df = self.data_frame_list[0]
             return [
                 SQALikeColumn(
                     column_name,

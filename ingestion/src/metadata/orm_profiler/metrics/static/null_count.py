@@ -51,7 +51,7 @@ class NullCount(StaticMetric):
         return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))
 
     @_label
-    def df_fn(self, df=None):  # pylint: disable=invalid-name
+    def df_fn(self, df=None):
         """pandas function"""
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 

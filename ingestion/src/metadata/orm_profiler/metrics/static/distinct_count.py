@@ -44,7 +44,7 @@ class DistinctCount(StaticMetric):
         return func.count(distinct(column(self.col.name)))
 
     @_label
-    def df_fn(self, df=None):  # pylint: disable=invalid-name
+    def df_fn(self, df=None):
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         df = cast(DataFrame, df)

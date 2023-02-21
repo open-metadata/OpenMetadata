@@ -59,12 +59,12 @@ class MinLength(StaticMetric):
 
     # pylint: disable=import-outside-toplevel
     @_label
-    def df_fn(self, df=None):  # pylint: disable=invalid-name
+    def df_fn(self, df=None):
         """dataframe function"""
-        import pandas as pd
         from numpy import vectorize
+        from pandas import DataFrame
 
-        df = cast(pd.DataFrame, df)  # satisfy mypy
+        df = cast(DataFrame, df)  # satisfy mypy
 
         if self._is_concatenable():
             length_vector_fn = vectorize(len)

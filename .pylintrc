@@ -14,7 +14,7 @@ max-args=7
 max-attributes=12
 
 # usual typevar naming
-good-names=T,C,fn,db
+good-names=T,C,fn,db,df
 
 [MASTER]
 fail-under=6.0

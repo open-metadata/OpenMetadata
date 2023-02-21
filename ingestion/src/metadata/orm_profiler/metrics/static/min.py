@@ -42,7 +42,7 @@ class Min(StaticMetric):
 
     # pylint: disable=import-outside-toplevel
     @_label
-    def df_fn(self, df=None):  # pylint: disable=invalid-name
+    def df_fn(self, df=None):
         """pandas function"""
         from pandas import DataFrame
 
