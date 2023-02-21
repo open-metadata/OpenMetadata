@@ -339,7 +339,7 @@ class Profiler(Generic[TMetric]):
         columns = [
             column
             for column in self.columns
-            if column.type.__class__ not in NOT_COMPUTE
+            if column.type.__class__.__name__ not in NOT_COMPUTE
         ]
 
         column_metrics_for_thread_pool = [

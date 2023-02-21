@@ -50,7 +50,7 @@ class UniqueCount(QueryMetric):
                 "We are missing the session attribute to compute the UniqueCount."
             )
 
-        if self.col.type.__class__ in NOT_COMPUTE:
+        if self.col.type.__class__.__name__ in NOT_COMPUTE:
             return None
 
         # Run all queries on top of the sampled data

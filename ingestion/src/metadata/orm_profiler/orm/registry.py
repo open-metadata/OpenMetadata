@@ -23,7 +23,7 @@ from metadata.orm_profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
 from metadata.orm_profiler.registry import TypeRegistry
-
+from metadata.utils.sqa_like_column import Type
 
 class CustomTypes(TypeRegistry):
     BYTES = HexByteString
@@ -68,14 +68,14 @@ class Dialects(Enum):
 # in the profiler.
 # Note that not mapped types are set to NULL by default.
 NOT_COMPUTE = {
-    sqlalchemy.types.NullType,
-    sqlalchemy.ARRAY,
-    sqlalchemy.JSON,
-    sqa_types.SQAMap,
-    sqa_types.SQAStruct,
-    sqa_types.SQASet,
-    sqa_types.SQAUnion,
-    sqa_types.SQASGeography,
+    sqlalchemy.types.NullType.__name__,
+    sqlalchemy.ARRAY.__name__,
+    sqlalchemy.JSON.__name__,
+    sqa_types.SQAMap.__name__,
+    sqa_types.SQAStruct.__name__,
+    sqa_types.SQASet.__name__,
+    sqa_types.SQAUnion.__name__,
+    sqa_types.SQASGeography.__name__,
     DataType.ARRAY.value,
     DataType.JSON.value,
 }
@@ -110,31 +110,28 @@ def is_numeric(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Numeric
     """
-    return issubclass(_type.__class__, Numeric)
-
+    return issubclass(_type.__class__, Numeric) 
 
 def is_date_time(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
-    try:
-        return (
+    if isinstance(_type, Type):
+        return _type.__class__.__name__ in DATATIME_SET
+    return (
             issubclass(_type.__class__, Date)
             or issubclass(_type.__class__, Time)
             or issubclass(_type.__class__, DateTime)
-        )
-    except TypeError:
-        return _type.__class__ in DATATIME_SET
-
+    )
 
 def is_quantifiable(_type) -> bool:
     """
     Check if sqlalchemy _type is either integer or numeric
     """
-    try:
-        return is_numeric(_type) or is_integer(_type)
-    except TypeError:
-        return _type.__class__ in QUANTIFIABLE_SET
+    if isinstance(_type, Type):
+        return _type.__class__.__name__ in QUANTIFIABLE_SET
+    return is_numeric(_type) or is_integer(_type)
+
 
 
 def is_concatenable(_type) -> bool:
@@ -142,7 +139,6 @@ def is_concatenable(_type) -> bool:
     Check if sqlalchemy _type is derived from Concatenable
     e.g., strings or text
     """
-    try:
-        return issubclass(_type.__class__, Concatenable)
-    except TypeError:
-        return _type.__class__ in CONCATENABLE_SET
+    if isinstance(_type, Type):
+        return _type.__class__.__name__ in CONCATENABLE_SET
+    return issubclass(_type.__class__, Concatenable)
