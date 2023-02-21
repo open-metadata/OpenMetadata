@@ -62,6 +62,7 @@ import {
 } from 'rest/tagAPI';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
+  getExplorePath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   TIER_CATEGORY,
@@ -85,10 +86,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getTagPath,
-} from '../../utils/RouterUtils';
+import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -545,11 +543,13 @@ const TagsPage = () => {
   const getUsageCountLink = (tagFQN: string) => {
     const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
-    return getExplorePathWithInitFilters(
-      '',
-      undefined,
-      `postFilter[${type}.tagFQN][0]=${tagFQN}`
-    );
+    return getExplorePath({
+      extraParameters: {
+        postFilter: {
+          [`${type}.tagFQN`]: [tagFQN],
+        },
+      },
+    });
   };
 
   const handleActionDeleteTag = (record: Tag) => {
