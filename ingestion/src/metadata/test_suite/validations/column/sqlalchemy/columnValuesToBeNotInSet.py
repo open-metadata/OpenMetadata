@@ -14,61 +14,34 @@
 Validator for column value min to be between test case
 """
 
-import traceback
-from ast import literal_eval
+from typing import Optional
 
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.column.base.columnValuesToBeNotInSet import BaseColumnValuesToBeNotInSetValidator
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
+    SQAValidatorMixin
 from sqlalchemy import Column, inspect
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 
-logger = test_suite_logger()
-
-
-class ColumnValuesToBeNotInSetValidator(BaseTestHandler, SQAValidatorMixin):
+class ColumnValuesToBeNotInSetValidator(BaseColumnValuesToBeNotInSetValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _get_column_name(self) -> Column:
+        """Get column name from the test case entity link
 
         Returns:
-            TestCaseResult:
+            Column: column
         """
-        forbidden_values = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "forbiddenValues",
-            literal_eval,
-        )
-
-        try:
-            column: Column = self.get_column_name(
+        return self.get_column_name(
                 self.test_case.entityLink.__root__,
                 inspect(self.runner.table).c,
             )
-            res = self.run_query_results(
-                self.runner, Metrics.COUNT_IN_SET, column, values=forbidden_values
-            )
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="countForbiddenValues", value=None)],
-            )
 
-        return self.get_test_case_result_object(
-            self.execution_date,
-            TestCaseStatus.Success if res == 0 else TestCaseStatus.Failed,
-            f"Found countInSet={res}. It should be 0.",
-            [TestResultValue(name="countForbiddenValues", value=str(res))],
-        )
+    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
+        """compute result of the test case
+
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_query_results(self.runner, metric, column, **kwargs)

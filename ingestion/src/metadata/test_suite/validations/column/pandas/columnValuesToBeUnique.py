@@ -14,67 +14,38 @@
 Validator for column values sum to be between test case
 """
 
-import traceback
+from typing import Optional
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
-from metadata.utils.entity_link import get_table_fqn
-from metadata.utils.logger import test_suite_logger
+from metadata.test_suite.validations.column.base.columnValuesToBeUnique import BaseColumnValuesToBeUniqueValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
 from metadata.utils.sqa_like_column import SQALikeColumn
 
-logger = test_suite_logger()
 
-
-class ColumnValuesToBeUniqueValidator(BaseTestHandler, PandasValidatorMixin):
+class ColumnValuesToBeUniqueValidator(BaseColumnValuesToBeUniqueValidator, PandasValidatorMixin):
     """ "Validator for column values sum to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _get_column_name(self) -> SQALikeColumn:
+        """Get column name from the test case entity link
 
         Returns:
-            TestCaseResult:
+            SQALikeColumn: column
         """
-        try:
-            column: SQALikeColumn = self.get_column_name(
+        return self.get_column_name(
                 self.test_case.entityLink.__root__,
                 self.runner,
             )
-            count = self.run_dataframe_results(self.runner, Metrics.COUNT, column)
-            unique_count = self.run_dataframe_results(
-                self.runner, Metrics.UNIQUE_COUNT, column
-            )
-        except (ValueError, RuntimeError) as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for "
-                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [
-                    TestResultValue(name="valueCount", value=None),
-                    TestResultValue(name="uniqueCount", value=None),
-                ],
-            )
 
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(count == unique_count),
-            f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
-            "Both counts should be equal for column values to be unique.",
-            [
-                TestResultValue(name="valueCount", value=str(count)),
-                TestResultValue(name="uniqueCount", value=str(unique_count)),
-            ],
-        )
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+        """compute result of the test case
+
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_dataframe_results(self.runner, metric, column)
+
+    def _get_unique_count(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+        """Get unique count of values"""
+        return self._run_results(metric, column)

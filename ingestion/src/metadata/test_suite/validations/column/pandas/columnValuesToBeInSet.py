@@ -16,17 +16,16 @@ Validator for column value to not be in set test case
 
 import traceback
 from ast import literal_eval
+from typing import Optional
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
+from metadata.test_suite.validations.base_test_handler import BaseTestValidator
+from metadata.test_suite.validations.column.base.columnValuesToBeInSet import BaseColumnValuesToBeInSetValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -34,46 +33,25 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 logger = test_suite_logger()
 
 
-class ColumnValuesToBeInSetValidator(BaseTestHandler, PandasValidatorMixin):
+class ColumnValuesToBeInSetValidator(BaseColumnValuesToBeInSetValidator, PandasValidatorMixin):
     """ "Validator for column value to be not in set test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _get_column_name(self) -> SQALikeColumn:
+        """Get column name from the test case entity link
 
         Returns:
-            TestCaseResult:
+            SQALikeColumn: column
         """
-        allowed_values = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "allowedValues",
-            literal_eval,
-        )
-
-        try:
-            column: SQALikeColumn = self.get_column_name(
+        return self.get_column_name(
                 self.test_case.entityLink.__root__,
                 self.runner,
             )
-            res = self.run_dataframe_results(
-                self.runner, Metrics.COUNT_IN_SET, column, values=allowed_values
-            )
-        except (ValueError, RuntimeError) as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for "
-                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="allowedValueCount", value=None)],
-            )
 
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(res >= 1),
-            f"Found countInSet={res}.",
-            [TestResultValue(name="allowedValueCount", value=str(res))],
-        )
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
+        """compute result of the test case
+
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_dataframe_results(self.runner, metric, column, **kwargs)

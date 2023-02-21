@@ -53,7 +53,7 @@ class SQAValidatorMixin:
         metric: Metrics,
         column: Optional[Column] = None,
         **kwargs: Optional[Any],
-    ):
+    ) -> Optional[int]:
         """Run the metric query against the column
 
         Args:

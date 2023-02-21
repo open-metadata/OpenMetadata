@@ -23,10 +23,6 @@ from metadata.generated.schema.entity.data.table import DataType
 class Type:
     name: Union[DataType, str]
 
-    def __class__(self):
-        return self.name
-
-
 @dataclass
 class SQALikeColumn:
     """Replicate somehow the behavior of SQLAlchemy Column object to have constant API access"""

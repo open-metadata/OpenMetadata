@@ -333,7 +333,7 @@ def test_case_column_values_missing_count_to_be_equal():
 
 
 @pytest.fixture
-def test_case_column_values_missing_count_to_be_equal_missing_valuesl():
+def test_case_column_values_missing_count_to_be_equal_missing_values():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
         name=TEST_CASE_NAME,

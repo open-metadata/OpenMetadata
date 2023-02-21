@@ -14,65 +14,33 @@
 Validator for column value length to be between test case
 """
 
-import traceback
 
+from typing import Optional
+from metadata.orm_profiler.metrics.registry import Metrics
 from sqlalchemy import Column, inspect
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
+from metadata.test_suite.validations.column.base.columnValueLengthsToBeBetween import BaseColumnValueLengthsToBeBetweenValidator
 
-logger = test_suite_logger()
-
-
-class ColumnValueLengthsToBeBetweenValidator(BaseTestHandler, SQAValidatorMixin):
+class ColumnValueLengthsToBeBetweenValidator(BaseColumnValueLengthsToBeBetweenValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
-
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _get_column_name(self) -> Column:
+        """get column name from the test case entity link
 
         Returns:
-            TestCaseResult:
-        """
-        try:
-            column: Column = self.get_column_name(
+            Column: column
+        """        
+        return self.get_column_name(
                 self.test_case.entityLink.__root__,
                 inspect(self.runner.table).c,
             )
-            max_res = self.run_query_results(self.runner, Metrics.MAX_LENGTH, column)
-            min_res = self.run_query_results(self.runner, Metrics.MIN_LENGTH, column)
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [
-                    TestResultValue(name="minValueLength", value=None),
-                    TestResultValue(name="maxValueLength", value=None),
-                ],
-            )
 
-        min_bound = self.get_min_bound("minLength")
-        max_bound = self.get_max_bound("maxLength")
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+        """compute result of the test case
 
-        return self.get_test_case_result_object(
-            self.execution_date,
-            TestCaseStatus.Success
-            if min_bound <= min_res and max_bound >= max_res
-            else TestCaseStatus.Failed,
-            f"Found minLength={min_res}, maxLength={max_res} vs. the expected "
-            "minLength={min_bound}, maxLength={max_bound}.",
-            [
-                TestResultValue(name="minValueLength", value=str(min_res)),
-                TestResultValue(name="maxValueLength", value=str(max_res)),
-            ],
-        )
+        Args:
+            metric: metric for computation
+            column: column
+        """        
+        return self.run_query_results(self.runner, metric, column)
+

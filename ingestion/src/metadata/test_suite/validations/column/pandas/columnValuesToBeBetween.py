@@ -14,93 +14,33 @@
 Validator for column values sum to be between test case
 """
 
-import traceback
-from datetime import datetime
+from typing import Optional
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
-from metadata.utils.entity_link import get_table_fqn
-from metadata.utils.logger import test_suite_logger
+from metadata.test_suite.validations.column.base.columnValuesToBeBetween import BaseColumnValuesToBeBetweenValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
 from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.utils.time_utils import convert_timestamp
 
-logger = test_suite_logger()
-
-
-class ColumnValuesToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
+class ColumnValuesToBeBetweenValidator(BaseColumnValuesToBeBetweenValidator, PandasValidatorMixin):
     """ "Validator for column values sum to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _get_column_name(self) -> SQALikeColumn:
+        """Get column name from the test case entity link
 
         Returns:
-            TestCaseResult:
+            SQALikeColumn: column
         """
-        # pylint: disable=import-outside-toplevel
-        from pandas.core.dtypes.common import is_datetime64_any_dtype
-
-        try:
-            column: SQALikeColumn = self.get_column_name(
+        return self.get_column_name(
                 self.test_case.entityLink.__root__,
                 self.runner,
             )
-            min_res = self.run_dataframe_results(self.runner, Metrics.MIN, column)
-            max_res = self.run_dataframe_results(self.runner, Metrics.MAX, column)
-        except (ValueError, RuntimeError) as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for "
-                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [
-                    TestResultValue(name="min", value=None),
-                    TestResultValue(name="max", value=None),
-                ],
-            )
 
-        min_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "minValue",
-            datetime.fromtimestamp if is_datetime64_any_dtype(column.type) else float,
-            default=datetime.min
-            if is_datetime64_any_dtype(column.type)
-            else float("-inf"),
-            pre_processor=convert_timestamp
-            if is_datetime64_any_dtype(column.type)
-            else None,
-        )
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+        """compute result of the test case
 
-        max_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "maxValue",
-            datetime.fromtimestamp if is_datetime64_any_dtype(column.type) else float,
-            default=datetime.max
-            if is_datetime64_any_dtype(column.type)
-            else float("inf"),
-            pre_processor=convert_timestamp
-            if is_datetime64_any_dtype(column.type)
-            else None,
-        )
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(min_res >= min_bound and max_res <= max_bound),
-            f"Found min={min_res}, max={max_res} vs. the expected min={min_bound}, max={max_bound}.",
-            [
-                TestResultValue(name="min", value=str(min_res)),
-                TestResultValue(name="max", value=str(max_res)),
-            ],
-        )
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_dataframe_results(self.runner, metric, column)

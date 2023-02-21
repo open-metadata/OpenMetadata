@@ -20,19 +20,18 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Callable, List, Optional, TypeVar, Union
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.basic import (TestCaseResult,
+                                                   TestCaseStatus,
+                                                   TestResultValue)
+from metadata.generated.schema.tests.testCase import (TestCase,
+                                                      TestCaseParameterValue)
 from metadata.orm_profiler.profiler.runner import QueryRunner
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
 
 
-class BaseTestHandler(ABC):
+class BaseTestValidator(ABC):
     """Abstract class for test case handlers"""
 
     def __init__(
@@ -76,7 +75,7 @@ class BaseTestHandler(ABC):
             (param.value for param in test_case_param_vals if param.name == name), None
         )
 
-        if not value and default is not None:
+        if not value:
             return default if default is not None else None
 
         if not pre_processor:

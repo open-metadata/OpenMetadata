@@ -14,32 +14,43 @@
 Validator for column values sum to be between test case
 """
 
-import traceback
+from typing import Optional
 
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.column.base.columnValuesToBeUnique import BaseColumnValuesToBeUniqueValidator
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
+    SQAValidatorMixin
 from sqlalchemy import Column, inspect
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
-
-logger = test_suite_logger()
-
-
-class ColumnValuesToBeUniqueValidator(BaseTestHandler, SQAValidatorMixin):
+class ColumnValuesToBeUniqueValidator(BaseColumnValuesToBeUniqueValidator, SQAValidatorMixin):
     """ "Validator for column values sum to be between test case"""
 
-    def get_unique_count(self, column: Column):
+    def _get_column_name(self) -> Column:
+        """Get column name from the test case entity link
+
+        Returns:
+            Column: column
+        """
+        return self.get_column_name(
+                self.test_case.entityLink.__root__,
+                inspect(self.runner.table).c,
+            )
+
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+        """compute result of the test case
+
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_query_results(self.runner, metric, column)
+
+    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:
         """Get unique count of values"""
         unique_count = dict(
             self.runner.select_all_from_query(
-                Metrics.UNIQUE_COUNT.value(column).query(
+                metric.value(column).query(
                     sample=self.runner._sample  # pylint: disable=protected-access
                     if isinstance(
                         self.runner._sample,  # pylint: disable=protected-access
@@ -53,42 +64,4 @@ class ColumnValuesToBeUniqueValidator(BaseTestHandler, SQAValidatorMixin):
             ]  # query result is a list of tuples
         )
 
-        return unique_count.get(Metrics.UNIQUE_COUNT.name)
-
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
-
-        Returns:
-            TestCaseResult:
-        """
-        try:
-            column: Column = self.get_column_name(
-                self.test_case.entityLink.__root__,
-                inspect(self.runner.table).c,
-            )
-            count = self.run_query_results(self.runner, Metrics.COUNT, column)
-            unique_count = self.get_unique_count(column)
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [
-                    TestResultValue(name="valueCount", value=None),
-                    TestResultValue(name="uniqueCount", value=None),
-                ],
-            )
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            TestCaseStatus.Success if count == unique_count else TestCaseStatus.Failed,
-            f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
-            "Both counts should be equal for column values to be unique.",
-            [
-                TestResultValue(name="valueCount", value=str(count)),
-                TestResultValue(name="uniqueCount", value=str(unique_count)),
-            ],
-        )
+        return unique_count.get(metric.name)

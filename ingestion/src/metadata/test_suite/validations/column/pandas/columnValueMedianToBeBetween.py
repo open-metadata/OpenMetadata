@@ -14,60 +14,32 @@
 Validator for column value median to be between test case
 """
 
-import traceback
-
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
+from typing import Optional
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestHandler
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
-from metadata.utils.entity_link import get_table_fqn
-from metadata.utils.logger import test_suite_logger
+from metadata.test_suite.validations.column.base.columnValueMedianToBeBetween import BaseColumnValueMedianToBeBetweenValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
+    PandasValidatorMixin
 from metadata.utils.sqa_like_column import SQALikeColumn
 
-logger = test_suite_logger()
-
-
-class ColumnValueMedianToBeBetweenValidator(BaseTestHandler, PandasValidatorMixin):
+class ColumnValueMedianToBeBetweenValidator(BaseColumnValueMedianToBeBetweenValidator, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _get_column_name(self) -> SQALikeColumn:
+        """Get column name from the test case entity link
 
         Returns:
-            TestCaseResult:
+            SQALikeColumn: column
         """
-        try:
-            column: SQALikeColumn = self.get_column_name(
+        return self.get_column_name(
                 self.test_case.entityLink.__root__,
                 self.runner,
             )
-            res = self.run_dataframe_results(self.runner, Metrics.MEDIAN, column)
-        except (ValueError, RuntimeError) as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for "
-                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="median", value=None)],
-            )
 
-        min_bound = self.get_min_bound("minValueForMedianInCol")
-        max_bound = self.get_max_bound("maxValueForMedianInCol")
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+        """compute result of the test case
 
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(min_bound <= res <= max_bound),
-            f"Found median={res} vs.  the expected min={min_bound}, max={max_bound}.",
-            [TestResultValue(name="median", value=str(res))],
-        )
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_dataframe_results(self.runner, metric, column)
