@@ -34,7 +34,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "great-expectations": "great-expectations~=0.15.0",
-    "grpc-tools": "grpcio-tools==1.47.2",
+    "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas==1.3.5",
@@ -57,7 +57,7 @@ COMMONS = {
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
-        # we use v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
+        # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
         VERSIONS[
             "grpc-tools"
         ],  # grpcio-tools already depends on grpcio. No need to add separately
