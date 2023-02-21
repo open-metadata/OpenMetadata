@@ -17,13 +17,18 @@ Validator for column values to not match regex test case
 from typing import Optional
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValuesToNotMatchRegex import BaseColumnValuesToNotMatchRegexValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
-
+from metadata.test_suite.validations.column.base.columnValuesToNotMatchRegex import (
+    BaseColumnValuesToNotMatchRegexValidator,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.sqa_like_column import SQALikeColumn
 
-class ColumnValuesToNotMatchRegexValidator(BaseColumnValuesToNotMatchRegexValidator, PandasValidatorMixin):
+
+class ColumnValuesToNotMatchRegexValidator(
+    BaseColumnValuesToNotMatchRegexValidator, PandasValidatorMixin
+):
     """ "Validator for column values to not match regex test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
@@ -33,11 +38,13 @@ class ColumnValuesToNotMatchRegexValidator(BaseColumnValuesToNotMatchRegexValida
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                self.runner,
-            )
+            self.test_case.entityLink.__root__,
+            self.runner,
+        )
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
+    def _run_results(
+        self, metric: Metrics, column: SQALikeColumn, **kwargs
+    ) -> Optional[int]:
         """compute result of the test case
 
         Args:

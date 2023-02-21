@@ -14,25 +14,29 @@
 Validator for column value length to be between test case
 """
 
-import traceback
-from ast import literal_eval
 from typing import Optional
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column, inspect
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
-from metadata.test_suite.validations.column.base.columnValuesMissingCount import BaseColumnValuesMissingCountValidator
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
+from metadata.test_suite.validations.column.base.columnValuesMissingCount import (
+    BaseColumnValuesMissingCountValidator,
+)
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.utils.logger import test_suite_logger
-from sqlalchemy import Column, inspect
 
 logger = test_suite_logger()
 
 
-class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, SQAValidatorMixin):
+class ColumnValuesMissingCountValidator(
+    BaseColumnValuesMissingCountValidator, SQAValidatorMixin
+):
     """ "Validator for column value missing count to be equal test case"""
 
     def _get_column_name(self) -> Column:
@@ -42,9 +46,9 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, S
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                inspect(self.runner.table).c,
-            )
+            self.test_case.entityLink.__root__,
+            inspect(self.runner.table).c,
+        )
 
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
         """compute result of the test case

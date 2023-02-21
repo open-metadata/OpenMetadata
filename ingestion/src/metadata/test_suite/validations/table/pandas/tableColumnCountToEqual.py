@@ -16,15 +16,20 @@ Validator for column value length to be between test case
 
 from typing import Optional
 
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
-from metadata.test_suite.validations.table.base.tableColumnCountToEqual import BaseTableColumnCountToEqualValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
+from metadata.test_suite.validations.table.base.tableColumnCountToEqual import (
+    BaseTableColumnCountToEqualValidator,
+)
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, PandasValidatorMixin):
+class TableColumnCountToEqualValidator(
+    BaseTableColumnCountToEqualValidator, PandasValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self) -> Optional[int]:

@@ -14,18 +14,21 @@
 Validator for column value to not be in set test case
 """
 
-import traceback
-from ast import literal_eval
 from typing import Optional
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
-from metadata.test_suite.validations.column.base.columnValuesToBeInSet import BaseColumnValuesToBeInSetValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
+from metadata.test_suite.validations.column.base.columnValuesToBeInSet import (
+    BaseColumnValuesToBeInSetValidator,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -33,7 +36,9 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 logger = test_suite_logger()
 
 
-class ColumnValuesToBeInSetValidator(BaseColumnValuesToBeInSetValidator, PandasValidatorMixin):
+class ColumnValuesToBeInSetValidator(
+    BaseColumnValuesToBeInSetValidator, PandasValidatorMixin
+):
     """ "Validator for column value to be not in set test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
@@ -43,11 +48,13 @@ class ColumnValuesToBeInSetValidator(BaseColumnValuesToBeInSetValidator, PandasV
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                self.runner,
-            )
+            self.test_case.entityLink.__root__,
+            self.runner,
+        )
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
+    def _run_results(
+        self, metric: Metrics, column: SQALikeColumn, **kwargs
+    ) -> Optional[int]:
         """compute result of the test case
 
         Args:

@@ -17,12 +17,18 @@ Validator for column value length to be between test case
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
-from metadata.test_suite.validations.table.base.tableRowInsertedCountToBeBetween import BaseTableRowInsertedCountToBeBetweenValidator
+
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
+from metadata.test_suite.validations.table.base.tableRowInsertedCountToBeBetween import (
+    BaseTableRowInsertedCountToBeBetweenValidator,
+)
 
 
-class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBetweenValidator, PandasValidatorMixin):
+class TableRowInsertedCountToBeBetweenValidator(
+    BaseTableRowInsertedCountToBeBetweenValidator, PandasValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     @staticmethod

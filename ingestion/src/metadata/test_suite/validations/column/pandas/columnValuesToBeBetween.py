@@ -17,12 +17,18 @@ Validator for column values sum to be between test case
 from typing import Optional
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValuesToBeBetween import BaseColumnValuesToBeBetweenValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
+from metadata.test_suite.validations.column.base.columnValuesToBeBetween import (
+    BaseColumnValuesToBeBetweenValidator,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.sqa_like_column import SQALikeColumn
 
-class ColumnValuesToBeBetweenValidator(BaseColumnValuesToBeBetweenValidator, PandasValidatorMixin):
+
+class ColumnValuesToBeBetweenValidator(
+    BaseColumnValuesToBeBetweenValidator, PandasValidatorMixin
+):
     """ "Validator for column values sum to be between test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
@@ -32,9 +38,9 @@ class ColumnValuesToBeBetweenValidator(BaseColumnValuesToBeBetweenValidator, Pan
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                self.runner,
-            )
+            self.test_case.entityLink.__root__,
+            self.runner,
+        )
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case

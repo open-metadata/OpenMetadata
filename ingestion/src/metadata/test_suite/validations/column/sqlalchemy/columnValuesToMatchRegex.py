@@ -16,18 +16,22 @@ Validator for column values sum to be between test case
 
 from typing import Optional
 
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValuesToMatchRegex import BaseColumnValuesToMatchRegexValidator
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import CompileError
+
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.column.base.columnValuesToMatchRegex import (
+    BaseColumnValuesToMatchRegexValidator,
+)
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class ColumnValuesToMatchRegexValidator(BaseColumnValuesToMatchRegexValidator, SQAValidatorMixin):
+class ColumnValuesToMatchRegexValidator(
+    BaseColumnValuesToMatchRegexValidator, SQAValidatorMixin
+):
     """ "Validator for column values sum to be between test case"""
 
     def _get_column_name(self) -> Column:
@@ -37,9 +41,9 @@ class ColumnValuesToMatchRegexValidator(BaseColumnValuesToMatchRegexValidator, S
             Column: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                inspect(self.runner.table).c,
-            )
+            self.test_case.entityLink.__root__,
+            inspect(self.runner.table).c,
+        )
 
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
         """compute result of the test case

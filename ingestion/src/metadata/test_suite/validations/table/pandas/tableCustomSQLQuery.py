@@ -14,11 +14,17 @@
 Validator for column value length to be between test case
 """
 
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
-from metadata.test_suite.validations.table.base.tableCustomSQLQuery import BaseTableCustomSQLQueryValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
+from metadata.test_suite.validations.table.base.tableCustomSQLQuery import (
+    BaseTableCustomSQLQueryValidator,
+)
 
-class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValidatorMixin):
+
+class TableCustomSQLQueryValidator(
+    BaseTableCustomSQLQueryValidator, PandasValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self, sql_expression: str):

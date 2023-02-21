@@ -17,12 +17,18 @@ Validator for column value length to be between test case
 from typing import Optional
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValuesMissingCount import BaseColumnValuesMissingCountValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
+from metadata.test_suite.validations.column.base.columnValuesMissingCount import (
+    BaseColumnValuesMissingCountValidator,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.sqa_like_column import SQALikeColumn
 
-class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, PandasValidatorMixin):
+
+class ColumnValuesMissingCountValidator(
+    BaseColumnValuesMissingCountValidator, PandasValidatorMixin
+):
     """ "Validator for column value missing count to be equal test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
@@ -32,11 +38,13 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, P
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                self.runner,
-            )
+            self.test_case.entityLink.__root__,
+            self.runner,
+        )
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
+    def _run_results(
+        self, metric: Metrics, column: SQALikeColumn, **kwargs
+    ) -> Optional[int]:
         """compute result of the test case
 
         Args:

@@ -16,12 +16,17 @@ Validator for column value length to be between test case
 
 from typing import Optional
 
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.test_suite.validations.table.base.tableColumnCountToEqual import BaseTableColumnCountToEqualValidator
 from sqlalchemy import inspect
 
-class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, SQAValidatorMixin):
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.table.base.tableColumnCountToEqual import (
+    BaseTableColumnCountToEqualValidator,
+)
+
+
+class TableColumnCountToEqualValidator(
+    BaseTableColumnCountToEqualValidator, SQAValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self) -> Optional[int]:

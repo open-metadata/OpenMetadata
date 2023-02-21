@@ -14,16 +14,20 @@
 Validator for column value length to be between test case
 """
 
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.test_suite.validations.table.base.tableColumnNameToExist import BaseTableColumnNameToExistValidator
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import inspect
+
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.table.base.tableColumnNameToExist import (
+    BaseTableColumnNameToExistValidator,
+)
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnNameToExistValidator(BaseTableColumnNameToExistValidator, SQAValidatorMixin):
+class TableColumnNameToExistValidator(
+    BaseTableColumnNameToExistValidator, SQAValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self):

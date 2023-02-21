@@ -15,14 +15,20 @@ Validator for column value stdv to be between test case
 """
 
 from typing import Optional
+
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValueStdDevToBeBetween import BaseColumnValueStdDevToBeBetweenValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
+from metadata.test_suite.validations.column.base.columnValueStdDevToBeBetween import (
+    BaseColumnValueStdDevToBeBetweenValidator,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
-class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenValidator, PandasValidatorMixin):
+class ColumnValueStdDevToBeBetweenValidator(
+    BaseColumnValueStdDevToBeBetweenValidator, PandasValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
@@ -32,9 +38,9 @@ class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenVali
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                self.runner,
-            )
+            self.test_case.entityLink.__root__,
+            self.runner,
+        )
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
@@ -44,4 +50,3 @@ class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenVali
             column: column
         """
         return self.run_dataframe_results(self.runner, metric, column)
-

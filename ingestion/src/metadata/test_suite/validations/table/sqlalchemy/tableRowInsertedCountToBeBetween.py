@@ -14,18 +14,23 @@
 Validator for column value length to be between test case
 """
 
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.test_suite.validations.table.base.tableRowInsertedCountToBeBetween import BaseTableRowInsertedCountToBeBetweenValidator
-from metadata.utils.sqa_utils import (dispatch_to_date_or_datetime,
-                                      get_partition_col_type)
 from sqlalchemy import Column, text
 
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.table.base.tableRowInsertedCountToBeBetween import (
+    BaseTableRowInsertedCountToBeBetweenValidator,
+)
+from metadata.utils.sqa_utils import (
+    dispatch_to_date_or_datetime,
+    get_partition_col_type,
+)
 
-class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBetweenValidator, SQAValidatorMixin):
+
+class TableRowInsertedCountToBeBetweenValidator(
+    BaseTableRowInsertedCountToBeBetweenValidator, SQAValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
-
 
     def _get_column_name(self):
         """returns the column name to be validated"""
@@ -50,11 +55,11 @@ class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBet
         )
 
         return dict(
-                self.runner.dispatch_query_select_first(
-                    Metrics.ROW_COUNT.value().fn(),
-                    query_filter_={
-                        "filters": [(column_name, "ge", date_or_datetime_fn)],
-                        "or_filter": False,
-                    },
-                )  # type: ignore
-            ).get(Metrics.ROW_COUNT.name)
+            self.runner.dispatch_query_select_first(
+                Metrics.ROW_COUNT.value().fn(),
+                query_filter_={
+                    "filters": [(column_name, "ge", date_or_datetime_fn)],
+                    "or_filter": False,
+                },
+            )  # type: ignore
+        ).get(Metrics.ROW_COUNT.name)

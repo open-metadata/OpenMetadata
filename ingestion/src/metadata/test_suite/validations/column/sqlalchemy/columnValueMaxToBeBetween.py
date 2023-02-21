@@ -15,15 +15,18 @@ Validator for column value max to be between test case
 
 from typing import Optional
 
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValueMaxToBeBetween import \
-    BaseColumnValueMaxToBeBetweenValidator
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
 from sqlalchemy import Column, inspect
 
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.test_suite.validations.column.base.columnValueMaxToBeBetween import (
+    BaseColumnValueMaxToBeBetweenValidator,
+)
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 
-class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin):
+
+class ColumnValueMaxToBeBetweenValidator(
+    BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin
+):
     """ "Validator for column value max to be between test case"""
 
     def _get_column_name(self) -> Column:
@@ -33,9 +36,9 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
             Column: _description_
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                inspect(self.runner.table).c,
-            )
+            self.test_case.entityLink.__root__,
+            inspect(self.runner.table).c,
+        )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case

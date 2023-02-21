@@ -14,19 +14,22 @@
 Validator for column value length to be between test case
 """
 
-from abc import abstractmethod
 import traceback
+from abc import abstractmethod
 from typing import cast
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 ROW_COUNT = "rowCount"
+
 
 class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
     """ "Validator for column value mean to be between test case"""

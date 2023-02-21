@@ -17,15 +17,18 @@ Validator for column value length to be between test case
 from typing import Optional
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.test_suite.validations.table.base.tableRowCountToBeBetween import BaseTableRowCountToBeBetweenValidator
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.table.base.tableRowCountToBeBetween import (
+    BaseTableRowCountToBeBetweenValidator,
+)
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableRowCountToBeBetweenValidator(BaseTableRowCountToBeBetweenValidator, SQAValidatorMixin):
+class TableRowCountToBeBetweenValidator(
+    BaseTableRowCountToBeBetweenValidator, SQAValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:

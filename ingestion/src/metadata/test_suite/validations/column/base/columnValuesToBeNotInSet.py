@@ -14,20 +14,23 @@
 Validator for column value min to be between test case
 """
 
-from abc import abstractmethod
 import traceback
+from abc import abstractmethod
 from ast import literal_eval
 from typing import Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from sqlalchemy import Column
 
 logger = test_suite_logger()
 
@@ -49,7 +52,9 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
-            res = self._run_results(Metrics.COUNT_IN_SET, column, values=forbidden_values)
+            res = self._run_results(
+                Metrics.COUNT_IN_SET, column, values=forbidden_values
+            )
         except (ValueError, RuntimeError) as exc:
             msg = (
                 f"Error computing {self.test_case.name} for "
@@ -76,5 +81,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(
+        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
+    ):
         raise NotImplementedError

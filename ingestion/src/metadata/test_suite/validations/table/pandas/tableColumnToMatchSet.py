@@ -14,23 +14,27 @@
 Validator for column value length to be between test case
 """
 
-import collections
-import traceback
-from typing import Optional
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
-from metadata.test_suite.validations.table.base.tableColumnToMatchSet import BaseTableColumnToMatchSetValidator
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
+from metadata.test_suite.validations.table.base.tableColumnToMatchSet import (
+    BaseTableColumnToMatchSetValidator,
+)
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, PandasValidatorMixin):
+class TableColumnToMatchSetValidator(
+    BaseTableColumnToMatchSetValidator, PandasValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self):

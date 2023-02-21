@@ -17,11 +17,17 @@ Validator for column value length to be between test case
 from typing import Optional
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
-from metadata.test_suite.validations.table.base.tableRowCountToEqual import BaseTableRowCountToEqualValidator
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
+from metadata.test_suite.validations.table.base.tableRowCountToEqual import (
+    BaseTableRowCountToEqualValidator,
+)
 
-class TableRowCountToEqualValidator(BaseTableRowCountToEqualValidator, PandasValidatorMixin):
+
+class TableRowCountToEqualValidator(
+    BaseTableRowCountToEqualValidator, PandasValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:

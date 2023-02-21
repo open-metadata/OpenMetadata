@@ -14,24 +14,29 @@
 Validator for column values to not match regex test case
 """
 
-from abc import abstractmethod
 import traceback
+from abc import abstractmethod
 from typing import Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from sqlalchemy import Column
 
 logger = test_suite_logger()
 
 NOT_LIKE_COUNT = "notLikeCount"
+
 
 class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
     """ "Validator for column values to not match regex test case"""
@@ -49,7 +54,9 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         )
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
-            not_match_count = self._run_results(Metrics.NOT_REGEX_COUNT, column, expression=forbidden_regex)
+            not_match_count = self._run_results(
+                Metrics.NOT_REGEX_COUNT, column, expression=forbidden_regex
+            )
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -74,5 +81,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(
+        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
+    ):
         raise NotImplementedError

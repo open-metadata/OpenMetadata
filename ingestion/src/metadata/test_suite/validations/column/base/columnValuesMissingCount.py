@@ -14,23 +14,27 @@
 Validator for column value length to be between test case
 """
 
-from abc import abstractmethod
 import traceback
+from abc import abstractmethod
 from ast import literal_eval
 from typing import Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from sqlalchemy import Column
 
 logger = test_suite_logger()
 
 NULL_COUNT = "nullCount"
+
 
 class BaseColumnValuesMissingCountValidator(BaseTestValidator):
     """ "Validator for column value missing count to be equal test case"""
@@ -71,7 +75,9 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             # if user supplies missing values, we need to compute the count of missing values
             # in addition to the count of null values
             try:
-                set_res = self._run_results(Metrics.COUNT_IN_SET, column, values=missing_values)
+                set_res = self._run_results(
+                    Metrics.COUNT_IN_SET, column, values=missing_values
+                )
                 null_res += set_res
             except (ValueError, RuntimeError) as exc:
                 msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -93,11 +99,12 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             [TestResultValue(name=NULL_COUNT, value=str(null_res))],
         )
 
-
     @abstractmethod
     def _get_column_name(self):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(
+        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
+    ):
         raise NotImplementedError

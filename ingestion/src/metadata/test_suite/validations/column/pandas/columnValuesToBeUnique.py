@@ -17,13 +17,18 @@ Validator for column values sum to be between test case
 from typing import Optional
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.column.base.columnValuesToBeUnique import BaseColumnValuesToBeUniqueValidator
-from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
-    PandasValidatorMixin
+from metadata.test_suite.validations.column.base.columnValuesToBeUnique import (
+    BaseColumnValuesToBeUniqueValidator,
+)
+from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
+    PandasValidatorMixin,
+)
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
-class ColumnValuesToBeUniqueValidator(BaseColumnValuesToBeUniqueValidator, PandasValidatorMixin):
+class ColumnValuesToBeUniqueValidator(
+    BaseColumnValuesToBeUniqueValidator, PandasValidatorMixin
+):
     """ "Validator for column values sum to be between test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
@@ -33,9 +38,9 @@ class ColumnValuesToBeUniqueValidator(BaseColumnValuesToBeUniqueValidator, Panda
             SQALikeColumn: column
         """
         return self.get_column_name(
-                self.test_case.entityLink.__root__,
-                self.runner,
-            )
+            self.test_case.entityLink.__root__,
+            self.runner,
+        )
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
@@ -46,6 +51,8 @@ class ColumnValuesToBeUniqueValidator(BaseColumnValuesToBeUniqueValidator, Panda
         """
         return self.run_dataframe_results(self.runner, metric, column)
 
-    def _get_unique_count(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _get_unique_count(
+        self, metric: Metrics, column: SQALikeColumn
+    ) -> Optional[int]:
         """Get unique count of values"""
         return self._run_results(metric, column)

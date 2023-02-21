@@ -16,12 +16,17 @@ Validator for column value length to be between test case
 
 from typing import Optional
 
-from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.test_suite.validations.table.base.tableColumnCountToBeBetween import BaseTableColumnCountToBeBetweenValidator
 from sqlalchemy import inspect
 
-class TableColumnCountToBeBetweenValidator(BaseTableColumnCountToBeBetweenValidator, SQAValidatorMixin):
+from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.test_suite.validations.table.base.tableColumnCountToBeBetween import (
+    BaseTableColumnCountToBeBetweenValidator,
+)
+
+
+class TableColumnCountToBeBetweenValidator(
+    BaseTableColumnCountToBeBetweenValidator, SQAValidatorMixin
+):
     """ "Validator for column value mean to be between test case"""
 
     def _run_results(self) -> Optional[int]:

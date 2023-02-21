@@ -14,27 +14,30 @@
 Validator for column values sum to be between test case
 """
 
-from abc import abstractmethod
 import traceback
+from abc import abstractmethod
 from datetime import datetime
 from typing import Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column, Date, DateTime, Time
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import is_date_time
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.sqa_like_column import SQALikeColumn, Type
 from metadata.utils.time_utils import convert_timestamp
-from metadata.utils.sqa_like_column import Type
-from sqlalchemy import Date, DateTime, Time, Column
 
 logger = test_suite_logger()
 
 MIN = "min"
 MAX = "max"
+
 
 class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
     """ "Validator for column values sum to be between test case"""

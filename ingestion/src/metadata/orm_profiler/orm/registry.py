@@ -25,6 +25,7 @@ from metadata.orm_profiler.orm.types.uuid import UUIDString
 from metadata.orm_profiler.registry import TypeRegistry
 from metadata.utils.sqa_like_column import Type
 
+
 class CustomTypes(TypeRegistry):
     BYTES = HexByteString
     UUID = UUIDString
@@ -110,7 +111,8 @@ def is_numeric(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Numeric
     """
-    return issubclass(_type.__class__, Numeric) 
+    return issubclass(_type.__class__, Numeric)
+
 
 def is_date_time(_type) -> bool:
     """
@@ -119,10 +121,11 @@ def is_date_time(_type) -> bool:
     if isinstance(_type, Type):
         return _type.__class__.__name__ in DATATIME_SET
     return (
-            issubclass(_type.__class__, Date)
-            or issubclass(_type.__class__, Time)
-            or issubclass(_type.__class__, DateTime)
+        issubclass(_type.__class__, Date)
+        or issubclass(_type.__class__, Time)
+        or issubclass(_type.__class__, DateTime)
     )
+
 
 def is_quantifiable(_type) -> bool:
     """
@@ -131,7 +134,6 @@ def is_quantifiable(_type) -> bool:
     if isinstance(_type, Type):
         return _type.__class__.__name__ in QUANTIFIABLE_SET
     return is_numeric(_type) or is_integer(_type)
-
 
 
 def is_concatenable(_type) -> bool:

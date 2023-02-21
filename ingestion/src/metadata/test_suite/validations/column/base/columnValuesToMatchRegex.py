@@ -14,22 +14,26 @@
 Validator for column values sum to be between test case
 """
 
-from abc import abstractmethod
 import traceback
+from abc import abstractmethod
 from typing import Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
+from sqlalchemy import Column
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from sqlalchemy import Column
 
 logger = test_suite_logger()
 
 LIKE_COUNT = "likeCount"
+
 
 class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
     """ "Validator for column values sum to be between test case"""
@@ -48,7 +52,9 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
             count = self._run_results(Metrics.COUNT, column)
-            match_count = self._run_results(Metrics.REGEX_COUNT, column, expression=regex)
+            match_count = self._run_results(
+                Metrics.REGEX_COUNT, column, expression=regex
+            )
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -72,5 +78,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(
+        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
+    ):
         raise NotImplementedError
