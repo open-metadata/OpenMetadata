@@ -1323,39 +1323,20 @@ class DbtUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     def test_dbt_manifest_v4_v5_v6(self, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
-        dbt_files = DbtFiles(dbt_manifest=json.loads(MOCK_SAMPLE_MANIFEST_V4_V5_V6))
-        dbt_objects = DbtObjects(
-            dbt_catalog=parse_catalog(dbt_files.dbt_catalog)
-            if dbt_files.dbt_catalog
-            else None,
-            dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
-            dbt_run_results=parse_run_results(dbt_files.dbt_run_results)
-            if dbt_files.dbt_run_results
-            else None,
-        )
-        self.check_dbt_validate(dbt_files=dbt_files)
-        self.check_yield_datamodel(dbt_objects=dbt_objects)
+        self.execute_test(MOCK_SAMPLE_MANIFEST_V4_V5_V6)
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     def test_dbt_manifest_v7(self, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
-        dbt_files = DbtFiles(dbt_manifest=json.loads(MOCK_SAMPLE_MANIFEST_V7))
-        dbt_objects = DbtObjects(
-            dbt_catalog=parse_catalog(dbt_files.dbt_catalog)
-            if dbt_files.dbt_catalog
-            else None,
-            dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
-            dbt_run_results=parse_run_results(dbt_files.dbt_run_results)
-            if dbt_files.dbt_run_results
-            else None,
-        )
-        self.check_dbt_validate(dbt_files=dbt_files)
-        self.check_yield_datamodel(dbt_objects=dbt_objects)
+        self.execute_test(MOCK_SAMPLE_MANIFEST_V7)
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     def test_dbt_manifest_v8(self, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
-        dbt_files = DbtFiles(dbt_manifest=json.loads(MOCK_SAMPLE_MANIFEST_V8))
+        self.execute_test(MOCK_SAMPLE_MANIFEST_V8)
+
+    def execute_test(self, mock_manifest):
+        dbt_files = DbtFiles(dbt_manifest=json.loads(mock_manifest))
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(dbt_files.dbt_catalog)
             if dbt_files.dbt_catalog
