@@ -88,7 +88,9 @@ const AddCustomProperty = () => {
 
   const handleError = (flag: boolean, property: string) => {
     const message =
-      property === 'name' ? 'Invalid Property Name' : 'Type is required';
+      property === 'name'
+        ? t('message.invalid-property-name')
+        : t('message.field-text-is-required', { fieldText: t('label.type') });
 
     setFormErrorData((preVdata) => ({
       ...preVdata,
@@ -182,7 +184,7 @@ const AddCustomProperty = () => {
 
             <Field>
               <label className="tw-block tw-form-label" htmlFor="name">
-                {requiredField('Name:')}
+                {requiredField(`${t('label.name')}:`)}
               </label>
               <input
                 autoComplete="off"
@@ -190,7 +192,7 @@ const AddCustomProperty = () => {
                 data-testid="name"
                 id="name"
                 name="name"
-                placeholder="Name"
+                placeholder={t('label.name')}
                 type="text"
                 value={formData.name}
                 onChange={onChangeHandler}
@@ -200,14 +202,14 @@ const AddCustomProperty = () => {
 
             <Field>
               <label className="tw-block tw-form-label" htmlFor="type">
-                {requiredField('Type:')}
+                {requiredField(`${t('label.type')}:`)}
               </label>
               <select
                 className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="type"
                 id="type"
                 name="type"
-                placeholder="type"
+                placeholder={t('label.type')}
                 value={formData.type || ''}
                 onChange={onChangeHandler}>
                 <option value="">

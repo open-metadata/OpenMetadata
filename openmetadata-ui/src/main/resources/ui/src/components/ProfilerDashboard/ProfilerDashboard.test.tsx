@@ -139,8 +139,10 @@ describe('Test ProfilerDashboardPage component', () => {
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = screen.queryByText('ProfilerTab component');
     const DataQualityTab = await screen.findByText('DataQualityTab component');
-    const deletedTestSwitch = await screen.findByText('Deleted Tests');
-    const statusDropdown = await screen.findByText('Status');
+    const deletedTestSwitch = await screen.findByText(
+      'label.deleted-test-plural'
+    );
+    const statusDropdown = await screen.findByText('label.status');
 
     expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
