@@ -34,6 +34,7 @@ class ProfilerInterfaceArgs(BaseModel):
     """Profiler Interface Args Model"""
 
     service_connection_config: Any
+    source_config: Any
     sqa_metadata_obj: Optional[MetaData]
     ometa_client: Optional[OpenMetadata]
     thread_count: Optional[float]

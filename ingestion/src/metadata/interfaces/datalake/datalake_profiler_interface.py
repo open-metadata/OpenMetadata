@@ -63,7 +63,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             if self.table_entity.fullyQualifiedName
             else None
         )
-
+        self.source_config = profiler_interface_args.source_config
         self.profile_sample_config = profiler_interface_args.profile_sample_config
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None

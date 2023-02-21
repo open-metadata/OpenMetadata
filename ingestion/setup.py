@@ -65,6 +65,10 @@ COMMONS = {
     },
 }
 
+pii_requirements = {
+    "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz#egg=en_core_web",
+    "spacy==3.5.0",
+}
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
@@ -199,6 +203,7 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib~=0.1"},
     "trino": {"trino[sqlalchemy]"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
+    "pii-processor": pii_requirements,
 }
 
 dev = {

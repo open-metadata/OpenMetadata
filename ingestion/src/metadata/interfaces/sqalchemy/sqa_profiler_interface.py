@@ -59,7 +59,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         self.service_connection_config = (
             profiler_interface_args.service_connection_config
         )
-
+        self.source_config = profiler_interface_args.source_config
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
             self.table_entity.fullyQualifiedName.__root__

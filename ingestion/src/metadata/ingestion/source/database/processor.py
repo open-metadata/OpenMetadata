@@ -18,10 +18,12 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import List, Optional
 
+import spacy
 from commonregex import CommonRegex
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -32,6 +34,12 @@ from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, OpenMetadataConnection
 
 PII = "PII"
+
+
+class Scanner(ABC):
+    @abstractmethod
+    def scan(self, text):
+        """scan the text and return array of PiiTypes that are found"""
 
 
 class PiiTypes(Enum):
@@ -64,15 +72,45 @@ class TagType(Enum):
     NONSENSITIVE = "NonSensitive"
 
 
+class NERScanner(Scanner):
+    """A scanner that uses Spacy NER for entity recognition"""
+
+    def __init__(self):
+        self.nlp = spacy.load("en_core_web_sm")
+
+    def scan(self, text):
+        """Scan the text and return an array of PiiTypes that are found"""
+        logging.debug("Processing '%s'", text)
+        doc = self.nlp(text)
+        pii_types = f"{PII}.{TagType.NONSENSITIVE.value}"
+
+        for ent in doc.ents:
+            logging.debug("Found %s", ent.label_)
+            if ent.label_ in ColumnNameScanner.sensitive_regex:
+                pii_types = f"{PII}.{TagType.SENSITIVE.value}"
+                return pii_types
+
+        return pii_types
+
+    def process(self, table_data: TableData, table_entity: Table, client: OpenMetadata):
+        len_of_rows = len(table_data.rows[0] if table_data.rows else [])
+        for idx in range(len_of_rows):
+            pii_tag_type = ""
+            for tag in table_entity.columns[idx].tags or []:
+                if PII in tag.tagFQN.__root__:
+                    continue
+            for row in table_data.rows:
+                pii_tag_type = self.scan(str(row[idx]))
+            client.patch_column_tag(
+                entity_id=table_entity.id,
+                column_name=table_entity.columns[idx].name.__root__,
+                tag_fqn=pii_tag_type,
+            )
+
+
 class ColumnPIIType(BaseModel):
     pii_types: PiiTypes
     tag_type: TagType
-
-
-class Scanner(ABC):
-    @abstractmethod
-    def scan(self, text):
-        """scan the text and return array of PiiTypes that are found"""
 
 
 class RegexScanner(Scanner):

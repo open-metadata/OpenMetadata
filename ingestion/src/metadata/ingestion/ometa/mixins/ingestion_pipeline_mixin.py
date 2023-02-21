@@ -105,3 +105,19 @@ class OMetaIngestionPipelineMixin:
         if resp:
             return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
         return None
+
+    def get_ingestion_pipeline_by_name(self, name) -> Optional[IngestionPipeline]:
+        """
+        Get pipeline statues based on name
+
+        Args:
+            name (str): Ingestion Pipeline Name
+        """
+        resp = self.client.get(
+            f"/services/ingestionPipelines?fields=owner,pipelineStatuses&service={name}",
+        )
+
+        if hasattr(resp, "sourceConfig"):
+            return IngestionPipeline.parse_obj(resp)
+
+        return None

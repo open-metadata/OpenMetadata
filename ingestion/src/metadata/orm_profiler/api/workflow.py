@@ -257,6 +257,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
     def create_profiler_interface(
         self,
+        source_config,
         service_connection_config,
         table_entity: Table,
         sqa_metadata_obj,
@@ -266,6 +267,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
             self._table_entity = table_entity
             self._profiler_interface_args = ProfilerInterfaceArgs(
+                source_config=source_config,
                 service_connection_config=service_connection_config,
                 sqa_metadata_obj=sqa_metadata_obj,
                 ometa_client=create_ometa_client(self.metadata_config),
@@ -426,7 +428,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             DatabaseService.__config__, copy_service_connection_config
         )
 
-        return copy_service_connection_config
+        return copy_service_connection_config, self.config.source.sourceConfig
 
     def run_profiler_workflow(self):
         """
@@ -442,12 +444,13 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             )
 
         for database in databases:
-            copied_service_config = self.copy_service_config(database)
+            copied_service_config, source_config = self.copy_service_config(database)
             try:
                 sqa_metadata_obj = MetaData()
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(
+                            source_config=source_config,
                             sqa_metadata_obj=sqa_metadata_obj,
                             service_connection_config=copied_service_config,
                             table_entity=entity,
