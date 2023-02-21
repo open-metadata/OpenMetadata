@@ -150,7 +150,7 @@ DATALAKE_DATA_FRAME = DataFrame(
             (TestCaseResult, "10", None, TestCaseStatus.Success),
         ),
         (
-            "test_case_column_values_missing_count_to_be_equal_missing_valuesl",
+            "test_case_column_values_missing_count_to_be_equal_missing_values",
             "columnValuesMissingCount",
             "COLUMN",
             (TestCaseResult, "20", None, TestCaseStatus.Failed),
