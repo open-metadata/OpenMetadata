@@ -267,9 +267,11 @@ const TagsPage = () => {
     if (errorDataClassification || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
+        errData['name'] = t('message.field-text-is-required', {
+          fieldText: t('label.name'),
+        });
       } else if (delimiterRegex.test(data.name)) {
-        errData['name'] = 'Name with delimiters are not allowed';
+        errData['name'] = t('message.entity-delimiters-not-allowed');
       } else if (
         !isUndefined(
           classifications.find(
@@ -277,11 +279,15 @@ const TagsPage = () => {
           )
         )
       ) {
-        errData['name'] = 'Name already exists';
+        errData['name'] = t('message.entity-already-exists', {
+          entity: t('label.name'),
+        });
       } else if (data.name.length < 2 || data.name.length > 64) {
-        errData['name'] = 'Name size must be between 2 and 64';
+        errData['name'] = t('message.entity-must-be-between-2-and-64', {
+          entity: t('label.name'),
+        });
       } else if (!isUrlFriendlyName(data.name.trim())) {
-        errData['name'] = 'Special characters are not allowed';
+        errData['name'] = t('message.special-character-not-allowed');
       }
       setErrorDataClassification(errData);
 

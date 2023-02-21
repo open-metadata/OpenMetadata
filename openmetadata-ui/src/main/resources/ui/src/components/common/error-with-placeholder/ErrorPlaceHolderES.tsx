@@ -16,6 +16,7 @@ import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from 'utils/i18next/LocalUtil';
 import AppState from '../../../AppState';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NoDataFoundPlaceHolder } from '../../../constants/Services.constant';
@@ -30,29 +31,26 @@ type Props = {
 const stepsData = [
   {
     step: 1,
-    title: 'Ingest Sample Data',
-    description:
-      'Run sample data to ingest sample data assets into your OpenMetadata.',
+    title: i18n.t('label.ingest-sample-data'),
+    description: i18n.t('message.run-sample-data-to-ingest-sample-data'),
     link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
   },
   {
     step: 2,
-    title: 'Start Elasticsearch Docker',
-    description: 'Ensure that the Elasticsearch docker is up and running.',
+    title: i18n.t('label.start-elasticsearch-docker'),
+    description: i18n.t('message.ensure-elasticsearch-is-up-and-running'),
     link: 'https://docs.open-metadata.org/quick-start/local-deployment',
   },
   {
     step: 3,
-    title: 'Install Service Connectors',
-    description:
-      'There are a lot of connectors available here to index data from your services. Please checkout our connectors.',
+    title: i18n.t('label.install-service-connectors'),
+    description: i18n.t('message.service-connectors-message'),
     link: 'https://docs.open-metadata.org/integrations/connectors',
   },
   {
     step: 4,
-    title: 'More Help',
-    description:
-      'If you are still running into issues, please reach out to us on slack.',
+    title: i18n.t('label.more-help'),
+    description: i18n.t('message.still-running-into-issue'),
     link: 'https://slack.open-metadata.org',
   },
 ];
@@ -64,7 +62,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
     return isAuthDisabled
       ? AppState.users?.length > 0
         ? AppState.users[0].displayName || AppState.users[0].name
-        : 'User'
+        : t('label.user')
       : AppState.userDetails.displayName || AppState.userDetails.name;
   };
   const noRecordForES = () => {
@@ -125,7 +123,9 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
         <div className="tw-mb-3 tw-text-center">
           <p>
             <span>{t('label.welcome-to-open-metadata')} </span>
-            <span data-testid="error-text">{`We are unable to ${errorText} Elasticsearch for entity indexes.`}</span>
+            <span data-testid="error-text">
+              {t('message.unable-to-error-elasticsearch', { error: errorText })}
+            </span>
           </p>
 
           <p>{t('message.elasticsearch-setup')}</p>
