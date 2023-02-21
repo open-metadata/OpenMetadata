@@ -14,52 +14,19 @@
 Validator for column value length to be between test case
 """
 
-import traceback
+from typing import Optional
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.test_suite.validations.mixins.pandas_validator_mixin import \
     PandasValidatorMixin
-from metadata.utils.entity_link import get_table_fqn
+from metadata.test_suite.validations.table.base.tableColumnCountToEqual import BaseTableColumnCountToEqualValidator
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableColumnCountToEqualValidator(BaseTestValidator, PandasValidatorMixin):
+class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, PandasValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
-
-        Returns:
-            TestCaseResult:
-        """
-        try:
-            count = len(self.runner.columns)
-        except Exception as exc:
-            msg = (
-                f"Error computing {self.test_case.name} for "
-                f"{get_table_fqn(self.test_case.entityLink.__root__)}: {exc}"  # type: ignore
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="columnCount", value=None)],
-            )
-
-        expected_count = self.get_test_case_param_value(
-            self.test_case.parameterValues, "columnCount", int  # type: ignore
-        )
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(count == expected_count),
-            f"Found {count} columns vs. the expected {expected_count}",
-            [TestResultValue(name="columnCount", value=str(count))],
-        )
+    def _run_results(self) -> Optional[int]:
+        """compute result of the test case"""
+        return len(self.runner.columns)

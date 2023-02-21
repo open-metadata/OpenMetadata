@@ -14,64 +14,20 @@
 Validator for column value length to be between test case
 """
 
-import traceback
+from typing import Optional
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
     SQAValidatorMixin
+from metadata.test_suite.validations.table.base.tableRowCountToBeBetween import BaseTableRowCountToBeBetweenValidator
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
-class TableRowCountToBeBetweenValidator(BaseTestValidator, SQAValidatorMixin):
+class TableRowCountToBeBetweenValidator(BaseTableRowCountToBeBetweenValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
-
-        Returns:
-            TestCaseResult:
-        """
-        try:
-            res = self.run_query_results(
-                self.runner,
-                Metrics.ROW_COUNT,
-            )
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="rowCount", value=None)],
-            )
-
-        min_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "minValue",
-            float,
-            default=float("-inf"),
-        )
-
-        max_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "maxValue",
-            float,
-            default=float("inf"),
-        )
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            TestCaseStatus.Success
-            if min_bound <= res <= max_bound
-            else TestCaseStatus.Failed,
-            f"Found rowCount={res} vs. the expected min={min_bound},  max={max_bound}.",
-            [TestResultValue(name="rowCount", value=str(res))],
-        )
+    def _run_results(self, metric: Metrics) -> Optional[int]:
+        """compute result of the test case"""
+        return self.run_query_results(self.runner, metric)

@@ -14,65 +14,42 @@
 Validator for column value length to be between test case
 """
 
-import traceback
-from typing import cast
-
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
     SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
+from metadata.test_suite.validations.table.base.tableRowInsertedCountToBeBetween import BaseTableRowInsertedCountToBeBetweenValidator
 from metadata.utils.sqa_utils import (dispatch_to_date_or_datetime,
                                       get_partition_col_type)
 from sqlalchemy import Column, text
 
-logger = test_suite_logger()
 
-
-class TableRowInsertedCountToBeBetweenValidator(BaseTestValidator, SQAValidatorMixin):
+class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBetweenValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
 
-        Returns:
-            TestCaseResult:
-        """
-        column_name = self.get_test_case_param_value(
+    def _get_column_name(self):
+        """returns the column name to be validated"""
+        return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "columnName",
             Column,
         )
-        range_type = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "rangeType",
-            str,
+
+    def _run_results(self, column_name: str, range_type: str, range_interval: int):
+        """Execute the validation for the given test case
+
+        Args:
+            column_name (str): column name
+            range_type (str): range type (DAY, HOUR, MONTH, YEAR)
+            range_interval (int): range interval
+        """
+        date_or_datetime_fn = dispatch_to_date_or_datetime(
+            range_interval,
+            text(range_type),
+            get_partition_col_type(column_name.name, self.runner.table.__table__.c),  # type: ignore
         )
-        range_interval = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "rangeInterval",
-            int,
-        )
 
-        try:
-            if any(var is None for var in [column_name, range_type, range_interval]):
-                raise ValueError(
-                    "No value found for columnName, rangeType or rangeInterval"
-                )
-
-            range_interval = cast(int, range_interval)
-            range_type = cast(str, range_type)
-
-            date_or_datetime_fn = dispatch_to_date_or_datetime(
-                range_interval,
-                text(range_type),
-                get_partition_col_type(column_name.name, self.runner.table.__table__.c),  # type: ignore
-            )
-
-            res = dict(
+        return dict(
                 self.runner.dispatch_query_select_first(
                     Metrics.ROW_COUNT.value().fn(),
                     query_filter_={
@@ -81,34 +58,3 @@ class TableRowInsertedCountToBeBetweenValidator(BaseTestValidator, SQAValidatorM
                     },
                 )  # type: ignore
             ).get(Metrics.ROW_COUNT.name)
-
-        except Exception as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="rowCount", value=None)],
-            )
-
-        min_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "min",
-            int,
-            float("-inf"),
-        )
-        max_bound = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "max",
-            int,
-            float("inf"),
-        )
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(min_bound <= res <= max_bound),
-            f"Found insertedRows={res} vs. the expected min={min_bound}, max={max_bound}.",
-            [TestResultValue(name="rowCount", value=str(res))],
-        )

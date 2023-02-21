@@ -14,66 +14,17 @@
 Validator for column value length to be between test case
 """
 
-import collections
-import traceback
-from typing import cast
-
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import \
     SQAValidatorMixin
-from metadata.utils.logger import test_suite_logger
+from metadata.test_suite.validations.table.base.tableCustomSQLQuery import BaseTableCustomSQLQueryValidator
 from sqlalchemy import text
 
-logger = test_suite_logger()
 
-
-class TableCustomSQLQueryValidator(BaseTestValidator, SQAValidatorMixin):
+class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """ "Validator for column value mean to be between test case"""
 
-    def compare(self, expected_names, actual_names) -> bool:
-        return collections.Counter(expected_names) == collections.Counter(actual_names)
-
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
-
-        Returns:
-            TestCaseResult:
-        """
-        sql_expression = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "sqlExpression",
-            str,
-        )
-        sql_expression = cast(str, sql_expression)  # satisfy mypy
-
-        try:
-            rows = self.runner._session.execute(  # pylint: disable=protected-access
+    def _run_results(self, sql_expression):
+        """compute result of the test case"""
+        return self.runner._session.execute(  # pylint: disable=protected-access
                 text(sql_expression)
             ).all()
-        except ValueError as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
-            logger.debug(traceback.format_exc())
-            logger.warning(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name="resultRowCount", value=None)],
-            )
-
-        if not rows:
-            status = TestCaseStatus.Success
-            result_value = 0
-        else:
-            status = TestCaseStatus.Failed
-            result_value = len(rows)
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            status,
-            f"Found {result_value} row(s). Test query is expected to return 0 row.",
-            [TestResultValue(name="resultRowCount", value=str(result_value))],
-        )
