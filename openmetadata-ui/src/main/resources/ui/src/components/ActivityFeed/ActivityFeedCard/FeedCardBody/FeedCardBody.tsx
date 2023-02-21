@@ -14,7 +14,7 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getFrontEndFormat,
@@ -25,12 +25,6 @@ import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEd
 import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
-
-export type EditorContentRef = {
-  getEditorValue: () => string;
-  clearEditorValue: () => string;
-  setDefaultEditorValue: () => void;
-};
 
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
@@ -43,7 +37,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   onCancelPostUpdate,
 }) => {
   const { t } = useTranslation();
-  const editorRef = useRef<EditorContentRef>();
   const [postMessage, setPostMessage] = useState<string>(message);
 
   const handleMessageUpdate = (updatedMessage: string) => {
@@ -57,9 +50,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onCancelPostUpdate();
-    if (editorRef.current) {
-      editorRef.current?.setDefaultEditorValue();
-    }
+    setPostMessage(getDefaultValue(message));
   };
 
   const getDefaultValue = (defaultMessage: string) => {
@@ -95,7 +86,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             </div>
           }
           editorClass="is_edit_post"
-          editorRef={editorRef}
           onSave={handleSave}
           onTextChange={handleMessageUpdate}
         />
@@ -105,7 +95,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           markdown={getFrontEndFormat(postMessage)}
         />
       ),
-    [isEditPost, message, postMessage, editorRef]
+    [isEditPost, message, postMessage]
   );
 
   useEffect(() => {
