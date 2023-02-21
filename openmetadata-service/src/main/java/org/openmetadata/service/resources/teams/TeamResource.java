@@ -229,7 +229,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getTeamByID",
-      summary = "Get a team",
+      summary = "Get a team by id",
       tags = "teams",
       description = "Get a team by `id`.",
       responses = {
@@ -389,7 +389,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteTeam",
-      summary = "Delete a team",
+      summary = "Delete a team by id",
       tags = "teams",
       description = "Delete a team by given `id`.",
       responses = {
@@ -416,7 +416,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteTeamByName",
-      summary = "Delete a team",
+      summary = "Delete a team by name",
       tags = "teams",
       description = "Delete a team by given `name`.",
       responses = {
@@ -439,9 +439,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted Team.",
+      summary = "Restore a soft deleted team",
       tags = "teams",
-      description = "Restore a soft deleted Team.",
+      description = "Restore a soft deleted team.",
       responses = {
         @ApiResponse(
             responseCode = "200",

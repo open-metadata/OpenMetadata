@@ -219,7 +219,7 @@ class SqlColumnHandlerMixin:
                     precision = ColumnTypeParser.check_col_precision(
                         col_type, column["type"]
                     )
-                    if col_type == "NULL" or col_type is None:
+                    if col_type is None:
                         col_type = DataType.VARCHAR.name
                         data_type_display = col_type.lower()
                         logger.warning(

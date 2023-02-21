@@ -76,9 +76,9 @@ public class LineageResource {
   @Path("/{entity}/{id}")
   @Operation(
       operationId = "getLineage",
-      summary = "Get lineage",
+      summary = "Get lineage by Id",
       tags = "lineage",
-      description = "Get lineage details for an entity identified by `id`.",
+      description = "Get lineage details for an entity identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -117,7 +117,7 @@ public class LineageResource {
   @Path("/{entity}/name/{fqn}")
   @Operation(
       operationId = "getLineageByFQN",
-      summary = "Get lineage by name",
+      summary = "Get lineage by fully qualified name",
       tags = "lineage",
       description = "Get lineage details for an entity identified by fully qualified name.",
       responses = {

@@ -263,9 +263,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/generateRandomPwd")
   @Operation(
       operationId = "generateRandomPwd",
-      summary = "generateRandomPwd",
+      summary = "Generate a random password",
       tags = "users",
-      description = "Generate a random pwd",
+      description = "Generate a random password",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
@@ -995,13 +995,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/login")
   @Operation(
       operationId = "loginUserWithPwd",
-      summary = "Login User by Password",
+      summary = "Login User with email (plain-text) and Password (encoded in base 64)",
       tags = "users",
-      description = "Login a user with Password",
+      description = "Login User with email(plain-text) and Password (encoded in base 64)",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "Returns the Jwt Token Response ",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")

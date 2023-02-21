@@ -210,10 +210,10 @@ const AddGlossaryTerm = ({
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
     const updatedTerms = relatedTerms.map(function (term) {
-      return term.fullyQualifiedName!;
+      return term.fullyQualifiedName || '';
     });
     const updatedReviewers = reviewer.map(function (r) {
-      return r.fullyQualifiedName!;
+      return r.fullyQualifiedName || '';
     });
 
     if (validateForm(updatedReference)) {
@@ -378,7 +378,7 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder="Enter comma seprated keywords"
+              placeholder={t('message.enter-comma-separated-keywords')}
               type="text"
               value={synonyms}
               onChange={handleValidation}
