@@ -64,6 +64,7 @@ services:
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
     environment:
+      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
@@ -111,9 +112,11 @@ services:
     expose:
       - 8585
       - 8586
+      - 5005
     ports:
       - "8585:8585"
       - "8586:8586"
+      - "5005:5005"
     depends_on:
       elasticsearch:
         condition: service_started
@@ -131,13 +134,6 @@ services:
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
-    depends_on:
-      elasticsearch:
-        condition: service_started
-      postgresql:
-        condition: service_healthy
-      openmetadata-server:
-        condition: service_started
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -151,6 +147,13 @@ services:
     entrypoint: /bin/bash
     command:
       - "/opt/airflow/ingestion_dependency.sh"
+    depends_on:
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_started
     expose:
       - 8080
     ports:
@@ -162,6 +165,7 @@ services:
       - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:z  # Need 600 permissions to run DockerOperator
+
 
 networks:
   local_app_net:
