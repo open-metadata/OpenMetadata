@@ -15,18 +15,12 @@ Validator for column value length to be between test case
 """
 
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
 from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
 from metadata.test_suite.validations.table.base.tableColumnToMatchSet import (
     BaseTableColumnToMatchSetValidator,
 )
-from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()

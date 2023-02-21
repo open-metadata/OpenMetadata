@@ -19,7 +19,7 @@ from abc import abstractmethod
 from datetime import datetime
 from typing import Union
 
-from sqlalchemy import Column, Date, DateTime, Time
+from sqlalchemy import Column
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -30,7 +30,7 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import is_date_time
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.sqa_like_column import SQALikeColumn, Type
+from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.utils.time_utils import convert_timestamp
 
 logger = test_suite_logger()

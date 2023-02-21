@@ -14,7 +14,6 @@
 Validator for column value length to be between test case
 """
 
-from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )

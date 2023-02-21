@@ -18,13 +18,7 @@ from typing import Optional
 
 from sqlalchemy import Column, inspect
 
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.test_suite.validations.base_test_handler import BaseTestValidator
 from metadata.test_suite.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,
 )
