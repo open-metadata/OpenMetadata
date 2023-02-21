@@ -12,9 +12,10 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, HTMLAttributes, useRef, useState } from 'react';
+import React, { FC, HTMLAttributes, useState } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { FeedEditor } from '../../FeedEditor/FeedEditor';
+import { EditorContentRef } from '../ActivityFeedCard/FeedCardBody/FeedCardBody';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
 
@@ -26,12 +27,8 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   editAction?: React.ReactNode;
   onSave?: (value: string) => void;
   onTextChange?: (message: string) => void;
+  editorRef: React.MutableRefObject<EditorContentRef | undefined>;
 }
-
-export type EditorContentRef = {
-  getEditorValue: () => string;
-  clearEditorValue: () => string;
-};
 
 const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   className,
@@ -42,8 +39,8 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   defaultValue,
   onTextChange,
   editAction,
+  editorRef,
 }) => {
-  const editorRef = useRef<EditorContentRef>();
   const [editorValue, setEditorValue] = useState<string>('');
 
   const onChangeHandler = (value: string) => {

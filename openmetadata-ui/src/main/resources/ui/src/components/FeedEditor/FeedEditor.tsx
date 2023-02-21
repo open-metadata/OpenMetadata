@@ -167,6 +167,10 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       clearEditorValue() {
         setValue('');
       },
+      setDefaultEditorValue() {
+        setValue(defaultValue ?? '');
+        onChangeHandler?.(defaultValue ?? '');
+      },
     }));
 
     return (
