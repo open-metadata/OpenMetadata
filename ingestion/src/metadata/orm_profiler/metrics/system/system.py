@@ -319,15 +319,11 @@ def _(
     metric_results: List[Dict] = []
 
     information_schema_query_history = """
-    SELECT * FROM table(information_schema.query_history(
-        end_time_range_start=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_start}, CURRENT_TIMESTAMP())),
-        end_time_range_end=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_end}, CURRENT_TIMESTAMP())),
-        result_limit=>10000
-    ))
-    WHERE QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
-    order by start_time DESC;
+        SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+        WHERE
+        start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE');
     """
-
     result_scan = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
@@ -342,17 +338,7 @@ def _(
 
     # limit of results is 10K. We'll query range of 1 hours to make sure we
     # get all the necessary data.
-    for decrement in range(24):
-        cursor = session.execute(
-            text(
-                dedent(
-                    information_schema_query_history.format(
-                        decrement_start=decrement + 1, decrement_end=decrement
-                    )
-                )
-            )
-        )
-        rows.extend(cursor.fetchall())
+    rows = session.execute(text(information_schema_query_history)).fetchall()
 
     query_results = [
         QueryResult(
