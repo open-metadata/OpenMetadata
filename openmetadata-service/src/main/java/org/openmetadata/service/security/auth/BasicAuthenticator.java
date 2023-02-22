@@ -40,7 +40,6 @@ import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
@@ -336,7 +335,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), request);
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
-            .generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+            .generateJWTToken(
+                storedUser.getName(), storedUser.getEmail(), loginConfiguration.getJwtTokenExpiryTime(), false);
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");
     response.setAccessToken(jwtAuthMechanism.getJWTToken());
@@ -413,7 +413,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser);
+    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   @Override

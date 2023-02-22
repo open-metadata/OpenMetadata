@@ -115,7 +115,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     User storedUser = lookUserInProvider(loginRequest.getEmail());
     validatePassword(storedUser, loginRequest.getPassword());
     User omUser = checkAndCreateUser(loginRequest.getEmail());
-    return getJwtResponse(omUser);
+    return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   private User checkAndCreateUser(String email) throws IOException {
