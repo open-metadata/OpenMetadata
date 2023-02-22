@@ -34,7 +34,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)

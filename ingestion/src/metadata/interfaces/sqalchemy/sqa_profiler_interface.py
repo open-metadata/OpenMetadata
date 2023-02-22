@@ -33,10 +33,10 @@ from metadata.interfaces.profiler_protocol import (
     ProfilerProtocol,
 )
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
-from metadata.orm_profiler.metrics.core import MetricTypes
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
+from metadata.profiler.metrics.core import MetricTypes
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.profiler.runner import QueryRunner
+from metadata.profiler.profiler.sampler import Sampler
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger

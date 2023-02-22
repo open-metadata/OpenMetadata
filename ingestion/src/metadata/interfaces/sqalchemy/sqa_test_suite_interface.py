@@ -31,9 +31,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
-from metadata.orm_profiler.api.models import ProfileSampleConfig
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
+from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.profiler.runner import QueryRunner
+from metadata.profiler.profiler.sampler import Sampler
 from metadata.test_suite.validations.validator import Validator
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class

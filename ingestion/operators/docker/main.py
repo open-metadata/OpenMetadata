@@ -6,7 +6,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineType,
 )
 from metadata.ingestion.api.workflow import Workflow
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 WORKFLOW_MAP = {

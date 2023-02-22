@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 """
 Check Partitioned Table in Profiler Workflow
@@ -116,7 +116,7 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 
 class ProfilerPartitionUnitTest(TestCase):
-    @patch("metadata.orm_profiler.api.workflow.ProfilerWorkflow._validate_service_name")
+    @patch("metadata.profiler.api.workflow.ProfilerWorkflow._validate_service_name")
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")

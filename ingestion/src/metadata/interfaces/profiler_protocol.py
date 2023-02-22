@@ -26,8 +26,8 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.models import ProfileSampleConfig
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.metrics.registry import Metrics
 
 
 class ProfilerInterfaceArgs(BaseModel):

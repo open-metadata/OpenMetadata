@@ -32,9 +32,9 @@ from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
 )
-from metadata.orm_profiler.metrics.core import MetricTypes
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
+from metadata.profiler.metrics.core import MetricTypes
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn

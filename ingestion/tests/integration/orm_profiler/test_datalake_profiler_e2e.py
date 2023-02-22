@@ -35,7 +35,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,

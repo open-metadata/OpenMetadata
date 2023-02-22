@@ -29,10 +29,10 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.metrics.core import add_props
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.orm.functions.sum import SumFn
-from metadata.orm_profiler.profiler.core import Profiler
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.profiler.core import Profiler
 
 Base = declarative_base()
 

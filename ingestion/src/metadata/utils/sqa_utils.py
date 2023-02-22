@@ -21,7 +21,7 @@ from sqlalchemy import Column, and_, or_
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import TextClause
 
-from metadata.orm_profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from metadata.profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
 from metadata.utils.logger import query_runner_logger
 
 logger = query_runner_logger()
