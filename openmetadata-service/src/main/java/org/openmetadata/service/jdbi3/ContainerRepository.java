@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -71,7 +70,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.withObjectStoreService(parentObjectStoreServiceRef);
   }
 
-  // list containers by FQN TODO - only first level
   private List<EntityReference> getChildrenContainers(Container container) throws IOException {
     if (container == null) {
       return Collections.emptyList();
