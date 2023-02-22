@@ -1,6 +1,5 @@
 {
   "label": {
-    "Monday": "Monday",
     "aborted": "Aborted",
     "accept-suggestion": "Accept Suggestion",
     "access": "Access",
@@ -461,6 +460,7 @@
     "mode": "Mode",
     "model-name": "Model Name",
     "model-store": "Model Store",
+    "monday": "Monday",
     "month": "Month",
     "more": "More",
     "more-help": "More Help",

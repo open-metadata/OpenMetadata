@@ -112,7 +112,7 @@ export const getDayOptions = () => {
       value: 0,
     },
     {
-      label: i18n.t('label.Monday'),
+      label: i18n.t('label.monday'),
       value: 1,
     },
     {
@@ -128,7 +128,7 @@ export const getDayOptions = () => {
       value: 4,
     },
     {
-      label: i18n.t('label.Friday'),
+      label: i18n.t('label.friday'),
       value: 5,
     },
     {
