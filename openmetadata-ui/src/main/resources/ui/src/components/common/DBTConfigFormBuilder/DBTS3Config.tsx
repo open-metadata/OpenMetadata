@@ -140,7 +140,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="aws-region">
-          {requiredField('AWS Region')}
+          {requiredField(t('label.aws-region'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {`${t('label.aws-region')}.`}

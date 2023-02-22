@@ -132,7 +132,9 @@ Click on reindex all
 in the dialog box choose Recreate Indexes to All
 <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
 
-## Troubleshooting for 0.13.0 Release
+## Troubleshooting
+
+### With 0.13.0 Release
 
 If your helm dependencies upgrade fails with the below command result -
 
@@ -150,3 +152,35 @@ In order to work around this issue, you can either default the persistence size 
 kubectl patch pvc data-mysql-0 -p '{"spec":{"resources":{"requests":{"storage":"50Gi"}}}}'
 kubectl patch pv <mysql-pv> -p '{"spec":{"storage":"50Gi"}}'
 ```
+
+### MySQL Pod fails on Upgrade
+
+<Warning>
+
+This issue will only occur if you are using openmetadata-dependencies helm chart version `0.0.49` and `0.0.50` and upgrading to latest helm chart release.
+
+</Warning>
+
+If your helm dependencies upgrade fails with the below command result -
+
+```
+
+Startup probe failed: mysqladmin: [Warning] Using a password on the command line interface can be insecure. mysqladmin: connect to server at 'localhost' failed error: 'Can't connect to local MySQL server through socket '/opt/bitnami/mysql/tmp/mysql.sock' (2)' Check that mysqld is running and that the socket: '/opt/bitnami/mysql/tmp/mysql.sock' exists!
+
+```
+
+This issue is related to a minor change that affected the MySQL Database Engine version upgrade from `8.0.28` to `8.0.29` for the Helm Chart Release `0.0.49` and `0.0.50`. Then the registry url was updated as we found a work around to fetch previous versions of [bitnami/mysql](https://github.com/bitnami/charts/issues/10833) Helm Releases.
+
+As a result of the above fixes, anyone who is on OpenMetadata Dependencies Helm Chart Version `0.0.49` and `0.0.50` is affected with the above issue when upgrading for mysql. In order to fix this issue, make sure to follow the below steps -
+
+1. Backup the Database using Metadata Backup CLI as mentioned [here](#backup-your-data)
+
+2. Uninstall OpenMetadata Dependencies Helm Chart (`helm uninstall openmetadata-dependencies`)
+
+3. Remove the unmanaged volume for MySQL Stateful Set Kubernetes Object (`kubectl delete pvc data-mysql-0`)
+
+4. Install the latest version of [OpenMetadata Dependencies Helm Chart](/deployment/kubernetes)
+
+5. Restore the Database using Metadata Restore CLI as mentioned [here](/deployment/backup-restore-metadata)
+
+6. Next, Proceed with upgrade for OpenMetadata Helm Chart as mentioned [here](#upgrade-openmetdata)
