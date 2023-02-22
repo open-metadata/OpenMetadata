@@ -102,6 +102,7 @@ const ExplorePage: FunctionComponent = () => {
       getExplorePath({
         tab: tabsInfo[nSearchIndex].path,
         extraParameters: { page: '1' },
+        isPersistFilters: false,
       })
     );
     setAdvancedSearchQueryFilter(undefined);
