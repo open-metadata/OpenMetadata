@@ -44,7 +44,7 @@ const stepsData = [
   {
     step: 3,
     title: i18n.t('label.install-service-connectors'),
-    description: i18n.t('message.service-connectors-message'),
+    description: i18n.t('message.checkout-service-connectors-doc'),
     link: 'https://docs.open-metadata.org/integrations/connectors',
   },
   {

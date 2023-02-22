@@ -281,7 +281,7 @@ const TagsPage = () => {
           entity: t('label.name'),
         });
       } else if (data.name.length < 2 || data.name.length > 64) {
-        errData['name'] = t('message.entity-must-be-between-2-and-64', {
+        errData['name'] = t('message.entity-size-must-be-between-2-and-64', {
           entity: t('label.name'),
         });
       } else if (!isUrlFriendlyName(data.name.trim())) {
