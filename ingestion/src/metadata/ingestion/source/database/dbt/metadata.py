@@ -456,7 +456,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
-                            database_name=manifest_node.database,
+                            database_name=None
+                            if manifest_node.database == "None"
+                            else manifest_node.database,
                             schema_name=manifest_node.schema_,
                             table_name=model_name,
                         ),
@@ -510,7 +512,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=parent_node.database,
+                        database_name=None
+                        if parent_node.database == "None"
+                        else parent_node.database,
                         schema_name=parent_node.schema_,
                         table_name=table_name,
                     )
