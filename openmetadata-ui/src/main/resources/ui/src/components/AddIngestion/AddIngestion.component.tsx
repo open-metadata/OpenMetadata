@@ -141,6 +141,7 @@ const AddIngestion = ({
         data?.name ?? getIngestionName(serviceData.name, pipelineType),
       ingestSampleData: sourceConfig?.generateSampleData ?? true,
       useFqnFilter: sourceConfig?.useFqnForFiltering ?? false,
+      processPii: sourceConfig?.processPiiSensitive ?? false,
       databaseServiceNames: sourceConfig?.dbServiceNames ?? [],
       description: data?.description ?? '',
       repeatFrequency:
@@ -327,6 +328,7 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
+      processPii,
     } = state;
 
     switch (serviceCategory) {
@@ -335,6 +337,7 @@ const AddIngestion = ({
           useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
           includeTags: includeTags,
+          processPiiSensitive: processPii,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
             showDatabaseFilter
@@ -610,7 +613,7 @@ const AddIngestion = ({
     return (
       <span>
         <span className="tw-mr-1 tw-font-semibold">
-          &quot;{state.ingestionName}&quot;
+          {`"${state.ingestionName}"`}
         </span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}

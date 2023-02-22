@@ -17,7 +17,6 @@ from typing import Dict, Iterable, Optional
 
 from pydantic import ValidationError
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -35,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -58,10 +56,6 @@ class DomopipelineSource(PipelineServiceSource):
 
     config: WorkflowSource
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.domo_client = DomoClient(self.service_connection)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
@@ -76,7 +70,7 @@ class DomopipelineSource(PipelineServiceSource):
         return pipeline_details["name"]
 
     def get_pipelines_list(self) -> Dict:
-        results = self.domo_client.get_pipelines()
+        results = self.connection.get_pipelines()
         for result in results:
             yield result
 
@@ -94,9 +88,7 @@ class DomopipelineSource(PipelineServiceSource):
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
                 tasks=[task],
-                service=EntityReference(
-                    id=self.context.pipeline_service.id.__root__, type="pipelineService"
-                ),
+                service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 startDate=pipeline_details.get("created"),
             )
             yield pipeline_yield
@@ -131,7 +123,7 @@ class DomopipelineSource(PipelineServiceSource):
             )
             return None
 
-        runs = self.domo_client.get_runs(pipeline_id)
+        runs = self.connection.get_runs(pipeline_id)
         try:
 
             for run in runs or []:

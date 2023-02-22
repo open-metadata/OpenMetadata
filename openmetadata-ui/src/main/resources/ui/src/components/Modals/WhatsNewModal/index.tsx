@@ -82,7 +82,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
         </Typography.Text>
       }
       width={1200}>
-      <div className="flex w-auto h-full">
+      <div className="flex w-auto h-full h-min-75">
         <div
           className="border-r-2 p-x-md p-y-md border-separate"
           style={{ width: '14%' }}>

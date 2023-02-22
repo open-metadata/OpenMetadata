@@ -489,3 +489,12 @@ export const mockLineageRes = {
   upstreamEdges: [],
   downstreamEdges: [],
 };
+
+export const mockTableProfileResponse = {
+  profile: {
+    timestamp: 1674466560,
+    profileSampleType: 'PERCENTAGE',
+    columnCount: 12,
+    rowCount: 14567,
+  },
+};

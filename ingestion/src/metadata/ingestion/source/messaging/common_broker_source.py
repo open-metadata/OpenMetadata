@@ -31,7 +31,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.messaging_service import (
@@ -91,10 +90,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=EntityReference(
-                    id=self.context.messaging_service.id.__root__,
-                    type="messagingService",
-                ),
+                service=self.context.messaging_service.fullyQualifiedName.__root__,
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(
                     topic_details.topic_metadata.partitions.get(0).replicas

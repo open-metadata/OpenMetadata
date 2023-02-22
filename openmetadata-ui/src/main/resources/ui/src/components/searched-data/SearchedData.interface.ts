@@ -31,6 +31,7 @@ type Fields =
   | 'fullyQualifiedName'
   | 'description'
   | 'serviceType'
+  | 'displayName'
   | 'deleted';
 
 export type SourceType = (

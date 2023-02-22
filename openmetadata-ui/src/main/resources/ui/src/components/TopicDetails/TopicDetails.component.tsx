@@ -35,7 +35,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityName,
@@ -137,7 +136,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       setTopicPermissions(permissions);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', { entity: t('label.topic') })
       );
     }
   }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
@@ -562,7 +561,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     <Fragment>
                       {getInfoBadge([
                         {
-                          key: 'Schema',
+                          key: t('label.schema'),
                           value: topicDetails.messageSchema?.schemaType ?? '',
                         },
                       ])}
@@ -651,6 +650,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   }
                   entityType={EntityType.TOPIC}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    topicPermissions.EditAll ||
+                    topicPermissions.EditCustomFields
+                  }
                 />
               )}
               <div

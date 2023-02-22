@@ -143,9 +143,9 @@ public class DashboardServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getDashboardServiceByID",
-      summary = "Get a dashboard service",
+      summary = "Get a dashboard service by Id",
       tags = "dashboardServices",
-      description = "Get a dashboard service by `id`.",
+      description = "Get a dashboard service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -157,7 +157,7 @@ public class DashboardServiceResource
   public DashboardService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -187,12 +187,13 @@ public class DashboardServiceResource
             description = "Dashboard service instance",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {name} is not found")
       })
   public DashboardService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -215,7 +216,7 @@ public class DashboardServiceResource
       operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
       tags = "dashboardServices",
-      description = "Get a list of all the versions of a dashboard service identified by `id`",
+      description = "Get a list of all the versions of a dashboard service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -225,7 +226,7 @@ public class DashboardServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -251,7 +252,7 @@ public class DashboardServiceResource
       operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
       tags = "dashboardServices",
-      description = "Get a version of the dashboard service by given `id`",
+      description = "Get a version of the dashboard service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -265,7 +266,7 @@ public class DashboardServiceResource
   public DashboardService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "dashboard service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -302,9 +303,9 @@ public class DashboardServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateDashboardService",
-      summary = "Update a Dashboard service",
+      summary = "Update a dashboard service",
       tags = "dashboardServices",
-      description = "Update an existing dashboard service identified by `id`.",
+      description = "Update an existing dashboard service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -334,7 +335,7 @@ public class DashboardServiceResource
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -352,7 +353,7 @@ public class DashboardServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteDashboardService",
-      summary = "Delete a Dashboard service",
+      summary = "Delete a dashboard service by Id",
       tags = "dashboardServices",
       description =
           "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
@@ -376,13 +377,41 @@ public class DashboardServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteDashboardServiceByName",
+      summary = "Delete a dashboard service by name",
+      tags = "dashboardServices",
+      description =
+          "Delete a Dashboard services by `name`. If dashboard (and charts) belong to the service, it can't be "
+              + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DashboardService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DashboardService.",
+      summary = "Restore a soft deleted dashboard service",
       tags = "dashboardServices",
-      description = "Restore a soft deleted DashboardService.",
+      description = "Restore a soft deleted dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

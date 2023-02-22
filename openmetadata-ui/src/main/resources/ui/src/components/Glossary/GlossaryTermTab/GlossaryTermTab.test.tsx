@@ -53,14 +53,16 @@ describe('Test GlossaryTermTab component', () => {
 
     expect(await screen.findByTestId('search-box')).toBeInTheDocument();
     expect(
-      await screen.findByTestId(`${mockedGlossaryTerms[0].name}-card`)
+      await screen.findByText(mockedGlossaryTerms[0].name)
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('tag-container')).toBeInTheDocument();
-    expect(await screen.findByTestId('description-text')).toBeInTheDocument();
+    expect(await screen.findByTestId('add-new-tag-button')).toBeInTheDocument();
+    expect(await screen.findByTestId('description')).toBeInTheDocument();
     expect(
       await screen.findByText(mockedGlossaryTerms[0].name)
     ).toBeInTheDocument();
-    expect(await screen.findByText('label.tag-plural:')).toBeInTheDocument();
+    expect(await screen.findByText('label.tag-plural')).toBeInTheDocument();
+    expect(await screen.findByText('label.term-plural')).toBeInTheDocument();
+    expect(await screen.findByText('label.description')).toBeInTheDocument();
     expect(
       await screen.findByText(mockedGlossaryTerms[0].description)
     ).toBeInTheDocument();

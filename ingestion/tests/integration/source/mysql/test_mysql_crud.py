@@ -72,7 +72,7 @@ def create_delete_database(client: OpenMetadata):
     create_mysql_service = CreateDatabaseServiceRequest(**data)
     mysql_service = client.create_or_update(create_mysql_service)
     create_database_request = CreateDatabaseRequest(
-        name="dwh", service=EntityReference(id=mysql_service.id, type="databaseService")
+        name="dwh", service=mysql_service.fullyQualifiedName
     )
     created_database = client.create_or_update(create_database_request)
     resp = create_delete_table(client)

@@ -20,7 +20,7 @@ import {
   TableData,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
@@ -47,7 +47,7 @@ export interface DatasetDetailsProps {
   entityId?: string;
   joins: TableJoins;
   tableType: TableType;
-  usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
+  usageSummary: UsageDetails;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
@@ -66,6 +66,7 @@ export interface DatasetDetailsProps {
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   deleted?: boolean;
+  isTableProfileLoading?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;

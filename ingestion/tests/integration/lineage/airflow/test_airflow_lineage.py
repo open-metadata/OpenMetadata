@@ -12,7 +12,10 @@
 """
 Test airflow lineage operator and hook.
 
-This test is coupled with the example DAG `lineage_tutorial_operator`
+This test is coupled with the example DAG `lineage_tutorial_operator`.
+
+With the `docker compose up` setup, you can debug the progress
+by setting breakpoints in this file.
 """
 import time
 from datetime import datetime, timedelta
@@ -31,7 +34,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, StatusType
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -47,7 +50,6 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 OM_HOST_PORT = "http://localhost:8585/api"
@@ -115,34 +117,27 @@ class AirflowLineageTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(id=service_entity.id, type="databaseService"),
+            service=service_entity.fullyQualifiedName,
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
 
-        db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db", type="database"
-        )
-
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema", database=db_reference
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
         )
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
-        schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-        )
-
         create_inlet = CreateTableRequest(
             name="lineage-test-inlet",
-            databaseSchema=schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         create_outlet = CreateTableRequest(
             name="lineage-test-outlet",
-            databaseSchema=schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -279,23 +274,25 @@ class AirflowLineageTest(TestCase):
             get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful
         )
 
-    @pytest.mark.order(2)
+    @pytest.mark.order(3)
     def test_pipeline_lineage(self) -> None:
         """
         Validate that the pipeline has proper lineage
         """
         lineage = self.metadata.get_lineage_by_name(
-            entity=Pipeline,
-            fqn=f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
+            entity=Table,
+            fqn="test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
         )
         node_names = set((node["name"] for node in lineage.get("nodes") or []))
-        self.assertEqual(node_names, {"lineage-test-inlet", "lineage-test-outlet"})
-        self.assertEqual(len(lineage.get("upstreamEdges")), 1)
+        self.assertEqual(node_names, {"lineage-test-outlet"})
         self.assertEqual(len(lineage.get("downstreamEdges")), 1)
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["fromEntity"], str(self.table_inlet.id.__root__)
-        )
         self.assertEqual(
             lineage["downstreamEdges"][0]["toEntity"],
             str(self.table_outlet.id.__root__),
+        )
+        self.assertEqual(
+            lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][
+                "fullyQualifiedName"
+            ],
+            f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
         )

@@ -12,9 +12,9 @@
  */
 import { Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CustomProperty } from '../../generated/entity/type';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -32,6 +32,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   updateEntityType,
   hasAccess,
 }) => {
+  const { t } = useTranslation();
   const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
     {} as CustomProperty
   );
@@ -69,18 +70,18 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   const tableColumn: ColumnsType<CustomProperty> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
       },
       {
-        title: 'Type',
+        title: t('label.type'),
         dataIndex: 'propertyType',
         key: 'propertyType',
         render: (text) => getEntityName(text),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
@@ -90,17 +91,18 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             <span
               className="tw-no-description tw-p-2 tw--ml-1.5"
               data-testid="no-description">
-              No description{' '}
+              {t('label.no-description')}
             </span>
           ),
       },
       {
-        title: 'Actions',
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
           <div className="tw-flex">
-            <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION}>
               <button
                 className="tw-cursor-pointer"
                 data-testid="edit-button"
@@ -112,12 +114,13 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <SVGIcons
                   alt="edit"
                   icon={Icons.EDIT}
-                  title="Edit"
+                  title={t('label.edit')}
                   width="16px"
                 />
               </button>
             </Tooltip>
-            <Tooltip title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION}>
               <button
                 className="tw-cursor-pointer tw-ml-4"
                 data-testid="delete-button"
@@ -129,7 +132,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <SVGIcons
                   alt="delete"
                   icon={Icons.DELETE}
-                  title="Delete"
+                  title={t('label.delete')}
                   width="16px"
                 />
               </button>

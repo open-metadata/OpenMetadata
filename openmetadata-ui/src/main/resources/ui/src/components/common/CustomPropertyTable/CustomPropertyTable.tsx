@@ -28,6 +28,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   entityDetails,
   handleExtensionUpdate,
   entityType,
+  hasEditAccess,
 }) => {
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
@@ -71,6 +72,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         render: (_, record) => (
           <PropertyValue
             extension={entityDetails.extension}
+            hasEditPermissions={hasEditAccess}
             propertyName={record.name}
             propertyType={record.propertyType}
             onExtensionUpdate={onExtensionUpdate}
@@ -78,7 +80,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         ),
       },
     ];
-  }, [entityDetails.extension]);
+  }, [entityDetails.extension, hasEditAccess]);
 
   useEffect(() => {
     fetchTypeDetail();

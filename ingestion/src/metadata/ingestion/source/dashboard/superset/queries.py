@@ -16,6 +16,7 @@ FETCH_ALL_CHARTS = """
 select 
 	s.id,
 	s.slice_name,
+	s.description,
 	t.table_name,
 	t.schema,
 	db.database_name,

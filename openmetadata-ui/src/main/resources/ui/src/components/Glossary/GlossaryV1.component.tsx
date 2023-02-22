@@ -11,70 +11,48 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Button as ButtonAntd,
-  Col,
-  Dropdown,
-  Input,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { EllipsisOutlined } from '@ant-design/icons';
+import { Col, Dropdown, Row, Tooltip, Typography } from 'antd';
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
-import { cloneDeep, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getUserPath } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../generated/entity/policies/policy';
 import { useAfterMount } from '../../hooks/useAfterMount';
-import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../utils/PermissionsUtils';
-import {
-  getAddGlossaryTermsPath,
   getGlossaryPath,
   getGlossaryPathWithAction,
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { formatDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
-import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
 import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
-
-import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
-import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
-
-const { Title } = Typography;
 
 const GlossaryV1 = ({
   isGlossaryActive,
   deleteStatus = 'initial',
   selectedData,
-  isChildLoading,
   handleGlossaryTermUpdate,
   updateGlossary,
   onGlossaryDelete,
@@ -85,7 +63,7 @@ const GlossaryV1 = ({
   const history = useHistory();
   const { t } = useTranslation();
 
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -100,8 +78,6 @@ const GlossaryV1 = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(
     document.getElementById('glossary-left-panel')?.offsetWidth || 0
   );
-  const [isNameEditing, setIsNameEditing] = useState(false);
-  const [displayName, setDisplayName] = useState<string>();
 
   const [glossaryPermission, setGlossaryPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -155,23 +131,6 @@ const GlossaryV1 = ({
     }
   };
 
-  const createGlossaryTermPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Create,
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-    [permissions]
-  );
-
-  const editDisplayNamePermission = useMemo(() => {
-    return isGlossaryActive
-      ? glossaryPermission.EditAll || glossaryPermission.EditDisplayName
-      : glossaryTermPermission.EditAll ||
-          glossaryTermPermission.EditDisplayName;
-  }, [glossaryPermission, glossaryTermPermission]);
-
   /**
    * To create breadcrumb from the fqn
    * @param fqn fqn of glossary or glossary term
@@ -194,24 +153,6 @@ const GlossaryV1 = ({
     }
   };
 
-  const handleAddGlossaryTermClick = () => {
-    if (glossaryFqn) {
-      const activeTerm = glossaryFqn.split(FQN_SEPARATOR_CHAR);
-      const glossaryName = activeTerm[0];
-      if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossaryName, glossaryFqn));
-      } else {
-        history.push(getAddGlossaryTermsPath(glossaryName));
-      }
-    } else {
-      history.push(
-        getAddGlossaryTermsPath(
-          selectedData.fullyQualifiedName || selectedData.name
-        )
-      );
-    }
-  };
-
   const handleDelete = () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
@@ -220,33 +161,6 @@ const GlossaryV1 = ({
       onGlossaryTermDelete(id);
     }
     setIsDelete(false);
-  };
-
-  const onDisplayNameChange = (value: string) => {
-    if (selectedData.displayName !== value) {
-      setDisplayName(value);
-    }
-  };
-
-  const onDisplayNameSave = () => {
-    let updatedDetails = cloneDeep(selectedData);
-
-    updatedDetails = {
-      ...selectedData,
-      displayName: displayName?.trim(),
-      name: displayName?.trim() || selectedData.name,
-    };
-
-    if (
-      (updatedDetails as GlossaryTerm)?.glossary ||
-      (updatedDetails as GlossaryTerm)?.parent
-    ) {
-      handleGlossaryTermUpdate(updatedDetails as GlossaryTerm);
-    } else {
-      updateGlossary(updatedDetails as Glossary);
-    }
-
-    setIsNameEditing(false);
   };
 
   useEffect(() => {
@@ -325,7 +239,7 @@ const GlossaryV1 = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.import-glossary-terms')}
+                        {t('label.import-glossary-term-plural')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
@@ -338,32 +252,35 @@ const GlossaryV1 = ({
       : []),
     {
       label: (
-        <Space
+        <Row
           className="tw-cursor-pointer manage-button"
-          size={8}
           onClick={(e) => {
             e.stopPropagation();
             setIsDelete(true);
             setShowActions(false);
           }}>
-          <SVGIcons alt="Delete" icon={Icons.DELETE} />
-          <div className="tw-text-left" data-testid="delete-button">
+          <Col span={3}>
+            <SVGIcons alt="Delete" icon={Icons.DELETE} />
+          </Col>
+          <Col className="tw-text-left" data-testid="delete-button" span={21}>
             <p className="tw-font-medium" data-testid="delete-button-title">
-              Delete
+              {t('label.delete')}
             </p>
             <p className="tw-text-grey-muted tw-text-xs">
-              Deleting this {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}{' '}
-              will permanently remove its metadata from OpenMetadata.
+              {t('message.delete-entity-type-action-description', {
+                entityType: isGlossaryActive
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
+              })}
             </p>
-          </div>
-        </Space>
+          </Col>
+        </Row>
       ),
       key: 'delete-button',
     },
   ];
 
   useEffect(() => {
-    setDisplayName(selectedData?.displayName);
     if (selectedData) {
       if (isGlossaryActive) {
         fetchGlossaryPermission();
@@ -391,22 +308,6 @@ const GlossaryV1 = ({
         <div
           className="tw-relative tw-flex tw-justify-between tw-items-center"
           id="add-term-button">
-          <Tooltip
-            title={
-              createGlossaryTermPermission
-                ? 'Add Term'
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <ButtonAntd
-              className="tw-h-8 tw-rounded tw-mr-2"
-              data-testid="add-new-tag-button"
-              disabled={!createGlossaryTermPermission}
-              type="primary"
-              onClick={handleAddGlossaryTermClick}>
-              Add term
-            </ButtonAntd>
-          </Tooltip>
-
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
             disabled={
@@ -424,8 +325,10 @@ const GlossaryV1 = ({
               title={
                 glossaryPermission.Delete || glossaryTermPermission.Delete
                   ? isGlossaryActive
-                    ? 'Manage Glossary'
-                    : 'Manage GlossaryTerm'
+                    ? t('label.manage-entity', { entity: t('label.glossary') })
+                    : t('label.manage-entity', {
+                        entity: t('label.glossary-term'),
+                      })
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
@@ -439,126 +342,29 @@ const GlossaryV1 = ({
                 variant="outlined"
                 onClick={() => setShowActions(true)}>
                 <span>
-                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                  <EllipsisOutlined rotate={90} />
                 </span>
               </Button>
             </Tooltip>
           </Dropdown>
         </div>
       </div>
-      {isChildLoading ? (
-        <Loader />
-      ) : (
-        <>
-          <div className="edit-input">
-            {isNameEditing ? (
-              <Row align="middle" gutter={8}>
-                <Col>
-                  <Input
-                    className="input-width"
-                    data-testid="displayName"
-                    name="displayName"
-                    value={displayName}
-                    onChange={(e) => onDisplayNameChange(e.target.value)}
-                  />
-                </Col>
-                <Col>
-                  <Button
-                    className="icon-buttons"
-                    data-testid="cancelAssociatedTag"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsNameEditing(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
-                  </Button>
-                  <Button
-                    className="icon-buttons"
-                    data-testid="saveAssociatedTag"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={onDisplayNameSave}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
-                  </Button>
-                </Col>
-              </Row>
-            ) : (
-              <Space className="display-name">
-                <Title className="tw-text-base" level={5}>
-                  {getEntityName(selectedData)}
-                </Title>
-                <Tooltip
-                  title={
-                    editDisplayNamePermission
-                      ? 'Edit Displayname'
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <ButtonAntd
-                    className="m-b-xss"
-                    disabled={!editDisplayNamePermission}
-                    type="text"
-                    onClick={() => setIsNameEditing(true)}>
-                    <SVGIcons
-                      alt="icon-tag"
-                      className="tw-mx-1"
-                      icon={Icons.EDIT}
-                      width="16"
-                    />
-                  </ButtonAntd>
-                </Tooltip>
-              </Space>
-            )}
-          </div>
-          <Space className="m-b-md" data-testid="updated-by-container" size={8}>
-            <Typography.Text className="text-grey-muted">
-              {t('label.updated-by')} -
-            </Typography.Text>
-            {selectedData.updatedBy && selectedData.updatedAt ? (
-              <>
-                {' '}
-                <ProfilePicture
-                  displayName={selectedData.updatedBy}
-                  // There is no user id present in response
-                  id=""
-                  name={selectedData.updatedBy || ''}
-                  textClass="text-xs"
-                  width="20"
-                />
-                <Typography.Text data-testid="updated-by-details">
-                  <Link to={getUserPath(selectedData.updatedBy ?? '')}>
-                    {selectedData.updatedBy}
-                  </Link>{' '}
-                  {t('label.on-lowercase')}{' '}
-                  {formatDateTime(selectedData.updatedAt || 0)}
-                </Typography.Text>
-              </>
-            ) : (
-              '--'
-            )}
-          </Space>
-          {!isEmpty(selectedData) &&
-            (isGlossaryActive ? (
-              <GlossaryDetails
-                glossary={selectedData as Glossary}
-                permissions={glossaryPermission}
-                updateGlossary={updateGlossary}
-              />
-            ) : (
-              <GlossaryTermsV1
-                glossaryTerm={selectedData as GlossaryTerm}
-                handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-                permissions={glossaryTermPermission}
-              />
-            ))}
-        </>
-      )}
+
+      {!isEmpty(selectedData) &&
+        (isGlossaryActive ? (
+          <GlossaryDetails
+            glossary={selectedData as Glossary}
+            permissions={glossaryPermission}
+            updateGlossary={updateGlossary}
+          />
+        ) : (
+          <GlossaryTermsV1
+            glossaryTerm={selectedData as GlossaryTerm}
+            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+            permissions={glossaryTermPermission}
+          />
+        ))}
+
       {selectedData && (
         <EntityDeleteModal
           bodyText={getEntityDeleteMessage(selectedData.name, '')}

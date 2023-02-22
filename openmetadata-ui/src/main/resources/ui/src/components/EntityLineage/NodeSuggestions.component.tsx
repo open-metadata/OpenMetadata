@@ -139,7 +139,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       <input
         className="tw-form-inputs tw-form-inputs-padding tw-w-full"
         data-testid="node-search-box"
-        placeholder={`Search for ${capitalize(entityType)}s...`}
+        placeholder={`${t('label.search-for-type', {
+          type: capitalize(entityType),
+        })}s...`}
         type="search"
         value={searchValue}
         onChange={handleChange}
@@ -187,7 +189,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         searchValue && (
           <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
             <Empty
-              description="No data found"
+              description={t('label.no-data-found')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               style={{
                 width: '326px',

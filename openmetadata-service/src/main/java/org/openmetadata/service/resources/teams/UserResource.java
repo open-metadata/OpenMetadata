@@ -93,6 +93,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -101,6 +102,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -252,7 +254,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -261,9 +263,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/generateRandomPwd")
   @Operation(
       operationId = "generateRandomPwd",
-      summary = "generateRandomPwd",
+      summary = "Generate a random password",
       tags = "users",
-      description = "Generate a random pwd",
+      description = "Generate a random password",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
@@ -288,7 +290,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -317,12 +319,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
             responseCode = "200",
             description = "The user",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
       })
   public User getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -438,7 +440,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "User version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -566,7 +568,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response generateToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
@@ -632,7 +634,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public JWTAuthMechanism getToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
 
     User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
@@ -667,7 +672,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public AuthenticationMechanism getAuthenticationMechanism(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
 
     User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
@@ -690,7 +698,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -750,11 +758,34 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteUserByName",
+      summary = "Delete a user",
+      tags = "users",
+      description = "Users can't be deleted but are soft-deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
@@ -964,13 +995,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/login")
   @Operation(
       operationId = "loginUserWithPwd",
-      summary = "Login User by Password",
+      summary = "Login User with email (plain-text) and Password (encoded in base 64)",
       tags = "users",
-      description = "Login a user with Password",
+      description = "Login User with email(plain-text) and Password (encoded in base 64)",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "Returns the Jwt Token Response ",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
@@ -1004,6 +1035,79 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
   }
 
+  @GET
+  @Path("/documentation/csv")
+  @Valid
+  @Operation(
+      operationId = "getCsvDocumentation",
+      summary = "Get CSV documentation for user import/export",
+      tags = "users")
+  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
+      throws IOException {
+    return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportUsers",
+      summary = "Export users in a team in CSV format",
+      tags = "users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with user information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
+      })
+  public String exportUsersCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team)
+      throws IOException {
+    return exportCsvInternal(securityContext, team);
+  }
+
+  @PUT
+  @Path("/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTeams",
+      summary = "Import from CSV to create, and update teams.",
+      tags = "users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(securityContext, team, csv, dryRun);
+  }
+
   private User getUser(SecurityContext securityContext, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
@@ -1034,7 +1138,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     String botName = create.getBotName();
     EntityInterface bot = retrieveBot(botName);
     // check if the bot user exists
-    if (!botHasRelationshipWithUser(bot, original)
+    if (original != null && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
+      throw new IllegalArgumentException(String.format("User [%s] already exists.", original.getName()));
+    } else if (!botHasRelationshipWithUser(bot, original)
         && original != null
         && userHasRelationshipWithAnyBot(original, bot)) {
       // throw an exception if user already has a relationship with a bot

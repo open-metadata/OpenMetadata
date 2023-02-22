@@ -95,6 +95,7 @@
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
       "matchAnyEventType",
+      "matchIngestionPipelineState",
       "matchUpdatedBy"
     ]
   },

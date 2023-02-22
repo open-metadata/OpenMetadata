@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { RightOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
@@ -92,10 +91,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     <span className="tw-px-2">
-                      <FontAwesomeIcon
-                        className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-                        icon={faAngleRight}
-                      />
+                      <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
                     </span>
                   </>
                 ) : link.url ? (
@@ -124,10 +120,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     </Tooltip>
                     {noLink && index < titleLinks.length - 1 && (
                       <span className="tw-px-2">
-                        <FontAwesomeIcon
-                          className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-                          icon={faAngleRight}
-                        />
+                        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
                       </span>
                     )}
                   </>

@@ -56,7 +56,6 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -97,8 +96,11 @@ SUPERSET_DEFAULT_CONFIG = {
     "type": "superset",
     "serviceConnection": {
         "config": {
-            "username": "test",
-            "password": "test",
+            "connection": {
+                "provider": "db",
+                "username": "test",
+                "password": "test",
+            },
             "hostPort": "http://localhost:8088",
             "type": "Superset",
         }
@@ -264,7 +266,7 @@ class AmundsenSource(Source[Entity]):
                 name=table_name
                 if hasattr(service_entity.connection.config, "supportsDatabase")
                 else "default",
-                service=EntityReference(id=service_entity.id, type="databaseService"),
+                service=service_entity.fullyQualifiedName.__root__,
             )
             yield database_request
             database_fqn = fqn.build(
@@ -286,7 +288,7 @@ class AmundsenSource(Source[Entity]):
 
             database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
-                database=EntityReference(id=self.database_object.id, type="database"),
+                database=self.database_object.fullyQualifiedName,
             )
             yield database_schema_request
             database_schema_fqn = fqn.build(
@@ -408,9 +410,7 @@ class AmundsenSource(Source[Entity]):
                 name=table["name"],
                 tableType="Regular",
                 description=table["description"],
-                databaseSchema=EntityReference(
-                    id=self.database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=self.database_schema_object.fullyQualifiedName,
                 tags=tags,
                 columns=columns,
             )
@@ -452,9 +452,7 @@ class AmundsenSource(Source[Entity]):
                     metadata=self.metadata,
                     service_name=self.dashboard_service.name.__root__,
                 ),
-                service=EntityReference(
-                    id=self.dashboard_service.id, type="dashboardService"
-                ),
+                service=self.dashboard_service.fullyQualifiedName,
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -474,9 +472,7 @@ class AmundsenSource(Source[Entity]):
                 description="",
                 chartUrl=url,
                 chartType=get_standard_chart_type(chart_type).value,
-                service=EntityReference(
-                    id=self.dashboard_service.id, type="dashboardService"
-                ),
+                service=self.dashboard_service.fullyQualifiedName,
             )
             self.status.scanned(name)
             yield chart

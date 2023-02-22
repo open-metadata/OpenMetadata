@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Row, Space, Table, Tooltip } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
@@ -24,7 +28,6 @@ import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
@@ -52,22 +55,23 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const hasAccess = isAdminUser || isAuthDisabled;
 
-  const columns: ColumnsType<TestCase> = useMemo(() => {
-    return [
+  const columns: ColumnsType<TestCase> = useMemo(
+    () => [
       {
         title: t('label.last-run-result'),
         dataIndex: 'testCaseResult',
         key: 'testCaseResult',
+        width: 130,
         render: (result: TestCaseResult) => (
           <Space size={8}>
             {result?.testCaseStatus && (
-              <SVGIcons
+              <Icon
                 alt="result"
-                className="w-4"
-                icon={getTestResultBadgeIcon(result.testCaseStatus)}
+                component={getTestResultBadgeIcon(result.testCaseStatus)}
+                style={{ fontSize: '16px' }}
               />
             )}
-            <span>{result?.testCaseStatus || '--'}</span>
+            <Typography.Text>{result?.testCaseStatus || '--'}</Typography.Text>
           </Space>
         ),
       },
@@ -75,6 +79,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.last-run'),
         dataIndex: 'testCaseResult',
         key: 'lastRun',
+        width: 120,
         render: (result: TestCaseResult) =>
           result?.timestamp
             ? getFormattedDateFromSeconds(result.timestamp)
@@ -84,12 +89,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => <span data-testid={name}>{name}</span>,
+        width: 320,
+        render: (name: string) => (
+          <Typography.Text className="break-word" data-testid={name}>
+            {name}
+          </Typography.Text>
+        ),
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 350,
         render: (text) => (isEmpty(text) ? '--' : text),
       },
       {
@@ -149,25 +160,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         width: 100,
+        fixed: 'right',
         render: (_, record) => {
           return (
             <Row align="middle">
               {!deletedTable && (
                 <Tooltip
                   placement="bottomRight"
-                  title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     className="flex-center"
                     data-testid={`edit-${record.name}`}
                     disabled={!hasAccess}
-                    icon={
-                      <SVGIcons
-                        alt="edit"
-                        className="h-4"
-                        icon={Icons.EDIT}
-                        title="Edit"
-                      />
-                    }
+                    icon={<IconEdit width={16} />}
                     type="text"
                     onClick={(e) => {
                       // preventing expand/collapse on click of edit button
@@ -186,13 +193,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   className="flex-center"
                   data-testid={`delete-${record.name}`}
                   disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="h-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
+                  icon={<IconDelete width={16} />}
                   type="text"
                   onClick={(e) => {
                     // preventing expand/collapse on click of delete button
@@ -205,8 +206,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
         },
       },
-    ];
-  }, [hasAccess, deletedTable]);
+    ],
+    [hasAccess, deletedTable]
+  );
 
   return (
     <>
@@ -227,6 +229,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         }}
         pagination={false}
         rowKey="id"
+        scroll={{ x: 1600 }}
         size="small"
       />
       <EditTestCaseModal

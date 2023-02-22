@@ -79,12 +79,12 @@ describe('Team Hierarchy page', () => {
     });
 
     const table = await screen.findByTestId('team-hierarchy-table');
-    const teamsColumn = await screen.findByText('Teams');
-    const typeColumn = await screen.findByText('Type');
-    const subTeamsColumn = await screen.findByText('Sub Teams');
-    const usersColumn = await screen.findByText('Users');
-    const assetCountColumn = await screen.findByText('Asset Count');
-    const descriptionColumn = await screen.findByText('Description');
+    const teamsColumn = await screen.findByText('label.team-plural');
+    const typeColumn = await screen.findByText('label.type');
+    const subTeamsColumn = await screen.findByText('label.sub-team-plural');
+    const usersColumn = await screen.findByText('label.user-plural');
+    const assetCountColumn = await screen.findByText('label.entity-count');
+    const descriptionColumn = await screen.findByText('label.description');
     const rows = await screen.findAllByRole('row');
 
     expect(table).toBeInTheDocument();

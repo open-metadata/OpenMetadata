@@ -1,0 +1,76 @@
+{
+  "summary": "Documentation for CSV file used for importing and exporting users under a team. Users can be imported to any team that is children of the team for which CSV is imported for.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "The name of the user being created. This is same as the login name.",
+      "examples": [
+        "`john`",
+        "`adam.smith`"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the user.",
+      "examples": [
+        "`John`",
+        "`Adam Smith`"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the user in markdown format.",
+      "examples": [
+        "`John` is a Data Scientist."
+      ]
+    },
+    {
+      "name": "email",
+      "required": true,
+      "description": "Email address of the user.",
+      "examples": [
+        "`john@company.com`"
+      ]
+    },
+    {
+      "name": "timezone",
+      "required": false,
+      "description": "The timezone of the user.",
+      "examples": [
+        "`America/Los_Angeles`",
+        "`Brazil/East`"
+      ]
+    },
+    {
+      "name": "isAdmin",
+      "required": false,
+      "description": "Set true if the user is an Admin. Default - false",
+      "examples": [
+        "`true` or `false`",
+        "\"\" will use default value `false`"
+      ]
+    },
+    {
+      "name": "teams",
+      "required": true,
+      "description": "Teams the user belongs to. For multiple teams, provide team names separated by ';'",
+      "examples": [
+        "Marketing team",
+        "Marketing team;Finance team"
+      ]
+    },
+    {
+      "name": "Roles",
+      "required": false,
+      "description": "Roles that are assigned to a user.",
+      "examples": [
+        "`Data consumer`",
+        "`Data consumer;Data steward`",
+        "`\"\" for no role`"
+      ]
+    }
+  ]
+}

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Paging } from '../../../generated/type/paging';
-import { Button } from '../../buttons/Button/Button';
 
 interface Prop {
   paging: Paging;
@@ -39,6 +39,7 @@ const NextPrevious: FC<Prop> = ({
   isNumberBased = false,
   currentPage,
 }: Prop) => {
+  const { t } = useTranslation();
   const [activePage, setActivePage] = useState(1);
 
   const onNextHandler = () => {
@@ -86,18 +87,14 @@ const NextPrevious: FC<Prop> = ({
       className="tw-my-4 tw-flex tw-justify-center tw-items-center tw-gap-2"
       data-testid="pagination">
       <Button
-        className="tw-rounded tw-w-24  tw-px-3 tw-py-1.5 tw-text-sm"
+        ghost
+        className="hover-button text-sm flex-center"
         data-testid="previous"
         disabled={computePrevDisableState()}
-        size="custom"
-        theme="primary"
-        variant="outlined"
+        icon={<ArrowLeftOutlined />}
+        type="primary"
         onClick={onPreviousHandler}>
-        <FontAwesomeIcon
-          className="tw-text-sm tw-align-middle tw-pr-1.5"
-          icon={faArrowLeft}
-        />{' '}
-        <span>Previous</span>
+        <span>{t('label.previous')}</span>
       </Button>
       <span
         className="tw-px-2"
@@ -106,18 +103,14 @@ const NextPrevious: FC<Prop> = ({
         totalCount
       )} Page`}</span>
       <Button
-        className="tw-rounded tw-w-24 tw-px-3 tw-py-1.5 tw-text-sm"
+        ghost
+        className="hover-button text-sm flex-center"
         data-testid="next"
         disabled={computeNextDisableState()}
-        size="custom"
-        theme="primary"
-        variant="outlined"
+        type="primary"
         onClick={onNextHandler}>
-        <span> Next</span>{' '}
-        <FontAwesomeIcon
-          className="tw-text-sm tw-align-middle tw-pl-1.5"
-          icon={faArrowRight}
-        />
+        <span> {t('label.next')}</span>
+        <ArrowRightOutlined />
       </Button>
     </div>
   );

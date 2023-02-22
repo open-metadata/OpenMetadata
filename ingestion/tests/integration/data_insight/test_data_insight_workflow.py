@@ -57,7 +57,6 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByT
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -144,9 +143,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
         create = CreateKpiRequest(
             name="CompletedDescription",
-            dataInsightChart=EntityReference(
-                type="dataInsightChart", id=completed_description_chart.id
-            ),
+            dataInsightChart=completed_description_chart.fullyQualifiedName,
             description="foo",
             startDate=cls.start_ts,
             endDate=cls.end_ts,

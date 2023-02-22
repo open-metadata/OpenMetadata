@@ -82,8 +82,8 @@ source:
       validateSSL: <true or false>
       encrypted: <true or false>
   sourceConfig:
-    config: {}
-
+    config:
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}
@@ -99,7 +99,7 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 
 - `username`: Enter the username of your Amundsen user in the Username field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow. 
 - `password`: Enter the password for your amundsen user in the Password field. 
-- `hostPort`: Host and port of the Amundsen Neo4j Connection. 
+- `hostPort`: Host and port of the Amundsen Neo4j Connection. This expect a URI format like: bolt://localhost:7687.
 - `maxConnectionLifeTime` (optional): Maximum connection lifetime for the Amundsen Neo4j Connection 
 - `validateSSL` (optional): Enable SSL validation for the Amundsen Neo4j Connection. 
 - `encrypted` (Optional): Enable encryption for the Amundsen Neo4j Connection. 

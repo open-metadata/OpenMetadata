@@ -58,6 +58,7 @@ source:
       schemaRegistryConfig: {}
   sourceConfig:
     config:
+      type: MessagingMetadata
       topicFilterPattern:
         excludes:
           - _confluent.*
@@ -81,6 +82,12 @@ workflowConfig:
 - **schemaRegistryURL**: Redpanda Schema Registry URL. URI format.
 - **consumerConfig**: Redpanda Consumer Config.
 - **schemaRegistryConfig**: Redpanda Schema Registry Config.
+
+<Note>
+
+To ingest the topic schema `schemaRegistryURL` must be passed
+
+</Note>
 
 #### Source Configuration - Source Config
 

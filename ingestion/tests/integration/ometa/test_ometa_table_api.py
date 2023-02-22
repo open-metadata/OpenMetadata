@@ -109,36 +109,31 @@ class OMetaTableTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
 
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db", type="database"
-        )
-
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema", database=cls.db_reference
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-        )
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         cls.entity = Table(
             id=uuid.uuid4(),
             name="test",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=EntityReference(
+                id=cls.create_schema_entity.id, type="databaseSchema"
+            ),
             fullyQualifiedName="test-service-table.test-db.test-schema.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         cls.create = CreateTableRequest(
             name="test",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -186,7 +181,10 @@ class OMetaTableTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated owner
-        self.assertEqual(res.databaseSchema.id, updated_entity.databaseSchema.id)
+        self.assertEqual(
+            res.databaseSchema.fullyQualifiedName,
+            updated_entity.databaseSchema.__root__,
+        )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
@@ -388,14 +386,14 @@ class OMetaTableTest(TestCase):
 
         column_join_table_req = CreateTableRequest(
             name="another-test",
-            databaseSchema=self.schema_reference,
+            databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],
         )
         column_join_table_res = self.metadata.create_or_update(column_join_table_req)
 
         direct_join_table_req = CreateTableRequest(
             name="direct-join-test",
-            databaseSchema=self.schema_reference,
+            databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[],
         )
         direct_join_table_res = self.metadata.create_or_update(direct_join_table_req)

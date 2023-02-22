@@ -29,7 +29,6 @@ import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Operation } from 'generated/entity/policies/policy';
 import jsonData from 'jsons/en';
-import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -61,6 +60,8 @@ const GlossaryPage = () => {
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
 
   const isGlossaryActive = useMemo(() => {
+    setIsRightPanelLoading(true);
+    setSelectedData(undefined);
     if (glossaryFqn) {
       return glossaryFqn.split(FQN_SEPARATOR_CHAR).length === 1;
     }
@@ -79,6 +80,7 @@ const GlossaryPage = () => {
   };
 
   const fetchGlossaryList = async () => {
+    setIsRightPanelLoading(true);
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
@@ -90,6 +92,7 @@ const GlossaryPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+      setIsRightPanelLoading(false);
     }
   };
   useEffect(() => {
@@ -101,7 +104,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags'
+        'relatedTerms,reviewers,tags,owner'
       );
       setSelectedData(response);
     } catch (error) {
@@ -161,6 +164,7 @@ const GlossaryPage = () => {
         showSuccessToast(
           jsonData['api-success-messages']['delete-glossary-success']
         );
+        setIsLoading(true);
         history.push(getGlossaryPath());
         fetchGlossaryList();
       })
@@ -208,7 +212,7 @@ const GlossaryPage = () => {
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
-
+        setIsLoading(true);
         history.push(getGlossaryPath(fqn));
         fetchGlossaryList();
       })
@@ -221,15 +225,19 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   if (glossaries.length === 0 && !isLoading) {
     return (
       <ErrorPlaceHolder
         buttons={
           <Button
-            ghost
-            className="tw-h-8 tw-rounded tw-my-3"
-            data-testid="add-new-glossary"
+            className="rounded-4 m-y-md"
+            data-testid="add-glossary"
             disabled={!createGlossaryPermission}
+            size="middle"
             type="primary"
             onClick={handleAddGlossaryClick}>
             {t('label.add-new-entity', { entity: t('label.glossary') })}
@@ -242,23 +250,23 @@ const GlossaryPage = () => {
     );
   }
 
-  if (isLoading || isUndefined(selectedData)) {
-    return <Loader />;
-  }
-
   return (
     <PageContainerV1>
       <PageLayoutV1 leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}>
-        <GlossaryV1
-          deleteStatus={deleteStatus}
-          handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-          isChildLoading={isRightPanelLoading}
-          isGlossaryActive={isGlossaryActive}
-          selectedData={selectedData}
-          updateGlossary={updateGlossary}
-          onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={handleGlossaryTermDelete}
-        />
+        {isRightPanelLoading ? (
+          // Loader for right panel data
+          <Loader />
+        ) : (
+          <GlossaryV1
+            deleteStatus={deleteStatus}
+            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+            isGlossaryActive={isGlossaryActive}
+            selectedData={selectedData as Glossary}
+            updateGlossary={updateGlossary}
+            onGlossaryDelete={handleGlossaryDelete}
+            onGlossaryTermDelete={handleGlossaryTermDelete}
+          />
+        )}
       </PageLayoutV1>
     </PageContainerV1>
   );

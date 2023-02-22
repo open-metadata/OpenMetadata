@@ -21,8 +21,8 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "service": {
-      "description": "Link to the messaging service where this topic is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of the messaging service where this topic is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "messageSchema": {
       "$ref": "../../type/schema.json"

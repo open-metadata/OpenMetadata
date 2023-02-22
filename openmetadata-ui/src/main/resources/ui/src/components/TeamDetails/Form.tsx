@@ -14,6 +14,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { t } from 'i18next';
 import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
@@ -86,7 +87,9 @@ const Form: React.FC<FormProp> = forwardRef(
         <div className="tw-flex tw-w-full">
           <div className="tw-w-full">
             <div className="tw-mb-4">
-              <label className="tw-form-label required-field">Name</label>
+              <label className="tw-form-label required-field">
+                {t('label.name')}
+              </label>
               <input
                 autoComplete="off"
                 className="tw-form-inputs tw-form-inputs-padding"
@@ -101,7 +104,7 @@ const Form: React.FC<FormProp> = forwardRef(
             </div>
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">
-                Display name
+                {t('label.display-name')}
               </label>
               <input
                 autoComplete="off"
@@ -116,7 +119,7 @@ const Form: React.FC<FormProp> = forwardRef(
               {errorData?.displayName && errorMsg(errorData.displayName)}
             </div>
             <div>
-              <label className="tw-form-label">Description</label>
+              <label className="tw-form-label">{t('label.description')}</label>
               <RichTextEditor
                 initialValue={data.description ?? ''}
                 ref={markdownRef}

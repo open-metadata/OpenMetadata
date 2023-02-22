@@ -96,7 +96,7 @@ workflowConfig:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
 
 ```yaml

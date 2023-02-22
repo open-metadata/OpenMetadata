@@ -99,10 +99,10 @@ describe('Test Roles List Component', () => {
 
     const container = await screen.findByTestId('policies-list-table');
 
-    const nameCol = await screen.findByText('Name');
-    const descriptionCol = await screen.findByText('Description');
-    const rolesCol = await screen.findByText('Roles');
-    const actionsCol = await screen.findByText('Actions');
+    const nameCol = await screen.findByText('label.name');
+    const descriptionCol = await screen.findByText('label.description');
+    const rolesCol = await screen.findByText('label.role-plural');
+    const actionsCol = await screen.findByText('label.action-plural');
 
     expect(container).toBeInTheDocument();
     expect(nameCol).toBeInTheDocument();

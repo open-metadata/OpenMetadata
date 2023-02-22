@@ -7,6 +7,16 @@ slug: /deployment/security/keycloak
 
 Follow the sections in this guide to set up Keycloak SSO.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
+  enabled before configuring the authentication with Keycloak SSO.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Server Credentials
 
 ### Step 1: Access the Keycloak Admin Console
@@ -44,6 +54,14 @@ Follow the sections in this guide to set up Keycloak SSO.
 <Image src="/images/deployment/security/keycloak/5-edit-settings-url.png" alt="edit-settings-url.png"/>
 
 - Click on `Save` button.
+
+
+<Note>
+
+Configuring a service account in Keycloak is optional if you configure the ingestion-bot with
+the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
+
+</Note>
 
 ### Step 5: Where to Find the Credentials
 
