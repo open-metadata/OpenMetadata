@@ -22,10 +22,7 @@ import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import com.unboundid.util.ssl.HostNameSSLSocketVerifier;
-import com.unboundid.util.ssl.SSLSocketVerifier;
 import com.unboundid.util.ssl.SSLUtil;
-import com.unboundid.util.ssl.TrustAllSSLSocketVerifier;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -73,10 +70,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getLoginSettings();
-  }
-
-  private SSLSocketVerifier hostNameVerifier(boolean verifyHostName) {
-    return verifyHostName ? new HostNameSSLSocketVerifier(true) : TrustAllSSLSocketVerifier.getInstance();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {

@@ -18,6 +18,7 @@ import _ from 'lodash';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { createBotWithPut } from 'rest/botsAPI';
 import { getRoles } from 'rest/rolesAPIV1';
@@ -29,12 +30,12 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const CreateUserPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -89,7 +90,9 @@ const CreateUserPage = () => {
     if (bot) {
       const isBotExists = await checkBotInUse(userData.name);
       if (isBotExists) {
-        showErrorToast(`${userData.name} bot already exists.`);
+        showErrorToast(
+          t('message.entity-already-exists', { entity: userData.name })
+        );
       } else {
         try {
           setStatus('waiting');
@@ -109,7 +112,9 @@ const CreateUserPage = () => {
 
           if (botResponse) {
             setStatus('success');
-            showSuccessToast(`Bot created successfully`);
+            showSuccessToast(
+              t('server.create-entity-success', { entity: t('label.bot') })
+            );
             setTimeout(() => {
               setStatus('initial');
 
@@ -117,13 +122,13 @@ const CreateUserPage = () => {
             }, 500);
           } else {
             handleSaveFailure(
-              jsonData['api-error-messages']['create-bot-error']
+              t('server.create-entity-error', { entity: t('label.bot') })
             );
           }
         } catch (error) {
           handleSaveFailure(
             error as AxiosError,
-            jsonData['api-error-messages']['create-bot-error']
+            t('server.create-entity-error', { entity: t('label.bot') })
           );
         }
       }
@@ -141,13 +146,13 @@ const CreateUserPage = () => {
           }, 500);
         } else {
           handleSaveFailure(
-            jsonData['api-error-messages']['create-user-error']
+            t('server.create-entity-error', { entity: t('label.user') })
           );
         }
       } catch (error) {
         handleSaveFailure(
           error as AxiosError,
-          jsonData['api-error-messages']['create-user-error']
+          t('server.create-entity-error', { entity: t('label.user') })
         );
       }
     }
@@ -167,7 +172,7 @@ const CreateUserPage = () => {
       setRoles([]);
       showErrorToast(
         err as AxiosError,
-        jsonData['api-error-messages']['fetch-roles-error']
+        t('server.entity-fetch-error', { entity: t('label.role-plural') })
       );
     }
   };
