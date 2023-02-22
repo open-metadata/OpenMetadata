@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown, Layout, MenuProps, Tabs } from 'antd';
+import { Button, Card, Dropdown, Layout, MenuProps, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
@@ -668,9 +668,10 @@ const TaskDetailPage = () => {
                     />
                   )}
 
-                  <div
-                    className="tw-flex tw-justify-end"
-                    data-testid="task-cta-buttons">
+                  <Space
+                    className="m-t-xss"
+                    data-testid="task-cta-buttons"
+                    size="small">
                     {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <Button
                         className="ant-btn-link-custom"
@@ -711,7 +712,7 @@ const TaskDetailPage = () => {
                         )}
                       </Fragment>
                     )}
-                  </div>
+                  </Space>
 
                   {isTaskClosed && <ClosedTask task={taskDetail.task} />}
                 </Card>
