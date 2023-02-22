@@ -83,6 +83,12 @@ workflowConfig:
 - **consumerConfig**: Redpanda Consumer Config.
 - **schemaRegistryConfig**: Redpanda Schema Registry Config.
 
+<Note>
+
+To ingest the topic schema `schemaRegistryURL` must be passed
+
+</Note>
+
 #### Source Configuration - Source Config
 
 The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):

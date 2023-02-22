@@ -15,6 +15,7 @@ import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
@@ -52,6 +53,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   hasEditAccess,
   columns = [],
 }) => {
+  const { t } = useTranslation();
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
@@ -60,7 +62,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         width: 250,
@@ -80,7 +82,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         sorter: (col1, col2) => col1.name.localeCompare(col2.name),
       },
       {
-        title: 'Data Type',
+        title: t('label.data-type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataType',
         width: 250,
@@ -94,7 +96,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),
       },
       {
-        title: 'Null %',
+        title: `${t('label.null')} %`,
         dataIndex: 'profile',
         key: 'nullProportion',
         width: 200,
@@ -111,7 +113,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           (col2.profile?.nullProportion || 0),
       },
       {
-        title: 'Unique %',
+        title: `${t('label.unique')} %`,
         dataIndex: 'profile',
         key: 'uniqueProportion',
         width: 200,
@@ -126,7 +128,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           (col2.profile?.uniqueProportion || 0),
       },
       {
-        title: 'Distinct %',
+        title: `${t('label.distinct')} %`,
         dataIndex: 'profile',
         key: 'distinctProportion',
         width: 200,
@@ -141,7 +143,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           (col2.profile?.distinctProportion || 0),
       },
       {
-        title: 'Value Count',
+        title: t('label.value-count'),
         dataIndex: 'profile',
         key: 'valuesCount',
         width: 120,
@@ -151,7 +153,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
       {
-        title: 'Tests',
+        title: t('label.test-plural'),
         dataIndex: 'testCount',
         key: 'Tests',
         fixed: 'right',
@@ -169,7 +171,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         sorter: (col1, col2) => (col1.testCount || 0) - (col2.testCount || 0),
       },
       {
-        title: 'Status',
+        title: t('label.status'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         width: 120,
@@ -200,14 +202,18 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         },
       },
       {
-        title: 'Actions',
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         fixed: 'right',
         render: (_, record) => (
           <Tooltip
             placement="bottom"
-            title={hasEditAccess ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+            title={
+              hasEditAccess
+                ? t('label.add-entity', { entity: t('label.test') })
+                : NO_PERMISSION_FOR_ACTION
+            }>
             <Link
               to={getAddDataQualityTableTestPath(
                 ProfilerDashboardType.COLUMN,
@@ -275,7 +281,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
     <div data-testid="column-profile-table-container">
       <div className="tw-w-2/6">
         <Searchbar
-          placeholder="Find in table..."
+          placeholder={`${t('label.find-in-table')}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}

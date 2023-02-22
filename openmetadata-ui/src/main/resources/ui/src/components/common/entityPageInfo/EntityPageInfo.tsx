@@ -305,7 +305,9 @@ const EntityPageInfo = ({
 
   const getRequestTagsElements = useCallback(() => {
     const hasTags = !isEmpty(tags);
-    const text = hasTags ? 'Update request tags' : 'Request tags';
+    const text = hasTags
+      ? t('label.update-request-tag-plural')
+      : t('label.request-tag-plural');
 
     return onThreadLinkSelect &&
       TASK_ENTITIES.includes(entityType as EntityType) ? (
@@ -552,7 +554,7 @@ const EntityPageInfo = ({
                           alt="edit"
                           className="tw--mt-3 "
                           icon="icon-edit"
-                          title="Edit"
+                          title={t('label.edit')}
                           width="16px"
                         />
                       </button>
@@ -561,7 +563,9 @@ const EntityPageInfo = ({
                         <Tags
                           className="tw-text-primary"
                           startWith="+ "
-                          tag="Add tag"
+                          tag={t('label.add-entity', {
+                            entity: t('label.tag-lowercase'),
+                          })}
                           type="label"
                         />
                       </span>

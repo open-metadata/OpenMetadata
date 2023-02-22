@@ -73,6 +73,9 @@ This has helped us reorganise functionalities and easily focus on each connector
 If you're extending any of the sources, you'll need to update your imports. You can take a look at the new
 structure [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/ingestion/source).
 
+### MySQL Helm Chart Version Reverted to 8.8.23
+
+OpenMetadata Helm Chart Release with Application Version `0.13.2` updates the Bitnami MySQL Helm Chart version from `9.2.1` to `8.8.23`. This is a breaking change and users will face an issue as mentioned in the documentation [here](/deployment/upgrade/kubernetes#mysql-pod-fails-on-upgrade). Please note that OpenMetadata Dependencies Helm Chart is not recommended for production use cases. The steps mentioned in the section will help you fix the issue.
 
 ## 0.13.1 - Stable Release
 

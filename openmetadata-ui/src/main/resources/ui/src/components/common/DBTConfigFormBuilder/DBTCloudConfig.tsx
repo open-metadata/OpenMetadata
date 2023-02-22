@@ -85,7 +85,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-account-id">
-          {requiredField('dbt Cloud Account Id')}
+          {requiredField(t('label.dbt-cloud-account-id'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('label.dbt-cloud-account-id')}
@@ -105,7 +105,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-auth-token">
-          {requiredField('dbt Cloud Authentication Token')}
+          {requiredField(t('label.dbt-cloud-account-auth-token'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('label.dbt-cloud-account-auth-token')}
@@ -143,7 +143,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
 
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
-          {requiredField('dbt Cloud URL')}
+          {requiredField(t('label.dbt-cloud-url'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('message.unable-to-connect-to-your-dbt-cloud-instance')}
