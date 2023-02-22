@@ -22,6 +22,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
@@ -116,26 +117,22 @@ public class ConfigResource {
   }
 
   @GET
-  @Path(("/slackChat"))
+  @Path(("/applicationConfig"))
   @Operation(
-      operationId = "getSlackChatConfiguration",
-      summary = "Get slack chat configuration",
+      operationId = "getApplicationConfiguration",
+      summary = "Get application configuration",
       tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Get slack chat configuration",
+            description = "Get application configuration",
             content =
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = SlackChatConfiguration.class)))
       })
-  public SlackChatConfiguration getSlackChatConfiguration() {
-    SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
-    if (openMetadataApplicationConfig.getSlackChatConfiguration() != null) {
-      slackChatConfiguration = openMetadataApplicationConfig.getSlackChatConfiguration();
-    }
-    return slackChatConfiguration;
+  public ApplicationConfiguration getApplicationConfiguration() {
+    return openMetadataApplicationConfig.getApplicationConfiguration();
   }
 
   @GET

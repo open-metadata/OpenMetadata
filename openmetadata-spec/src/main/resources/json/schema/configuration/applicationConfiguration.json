@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/applicationConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApplicationConfiguration",
+  "description": "This schema defines the Application Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.api.configuration.ApplicationConfiguration",
+  "definitions": {
+    "logoConfig": {
+      "description": "This schema defines the Logo Configuration",
+      "type": "object",
+      "javaType": "org.openmetadata.api.configuration.LogoConfiguration",
+      "properties": {
+        "logoLocationType": {
+          "description": "Type of Logo Location",
+          "type": "string",
+          "enum": ["openmetadata","filePath","url"]
+        },
+        "logoAbsoluteFilePath": {
+          "description": "Absolute File Path For Logo Image",
+          "type": "string"
+        },
+        "logoUrlPath": {
+          "description": "Logo Image Url",
+          "type": "string"
+        }
+      },
+      "required": ["logoLocationType"],
+      "additionalProperties": false
+    },
+    "slackConfig": {
+      "description": "This schema defines the Slack Chat Configuration.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.slackChat.SlackChatConfiguration",
+      "properties": {
+        "slackUrl": {
+          "description": "The URL of the slack channel to redirect the users to on click of the chat icon",
+          "type": "string"
+        }
+      },
+      "required": ["slackUrl"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "logoConfig" : {
+      "$ref": "#/definitions/logoConfig"
+    },
+    "slackConfig": {
+      "$ref": "#/definitions/slackConfig"
+    }
+  },
+  "additionalProperties": false
+}
