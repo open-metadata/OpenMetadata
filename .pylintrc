@@ -15,6 +15,7 @@ max-attributes=12
 
 # usual typevar naming
 good-names=T,C,fn,db,df
+module-rgx=(([a-z_][a-z0-9_]*)|([a-zA-Z0-9]+))$
 
 [MASTER]
 fail-under=6.0

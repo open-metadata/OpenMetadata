@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
 Validator for column values to not match regex test case
@@ -36,7 +35,7 @@ NOT_LIKE_COUNT = "notLikeCount"
 
 
 class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
-    """ "Validator for column values to not match regex test case"""
+    """Validator for column values to not match regex test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case

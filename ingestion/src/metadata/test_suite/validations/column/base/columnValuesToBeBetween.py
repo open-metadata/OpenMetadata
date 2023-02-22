@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column values sum to be between test case
+Validator for column values to be between test case
 """
 
 import traceback
@@ -40,7 +39,7 @@ MAX = "max"
 
 
 class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
-    """ "Validator for column values sum to be between test case"""
+    """Validator for column values to be between test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case

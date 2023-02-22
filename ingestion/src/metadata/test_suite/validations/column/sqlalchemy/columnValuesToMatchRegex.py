@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column values sum to be between test case
+Validator for column values to match regex test case
 """
 
 from typing import Optional
@@ -32,7 +31,7 @@ logger = test_suite_logger()
 class ColumnValuesToMatchRegexValidator(
     BaseColumnValuesToMatchRegexValidator, SQAValidatorMixin
 ):
-    """ "Validator for column values sum to be between test case"""
+    """Validator for column values to match regex test case"""
 
     def _get_column_name(self) -> Column:
         """Get column name from the test case entity link

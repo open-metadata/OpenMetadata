@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value to not be in set test case
+Validator for column value to be in set test case
 """
 
 import traceback
@@ -37,7 +36,7 @@ ALLOWED_VALUE_COUNT = "allowedValueCount"
 
 
 class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
-    """ "Validator for column value to be not in set test case"""
+    """Validator for column value to be in set test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case

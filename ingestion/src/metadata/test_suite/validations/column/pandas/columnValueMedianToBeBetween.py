@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
 Validator for column value median to be between test case
@@ -29,7 +28,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 class ColumnValueMedianToBeBetweenValidator(
     BaseColumnValueMedianToBeBetweenValidator, PandasValidatorMixin
 ):
-    """ "Validator for column value mean to be between test case"""
+    """Validator for column value median to be between test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
         """Get column name from the test case entity link

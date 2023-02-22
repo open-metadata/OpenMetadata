@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value length to be between test case
+Validator for table column name to exist test case
 """
 
 from metadata.test_suite.validations.mixins.pandas_validator_mixin import (
@@ -28,7 +27,7 @@ logger = test_suite_logger()
 class TableColumnNameToExistValidator(
     BaseTableColumnNameToExistValidator, PandasValidatorMixin
 ):
-    """ "Validator for column value mean to be between test case"""
+    """Validator for table column name to exist test case"""
 
     def _run_results(self):
         """compute result of the test case"""

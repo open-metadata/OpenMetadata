@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value length to be between test case
+Validator for table custom SQL Query test case
 """
 
 from sqlalchemy import text
@@ -23,7 +22,7 @@ from metadata.test_suite.validations.table.base.tableCustomSQLQuery import (
 
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
-    """ "Validator for column value mean to be between test case"""
+    """Validator for table custom SQL Query test case"""
 
     def _run_results(self, sql_expression):
         """compute result of the test case"""

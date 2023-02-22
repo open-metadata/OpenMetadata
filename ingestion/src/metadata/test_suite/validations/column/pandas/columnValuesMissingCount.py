@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value length to be between test case
+Validator for column value missing count to be equal test case
 """
 
 from typing import Optional
@@ -29,7 +28,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 class ColumnValuesMissingCountValidator(
     BaseColumnValuesMissingCountValidator, PandasValidatorMixin
 ):
-    """ "Validator for column value missing count to be equal test case"""
+    """Validator for column value missing count to be equal test case"""
 
     def _get_column_name(self) -> SQALikeColumn:
         """Get column name from the test case entity link

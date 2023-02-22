@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value length to be between test case
+Validator for table row count to be between test case
 """
 
 from typing import Optional
@@ -28,7 +27,7 @@ from metadata.test_suite.validations.table.base.tableRowCountToBeBetween import 
 class TableRowCountToBeBetweenValidator(
     BaseTableRowCountToBeBetweenValidator, PandasValidatorMixin
 ):
-    """ "Validator for column value mean to be between test case"""
+    """Validator for table row count to be between test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:
         """compute result of the test case"""

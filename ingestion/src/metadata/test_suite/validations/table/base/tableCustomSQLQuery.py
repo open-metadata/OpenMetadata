@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value length to be between test case
+Validator for table custom SQL Query test case
 """
 
 import traceback
@@ -32,7 +31,7 @@ RESULT_ROW_COUNT = "resultRowCount"
 
 
 class BaseTableCustomSQLQueryValidator(BaseTestValidator):
-    """ "Validator for column value mean to be between test case"""
+    """Validator table custom SQL Query test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case

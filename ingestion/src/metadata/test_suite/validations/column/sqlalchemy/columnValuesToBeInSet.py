@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value to not be in set test case
+Validator for column value to be in set test case
 """
 
 from typing import Optional
@@ -28,7 +27,7 @@ from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValida
 class ColumnValuesToBeInSetValidator(
     BaseColumnValuesToBeInSetValidator, SQAValidatorMixin
 ):
-    """ "Validator for column value to be not in set test case"""
+    """Validator for column value to be in set test case"""
 
     def _get_column_name(self) -> Column:
         """Get column name from the test case entity link

@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value min to be between test case
+Validator for column value to be not in set test case
 """
 
 import traceback
@@ -34,9 +33,11 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
+COUNT_FORBIDDEN_VALUES = "countForbiddenValues"
+
 
 class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
-    """ "Validator for column value mean to be between test case"""
+    """Validator for column value to be not in set test case"""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -66,14 +67,14 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name="countForbiddenValues", value=None)],
+                [TestResultValue(name=COUNT_FORBIDDEN_VALUES, value=None)],
             )
 
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(res == 0),
             f"Found countInSet={res}. It should be 0",
-            [TestResultValue(name="countForbiddenValues", value=str(res))],
+            [TestResultValue(name=COUNT_FORBIDDEN_VALUES, value=str(res))],
         )
 
     @abstractmethod

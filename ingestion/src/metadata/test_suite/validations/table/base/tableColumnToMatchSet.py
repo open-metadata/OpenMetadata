@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# pylint: disable=invalid-name
 
 """
-Validator for column value length to be between test case
+Validator for table column to match set test case
 """
 
 import collections
@@ -32,7 +31,7 @@ COLUMN_NAMES = "columnNames"
 
 
 class BaseTableColumnToMatchSetValidator(BaseTestValidator):
-    """ "Validator for column value mean to be between test case"""
+    """Validator for table column to match set test case"""
 
     def compare(self, expected_names, actual_names) -> bool:
         return collections.Counter(expected_names) == collections.Counter(actual_names)
