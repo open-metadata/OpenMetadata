@@ -41,9 +41,7 @@ const ReviewerModal = ({
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [options, setOptions] = useState<User[]>([]);
-  const [selectedOption, setSelectedOption] = useState<User[]>(
-    reviewer?.map(getUserFromEntityReference) ?? []
-  );
+  const [selectedOption, setSelectedOption] = useState<User[]>([]);
   const { t } = useTranslation();
 
   const getSearchedReviewers = (searchedData: User[]) => {
@@ -117,6 +115,12 @@ const ReviewerModal = ({
     }
     querySearch();
   }, []);
+
+  useEffect(() => {
+    if (reviewer) {
+      setSelectedOption(reviewer.map(getUserFromEntityReference));
+    }
+  }, [reviewer]);
 
   return (
     <Modal
