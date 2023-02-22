@@ -98,8 +98,8 @@ public class ElasticSearchIndexDefinition {
     public final String indexMappingFile;
     public final String entityType;
 
-    ElasticSearchIndexType(String entity, String indexName, String indexMappingFile) {
-      this.entityType = entity;
+    ElasticSearchIndexType(String entityType, String indexName, String indexMappingFile) {
+      this.entityType = entityType;
       this.indexName = indexName;
       this.indexMappingFile = indexMappingFile;
     }
