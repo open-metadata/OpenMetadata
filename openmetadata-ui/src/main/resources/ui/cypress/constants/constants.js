@@ -235,6 +235,15 @@ export const NEW_GLOSSARY_TERMS = {
     synonyms: 'give,disposal,deal',
   },
 };
+export const GLOSSARY_TERM_WITH_DETAILS = {
+  name: 'Accounts',
+  description: 'This is the Accounts',
+  tag: 'PersonalData.Personal',
+  synonyms: 'book,ledger,results',
+  relatedTerms: 'Sales',
+  reviewer: 'Aaron Singh',
+  inheritedReviewer: 'Aaron Johnson',
+};
 
 export const NEW_GLOSSARY_1_TERMS = {
   term_1: {

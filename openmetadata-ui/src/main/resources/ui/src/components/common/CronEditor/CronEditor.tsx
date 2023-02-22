@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { pluralize } from '../../../utils/CommonUtils';
 import { getCron } from '../../../utils/CronUtils';
 import {
@@ -40,10 +40,12 @@ import {
 } from './CronEditor.interface';
 
 const CronEditor: FC<CronEditorProp> = (props) => {
+  const { t } = useTranslation();
+
   const getCronType = (cronStr: string) => {
-    for (const t in combinations) {
-      if (combinations[t as keyof Combination].test(cronStr)) {
-        return t;
+    for (const c in combinations) {
+      if (combinations[c as keyof Combination].test(cronStr)) {
+        return c;
       }
     }
 
@@ -79,7 +81,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         min: 0,
       },
     };
-    const t = getCronType(valueStr);
+    const cronType = getCronType(valueStr);
 
     const d = valueStr ? valueStr.split(' ') : [];
     const v: CronValue = {
@@ -90,17 +92,17 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       dow: d[4],
     };
 
-    stateVal.selectedPeriod = t || stateVal.selectedPeriod;
+    stateVal.selectedPeriod = cronType || stateVal.selectedPeriod;
 
     if (!isEmpty(t)) {
-      const stateIndex = `selected${t?.charAt(0).toUpperCase()}${t?.substring(
-        1
-      )}Option`;
+      const stateIndex = `${t('label.selected-lowercase')}${cronType
+        ?.charAt(0)
+        .toUpperCase()}${cronType?.substring(1)}${t('label.option')}`;
       const selectedPeriodObj = stateVal[
         stateIndex as keyof StateValue
       ] as SelectedYearOption;
 
-      const targets = toDisplay[t as keyof ToDisplay];
+      const targets = toDisplay[cronType as keyof ToDisplay];
 
       for (let i = 0; i < targets.length; i++) {
         const tgt = targets[i];
@@ -142,7 +144,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   const { className, disabled } = props;
   const { selectedPeriod } = state;
 
-  const startText = 'Scheduled to run every';
+  const startText = t('label.schedule-to-run-every');
   const cronPeriodString = `${startText} ${selectedPeriod}`;
 
   const changeValue = (state: StateValue) => {
