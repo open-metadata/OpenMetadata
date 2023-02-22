@@ -93,6 +93,7 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     ApplicationConfiguration applicationConfiguration =
         TestUtils.get(target, ApplicationConfiguration.class, TEST_AUTH_HEADERS);
     assertEquals(config.getApplicationConfiguration().getLogoConfig(), applicationConfiguration.getLogoConfig());
+    assertEquals(config.getApplicationConfiguration().getLoginConfig(), applicationConfiguration.getLoginConfig());
   }
 
   @Test

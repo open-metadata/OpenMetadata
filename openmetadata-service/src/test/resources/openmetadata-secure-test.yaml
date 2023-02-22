@@ -196,11 +196,8 @@ applicationConfig:
     logoLocationType: "openmetadata"
     logoAbsoluteFilePath: ""
     logoUrlPath: ""
-  slackConfig:
-    slackUrl: "http://localhost:8080"
-
-
-login:
-  maxLoginFailAttempts: 3
-  accessBlockTime: 600
-  jwtTokenExpiryTime: 3600
+  loginConfig:
+    maxLoginFailAttempts: 3
+    accessBlockTime: 600
+    jwtTokenExpiryTime: 3600
+  
