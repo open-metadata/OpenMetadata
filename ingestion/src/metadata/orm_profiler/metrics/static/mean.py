@@ -14,7 +14,8 @@ AVG Metric definition
 """
 # pylint: disable=duplicate-code
 
-import traceback
+
+from typing import cast
 
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
@@ -64,6 +65,7 @@ class Mean(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return func.avg(column(self.col.name))
 
@@ -75,34 +77,23 @@ class Mean(StaticMetric):
         )
         return None
 
+    # pylint: disable=import-outside-toplevel
     @_label
-    def dl_fn(self, data_frame=None):
-        """
-        Data lake function to calculate mean
-        """
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+    def df_fn(self, df=None):
+        """dataframe function"""
+        from numpy import vectorize
+        from pandas import DataFrame
 
-        try:
-            if is_quantifiable(self.col.datatype):
-                return data_frame[self.col.name].mean()
+        df = cast(DataFrame, df)  # satisfy mypy
 
-            if is_concatenable(self.col.datatype):
-                return (
-                    pd.DataFrame(
-                        [
-                            len(f"{concatenable_data}")
-                            for concatenable_data in data_frame[
-                                self.col.name
-                            ].values.tolist()
-                        ]
-                    )
-                    .mean()
-                    .tolist()[0]
-                )
-            raise NotImplementedError()
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Don't know how to process type {self.col.datatype} when computing MEAN, Error: {err}"
-            )
-            return 0
+        if is_quantifiable(self.col.type):
+            return df[self.col.name].mean()
+
+        if is_concatenable(self.col.type):
+            length_vector_fn = vectorize(len)
+            return length_vector_fn(df[self.col.name]).mean()
+
+        logger.warning(
+            f"Don't know how to process type {self.col.type} when computing MEAN"
+        )
+        return 0

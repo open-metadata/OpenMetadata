@@ -30,6 +30,7 @@ import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   getListTestCase,
@@ -58,6 +59,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const [testSuite, setTestSuite] = useState<TestSuite>();
@@ -79,12 +81,12 @@ const TestSuiteDetailsPage = () => {
 
   const tabs = [
     {
-      name: 'Test Cases',
+      name: t('label.test-case-plural'),
       isProtected: false,
       position: 1,
     },
     {
-      name: 'Pipeline',
+      name: t('label.pipeline'),
       isProtected: false,
       position: 2,
     },
@@ -158,7 +160,7 @@ const TestSuiteDetailsPage = () => {
       });
       setSlashedBreadCrumb([
         {
-          name: 'Test Suites',
+          name: t('label.test-suite-plural'),
           url: ROUTES.TEST_SUITES,
         },
         {
@@ -270,7 +272,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')
