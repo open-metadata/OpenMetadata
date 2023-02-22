@@ -15,7 +15,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Card, Col, Row, Tabs } from 'antd';
+import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
@@ -261,31 +261,37 @@ const Explore: React.FC<ExploreProps> = ({
         items={tabItems}
         size="small"
         tabBarExtraContent={
-          <div className="tw-flex">
+          <Space align="center" size={4}>
             <SortingDropDown
               fieldList={tabsInfo[searchIndex].sortingFields}
               handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
             />
 
-            <div className="tw-flex">
-              {sortOrder === 'asc' ? (
-                <button onClick={() => onChangeSortOder('desc')}>
-                  <SortAscendingOutlined
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                  />
-                </button>
-              ) : (
-                <button onClick={() => onChangeSortOder('asc')}>
-                  <SortDescendingOutlined
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                  />
-                </button>
-              )}
-            </div>
-          </div>
+            {sortOrder === 'asc' ? (
+              <Button
+                className="p-0"
+                size="small"
+                type="text"
+                onClick={() => onChangeSortOder('desc')}>
+                <SortAscendingOutlined
+                  className="text-base text-primary"
+                  data-testid="last-updated"
+                />
+              </Button>
+            ) : (
+              <Button
+                className="p-0"
+                size="small"
+                type="text"
+                onClick={() => onChangeSortOder('asc')}>
+                <SortDescendingOutlined
+                  className="text-base text-primary"
+                  data-testid="last-updated"
+                />
+              </Button>
+            )}
+          </Space>
         }
         onChange={(tab) => {
           tab && onChangeSearchIndex(tab as ExploreSearchIndex);

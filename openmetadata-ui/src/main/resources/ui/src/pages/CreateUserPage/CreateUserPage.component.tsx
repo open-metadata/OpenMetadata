@@ -87,15 +87,16 @@ const CreateUserPage = () => {
    * @param userData Data for creating new user
    */
   const handleAddUserSave = async (userData: CreateUser) => {
+    setStatus('waiting');
     if (bot) {
       const isBotExists = await checkBotInUse(userData.name);
       if (isBotExists) {
+        setStatus('initial');
         showErrorToast(
           t('message.entity-already-exists', { entity: userData.name })
         );
       } else {
         try {
-          setStatus('waiting');
           // Create a user with isBot:true
           const userResponse = await createUserWithPut({
             ...userData,
@@ -134,8 +135,6 @@ const CreateUserPage = () => {
       }
     } else {
       try {
-        setStatus('waiting');
-
         const response = await createUser(userData);
 
         if (response) {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { LOADING_STATE, OPERATION } from 'enums/common.enum';
 import { CustomProperty, Type } from '../../generated/entity/type';
 
 export interface CustomPropertyTableProp {
@@ -19,6 +20,7 @@ export interface CustomPropertyTableProp {
   updateEntityType: (
     customProperties: Type['customProperties']
   ) => Promise<void>;
+  loadingState: LOADING_STATE;
 }
 
-export type Operation = 'delete' | 'update' | 'no-operation';
+export type Operation = `${OPERATION}`;
