@@ -88,7 +88,7 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void get_slack_chat_configs_200_OK() throws IOException {
+  void get_application_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("applicationConfig");
     ApplicationConfiguration applicationConfiguration =
         TestUtils.get(target, ApplicationConfiguration.class, TEST_AUTH_HEADERS);
