@@ -43,3 +43,8 @@ export enum OPERATION {
   DELETE = 'delete',
   NO_OPERATION = 'no-operation',
 }
+
+export enum SORT_ORDER {
+  ASC = 'asc',
+  DESC = 'desc',
+}

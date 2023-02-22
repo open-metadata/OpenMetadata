@@ -24,10 +24,7 @@ import { getEntityName } from '../../utils/CommonUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  CustomPropertyTableProp,
-  Operation,
-} from './CustomPropertyTable.interface';
+import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
@@ -40,11 +37,11 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     {} as CustomProperty
   );
 
-  const [operation, setOperation] = useState<Operation>(OPERATION.NO_OPERATION);
+  const [operation, setOperation] = useState<OPERATION>(OPERATION.NO_OPERATION);
 
   const resetSelectedProperty = () => {
     setSelectedProperty({} as CustomProperty);
-    setOperation(OPERATION.NO_OPERATION as Operation);
+    setOperation(OPERATION.NO_OPERATION);
   };
 
   const handlePropertyDelete = () => {
@@ -124,7 +121,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 type="text"
                 onClick={() => {
                   setSelectedProperty(record);
-                  setOperation('update');
+                  setOperation(OPERATION.UPDATE);
                 }}>
                 <IconEdit name={t('label.edit')} width={16} />
               </Button>
@@ -138,7 +135,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 type="text"
                 onClick={() => {
                   setSelectedProperty(record);
-                  setOperation('delete');
+                  setOperation(OPERATION.DELETE);
                 }}>
                 <IconDelete name={t('label.delete')} width={16} />
               </Button>

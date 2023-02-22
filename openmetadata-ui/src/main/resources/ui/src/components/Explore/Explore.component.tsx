@@ -18,6 +18,7 @@ import {
 import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
+import { SORT_ORDER } from 'enums/common.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
@@ -94,6 +95,18 @@ const Explore: React.FC<ExploreProps> = ({
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
+
+  const isAscSortOrder = useMemo(
+    () => sortOrder === SORT_ORDER.ASC,
+    [sortOrder]
+  );
+  const sortProps = useMemo(
+    () => ({
+      className: 'text-base text-primary',
+      'data-testid': 'last-updated',
+    }),
+    []
+  );
 
   const tabItems = useMemo(
     () =>
@@ -267,30 +280,21 @@ const Explore: React.FC<ExploreProps> = ({
               handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
             />
-
-            {sortOrder === 'asc' ? (
-              <Button
-                className="p-0"
-                size="small"
-                type="text"
-                onClick={() => onChangeSortOder('desc')}>
-                <SortAscendingOutlined
-                  className="text-base text-primary"
-                  data-testid="last-updated"
-                />
-              </Button>
-            ) : (
-              <Button
-                className="p-0"
-                size="small"
-                type="text"
-                onClick={() => onChangeSortOder('asc')}>
-                <SortDescendingOutlined
-                  className="text-base text-primary"
-                  data-testid="last-updated"
-                />
-              </Button>
-            )}
+            <Button
+              className="p-0"
+              size="small"
+              type="text"
+              onClick={() =>
+                onChangeSortOder(
+                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                )
+              }>
+              {isAscSortOrder ? (
+                <SortAscendingOutlined {...sortProps} />
+              ) : (
+                <SortDescendingOutlined {...sortProps} />
+              )}
+            </Button>
           </Space>
         }
         onChange={(tab) => {
