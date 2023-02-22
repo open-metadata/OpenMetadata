@@ -13,43 +13,13 @@
 
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.SEPARATOR;
-import static org.openmetadata.service.security.SecurityUtil.authHeaders;
-
-import java.lang.reflect.Field;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.validation.constraints.Size;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.type.ObjectStoreConnection;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
@@ -65,6 +35,7 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
+import org.openmetadata.schema.services.connections.objectstore.S3Connection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.type.DashboardConnection;
@@ -78,6 +49,38 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+
+import javax.json.JsonObject;
+import javax.json.JsonPatch;
+import javax.validation.constraints.Size;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import java.lang.reflect.Field;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.SEPARATOR;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
 @Slf4j
 public final class TestUtils {
@@ -103,10 +106,13 @@ public final class TestUtils {
   public static DashboardConnection METABASE_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
+  public static final ObjectStoreConnection OBJECT_STORE_CONNECTION;
   public static MetadataConnection AMUNDSEN_CONNECTION;
   public static MetadataConnection ATLAS_CONNECTION;
 
   public static URI PIPELINE_URL;
+
+  public static AWSCredentials AWS_CREDENTIALS;
 
   public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -186,6 +192,21 @@ public final class TestUtils {
   }
 
   static {
+    AWS_CREDENTIALS = new AWSCredentials()
+                          .withAwsAccessKeyId("ABCD")
+                          .withAwsSecretAccessKey("1234")
+                          .withAwsRegion("eu-west-2");
+  }
+
+  static {
+    OBJECT_STORE_CONNECTION =
+            new ObjectStoreConnection()
+                .withConfig(
+                    new S3Connection()
+                        .withAwsConfig(AWS_CREDENTIALS));
+  }
+
+  static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
       AIRFLOW_CONNECTION =
@@ -196,11 +217,7 @@ public final class TestUtils {
           new PipelineConnection()
               .withConfig(
                   new GluePipelineConnection()
-                      .withAwsConfig(
-                          new AWSCredentials()
-                              .withAwsAccessKeyId("ABCD")
-                              .withAwsSecretAccessKey("1234")
-                              .withAwsRegion("eu-west-2")));
+                      .withAwsConfig(AWS_CREDENTIALS));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();

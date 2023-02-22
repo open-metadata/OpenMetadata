@@ -35,6 +35,7 @@
     },
     "objectStoreConnection": {
       "type": "object",
+      "javaType": "org.openmetadata.schema.type.ObjectStoreConnection",
       "description": "Object Store Connection.",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
@@ -128,11 +129,6 @@
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "objectStoreServiceType",
-    "href"
-  ],
+  "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }

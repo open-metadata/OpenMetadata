@@ -4,7 +4,7 @@
   "title": "GCS StoreConnection",
   "description": "GCS Store Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.store.GCStoreConnection",
+  "javaType": "org.openmetadata.schema.services.connections.objectstore.GCConnection",
   "properties": {
     "credentials": {
       "title": "GCS Credentials",

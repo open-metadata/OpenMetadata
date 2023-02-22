@@ -776,7 +776,7 @@ public class TableRepository extends EntityRepository<Table> {
     return new TableUpdater(original, updated, operation);
   }
 
-  List<Column> cloneWithoutTags(List<Column> columns) {
+  public static List<Column> cloneWithoutTags(List<Column> columns) {
     if (nullOrEmpty(columns)) {
       return columns;
     }
@@ -785,7 +785,7 @@ public class TableRepository extends EntityRepository<Table> {
     return copy;
   }
 
-  private Column cloneWithoutTags(Column column) {
+  private static Column cloneWithoutTags(Column column) {
     List<Column> children = cloneWithoutTags(column.getChildren());
     return new Column()
         .withDescription(column.getDescription())

@@ -36,51 +36,18 @@
     "fileFormat": {
       "javaType": "org.openmetadata.schema.type.ContainerFileFormat",
       "description": "This schema defines the file formats for the object/files within a container.",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": [
-        "zip",
-        "gz",
-        "zstd"
-      ],
+      "enum": ["zip", "gz", "zstd", "csv", "tsv", "json", "parquet", "avro"],
       "javaEnums": [
-        {
-          "name": "Zip"
-        },
-        {
-          "name": "Gz"
-        },
-        {
-          "name": "Zstd"
-        }
-      ]
-    },
-    "dataFormat": {
-      "javaType": "org.openmetadata.schema.type.ContainerDataFormat",
-      "description": "This schema defines the file formats for the object/files within a container.",
-      "type": "string",
-      "enum": [
-        "csv",
-        "tsv",
-        "json",
-        "parquet",
-        "avro"
-      ],
-      "javaEnums": [
-        {
-          "name": "Csv"
-        },
-        {
-          "name": "Tsv"
-        },
-        {
-          "name": "Json"
-        },
-        {
-          "name": "Parquet"
-        },
-        {
-          "name": "Avro"
-        }
+        {"name": "Zip"},
+        {"name": "Gz"},
+        {"name": "Zstd"},
+        {"name": "Csv"},
+        {"name": "Tsv"},
+        {"name": "Json"},
+        {"name": "Parquet"},
+        {"name": "Avro"}
       ]
     }
   },
@@ -121,12 +88,16 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "owner": {
+      "description": "Owner of this container.",
+      "$ref": "../../type/entityReference.json"
+    },
     "objectStoreService": {
       "description": "Link to the object store service where this container is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "parent": {
-      "description": "Link to the parent container under which this entity sits.",
+      "description": "Link to the parent container under which this entity sits, if not top level.",
       "$ref": "../../type/entityReference.json"
     },
     "children": {
@@ -145,34 +116,21 @@
     },
     "numberOfObjects": {
       "description": "The number of objects/files this container has.",
-      "type": "number",
+      "type": "integer",
       "default": null
     },
     "size": {
       "description": "The total size in KB this container has.",
-      "type": "number",
+      "type": "integer",
       "default": null
     },
     "fileFormats": {
-      "description": "This can have items of fileFormat or dataFormat. e.g. fileFormats=[csv, mp4]  dataModel=null as it's not structured, fileFormats=[parquet] and have dataModel informed as all parquets follow the same schema, fileFormats=[parquet] and have a non informed dataModel because the parquets have different schemas",
+      "description": "File & data formats identified for the container:  e.g. dataFormats=[csv, json]. These can be present both when the container has a dataModel or not",
       "type": "array",
       "items": {
-        "oneOf": [
-          {
-            "type": "object",
-            "$ref": "#/definitions/fileFormat"
-          },
-          {
-            "type": "object",
-            "$ref": "#/definitions/dataFormat"
-          }
-        ]
+        "$ref": "#/definitions/fileFormat"
       },
       "default": null
-    },
-    "owner": {
-      "description": "Owner of this container.",
-      "$ref": "../../type/entityReference.json"
     },
     "followers": {
       "description": "Followers of this container.",
@@ -194,6 +152,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": [

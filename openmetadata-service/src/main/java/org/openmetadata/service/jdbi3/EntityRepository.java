@@ -238,7 +238,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Set fullyQualifiedName of an entity */
-  public void setFullyQualifiedName(T entity) {
+  public void setFullyQualifiedName(T entity) throws IOException {
     entity.setFullyQualifiedName(entity.getName());
   }
 

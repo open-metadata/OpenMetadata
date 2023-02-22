@@ -75,6 +75,7 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
+  public static final String OBJECT_STORE_SERVICE = "objectStoreService";
 
   //
   // Data asset entities
@@ -89,6 +90,7 @@ public final class Entity {
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
+  public static final String CONTAINER = "container";
   public static final String BOT = "bot";
   public static final String ALERT = "alert";
   public static final String THREAD = "THREAD";

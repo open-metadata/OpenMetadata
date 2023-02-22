@@ -4,7 +4,7 @@
   "title": "Azure StoreConnection",
   "description": "Azure Store Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.store.AzureStoreConnection",
+  "javaType": "org.openmetadata.schema.services.connections.objectstore.AzureConnection",
   "properties": {
     "credentials": {
       "title": "Azure Credentials",

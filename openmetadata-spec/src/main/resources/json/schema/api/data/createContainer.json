@@ -4,7 +4,7 @@
   "title": "CreateContainerRequest",
   "description": "Create Container Model entity request",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.data.CreateMlModel",
+  "javaType": "org.openmetadata.schema.api.data.CreateContainer",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
@@ -28,10 +28,6 @@
       "description": "Link to the parent container under which this entity sits.",
       "$ref": "../../type/entityReference.json"
     },
-    "children": {
-      "description": "References to child containers residing under this entity.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
     "dataModel": {
       "description": "References to the container's data model, if data is structured, or null otherwise",
       "$ref": "../../entity/data/container.json#/definitions/containerDataModel",
@@ -44,28 +40,19 @@
     },
     "numberOfObjects": {
       "description": "The number of objects/files this container has.",
-      "type": "number",
+      "type": "integer",
       "default": null
     },
     "size": {
       "description": "The total size in KB this container has.",
-      "type": "number",
+      "type": "integer",
       "default": null
     },
     "fileFormats": {
-      "description": "File formats identified for the Container",
+      "description": "File & data formats identified for the container:  e.g. dataFormats=[csv, json]. These can be present both when the container has a dataModel or not",
       "type": "array",
       "items": {
-        "oneOf": [
-          {
-            "type": "object",
-            "$ref": "../../entity/data/container.json#/definitions/dataFormat"
-          },
-          {
-            "type": "object",
-            "$ref": "../../entity/data/container.json#/definitions/fileFormat"
-          }
-        ]
+        "$ref": "../../entity/data/container.json#/definitions/fileFormat"
       },
       "default": null
     },
@@ -80,6 +67,10 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["name", "objectStoreService"],
