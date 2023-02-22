@@ -130,7 +130,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "getClassificationByID",
-      summary = "Get a classification",
+      summary = "Get a classification by id",
       tags = "classification",
       description = "Get a classification by `id`",
       responses = {
@@ -144,7 +144,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public Classification get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "classification Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -164,7 +164,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("name/{name}")
   @Operation(
       operationId = "getClassificationByName",
-      summary = "Get a classification",
+      summary = "Get a classification by name",
       tags = "classification",
       description =
           "Get a classification identified by name. The response includes classification information along "
@@ -175,12 +175,13 @@ public class ClassificationResource extends EntityResource<Classification, Class
             description = "The user ",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Classification.class))),
-        @ApiResponse(responseCode = "404", description = "Classification for instance {category} is not found")
+        @ApiResponse(responseCode = "404", description = "Classification for instance {name} is not found")
       })
   public Classification getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Classification name", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -201,7 +202,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "listAllClassificationVersion",
       summary = "List classification versions",
-      tags = "glossaries",
+      tags = "classification",
       description = "Get a list of all the versions of a classification identified by `id`",
       responses = {
         @ApiResponse(
@@ -212,7 +213,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "classification Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -222,7 +223,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Operation(
       operationId = "getSpecificClassificationVersion",
       summary = "Get a version of the classification",
-      tags = "glossaries",
+      tags = "classification",
       description = "Get a version of the classification by given `id`",
       responses = {
         @ApiResponse(
@@ -237,7 +238,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public Classification getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "classification Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "classification version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -287,7 +288,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "patchClassification",
-      summary = "Update a Classification",
+      summary = "Update a classification",
       tags = "classification",
       description = "Update an existing classification using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -313,7 +314,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   @Path("/{id}")
   @Operation(
       operationId = "deleteClassification",
-      summary = "Delete classification",
+      summary = "Delete classification by id",
       tags = "classification",
       description = "Delete a classification and all the tags under it.")
   public Response delete(
@@ -327,16 +328,40 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Classification id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the classification", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteClassificationByName",
+      summary = "Delete classification by name",
+      tags = "classification",
+      description = "Delete a classification by `name` and all the tags under it.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "classification for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restoreClassification",
-      summary = "Restore a soft deleted classification.",
+      summary = "Restore a soft deleted classification",
       tags = "classification",
       description = "Restore a soft deleted classification.",
       responses = {

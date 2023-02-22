@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.common_db_source import (
 )
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
+    REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_PARTITION_DETAILS,
     REDSHIFT_TABLE_COMMENTS,
@@ -224,14 +225,14 @@ def _update_column_info(  # pylint: disable=too-many-arguments
                     + match.group(2)
                     + match.group(3)
                 )
-    column_info = dict(
-        name=name,
-        type=coltype,
-        nullable=nullable,
-        default=default,
-        autoincrement=autoincrement or identity is not None,
-        comment=comment,
-    )
+    column_info = {
+        "name": name,
+        "type": coltype,
+        "nullable": nullable,
+        "default": default,
+        "autoincrement": autoincrement or identity is not None,
+        "comment": comment,
+    }
     if computed is not None:
         column_info["computed"] = computed
     if identity is not None:
@@ -253,7 +254,10 @@ def _update_coltype(coltype, args, kwargs, attype, name, is_array):
 def _update_computed_and_default(generated, default):
     computed = None
     if generated not in (None, "", b"\x00"):
-        computed = dict(sqltext=default, persisted=generated in ("s", b"s"))
+        computed = {
+            "sqltext": default,
+            "persisted": generated in ("s", b"s"),
+        }
         default = None
     return computed, default
 
@@ -412,7 +416,7 @@ class RedshiftSource(CommonDbSourceService):
 
         result = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
-            dict(schema=schema_name),
+            {"schema": schema_name},
         )
 
         return [
@@ -428,7 +432,7 @@ class RedshiftSource(CommonDbSourceService):
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute("SELECT datname FROM pg_database")
+            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
             for res in results:
                 row = list(res)
                 new_database = row[0]

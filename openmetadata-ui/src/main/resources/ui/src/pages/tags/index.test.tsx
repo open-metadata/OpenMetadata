@@ -248,7 +248,7 @@ jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('components/Modals/ConfirmationModal/ConfirmationModal', () => {
+jest.mock('components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockImplementation(({ onCancel, onConfirm }) => (
     <div data-testid="confirmation-modal">
       <button data-testid="cancel-modal" onClick={onCancel}>

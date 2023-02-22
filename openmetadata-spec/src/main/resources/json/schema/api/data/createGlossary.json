@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this glossary.",
-      "$ref": "../../entity/data/glossary.json#/definitions/name"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this glossary.",
@@ -24,7 +24,7 @@
       "description": "User references of the reviewers for this glossary.",
       "type": "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
+        "$ref": "../../entity/teams/user.json#/definitions/entityName"
       }
     },
     "owner": {

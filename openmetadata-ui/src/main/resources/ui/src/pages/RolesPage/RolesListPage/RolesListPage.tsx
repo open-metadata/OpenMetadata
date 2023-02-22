@@ -19,6 +19,7 @@ import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -99,7 +100,7 @@ const RolesListPage = () => {
               disabled={!addRolePermission}
               type="primary"
               onClick={handleAddRole}>
-              Add Role
+              {t('label.add-entity', { entity: t('label.role') })}
             </Button>
           }
           heading="Role"
@@ -124,13 +125,19 @@ const RolesListPage = () => {
           <PageHeader data={PAGE_HEADERS.ROLES} />
           <Tooltip
             placement="left"
-            title={addRolePermission ? 'Add Role' : NO_PERMISSION_FOR_ACTION}>
+            title={
+              addRolePermission
+                ? t('label.add-entity', {
+                    entity: t('label.role'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
+            }>
             <Button
               data-testid="add-role"
               disabled={!addRolePermission}
               type="primary"
               onClick={handleAddRole}>
-              Add Role
+              {t('label.add-entity', { entity: t('label.role') })}
             </Button>
           </Tooltip>
         </Space>

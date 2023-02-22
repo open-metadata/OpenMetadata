@@ -15,7 +15,7 @@
     "hiveScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["hive", "hive+http", "hive+https"],
+      "enum": ["hive", "hive+http", "hive+https", "impala", "impala4"],
       "default": "hive"
     }
   },

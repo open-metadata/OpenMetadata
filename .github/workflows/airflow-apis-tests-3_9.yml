@@ -89,10 +89,14 @@ jobs:
         make install_all install_test
 
     - name: Start Server and Ingest Sample Data
+      uses: nick-fields/retry@v2.8.3
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
-      run: ./docker/run_local_docker.sh
-      timeout-minutes: 30
+      with:
+        timeout_minutes: 30
+        max_attempts: 2
+        retry_on: error
+        command: ./docker/run_local_docker.sh -m no-ui
 
     - name: Run Python Tests & Record Coverage
       run: |
@@ -118,6 +122,7 @@ jobs:
           -Dsonar.pullrequest.github.repository=OpenMetadata
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
           -Dsonar.pullrequest.provider=github
+
     - name: Push Results to Sonar
       uses: sonarsource/sonarcloud-github-action@master
       if: ${{ github.event_name == 'push' }}

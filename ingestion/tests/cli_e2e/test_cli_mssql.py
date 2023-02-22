@@ -21,6 +21,7 @@ import yaml
 from metadata.utils.constants import UTF_8
 
 from .common_e2e_sqa_mixins import SQACommonMethods
+from .test_cli_db_base import E2EType
 from .test_cli_db_base_common import CliCommonDB
 
 
@@ -47,8 +48,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         (3,'Steve Rogers', '1988-07-04'),
         (4,'Natasha Romanoff', '1997-12-03'),
         (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17')
-        ;
+        (6,'Diana Prince', '1976-03-17');
     """
     ]
 
@@ -113,11 +113,8 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
             yaml.dump(config_yaml, test_file)
 
-        self.run_command("profile")
-        result = self.catcher.getvalue()
-        self.catcher.truncate(0)
+        result = self.run_command("profile")
 
-        sink_status, source_status = self.retrieve_statuses(result)
         sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
         assert len(sample_data.rows) == 3
 
@@ -126,6 +123,9 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 1
 
     def inserted_rows_count(self) -> int:
+        return 6
+
+    def view_column_lineage_count(self) -> int:
         return 3
 
     @staticmethod

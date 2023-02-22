@@ -336,7 +336,7 @@ describe('Test ServicePage Component', () => {
     });
 
     const ingestionContainer = await screen.findByText(
-      'Failed to find OpenMetadata - Managed Airflow APIs'
+      'message.airflow-guide-message'
     );
 
     expect(ingestionContainer).toBeInTheDocument();

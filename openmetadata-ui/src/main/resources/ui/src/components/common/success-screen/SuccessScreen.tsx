@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
@@ -46,6 +47,7 @@ const SuccessScreen = ({
   successMessage,
   viewServiceText,
 }: SuccessScreenProps) => {
+  const { t } = useTranslation();
   const { isAirflowAvailable, fetchAirflowStatus, isFetchingStatus } =
     useAirflowStatus();
 
@@ -93,10 +95,10 @@ const SuccessScreen = ({
           {isUndefined(successMessage) ? (
             <span>
               <span className="tw-mr-1 tw-font-semibold">
-                &quot;{name || 'demo_mysql'}&quot;
+                {`"${name || 'demo_mysql'}"`}
               </span>
               {suffix && <span className="tw-mr-1">{suffix}</span>}
-              <span>has been created successfully.</span>
+              <span>{t('message.has-been-created-successfully')}</span>
             </span>
           ) : (
             successMessage
@@ -115,8 +117,8 @@ const SuccessScreen = ({
               </div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
                 {isAirflowAvailable
-                  ? 'OpenMetadata - Managed Airflow APIs'
-                  : 'Failed to find OpenMetadata - Managed Airflow APIs'}
+                  ? t('message.manage-airflow-api')
+                  : t('message.manage-airflow-api-failed')}
               </h6>
             </div>
             {!isUndefined(fetchAirflowStatus) && (
@@ -131,23 +133,21 @@ const SuccessScreen = ({
                   theme="primary"
                   variant="outlined"
                   onClick={fetchAirflowStatus}>
-                  Check Status
+                  {t('label.check-status')}
                 </Button>
               </div>
             )}
           </div>
           {!isAirflowAvailable && (
             <p className="tw-mt-3">
-              To set up metadata extraction through UI, you first need to
-              configure and connect to Airflow. For more details visit our{' '}
+              {t('message.configure-airflow')}
               <a
                 data-testid="airflow-doc-link"
                 href={CUSTOM_AIRFLOW_DOCS}
                 rel="noopener noreferrer"
                 target="_blank">
-                documentation
+                {t('label.documentation-lowercase')}
               </a>
-              .
             </p>
           )}
         </div>
@@ -174,7 +174,9 @@ const SuccessScreen = ({
             theme="primary"
             variant="contained"
             onClick={handleIngestionClick}>
-            <span>Add Ingestion</span>
+            <span>
+              {t('label.add-entity', { entity: t('label.ingestion') })}
+            </span>
           </Button>
         )}
 
@@ -189,7 +191,7 @@ const SuccessScreen = ({
             theme="primary"
             variant="contained"
             onClick={handleDeployClick}>
-            <span>Deploy</span>
+            <span>{t('label.deploy')}</span>
           </Button>
         )}
       </div>

@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -99,7 +100,9 @@ const SelectServiceType = ({
         <Field>
           <Searchbar
             removeMargin
-            placeholder="Search for connector..."
+            placeholder={`${t('label.search-for-type', {
+              type: t('label.connector'),
+            })}...`}
             searchValue={connectorSearchTerm}
             typingInterval={500}
             onSearch={handleConnectorSearchTerm}
@@ -137,7 +140,12 @@ const SelectServiceType = ({
             ))}
           </div>
         </div>
-        {showError && errorMsg('Service is required')}
+        {showError &&
+          errorMsg(
+            t('message.field-text-is-required', {
+              fieldText: t('label.service'),
+            })
+          )}
       </Field>
       <Field className="tw-flex tw-justify-end tw-mt-10">
         <Button
@@ -147,7 +155,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          <span>Cancel</span>
+          <span>{t('label.cancel')}</span>
         </Button>
 
         <Button
@@ -156,7 +164,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="contained"
           onClick={onNext}>
-          <span>Next</span>
+          <span>{t('label.next')}</span>
         </Button>
       </Field>
     </div>

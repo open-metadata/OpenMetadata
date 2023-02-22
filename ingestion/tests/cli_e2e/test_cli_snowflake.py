@@ -14,9 +14,12 @@ Test Snowflake connector with CLI
 """
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 
+from .test_cli_db_base import E2EType
 from .test_cli_db_base_common import CliCommonDB
 
 
@@ -80,6 +83,27 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
             connection.execute(self.drop_table_query)
             connection.close()
 
+    @pytest.mark.order(2)
+    def test_create_table_with_profiler(self) -> None:
+        # delete table in case it exists
+        self.delete_table_and_view()
+        # create a table and a view
+        self.create_table_and_view()
+        # build config file for ingest
+        self.build_config_file()
+        # run ingest with new tables
+        self.run_command()
+        # build config file for profiler
+        self.build_config_file(
+            E2EType.PROFILER,
+            # Otherwise the sampling here does not pick up rows
+            extra_args={"profileSample": 100},
+        )
+        # run profiler with new tables
+        result = self.run_command("profile")
+        sink_status, source_status = self.retrieve_statuses(result)
+        self.assert_for_table_with_profiler(source_status, sink_status)
+
     @staticmethod
     def expected_tables() -> int:
         return 7
@@ -87,9 +111,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 
+    def view_column_lineage_count(self) -> int:
+        return 2
+
     @staticmethod
     def fqn_created_table() -> str:
-        return "local_snowflake.E2E_DB.E2E_TEST.PERSONS"
+        return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:

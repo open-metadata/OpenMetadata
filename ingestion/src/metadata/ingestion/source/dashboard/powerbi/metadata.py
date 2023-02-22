@@ -16,7 +16,7 @@ from typing import Any, Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
@@ -28,7 +28,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
@@ -173,12 +172,15 @@ class PowerbiSource(DashboardServiceSource):
             displayName=dashboard_details["displayName"],
             description="",
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
                 for chart in self.context.charts
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
     def yield_dashboard_lineage_details(
@@ -263,10 +265,7 @@ class PowerbiSource(DashboardServiceSource):
                     chartType=ChartType.Other.value,
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
                     chartUrl=chart_url,
-                    service=EntityReference(
-                        id=self.context.dashboard_service.id.__root__,
-                        type="dashboardService",
-                    ),
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_display_name)
             except Exception as exc:  # pylint: disable=broad-except

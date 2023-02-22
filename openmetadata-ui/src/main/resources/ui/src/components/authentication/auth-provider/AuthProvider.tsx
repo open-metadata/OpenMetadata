@@ -18,7 +18,8 @@ import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil } from 'lodash';
+import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
+import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   ComponentType,
@@ -30,10 +31,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
-import { fetchAuthenticationConfig } from 'rest/miscAPI';
-import { getLoggedInUser, getUserByName, updateUser } from 'rest/userAPI';
+import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
+import { getLoggedInUser, updateUser } from 'rest/userAPI';
 import appState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
@@ -41,12 +43,9 @@ import { ClientErrors } from '../../../enums/axios.enum';
 import { AuthTypes } from '../../../enums/signin.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthType, User } from '../../../generated/entity/teams/user';
-import jsonData from '../../../jsons/en';
 import {
-  EXPIRY_THRESHOLD_MILLES,
   extractDetailsFromToken,
   getAuthConfig,
-  getNameFromEmail,
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
@@ -87,12 +86,16 @@ const userAPIQueryFields = 'profile,teams,roles';
 
 const isEmailVerifyField = 'isEmailVerified';
 
+let requestInterceptor: number | null = null;
+let responseInterceptor: number | null = null;
+
 export const AuthProvider = ({
   childComponentType,
   children,
 }: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
@@ -105,6 +108,9 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true);
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
+
+  const [authorizerConfig, setAuthorizerConfig] =
+    useState<AuthorizerConfiguration>();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isUserCreated, setIsUserCreated] = useState(false);
 
@@ -185,7 +191,9 @@ export const AuthProvider = ({
         if (err.response?.status !== 404) {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-logged-in-user-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.logged-in-user-lowercase'),
+            })
           );
         }
       })
@@ -226,14 +234,14 @@ export const AuthProvider = ({
         if (res.data) {
           appState.updateUserDetails(res.data);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((error: AxiosError) => {
         appState.updateUserDetails(existingData);
         showErrorToast(
           error,
-          jsonData['api-error-messages']['update-admin-profile-error']
+          t('server.entity-updating-error', { entity: 'label.admin-profile' })
         );
       });
   };
@@ -242,26 +250,15 @@ export const AuthProvider = ({
    * Renew Id Token handler for all the SSOs.
    * This method will be called when the id token is about to expire.
    */
-  const renewIdToken = (): Promise<string> => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+  const renewIdToken = async () => {
+    try {
+      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+    } catch (error) {
+      console.error((error as AxiosError).message);
+    }
 
-    return new Promise((resolve, reject) => {
-      if (onRenewIdTokenHandlerPromise) {
-        onRenewIdTokenHandlerPromise
-          .then(() => {
-            resolve(localState.getOidcToken() || '');
-          })
-          .catch((error) => {
-            if (error.message !== 'Frame window timed out') {
-              reject(error);
-            } else {
-              resolve(localState.getOidcToken() || '');
-            }
-          });
-      } else {
-        reject('RenewIdTokenHandler is undefined');
-      }
-    });
+    return localState.getOidcToken();
   };
 
   /**
@@ -291,28 +288,24 @@ export const AuthProvider = ({
   };
 
   /**
-   * It will set an timer for 50 secs before Token will expire
-   * If time if less then 50 secs then it will try to SilentSignIn
+   * It will set an timer for 5 mins before Token will expire
+   * If time if less then 5 mins then it will try to SilentSignIn
    * It will also ensure that we have time left for token expiry
    * This method will be call upon successful signIn
    */
   const startTokenExpiryTimer = () => {
     // Extract expiry
-    const { exp, isExpired, diff, timeoutExpiry } = extractDetailsFromToken();
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken();
 
-    if (!isExpired && exp && diff && timeoutExpiry) {
-      // Have 2m buffer before start trying for silent signIn
+    if (!isExpired && isNumber(timeoutExpiry)) {
+      // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
-      if (diff > EXPIRY_THRESHOLD_MILLES) {
-        clearTimeout(timeoutId);
-        const timerId = setTimeout(() => {
-          trySilentSignIn();
-        }, timeoutExpiry);
-        setTimeoutId(Number(timerId));
-      } else {
+      clearTimeout(timeoutId);
+      const timerId = setTimeout(() => {
         trySilentSignIn();
-      }
+      }, timeoutExpiry);
+      setTimeoutId(Number(timerId));
     }
   };
 
@@ -323,12 +316,6 @@ export const AuthProvider = ({
   const cleanup = useCallback(() => {
     clearTimeout(timeoutId);
   }, [timeoutId]);
-
-  useEffect(() => {
-    startTokenExpiryTimer();
-
-    return cleanup;
-  }, []);
 
   const handleFailedLogin = () => {
     setIsSigningIn(false);
@@ -344,7 +331,7 @@ export const AuthProvider = ({
       authConfig?.provider === AuthType.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
         : userAPIQueryFields;
-    getUserByName(getNameFromEmail(user.profile.email), fields)
+    getLoggedInUser(fields)
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
@@ -398,7 +385,17 @@ export const AuthProvider = ({
    */
   const initializeAxiosInterceptors = () => {
     // Axios Request interceptor to add Bearer tokens in Header
-    axiosClient.interceptors.request.use(async function (config) {
+    if (requestInterceptor != null) {
+      axiosClient.interceptors.request.eject(requestInterceptor);
+    }
+
+    if (responseInterceptor != null) {
+      axiosClient.interceptors.response.eject(responseInterceptor);
+    }
+
+    requestInterceptor = axiosClient.interceptors.request.use(async function (
+      config
+    ) {
       const token: string = localState.getOidcToken() || '';
       if (token) {
         if (config.headers) {
@@ -414,7 +411,7 @@ export const AuthProvider = ({
     });
 
     // Axios response interceptor for statusCode 401,403
-    axiosClient.interceptors.response.use(
+    responseInterceptor = axiosClient.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response) {
@@ -430,50 +427,58 @@ export const AuthProvider = ({
     );
   };
 
-  const fetchAuthConfig = (): void => {
-    fetchAuthenticationConfig()
-      .then((authRes) => {
-        const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
-        if (isSecureMode) {
-          const provider = authRes?.provider;
-          // show an error toast if provider is null or not supported
-          if (
-            provider &&
-            Object.values(AuthTypes).includes(provider as AuthTypes)
-          ) {
-            const configJson = getAuthConfig(authRes);
-            setJwtPrincipalClaims(authRes.jwtPrincipalClaims);
-            initializeAxiosInterceptors();
-            setAuthConfig(configJson);
-            updateAuthInstance(configJson);
-            if (!oidcUserToken) {
-              if (isProtectedRoute(location.pathname)) {
-                storeRedirectPath();
-              }
-              setLoading(false);
-            } else {
-              getLoggedInUserDetails();
+  const fetchAuthConfig = async () => {
+    try {
+      const [authConfig, authorizerConfig] = await Promise.all([
+        fetchAuthenticationConfig(),
+        fetchAuthorizerConfig(),
+      ]);
+      const isSecureMode =
+        !isNil(authConfig) && authConfig.provider !== NO_AUTH;
+      if (isSecureMode) {
+        const provider = authConfig?.provider;
+        // show an error toast if provider is null or not supported
+        if (
+          provider &&
+          Object.values(AuthTypes).includes(provider as AuthTypes)
+        ) {
+          const configJson = getAuthConfig(authConfig);
+          setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+          initializeAxiosInterceptors();
+          setAuthConfig(configJson);
+          setAuthorizerConfig(authorizerConfig);
+          updateAuthInstance(configJson);
+          if (!oidcUserToken) {
+            if (isProtectedRoute(location.pathname)) {
+              storeRedirectPath();
             }
-          } else {
-            // provider is either null or not supported
             setLoading(false);
-            showErrorToast(
-              `The configured SSO Provider "${authRes?.provider}" is not supported. Please check the authentication configuration in the server.`
-            );
+          } else {
+            getLoggedInUserDetails();
           }
         } else {
+          // provider is either null or not supported
           setLoading(false);
-          setIsAuthDisabled(true);
-          fetchAllUsers();
+          showErrorToast(
+            t('message.configured-sso-provider-is-not-supported', {
+              provider: authConfig?.provider,
+            })
+          );
         }
-      })
-      .catch((err: AxiosError) => {
+      } else {
         setLoading(false);
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-auth-config-error']
-        );
-      });
+        setIsAuthDisabled(true);
+        fetchAllUsers();
+      }
+    } catch (error) {
+      setLoading(false);
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.auth-config-lowercase-plural'),
+        })
+      );
+    }
   };
 
   const getCallBackComponent = () => {
@@ -573,6 +578,9 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig();
+    startTokenExpiryTimer();
+
+    return cleanup;
   }, []);
 
   useEffect(() => {
@@ -613,6 +621,7 @@ export const AuthProvider = ({
     isUserCreated,
     setIsAuthDisabled,
     authConfig,
+    authorizerConfig,
     setAuthConfig,
     isSigningIn,
     setIsSigningIn,
@@ -625,6 +634,7 @@ export const AuthProvider = ({
     setLoadingIndicator,
     handleSuccessfulLogin,
     handleUserCreated,
+    updateAxiosInterceptors: initializeAxiosInterceptors,
     jwtPrincipalClaims,
   };
 

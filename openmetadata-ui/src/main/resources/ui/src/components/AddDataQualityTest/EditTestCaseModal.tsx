@@ -30,7 +30,6 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
-import jsonData from '../../jsons/en';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -69,7 +68,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
   const GenerateParamsField = useCallback(() => {
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
-      const name = selectedDefinition.parameterDefinition[0].name;
+      const name = selectedDefinition.parameterDefinition[0]?.name;
       if (name === 'sqlExpression') {
         return (
           <Form.Item
@@ -149,7 +148,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         await updateTestCaseById(testCase.id || '', jsonPatch);
         onUpdate && onUpdate();
         showSuccessToast(
-          jsonData['api-success-messages']['update-test-case-success']
+          t('server.update-entity-success', { entity: t('label.test-case') })
         );
         onCancel();
         form.resetFields();
@@ -166,7 +165,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       (acc, curr) => ({
         ...acc,
         [curr.name || '']:
-          selectedDefinition?.parameterDefinition?.[0].dataType ===
+          selectedDefinition?.parameterDefinition?.[0]?.dataType ===
           TestDataType.Array
             ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
                 value: val,

@@ -36,7 +36,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -48,7 +47,7 @@ public final class Entity {
   private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
 
   // Canonical entity name to corresponding EntityRepository map
-  private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -176,14 +175,13 @@ public final class Entity {
     return Collections.unmodifiableList(ENTITY_LIST);
   }
 
-  public static EntityReference getEntityReference(EntityReference ref) throws IOException {
-    return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
-  }
-
-  public static EntityReference getEntityReferenceByName(EntityReference ref) {
-    return ref == null
-        ? null
-        : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), Include.NON_DELETED);
+  public static EntityReference getEntityReference(EntityReference ref, Include include) throws IOException {
+    if (ref == null) {
+      return null;
+    }
+    return ref.getId() != null
+        ? getEntityReferenceById(ref.getType(), ref.getId(), include)
+        : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
   }
 
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
@@ -237,33 +235,40 @@ public final class Entity {
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
-    return getEntity(ref.getType(), ref.getId(), fields, include);
-  }
-
-  public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include) throws IOException {
-    return getEntity(ref.getType(), ref.getId(), fields, include);
-  }
-
-  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
-    return getEntity(entityType, id, getFields(entityType, fields), include);
+    return ref.getId() != null
+        ? getEntity(ref.getType(), ref.getId(), fields, include)
+        : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, EntityUtil.Fields fields, Include include)
-      throws IOException {
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, fields, include);
+    T entity = (T) entityRepository.get(null, id, fieldList, include);
     if (entity == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
     return entity;
   }
 
-  /** Retrieve the corresponding entity repository for a given entity name. */
-  public static <T extends EntityInterface> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
+  /** Retrieve the entity using id from given entity reference and fields */
+  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include)
+      throws IOException {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
+    T entity = (T) entityRepository.getByName(null, fqn, fieldList, include);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+    }
+    return entity;
+  }
+
+  /** Retrieve the corresponding entity repository for a given entity name. */
+  public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
+    @SuppressWarnings("unchecked")
+    EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }

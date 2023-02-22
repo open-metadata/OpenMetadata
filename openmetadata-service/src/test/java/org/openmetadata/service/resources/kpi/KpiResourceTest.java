@@ -38,7 +38,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dataInsight.DataInsightResourceTest;
 import org.openmetadata.service.util.ResultList;
@@ -82,12 +81,12 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   void post_testWithInvalidValues_4xx() {
     String uuid = "Test2" + UUID.randomUUID();
     CreateKpiRequest create1 = createRequest(uuid);
-    create1.withDataInsightChart(USER1_REF);
+    create1.withDataInsightChart(USER1_REF.getName());
 
     assertResponseContains(
         () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        "dataInsightChart instance for " + USER1_REF.getId() + " not found");
+        "dataInsightChart instance for " + USER1_REF.getName() + " not found");
     CreateKpiRequest create2 = createRequest(String.format("Test%s", UUID.randomUUID()));
     KpiTarget target = new KpiTarget().withName("Test").withValue("Test");
     create2.withTargetDefinition(List.of(target));
@@ -188,15 +187,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     verifyKpiResults(kpiResults, kpiResultList, 12);
   }
 
-  public static void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("kpi/" + fqn + "/kpiResult");
+  public void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
 
-  public static ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
+  public ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("kpi/" + fqn + "/kpiResult");
+    WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, KpiResource.KpiResultList.class, authHeaders);
@@ -233,7 +231,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .withDisplayName(name)
         .withStartDate(0L)
         .withEndDate(30L)
-        .withDataInsightChart(DI_CHART1.getEntityReference())
+        .withDataInsightChart(DI_CHART1.getFullyQualifiedName())
         .withOwner(USER1_REF)
         .withMetricType(KpiTargetType.PERCENTAGE)
         .withTargetDefinition(List.of(KPI_TARGET));
@@ -244,7 +242,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getStartDate(), createdEntity.getStartDate());
     assertEquals(request.getEndDate(), createdEntity.getEndDate());
-    assertEquals(request.getDataInsightChart(), createdEntity.getDataInsightChart());
+    assertReference(request.getDataInsightChart(), createdEntity.getDataInsightChart());
     assertEquals(request.getMetricType(), createdEntity.getMetricType());
     assertEquals(request.getTargetDefinition(), createdEntity.getTargetDefinition());
   }

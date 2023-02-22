@@ -36,6 +36,9 @@ export const mockAdvancedFieldDefaultOptions = {
           {
             key: 'modified-leaf-330420',
           },
+          {
+            key: 'modified-leaf-330421',
+          },
         ],
       },
     },
@@ -56,6 +59,78 @@ export const mockAdvancedFieldOptions = {
               _source: {
                 id: '0e8ec01e-a57f-4173-8d30-deda453174d0',
                 name: 'dim.api/client',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify."dim.api/client"',
+                version: 5.7,
+                updatedAt: 1670495113513,
+                updatedBy: 'admin',
+                href: 'http://localhost:8585/api/v1/tables/0e8ec01e-a57f-4173-8d30-deda453174d0',
+                tableType: 'Regular',
+              },
+            },
+            {
+              text: 'ecommerce_db1',
+              _source: {
+                id: '0e8ec01e-a57f-4173-8d30-deda453174d0',
+                name: 'dim.api/client1',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify."dim.api/client"',
+                version: 5.7,
+                updatedAt: 1670495113513,
+                updatedBy: 'admin',
+                href: 'http://localhost:8585/api/v1/tables/0e8ec01e-a57f-4173-8d30-deda453174d0',
+                tableType: 'Regular',
+              },
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+export const mockAdvancedFieldDuplicateOptions = {
+  data: {
+    suggest: {
+      'metadata-suggest': [
+        {
+          text: 'e',
+          offset: 0,
+          length: 1,
+          options: [
+            {
+              text: 'ecommerce_db',
+              _source: {
+                id: '0e8ec01e-a57f-4173-8d30-deda453174d0',
+                name: 'dim.api/client',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify."dim.api/client"',
+                version: 5.7,
+                updatedAt: 1670495113513,
+                updatedBy: 'admin',
+                href: 'http://localhost:8585/api/v1/tables/0e8ec01e-a57f-4173-8d30-deda453174d0',
+                tableType: 'Regular',
+              },
+            },
+            {
+              text: 'ecommerce_db',
+              _source: {
+                id: '0e8ec01e-a57f-4173-8d30-deda453174d0',
+                name: 'dim.api/client',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify."dim.api/client"',
+                version: 5.7,
+                updatedAt: 1670495113513,
+                updatedBy: 'admin',
+                href: 'http://localhost:8585/api/v1/tables/0e8ec01e-a57f-4173-8d30-deda453174d0',
+                tableType: 'Regular',
+              },
+            },
+            {
+              text: 'ecommerce_db1',
+              _source: {
+                id: '0e8ec01e-a57f-4173-8d30-deda453174d0',
+                name: 'dim.api/client1',
                 fullyQualifiedName:
                   'sample_data.ecommerce_db.shopify."dim.api/client"',
                 version: 5.7,

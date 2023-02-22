@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -80,7 +80,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -95,7 +94,6 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
 from metadata.parsers.schema_parsers import (
@@ -528,9 +526,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=EntityReference(
-                id=self.database_service.id.__root__, type="databaseService"
-            ),
+            service=self.database_service.fullyQualifiedName,
         )
 
         yield db
@@ -548,7 +544,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=database_object.id, type="database"),
+            database=database_object.fullyQualifiedName,
         )
         yield schema
 
@@ -569,9 +565,7 @@ class SampleDataSource(
                 name=table["name"],
                 description=table["description"],
                 columns=table["columns"],
-                databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
@@ -615,9 +609,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
-            service=EntityReference(
-                id=self.database_service.id.__root__, type="databaseService"
-            ),
+            service=self.database_service.fullyQualifiedName.__root__,
         )
         yield db
 
@@ -635,7 +627,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=database_object.id, type="database"),
+            database=database_object.fullyQualifiedName,
         )
         yield schema
 
@@ -659,9 +651,7 @@ class SampleDataSource(
                 name=table["name"],
                 description=table["description"],
                 columns=table["columns"],
-                databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=database_schema_object.fullyQualifiedName,
                 tableType=table["tableType"],
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
@@ -686,9 +676,7 @@ class SampleDataSource(
                 replicationFactor=topic["replicationFactor"],
                 maximumMessageSize=topic["maximumMessageSize"],
                 cleanupPolicies=topic["cleanupPolicies"],
-                service=EntityReference(
-                    id=self.kafka_service.id, type="messagingService"
-                ),
+                service=self.kafka_service.fullyQualifiedName,
             )
 
             if "schemaType" in topic:
@@ -718,9 +706,7 @@ class SampleDataSource(
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]).value,
                     chartUrl=chart["chartUrl"],
-                    service=EntityReference(
-                        id=self.dashboard_service.id, type="dashboardService"
-                    ),
+                    service=self.dashboard_service.fullyQualifiedName,
                 )
                 self.status.scanned("chart", chart_ev.name)
                 yield chart_ev
@@ -735,14 +721,8 @@ class SampleDataSource(
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
                 dashboardUrl=dashboard["dashboardUrl"],
-                charts=get_chart_entities_from_id(
-                    dashboard["charts"],
-                    self.metadata,
-                    self.dashboard_service.name.__root__,
-                ),
-                service=EntityReference(
-                    id=self.dashboard_service.id, type="dashboardService"
-                ),
+                charts=dashboard["charts"],
+                service=self.dashboard_service.fullyQualifiedName,
             )
             self.status.scanned("dashboard", dashboard_ev.name.__root__)
             yield dashboard_ev
@@ -755,9 +735,7 @@ class SampleDataSource(
                 description=pipeline["description"],
                 pipelineUrl=pipeline["pipelineUrl"],
                 tasks=pipeline["tasks"],
-                service=EntityReference(
-                    id=self.pipeline_service.id, type="pipelineService"
-                ),
+                service=self.pipeline_service.fullyQualifiedName,
             )
             yield pipeline_ev
 
@@ -839,14 +817,12 @@ class SampleDataSource(
                         f"Cannot find {mlmodel_fqn} in Sample Dashboards"
                     )
 
-                dashboard_id = str(dashboard.id.__root__)
-
                 model_ev = CreateMlModelRequest(
                     name=model["name"],
                     displayName=model["displayName"],
                     description=model["description"],
                     algorithm=model["algorithm"],
-                    dashboard=EntityReference(id=dashboard_id, type="dashboard"),
+                    dashboard=dashboard.fullyQualifiedName.__root__,
                     mlStore=MlStore(
                         storage=model["mlStore"]["storage"],
                         imageRepository=model["mlStore"]["imageRepository"],
@@ -860,10 +836,7 @@ class SampleDataSource(
                         MlHyperParameter(name=param["name"], value=param["value"])
                         for param in model.get("mlHyperParameters", [])
                     ],
-                    service=EntityReference(
-                        id=self.model_service.id,
-                        type="mlmodelService",
-                    ),
+                    service=self.model_service.fullyQualifiedName,
                 )
                 yield model_ev
             except Exception as exc:
@@ -886,13 +859,13 @@ class SampleDataSource(
                 ]
                 if not self.list_policies:
                     self.list_policies = self.metadata.list_entities(entity=Policy)
-                    role_ref_id = self.list_policies.entities[0].id.__root__
+                    role_name = self.list_policies.entities[0].name
                 roles = (
                     [
                         CreateRoleRequest(
                             name=role,
                             description=f"This is {role} description.",
-                            policies=[EntityReference(id=role_ref_id, type="policies")],
+                            policies=[role_name],
                         )
                         for role in user["roles"]
                     ]
@@ -975,18 +948,9 @@ class SampleDataSource(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
                         description=test_case["description"],
-                        testDefinition=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=test_case["testDefinitionName"],
-                                entity=TestDefinition,
-                            ).id.__root__,
-                            type="testDefinition",
-                        ),
+                        testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=EntityReference(
-                            id=suite.id.__root__,
-                            type="testSuite",
-                        ),
+                        testSuite=suite.fullyQualifiedName.__root__,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
@@ -1002,19 +966,22 @@ class SampleDataSource(
                 f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
                 fields=["testSuite", "testDefinition"],
             )
-            for days, result in enumerate(test_case_results["results"]):
-                yield OMetaTestCaseResultsSample(
-                    test_case_results=TestCaseResult(
-                        timestamp=(datetime.now() - timedelta(days=days)).timestamp(),
-                        testCaseStatus=result["testCaseStatus"],
-                        result=result["result"],
-                        testResultValue=[
-                            TestResultValue.parse_obj(res_value)
-                            for res_value in result["testResultValues"]
-                        ],
-                    ),
-                    test_case_name=case.fullyQualifiedName.__root__,
-                )
+            if case:
+                for days, result in enumerate(test_case_results["results"]):
+                    yield OMetaTestCaseResultsSample(
+                        test_case_results=TestCaseResult(
+                            timestamp=(
+                                datetime.now() - timedelta(days=days)
+                            ).timestamp(),
+                            testCaseStatus=result["testCaseStatus"],
+                            result=result["result"],
+                            testResultValue=[
+                                TestResultValue.parse_obj(res_value)
+                                for res_value in result["testResultValues"]
+                            ],
+                        ),
+                        test_case_name=case.fullyQualifiedName.__root__,
+                    )
 
     def close(self):
         pass

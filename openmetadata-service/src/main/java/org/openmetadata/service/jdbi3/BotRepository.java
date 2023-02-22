@@ -40,8 +40,8 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void prepare(Bot entity) throws IOException {
-    User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
-    entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
+    User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
+    entity.withBotUser(user.getEntityReference());
   }
 
   @Override

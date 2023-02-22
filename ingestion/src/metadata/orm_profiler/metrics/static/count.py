@@ -14,6 +14,8 @@ Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
+
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -39,15 +41,21 @@ class Count(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         return func.count(column(self.col.name))
 
     @_label
-    def dl_fn(self, data_frame=None):
+    def df_fn(self, df=None):
+        """pandas function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
         try:
-            return len(data_frame[self.col.name])
+            return len(df[self.col.name])
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.datatype} when computing Count"
+                f"Don't know how to process type {self.col.type} when computing Count"
             )
             logger.error(err)
             return 0

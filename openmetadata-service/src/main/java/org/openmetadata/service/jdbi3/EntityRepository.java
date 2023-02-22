@@ -602,17 +602,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  private DeleteResponse<T> delete(String updatedBy, String json, UUID id, boolean recursive, boolean hardDelete)
+  private DeleteResponse<T> delete(String updatedBy, T original, boolean recursive, boolean hardDelete)
       throws IOException {
-    T original = JsonUtils.readValue(json, entityClass);
     checkSystemEntityDeletion(original);
     preDelete(original);
     setFieldsInternal(original, putFields);
 
-    deleteChildren(id, recursive, hardDelete, updatedBy);
+    deleteChildren(original.getId(), recursive, hardDelete, updatedBy);
 
     String changeType;
-    T updated = JsonUtils.readValue(json, entityClass);
+    T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
     setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(updatedBy);
@@ -633,23 +632,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) throws IOException {
     // Validate entity
-    String json = dao.findJsonByFqn(name, ALL);
-    if (json == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, name));
-    }
-    UUID id = JsonUtils.readValue(json, entityClass).getId();
-    return delete(updatedBy, json, id, recursive, hardDelete);
+    T entity = dao.findEntityByName(name, ALL);
+    return delete(updatedBy, entity, recursive, hardDelete);
   }
 
   @Transaction
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     // Validate entity
-    String json = dao.findJsonById(id, ALL);
-    if (json == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
-    return delete(updatedBy, json, id, recursive, hardDelete);
+    T entity = dao.findEntityById(id, ALL);
+    return delete(updatedBy, entity, recursive, hardDelete);
   }
 
   private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
@@ -1056,7 +1048,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
     if (entityReferences != null) {
       for (EntityReference entityReference : entityReferences) {
-        EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref =
+            entityReference.getId() != null
+                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId())
+                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName());
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
@@ -1164,7 +1159,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Entities can be only owned by team of type 'group'
     if (owner.getType().equals(Entity.TEAM)) {
-      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, ALL);
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
       }

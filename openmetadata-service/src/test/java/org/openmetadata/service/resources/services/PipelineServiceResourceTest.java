@@ -169,7 +169,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // Add an IngestionPipeline to the service
     IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
     CreateIngestionPipeline createIngestionPipeline =
-        ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
+        ingestionPipelineResourceTest.createRequest(test).withService(service.getEntityReference());
 
     PipelineServiceMetadataPipeline pipelineServiceMetadataPipeline =
         new PipelineServiceMetadataPipeline()
@@ -259,7 +259,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     }
   }
 
-  public static void validateAirflowConnection(
+  public void validateAirflowConnection(
       AirflowConnection expectedAirflowConnection,
       AirflowConnection actualAirflowConnection,
       Map<String, String> authHeaders) {

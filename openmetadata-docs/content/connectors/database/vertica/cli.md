@@ -4,6 +4,22 @@ slug: /connectors/database/vertica/cli
 ---
 
 # Run Vertica using the metadata CLI
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  Vertica >= 9.2
+  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Vertica connector.
 
@@ -31,6 +47,41 @@ To run the ingestion we need a user with `SELECT` grants on the schemas that you
 CREATE USER openmetadata IDENTIFIED BY 'password';
 GRANT SELECT ON ALL TABLES IN SCHEMA PUBLIC TO openmetadata;
 GRANT SELECT ON ALL TABLES IN SCHEMA V_CATALOG TO openmetadata;
+```
+
+Note that these `GRANT`s won't be applied to any new table created on the schema unless the schema
+has [Inherited Privileges](https://www.vertica.com/docs/8.1.x/HTML/index.htm#Authoring/AdministratorsGuide/Security/DBUsersAndPrivileges/GrantInheritedPrivileges.htm)
+
+```sql
+ALTER SCHEMA s1 DEFAULT INCLUDE PRIVILEGES;
+-- If using the PUBLIC schema
+ALTER SCHEMA "<db>.public" DEFAULT INCLUDE PRIVILEGES;
+```
+
+#### Lineage and Usage
+
+If you also want to run the Lineage and Usage workflows, then the user needs to be granted permissions to the
+`V_MONITOR` schema:
+
+```sql
+GRANT SELECT ON ALL TABLES IN SCHEMA V_MONITOR TO openmetadata;
+```
+
+Note that this setting might only grant visibility to the queries executed by this user. A more complete approach
+will be to grant the `SYSMONITOR` role to the `openmetadata` user:
+
+```sql
+GRANT SYSMONITOR TO openmetadata;
+ALTER USER openmetadata DEFAULT ROLE SYSMONITOR;
+```
+
+#### Profiler
+
+To run the profiler, it's not enough to have `USAGE` permissions to the schema as we need to `SELECT` the tables
+in there. Therefore, you'll need to grant `SELECT` on all tables for the schemas:
+
+```sql
+GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 ```
 
 ### Python Requirements
@@ -71,6 +122,7 @@ source:
       # database: database
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -96,43 +148,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #      -----BEGIN PRIVATE KEY-----
-      #      Super secret key
-      #      -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}

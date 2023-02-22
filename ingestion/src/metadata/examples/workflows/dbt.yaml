@@ -9,6 +9,8 @@ source:
       # # For cloud
       #   dbtCloudAuthToken: token
       #   dbtCloudAccountId: ID
+      #   dbtCloudJobId: JOB ID
+      #   dbtCloudUrl: https://cloud.getdbt.com
       # # For Local
       #   dbtCatalogFilePath: path-to-catalog.json
       #   dbtManifestFilePath: path-to-manifest.json

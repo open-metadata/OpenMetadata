@@ -8,11 +8,20 @@ where serviceType in ('BigQuery')
   and json#>'{connection,config,tagCategoryName}' is not null;
 
 -- Deprecate SampleData db service type
+-- * Delete ingestion pipelines associated to the services
+DELETE FROM ingestion_pipeline_entity ipe
+USING entity_relationship er
+WHERE (
+    er.toId = ipe.id
+    AND fromEntity = 'databaseService'
+    AND fromId IN (SELECT id FROM dbservice_entity de WHERE serviceType = 'SampleData')
+);
+-- * Delete relationships
 DELETE FROM entity_relationship er
 USING dbservice_entity db
 WHERE (db.id = er.fromId OR db.id = er.toId)
   AND db.serviceType = 'SampleData';
-
+-- * Delete services
 DELETE FROM dbservice_entity WHERE serviceType = 'SampleData';
 
 -- Delete supportsUsageExtraction from vertica

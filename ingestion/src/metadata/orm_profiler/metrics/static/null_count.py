@@ -14,6 +14,8 @@ Null Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
+
 from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -45,8 +47,13 @@ class NullCount(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))
 
     @_label
-    def dl_fn(self, data_frame=None):
-        return data_frame[self.col.name].isnull().values.tolist().count(True)
+    def df_fn(self, df=None):
+        """pandas function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+        return df[self.col.name].isnull().sum()

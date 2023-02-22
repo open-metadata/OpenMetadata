@@ -131,7 +131,13 @@ const SigninPage = () => {
         break;
       }
       default: {
-        return <div>SSO Provider {authConfig?.provider} is not supported.</div>;
+        return (
+          <div>
+            {t('message.sso-provider-not-supported', {
+              provider: authConfig?.provider,
+            })}
+          </div>
+        );
       }
     }
 

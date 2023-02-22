@@ -78,6 +78,7 @@ const mockProp = {
   entityDetails: mockTableDetails,
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
+  hasEditAccess: true,
 };
 
 describe('Test CustomProperty Table Component', () => {
