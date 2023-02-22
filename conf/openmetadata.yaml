@@ -270,8 +270,8 @@ applicationConfig:
     logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , base on this specify either 'logoAbsoluteFilePath' or 'logoUrlPath' }
     logoAbsoluteFilePath: ${OM_LOGO_LOCATION_FILE_PATH:-""}
     logoUrlPath: ${OM_LOGO_LOCATION_URL_PATH:-""}
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
-login:
-  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
-  jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
