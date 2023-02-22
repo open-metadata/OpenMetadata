@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.api.configuration.ApplicationConfiguration",
   "definitions": {
-    "logoConfig": {
+    "logoConfiguration": {
       "description": "This schema defines the Logo Configuration",
       "type": "object",
       "javaType": "org.openmetadata.api.configuration.LogoConfiguration",
@@ -27,27 +27,11 @@
       },
       "required": ["logoLocationType"],
       "additionalProperties": false
-    },
-    "slackConfig": {
-      "description": "This schema defines the Slack Chat Configuration.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.api.slackChat.SlackChatConfiguration",
-      "properties": {
-        "slackUrl": {
-          "description": "The URL of the slack channel to redirect the users to on click of the chat icon",
-          "type": "string"
-        }
-      },
-      "required": ["slackUrl"],
-      "additionalProperties": false
     }
   },
   "properties": {
     "logoConfig" : {
-      "$ref": "#/definitions/logoConfig"
-    },
-    "slackConfig": {
-      "$ref": "#/definitions/slackConfig"
+      "$ref": "#/definitions/logoConfiguration"
     }
   },
   "additionalProperties": false

@@ -25,11 +25,9 @@ import javax.ws.rs.core.MediaType;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.sandbox.SandboxConfiguration;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -96,27 +94,6 @@ public class ConfigResource {
   }
 
   @GET
-  @Path(("/sandbox"))
-  @Operation(
-      operationId = "getSandboxConfiguration",
-      summary = "Get sandbox mode",
-      tags = "system",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Sandbox mode",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SandboxConfiguration.class)))
-      })
-  public SandboxConfiguration getSandboxMode() {
-    SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
-    if (openMetadataApplicationConfig.isSandboxModeEnabled()) {
-      sandboxConfiguration.setSandboxModeEnabled(true);
-    }
-    return sandboxConfiguration;
-  }
-
-  @GET
   @Path(("/applicationConfig"))
   @Operation(
       operationId = "getApplicationConfiguration",
@@ -129,7 +106,7 @@ public class ConfigResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SlackChatConfiguration.class)))
+                    schema = @Schema(implementation = ApplicationConfiguration.class)))
       })
   public ApplicationConfiguration getApplicationConfiguration() {
     return openMetadataApplicationConfig.getApplicationConfiguration();

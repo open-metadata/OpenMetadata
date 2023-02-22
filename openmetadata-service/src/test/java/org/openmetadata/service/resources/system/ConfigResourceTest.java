@@ -92,7 +92,6 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("applicationConfig");
     ApplicationConfiguration applicationConfiguration =
         TestUtils.get(target, ApplicationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getApplicationConfiguration().getSlackConfig(), applicationConfiguration.getSlackConfig());
     assertEquals(config.getApplicationConfiguration().getLogoConfig(), applicationConfiguration.getLogoConfig());
   }
 

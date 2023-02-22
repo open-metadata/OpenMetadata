@@ -265,15 +265,11 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
-
 applicationConfig:
   logoConfig:
     logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , base on this specify either 'logoAbsoluteFilePath' or 'logoUrlPath' }
     logoAbsoluteFilePath: ${OM_LOGO_LOCATION_FILE_PATH:-""}
     logoUrlPath: ${OM_LOGO_LOCATION_URL_PATH:-""}
-  slackConfig:
-      slackUrl: ${SLACK_CHAT_SLACK_URL:-"https://slack.open-metadata.org/"}
 
 login:
   maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}

@@ -77,9 +77,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("sandboxModeEnabled")
-  private boolean sandboxModeEnabled;
-
   @JsonProperty("applicationConfig")
   private ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
 
