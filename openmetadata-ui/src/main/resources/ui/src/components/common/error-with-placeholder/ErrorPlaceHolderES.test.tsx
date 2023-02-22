@@ -67,6 +67,6 @@ describe('Test Error placeholder ingestion Component', () => {
     const errorES = getByTestId(container, 'es-error');
     const errMsg = getByTestId(errorES, 'error-text');
 
-    expect(errMsg.textContent).toMatch(/test_search_index/i);
+    expect(errMsg.textContent).toMatch('message.unable-to-error-elasticsearch');
   });
 });
