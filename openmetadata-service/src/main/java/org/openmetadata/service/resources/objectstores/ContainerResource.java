@@ -391,6 +391,29 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
+    @DELETE
+    @Path("/name/{fqn}")
+    @Operation(
+            operationId = "deleteContainerByFQN",
+            summary = "Delete a Container by fully qualified name",
+            tags = "containers",
+            description = "Delete a Container by `fullyQualifiedName`.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "OK"),
+                    @ApiResponse(responseCode = "404", description = "container for instance {fqn} is not found")
+            })
+    public Response delete(
+            @Context UriInfo uriInfo,
+            @Context SecurityContext securityContext,
+            @Parameter(description = "Hard delete the entity. (Default = `false`)")
+            @QueryParam("hardDelete")
+            @DefaultValue("false")
+                    boolean hardDelete,
+            @Parameter(description = "Name of the Container", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+            throws IOException {
+        return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    }
+
   @PUT
   @Path("/restore")
   @Operation(
