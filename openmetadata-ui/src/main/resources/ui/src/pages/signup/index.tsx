@@ -19,11 +19,12 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
 import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
-import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
+import { ELLIPSES, REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
@@ -33,18 +34,23 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const cookieStorage = new CookieStorage();
 
-const Signup = () => {
-  const { setIsSigningIn, jwtPrincipalClaims = [] } = useAuthContext();
+const SignUp = () => {
+  const { t } = useTranslation();
+  const {
+    setIsSigningIn,
+    jwtPrincipalClaims = [],
+    authorizerConfig,
+  } = useAuthContext();
 
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
     displayName: appState.newUser.name || '',
-    name: getNameFromUserData(
+    ...getNameFromUserData(
       appState.newUser as UserProfile,
-      jwtPrincipalClaims
+      jwtPrincipalClaims,
+      authorizerConfig?.principalDomain
     ),
-    email: appState.newUser.email || '',
   });
 
   const history = useHistory();
@@ -112,7 +118,10 @@ const Signup = () => {
               </div>
               <div className="tw-mb-7">
                 <h4 className="tw-font-semibold" data-testid="om-heading">
-                  Join <span className="tw-text-primary">OpenMetadata</span>
+                  {t('label.join')}
+                  <span className="tw-text-primary">
+                    {t('label.open-metadata')}
+                  </span>
                 </h4>
               </div>
               <div className="tw-px-8 tw-w-full">
@@ -126,7 +135,7 @@ const Signup = () => {
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       data-testid="full-name-label"
                       htmlFor="displayName">
-                      Full name
+                      {t('label.full-name')}
                     </label>
                     <input
                       required
@@ -137,7 +146,9 @@ const Signup = () => {
                       data-testid="full-name-input"
                       id="displayName"
                       name="displayName"
-                      placeholder="Your Full name"
+                      placeholder={t('label.your-entity', {
+                        entity: t('label.full-name'),
+                      })}
                       type="text"
                       value={details.displayName}
                       onChange={onChangeHandler}
@@ -148,7 +159,7 @@ const Signup = () => {
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       data-testid="username-label"
                       htmlFor="name">
-                      Username
+                      {t('label.username')}
                     </label>
                     <input
                       readOnly
@@ -159,7 +170,7 @@ const Signup = () => {
                       data-testid="username-input"
                       id="name"
                       name="name"
-                      placeholder="Username"
+                      placeholder={t('label.username')}
                       type="text"
                       value={details.name}
                       onChange={onChangeHandler}
@@ -170,7 +181,7 @@ const Signup = () => {
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       data-testid="email-label"
                       htmlFor="email">
-                      Email
+                      {t('label.email')}
                     </label>
                     <input
                       readOnly
@@ -181,7 +192,9 @@ const Signup = () => {
                       data-testid="email-input"
                       id="email"
                       name="email"
-                      placeholder="Your email address"
+                      placeholder={t('label.your-entity', {
+                        entity: `${t('label.email')} ${t('label.address')}`,
+                      })}
                       type="email"
                       value={details.email}
                       onChange={onChangeHandler}
@@ -191,7 +204,9 @@ const Signup = () => {
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
                       data-testid="select-team-label">
-                      Select teams
+                      {t('label.select-field', {
+                        field: t('label.team-plural-lowercase'),
+                      })}
                     </label>
                     <TeamsSelectable
                       filterJoinable
@@ -208,7 +223,7 @@ const Signup = () => {
                       theme="primary"
                       type="submit"
                       variant="contained">
-                      Create
+                      {t('label.create')}
                     </Button>
                   </div>
                 </form>
@@ -221,11 +236,12 @@ const Signup = () => {
         <p
           className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center"
           data-testid="loading-content">
-          Creating Account ....
+          {t('label.creating-account')}
+          {ELLIPSES}
         </p>
       )}
     </>
   );
 };
 
-export default Signup;
+export default SignUp;

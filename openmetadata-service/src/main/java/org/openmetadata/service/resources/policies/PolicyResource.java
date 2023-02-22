@@ -144,7 +144,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Valid
   @Operation(
       operationId = "listPolicies",
-      summary = "List Policies",
+      summary = "List policies",
       tags = "policies",
       description =
           "Get a list of policies. Use `fields` parameter to get only necessary fields. "
@@ -191,9 +191,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getPolicyByID",
-      summary = "Get a policy",
+      summary = "Get a policy by id",
       tags = "policies",
-      description = "Get a policy by `id`.",
+      description = "Get a policy by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -224,7 +224,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getPolicyByFQN",
-      summary = "Get a policy by name",
+      summary = "Get a policy by fully qualified name",
       tags = "policies",
       description = "Get a policy by fully qualified name.",
       responses = {
@@ -280,9 +280,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificPolicyVersion",
-      summary = "Get a version of the policy",
+      summary = "Get a version of the policy by Id",
       tags = "policies",
-      description = "Get a version of the policy by given `id`",
+      description = "Get a version of the policy by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -309,7 +309,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/resources")
   @Operation(
       operationId = "listPolicyResources",
-      summary = "Get list of policy resources used in authoring a policy.",
+      summary = "Get list of policy resources used in authoring a policy",
       tags = "policies",
       description = "Get list of policy resources used in authoring a policy.")
   public ResultList<ResourceDescriptor> listPolicyResources(
@@ -402,9 +402,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deletePolicy",
-      summary = "Delete a Policy",
+      summary = "Delete a policy by Id",
       tags = "policies",
-      description = "Delete a policy by `id`.",
+      description = "Delete a policy by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
@@ -427,7 +427,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deletePolicyByFQN",
-      summary = "Delete a Policy",
+      summary = "Delete a policy by fully qualified name",
       tags = "policies",
       description = "Delete a policy by `fullyQualifiedName`.",
       responses = {
@@ -452,7 +452,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted policy.",
+      summary = "Restore a soft deleted policy",
       tags = "policies",
       description = "Restore a soft deleted policy.",
       responses = {

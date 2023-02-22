@@ -195,11 +195,14 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
-    if (service.getType().equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
-      return daoCollection.storageServiceDAO().findEntityReferenceById(service.getId());
+    if (service.getId() != null) {
+      if (service.getType().equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+        return daoCollection.storageServiceDAO().findEntityReferenceById(service.getId());
+      }
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.LOCATION, STORAGE_SERVICE));
     }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.LOCATION, STORAGE_SERVICE));
+    return daoCollection.storageServiceDAO().findEntityReferenceByName(service.getFullyQualifiedName());
   }
 
   public List<EntityReference> getEntityDetails(String id) throws IOException {

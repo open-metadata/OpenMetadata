@@ -20,6 +20,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayout from 'components/containers/PageLayout';
 import Loader from 'components/Loader/Loader';
+import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -69,7 +70,7 @@ const TestSuiteIngestionPage = () => {
       });
       setSlashedBreadCrumb([
         {
-          name: 'Test Suites',
+          name: t('label.test-suite-plural'),
           url: ROUTES.TEST_SUITES,
         },
         {
@@ -77,7 +78,9 @@ const TestSuiteIngestionPage = () => {
           url: getTestSuitePath(response.fullyQualifiedName || ''),
         },
         {
-          name: `${ingestionFQN ? 'Edit' : 'Add'} Ingestion`,
+          name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
+            'label.ingestion'
+          )}`,
           url: '',
         },
       ]);
@@ -112,7 +115,7 @@ const TestSuiteIngestionPage = () => {
   if (isUndefined(testSuite)) {
     return (
       <ErrorPlaceHolder>
-        <p>No Data found</p>
+        <p>{t('label.no-data-found')}</p>
       </ErrorPlaceHolder>
     );
   }

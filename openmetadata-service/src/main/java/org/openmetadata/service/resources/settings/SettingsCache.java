@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.SettingsRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -30,14 +30,14 @@ public class SettingsCache {
   private static final SettingsCache INSTANCE = new SettingsCache();
   private static volatile boolean INITIALIZED = false;
   protected static LoadingCache<String, Settings> SETTINGS_CACHE;
-  protected static SettingsRepository SETTINGS_REPOSITORY;
+  protected static SystemRepository systemRepository;
 
   // Expected to be called only once from the DefaultAuthorizer
   public static void initialize(CollectionDAO dao) {
     if (!INITIALIZED) {
       SETTINGS_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
-      SETTINGS_REPOSITORY = new SettingsRepository(dao);
+      systemRepository = new SystemRepository(dao.systemDAO());
       INITIALIZED = true;
     }
   }
@@ -71,7 +71,7 @@ public class SettingsCache {
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
     public Settings load(@CheckForNull String settingsName) {
-      Settings setting = SETTINGS_REPOSITORY.getConfigWithKey(settingsName);
+      Settings setting = systemRepository.getConfigWithKey(settingsName);
       LOG.info("Loaded Setting {}", setting.getConfigType());
       return setting;
     }

@@ -68,11 +68,11 @@ describe('Test MyDataHeader Component', () => {
     const user = getByTestId(container, 'user');
     const terms = getByTestId(container, 'terms');
 
-    expect(tables).toHaveAttribute('href', '/explore/tables/');
-    expect(topics).toHaveAttribute('href', '/explore/topics/');
-    expect(dashboards).toHaveAttribute('href', '/explore/dashboards/');
-    expect(pipelines).toHaveAttribute('href', '/explore/pipelines/');
-    expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels/');
+    expect(tables).toHaveAttribute('href', '/explore/tables');
+    expect(topics).toHaveAttribute('href', '/explore/topics');
+    expect(dashboards).toHaveAttribute('href', '/explore/dashboards');
+    expect(pipelines).toHaveAttribute('href', '/explore/pipelines');
+    expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
     expect(terms).toHaveAttribute(

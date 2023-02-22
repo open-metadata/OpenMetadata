@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import React from 'react';
 import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 
@@ -21,14 +22,11 @@ const ErrorPlaceHolderIngestion = () => {
         <div className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
           <div>
             <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
-              Failed to find OpenMetadata - Managed Airflow APIs
+              {t('message.manage-airflow-api-failed')}
             </h6>
 
             <p className="tw-text-grey-body tw-text-sm tw-mb-5">
-              OpenMetadata uses Airflow to run Ingestion Connectors. We
-              developed Managed APIs to deploy ingestion connectors. Please use
-              the OpenMetadata Airflow instance or refer to the guide below to
-              install the managed APIs in your Airflow installation.
+              {t('message.airflow-guide-message')}
             </p>
           </div>
 
@@ -37,7 +35,7 @@ const ErrorPlaceHolderIngestion = () => {
               href={CUSTOM_AIRFLOW_DOCS}
               rel="noopener noreferrer"
               target="_blank">
-              Install Airflow Managed APIs &gt;&gt;
+              {`${t('label.install-airflow-api')} >>`}
             </a>
           </p>
         </div>

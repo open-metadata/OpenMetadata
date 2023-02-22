@@ -35,7 +35,15 @@ It computes the number of rows in the Table.
 Returns the number of columns in the Table.
 
 ## System Metrics
-System metrics are metrics related to DML operations performed on the table. These metrics are available for BigQuery, Redshift and Snowflake only. Other database engines are currently not supported so the computation of the system metrics will be skipped.
+System metrics provide information related to DML operations performed on the table. These metrics present a concise view of your data freshness. In a typical data processing flow tables are updated at a certain frequency. Table freshness will be monitored by confirming a set of operations has been performed against the table. To increase trust in your data assets, OpenMetadata will monitor the `INSERT`, `UPDATE` and `DELETE` operations performed against your table to showcase 2 metrics related to freshness (see below for more details). With this information, you are able to see when a specific operation was last perform and how many rows it affected. 
+
+<Image
+    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-freshness-metrics.png"}
+    alt="table profile freshness metrics"
+    caption="table profile freshness metrics"
+/>
+
+These metrics are available for **BigQuery**, **Redshift** and **Snowflake**. Other database engines are currently not supported so the computation of the system metrics will be skipped.
 
 ### DML Operations
 This metrics shows all the DML operations performed (`INSERT`, `UPDATE`, `DELETE`) against the table in a timeseries fashion.
@@ -128,11 +136,6 @@ OpenMetadata uses system tables to compute system metrics. You can find the requ
 OpenMetadata uses the `QUERY_HISTORY_BY_WAREHOUSE` view of the `INFORMATION_SCHEMA` to collect metrics about DML operations. To collect information about the `RESULT_SCAN` command alongside the QUERY ID will be passed to the `RESULT_SCAN` function to get the number of rows affected by the operation. You need to make sure the user running the profiler workflow has access to this view and this function.
 
 OpenMetadata will look at the past 24-hours to fetch the operations that were performed against a table. 
-
-### Redshift
-OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DNL operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
-
-OpenMetadata will look at the previous day to fetch the operations that were performed against a table.
 
 ### Redshift
 OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DNL operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.

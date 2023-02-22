@@ -58,17 +58,17 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
             className="float-right"
             size="small"
             onClick={handleAdvanceSearchReset}>
-            Reset
+            {t('label.reset')}
           </Button>
           <div>
-            <Button onClick={onCancel}>Cancel</Button>
+            <Button onClick={onCancel}>{t('label.cancel')}</Button>
             <Button
               type="primary"
               onClick={() => {
                 onSubmit(queryFilter);
                 onCancel();
               }}>
-              Apply
+              {t('label.apply')}
             </Button>
           </div>
         </Space>

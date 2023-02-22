@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.emailAlert.EmailAlertPublisher;
+import org.openmetadata.service.alerts.gchat.GChatWebhookPublisher;
 import org.openmetadata.service.alerts.generic.GenericWebhookPublisher;
 import org.openmetadata.service.alerts.msteams.MSTeamsWebhookPublisher;
 import org.openmetadata.service.alerts.slack.SlackWebhookEventPublisher;
@@ -49,6 +50,9 @@ public class AlertUtil {
         break;
       case MS_TEAMS_WEBHOOK:
         publisher = new MSTeamsWebhookPublisher(alert, alertAction);
+        break;
+      case G_CHAT_WEBHOOK:
+        publisher = new GChatWebhookPublisher(alert, alertAction);
         break;
       case GENERIC_WEBHOOK:
         publisher = new GenericWebhookPublisher(alert, alertAction);

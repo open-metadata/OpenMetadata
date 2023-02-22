@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -62,6 +62,7 @@ import {
 } from 'rest/tagAPI';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
+  getExplorePath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   TIER_CATEGORY,
@@ -85,10 +86,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getTagPath,
-} from '../../utils/RouterUtils';
+import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -468,11 +466,19 @@ const TagsPage = () => {
     if (errorDataTag || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
+        errData['name'] = t('label.field-required', {
+          field: t('label.name'),
+        });
       } else if (delimiterRegex.test(data.name)) {
-        errData['name'] = 'Name with delimiters are not allowed';
+        errData['name'] = t('message.entity-delimiters-not-allowed', {
+          entity: t('label.name'),
+        });
       } else if (data.name.length < 2 || data.name.length > 64) {
-        errData['name'] = 'Name size must be between 2 and 64';
+        errData['name'] = t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 64,
+          min: 2,
+        });
       }
       setErrorDataTag(errData);
 
@@ -537,11 +543,13 @@ const TagsPage = () => {
   const getUsageCountLink = (tagFQN: string) => {
     const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
-    return getExplorePathWithInitFilters(
-      '',
-      undefined,
-      `postFilter[${type}.tagFQN][0]=${tagFQN}`
-    );
+    return getExplorePath({
+      extraParameters: {
+        postFilter: {
+          [`${type}.tagFQN`]: [tagFQN],
+        },
+      },
+    });
   };
 
   const handleActionDeleteTag = (record: Tag) => {
@@ -715,8 +723,7 @@ const TagsPage = () => {
             </div>
             <div className="tw-mt-1" data-testid="usage">
               <span className="tw-text-grey-muted tw-mr-1">
-                {' '}
-                {t('label.usage')}:
+                {`${t('label.usage')}:`}
               </span>
               {record.usageCount ? (
                 <Link
@@ -790,12 +797,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons"
                           data-testid="cancelAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="times"
-                            />
-                          }
+                          icon={<CloseOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleEditNameCancel}
@@ -803,12 +805,7 @@ const TagsPage = () => {
                         <Button
                           className="icon-buttons m-l-xss"
                           data-testid="saveAssociatedTag"
-                          icon={
-                            <FontAwesomeIcon
-                              className="w-3.5 h-3.5"
-                              icon="check"
-                            />
-                          }
+                          icon={<CheckOutlined />}
                           size="small"
                           type="primary"
                           onMouseDown={handleRenameSave}

@@ -109,7 +109,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
             <Tooltip
               title={
                 createGlossaryPermission
-                  ? t('label.add-glossary')
+                  ? t('label.add-entity', { entity: t('label.glossary') })
                   : t('message.no-permission-for-action')
               }>
               <Button
@@ -119,7 +119,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 disabled={!createGlossaryPermission}
                 icon={<PlusIcon className="anticon" />}
                 onClick={handleAddGlossaryClick}>
-                {t('label.add-glossary')}
+                {t('label.add-entity', { entity: t('label.glossary') })}
               </Button>
             </Tooltip>
           </Col>

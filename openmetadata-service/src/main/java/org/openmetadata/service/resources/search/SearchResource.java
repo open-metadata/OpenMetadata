@@ -287,7 +287,7 @@ public class SearchResource {
   @Path("/suggest")
   @Operation(
       operationId = "getSuggestedEntities",
-      summary = "Suggest Entities",
+      summary = "Suggest entities",
       tags = "search",
       description = "Get suggested entities used for auto-completion.",
       responses = {
@@ -361,9 +361,9 @@ public class SearchResource {
   @Path("/aggregate")
   @Operation(
       operationId = "getAggregateFields",
-      summary = "Get Aggregated Fields",
+      summary = "Get aggregated fields",
       tags = "search",
-      description = "Get Aggregated Fields from Entities.",
+      description = "Get aggregated fields from entities.",
       responses = {
         @ApiResponse(
             responseCode = "200",

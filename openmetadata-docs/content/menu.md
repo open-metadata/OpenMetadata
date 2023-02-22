@@ -133,6 +133,8 @@ site_menu:
     url: /deployment/security/enable-ssl/nginx
   - category: Deployment / Enable Security / Enable SSL / Use the OpenMetadata Server
     url: /deployment/security/enable-ssl/openmetadata-server
+  - category: Deployment / Enable Security / Enable SSL / SSL Troubleshooting
+    url: /deployment/security/enable-ssl/ssl-troubleshooting
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
@@ -1119,6 +1121,8 @@ site_menu:
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
+  - category: SDK / Python SDK / Ingestion / Tags
+    url: /sdk/python/ingestion/tags
   - category: SDK / Python SDK / Build a Connector
     url: /sdk/python/build-connector
   - category: SDK / Python SDK / Build a Connector / Source

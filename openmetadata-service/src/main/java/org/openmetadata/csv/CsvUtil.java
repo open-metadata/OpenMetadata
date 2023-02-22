@@ -54,11 +54,17 @@ public final class CsvUtil {
     return writer.toString();
   }
 
-  /** Get headers from CsvHeaders */
+  /**
+   * Get headers from CsvHeaders
+   *
+   * @param csvHeaders list of csv Headers of type CsvHeader
+   * @return list of actual CsvHeader Type String
+   */
   public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {
-      String headerString = header.getRequired() ? String.format("%s*", header.getName()) : header.getName();
+      String headerString = header.getName();
+      if (Boolean.TRUE.equals(header.getRequired())) headerString = String.format("%s*", header.getName());
       headers.add(headerString);
     }
     return headers;

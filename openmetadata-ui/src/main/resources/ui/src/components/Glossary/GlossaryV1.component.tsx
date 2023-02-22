@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { EllipsisOutlined } from '@ant-design/icons';
 import { Col, Dropdown, Row, Tooltip, Typography } from 'antd';
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -42,12 +44,9 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
 import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
-
-import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
-import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const GlossaryV1 = ({
@@ -240,7 +239,7 @@ const GlossaryV1 = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.import-glossary-terms')}
+                        {t('label.import-glossary-term-plural')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
@@ -265,11 +264,14 @@ const GlossaryV1 = ({
           </Col>
           <Col className="tw-text-left" data-testid="delete-button" span={21}>
             <p className="tw-font-medium" data-testid="delete-button-title">
-              Delete
+              {t('label.delete')}
             </p>
             <p className="tw-text-grey-muted tw-text-xs">
-              Deleting this {isGlossaryActive ? 'Glossary' : 'GlossaryTerm'}{' '}
-              will permanently remove its metadata from OpenMetadata.
+              {t('message.delete-entity-type-action-description', {
+                entityType: isGlossaryActive
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
+              })}
             </p>
           </Col>
         </Row>
@@ -323,8 +325,10 @@ const GlossaryV1 = ({
               title={
                 glossaryPermission.Delete || glossaryTermPermission.Delete
                   ? isGlossaryActive
-                    ? 'Manage Glossary'
-                    : 'Manage GlossaryTerm'
+                    ? t('label.manage-entity', { entity: t('label.glossary') })
+                    : t('label.manage-entity', {
+                        entity: t('label.glossary-term'),
+                      })
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
@@ -338,7 +342,7 @@ const GlossaryV1 = ({
                 variant="outlined"
                 onClick={() => setShowActions(true)}>
                 <span>
-                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                  <EllipsisOutlined rotate={90} />
                 </span>
               </Button>
             </Tooltip>

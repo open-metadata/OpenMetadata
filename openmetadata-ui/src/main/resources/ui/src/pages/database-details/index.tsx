@@ -63,6 +63,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getExplorePath,
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
   PAGE_SIZE,
@@ -96,10 +97,7 @@ import {
   updateThreadData,
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getSettingPath,
-} from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
   serviceTypeLogo,
@@ -577,11 +575,15 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
-        getExplorePathWithInitFilters(
-          appState.inPageSearchText,
-          undefined,
-          `postFilter[serviceType][0]=${serviceType}&postFilter[database.name.keyword][0]=${databaseName}`
-        )
+        getExplorePath({
+          search: appState.inPageSearchText,
+          extraParameters: {
+            postFilter: {
+              serviceType: [serviceType],
+              'database.name.keyword': [databaseName],
+            },
+          },
+        })
       );
     }
   }, [appState.inPageSearchText]);
@@ -645,7 +647,9 @@ const DatabaseDetails: FunctionComponent = () => {
           text?.trim() ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="text-grey-muted">No description</span>
+            <span className="text-grey-muted">
+              {t('label.no-entity', { entity: t('label.description') })}
+            </span>
           ),
       },
       {
