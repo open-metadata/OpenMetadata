@@ -84,7 +84,6 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonschema",
     "mypy_extensions>=0.4.3",
-    VERSIONS["pandas"],  # to be removed from base
     "pydantic~=1.10",
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
