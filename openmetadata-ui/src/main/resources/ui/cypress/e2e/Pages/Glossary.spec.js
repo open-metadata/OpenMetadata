@@ -832,8 +832,7 @@ describe('Glossary page should work properly', () => {
         GLOSSARY_TERM_WITH_DETAILS.description
       );
       expect(request.body.mutuallyExclusive).equals(false);
-      expect(request.body.glossary).to.have.all.keys('id', 'type');
-      expect(request.body.glossary.type).equals('glossary');
+      expect(request.body.glossary).equals(NEW_GLOSSARY.name);
       expect(request.body.reviewers).has.length(2);
       expect(request.body.references).has.length(1);
       expect(request.body.references[0]).to.have.all.keys('name', 'endpoint');
