@@ -40,12 +40,12 @@ import {
 } from './CronEditor.interface';
 
 const CronEditor: FC<CronEditorProp> = (props) => {
-  const { t: tFunction } = useTranslation();
+  const { t } = useTranslation();
 
   const getCronType = (cronStr: string) => {
-    for (const t in combinations) {
-      if (combinations[t as keyof Combination].test(cronStr)) {
-        return t;
+    for (const c in combinations) {
+      if (combinations[c as keyof Combination].test(cronStr)) {
+        return c;
       }
     }
 
@@ -81,7 +81,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         min: 0,
       },
     };
-    const t = getCronType(valueStr);
+    const cronType = getCronType(valueStr);
 
     const d = valueStr ? valueStr.split(' ') : [];
     const v: CronValue = {
@@ -92,17 +92,17 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       dow: d[4],
     };
 
-    stateVal.selectedPeriod = t || stateVal.selectedPeriod;
+    stateVal.selectedPeriod = cronType || stateVal.selectedPeriod;
 
     if (!isEmpty(t)) {
-      const stateIndex = `${tFunction('label.selected-lowercase')}${t
+      const stateIndex = `${t('label.selected-lowercase')}${cronType
         ?.charAt(0)
-        .toUpperCase()}${t?.substring(1)}${tFunction('label.option')}`;
+        .toUpperCase()}${cronType?.substring(1)}${t('label.option')}`;
       const selectedPeriodObj = stateVal[
         stateIndex as keyof StateValue
       ] as SelectedYearOption;
 
-      const targets = toDisplay[t as keyof ToDisplay];
+      const targets = toDisplay[cronType as keyof ToDisplay];
 
       for (let i = 0; i < targets.length; i++) {
         const tgt = targets[i];
@@ -144,7 +144,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   const { className, disabled } = props;
   const { selectedPeriod } = state;
 
-  const startText = tFunction('label.schedule-to-run-every');
+  const startText = t('label.schedule-to-run-every');
   const cronPeriodString = `${startText} ${selectedPeriod}`;
 
   const changeValue = (state: StateValue) => {
@@ -367,7 +367,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'minute' && (
         <>
           <div className="tw-mb-1.5" data-testid="minute-segment-container">
-            <label>{`${tFunction('label.minute-lowercase')}:`}</label>
+            <label>{`${t('label.minute-lowercase')}:`}</label>
             {getMinuteSegmentSelect(
               selectedMinOption,
               (e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -391,7 +391,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'hour' && (
         <>
           <div className="tw-mb-1.5" data-testid="hour-segment-container">
-            <label>{`${tFunction('label.minute-lowercase')}:`}</label>
+            <label>{`${t('label.minute-lowercase')}:`}</label>
             {getMinuteSelect(
               selectedHourOption,
               (e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -421,7 +421,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'day' && (
         <>
           <div className="tw-mb-1.5" data-testid="day-segment-container">
-            <label>{`${tFunction('label.time')}:`}</label>
+            <label>{`${t('label.time')}:`}</label>
             <div className="tw-flex" data-testid="time-option-container">
               {getHourSelect(
                 selectedDayOption,
@@ -458,7 +458,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'week' && (
         <>
           <div className="tw-mb-1.5" data-testid="week-segment-time-container">
-            <label>{`${tFunction('label.time')}:`}</label>
+            <label>{`${t('label.time')}:`}</label>
             <div
               className="tw-flex"
               data-testid="week-segment-time-options-container">
@@ -478,7 +478,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
           <div
             className="tw-pt-2"
             data-testid="week-segment-day-option-container">
-            <span>{`${tFunction('label.day')}:`}</span>
+            <span>{`${t('label.day')}:`}</span>
             <div className="cron-badge-option-container week-opt-container">
               {getBadgeOptions(
                 dayOptions,
@@ -513,7 +513,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'month' && (
         <>
           <div className="cron-field-row">
-            <span className="m-l-xs">{`${tFunction('label.date')}:`}</span>
+            <span className="m-l-xs">{`${t('label.date')}:`}</span>
             <div className="cron-badge-option-container month-opt-container">
               {getBadgeOptions(
                 monthDaysOptions,
@@ -525,7 +525,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
             </div>
           </div>
           <div className="cron-field-row">
-            <span className="m-l-xs">{`${tFunction('label.time')}:`}</span>
+            <span className="m-l-xs">{`${t('label.time')}:`}</span>
             {`${getHourSelect(
               selectedMonthOption,
               (e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -561,7 +561,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       state.selectedPeriod === 'year' && (
         <>
           <div className="cron-field-row">
-            <span className="m-l-xs">{`${tFunction('label.month')}:`}</span>
+            <span className="m-l-xs">{`${t('label.month')}:`}</span>
             <div className="cron-badge-option-container month-opt-container">
               {getBadgeOptions(
                 monthOptions,
@@ -573,7 +573,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
             </div>
           </div>
           <div className="cron-field-row">
-            <span className="m-l-xs">{`${tFunction('label.date')}:`}</span>
+            <span className="m-l-xs">{`${t('label.date')}:`}</span>
             <div className="cron-badge-option-container month-opt-container">
               {getBadgeOptions(
                 monthDaysOptions,
@@ -585,7 +585,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
             </div>
           </div>
           <div className="cron-field-row">
-            <span className="m-l-xs">{`${tFunction('label.time')}:`}</span>
+            <span className="m-l-xs">{`${t('label.time')}:`}</span>
             {`${getHourSelect(
               selectedYearOption,
               (e: React.ChangeEvent<HTMLSelectElement>) =>
@@ -611,7 +611,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       <div className="">
         <div className="tw-grid tw-grid-cols-2 tw-gap-4">
           <div className="tw-mb-1.5" data-testid="time-dropdown-container">
-            <label htmlFor="cronType">{`${tFunction('label.every')}:`}</label>
+            <label htmlFor="cronType">{`${t('label.every')}:`}</label>
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
               data-testid="cron-type"
@@ -641,7 +641,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
           {getYearComponent(cronPeriodString)}
           {isEmpty(value) && (
             <p className="tw-col-span-2" data-testid="manual-segment-container">
-              {tFunction('message.pipeline-will-trigger-manually')}
+              {t('message.pipeline-will-trigger-manually')}
             </p>
           )}
         </div>
