@@ -405,7 +405,7 @@ public interface CollectionDAO {
   interface ContainerDAO extends EntityDAO<Container> {
     @Override
     default String getTableName() {
-      return "container_entity";
+      return "objectstore_container_entity";
     }
 
     @Override
@@ -3222,14 +3222,14 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT COUNT(*) FROM container_entity <cond>) as containerCount, "
+                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as containerCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>)) as objectstoreservicesCount, "
+                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectstoreservicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
@@ -3241,14 +3241,14 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT COUNT(*) FROM container_entity <cond>) as containerCount, "
+                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as containerCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>)) as objectstoreservicesCount, "
+                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectstoreservicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>  ) as testSuiteCount",

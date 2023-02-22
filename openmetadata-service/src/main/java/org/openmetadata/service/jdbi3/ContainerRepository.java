@@ -120,7 +120,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public void storeEntity(Container container, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
-    // adds entry in the container_entity database table
+    // adds entry in the objectstore_container_entity database table
     EntityReference objectStoreService = container.getObjectStoreService();
     EntityReference parent = container.getParent();
     List<EntityReference> children = container.getChildren();

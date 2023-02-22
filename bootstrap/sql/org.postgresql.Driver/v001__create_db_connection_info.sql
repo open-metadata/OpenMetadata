@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS ml_model_entity (
     UNIQUE (fullyQualifiedName)
 );
 
-CREATE TABLE IF NOT EXISTS container_entity (
+CREATE TABLE IF NOT EXISTS objectstore_container_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
     json JSONB NOT NULL,
