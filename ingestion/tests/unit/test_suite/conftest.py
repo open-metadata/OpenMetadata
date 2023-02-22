@@ -333,7 +333,7 @@ def test_case_column_values_missing_count_to_be_equal():
 
 
 @pytest.fixture
-def test_case_column_values_missing_count_to_be_equal_missing_valuesl():
+def test_case_column_values_missing_count_to_be_equal_missing_values():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
         name=TEST_CASE_NAME,
@@ -587,3 +587,31 @@ def test_case_table_row_inserted_count_to_be_between():
             TestCaseParameterValue(name="rangeInterval", value="1"),
         ],
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_failed_dl():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="age > 30"),
+        ],
+    )
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_success_dl():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="age < 0"),
+        ],
+    )

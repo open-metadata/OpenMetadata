@@ -84,7 +84,6 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonschema",
     "mypy_extensions>=0.4.3",
-    VERSIONS["pandas"],  # to be removed from base
     "pydantic~=1.10",
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
@@ -165,6 +164,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift>=0.13,<1",
         "sasl~=0.3",
         "thrift-sasl~=0.4",
+        "impyla~=0.18.0",
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
