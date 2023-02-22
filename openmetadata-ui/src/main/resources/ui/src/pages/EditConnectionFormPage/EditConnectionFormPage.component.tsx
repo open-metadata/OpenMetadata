@@ -155,9 +155,9 @@ function EditConnectionFormPage() {
           <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
           <div className="form-container">
             <Typography.Title level={5}>
-              {`${t('label.edit')} ${serviceFQN} ${t('label.service')} ${t(
-                'label.connection'
-              )}`}
+              {t('message.edit-service-entity-connection', {
+                entity: serviceFQN,
+              })}
             </Typography.Title>
             <ServiceConfig
               data={serviceDetails as ServicesData}

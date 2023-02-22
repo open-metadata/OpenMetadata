@@ -925,6 +925,7 @@
     "delete-team-message": "Any teams under \"{{teamName}}\" will be {{deleteType}} deleted as well.",
     "delete-webhook-permanently": "You want to delete webhook {{webhookName}} permanently? This action cannot be reverted.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Discover your data and unlock the value of data assets.",
+    "edit-service-entity-connection": "Edit {{entity}} Service Connection",
     "elastic-search-message": "Ensure that your Elasticsearch indexes are up-to-date by syncing, or recreating all indexes.",
     "elasticsearch-setup": "Please follow the instructions here to set up Metadata ingestion and index them into Elasticsearch.",
     "email-is-invalid": "Invalid Email.",
