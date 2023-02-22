@@ -279,10 +279,7 @@ export const AuthProvider = ({
             })
             .catch((err) => {
               // eslint-disable-next-line no-console
-              console.error(
-                t('message.silent-sign-in-error-message') + ' ',
-                err
-              );
+              console.error('Error while attempting for silent signIn. ', err);
               silentSignInRetries += 1;
               trySilentSignIn();
             })

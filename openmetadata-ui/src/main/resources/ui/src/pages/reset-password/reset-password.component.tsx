@@ -80,7 +80,7 @@ const ResetPassword = () => {
             <Alert
               showIcon
               description="Please re-initiate email verification process"
-              message={t('message.email-verification-token-expired-message')}
+              message={t('message.email-verification-token-expired')}
               type="error"
             />
           </div>
@@ -126,7 +126,7 @@ const ResetPassword = () => {
                     },
                     {
                       pattern: passwordRegex,
-                      message: t('message.password-pattern-error-message'),
+                      message: t('message.password-pattern-error'),
                     },
                   ]}>
                   <Input.Password

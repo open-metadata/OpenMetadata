@@ -41,7 +41,7 @@ const BasicAuthenticator = forwardRef(
         authConfig.provider !== AuthTypes.BASIC &&
         authConfig.provider !== AuthTypes.LDAP
       ) {
-        Promise.reject(t('message.authProvider-is-not-basic-message'));
+        Promise.reject(t('message.authProvider-is-not-basic'));
       }
 
       const response = await getAccessTokenOnExpiry({
