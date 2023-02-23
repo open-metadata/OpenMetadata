@@ -14,96 +14,32 @@ SQL Queries used during ingestion
 
 import textwrap
 
-PGSPIDER_SQL_STATEMENT = textwrap.dedent(
+PGSPIDER_GET_MULTI_TENANT_TABLES = textwrap.dedent(
     """
       SELECT
-        u.usename,
-        d.datname database_name,
-        s.query query_text,
-        s.total_exec_time/1000 duration
+        c.relname, ns.nspname, current_database() as database
       FROM
-        pg_stat_statements s
-        JOIN pg_catalog.pg_database d ON s.dbid = d.oid
-        JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
+        pg_class c
+        JOIN pg_namespace ns ON c.relnamespace = ns.oid
+        JOIN pg_foreign_table ft ON c.oid = ft.ftrelid
+        JOIN pg_foreign_server fs ON ft.ftserver = fs.oid
+        JOIN pg_foreign_data_wrapper fdw ON fs.srvfdw = fdw.oid
       WHERE
-        s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%' AND
-        s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-        {filters}
-      LIMIT {result_limit}
+        fdw.fdwname = 'pgspider_core_fdw'
     """
 )
 
-# https://www.postgresql.org/docs/current/catalog-pg-class.html
-# r = ordinary table, v = view, m = materialized view, c = composite type, f = foreign table, p = partitioned table,
-PGSPIDER_GET_TABLE_NAMES = """
-    SELECT c.relname, c.relkind FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND relispartition = false
-"""
-
-PGSPIDER_PARTITION_DETAILS = textwrap.dedent(
+PGSPIDER_GET_CHILD_TABLES = textwrap.dedent(
     """
-    select
-        par.relnamespace::regnamespace::text as schema,
-        par.relname as table_name,
-        partition_strategy,
-        col.column_name
-    from
-        (select
-             partrelid,
-             partnatts,
-             case partstrat
-                  when 'l' then 'list'
-                  when 'h' then 'hash'
-                  when 'r' then 'range' end as partition_strategy,
-             unnest(partattrs) column_index
-         from
-             pg_partitioned_table) pt
-    join
-        pg_class par
-    on
-        par.oid = pt.partrelid
-    left join
-        information_schema.columns col
-    on
-        col.table_schema = par.relnamespace::regnamespace::text
-        and col.table_name = par.relname
-        and ordinal_position = pt.column_index
-     where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+      WITH srv AS 
+        (SELECT srvname FROM pg_foreign_table ft
+        JOIN pg_foreign_server fs ON ft.ftserver = fs.oid GROUP BY srvname ORDER BY srvname),
+        regex_pattern AS 
+            (SELECT '^' || relname || '\\_\\_' || srv.srvname  || '\\_\\_[0-9]+$' regex FROM pg_class
+            CROSS JOIN srv where relname = '{multi_tenant_table}')
+            SELECT oid, relname FROM pg_class 
+            WHERE (relname ~ (SELECT string_agg(regex, '|') FROM regex_pattern))
+            AND (relname NOT LIKE '%%\\_%%\\_seq')
+            ORDER BY relname;
     """
 )
-
-PGSPIDER_GET_ALL_TABLE_PG_POLICY = """
-SELECT oid, polname, table_catalog , table_schema ,table_name  
-FROM information_schema.tables AS it
-JOIN (SELECT pc.relname, pp.*
-      FROM pg_policy AS pp
-      JOIN pg_class AS pc ON pp.polrelid = pc.oid
-      JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
-WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
-"""
-
-PGSPIDER_TABLE_COMMENTS = """
-    SELECT n.nspname as schema,
-            c.relname as table_name,
-            pgd.description as table_comment
-    FROM pg_catalog.pg_class c
-        LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
-    WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
-      AND pgd.description IS NOT NULL
-      AND n.nspname <> 'pg_catalog'
-    ORDER BY "schema", "table_name"
-"""
-
-
-PGSPIDER_VIEW_DEFINITIONS = """
-SELECT 
-	n.nspname schema,
-	c.relname view_name,
-	pg_get_viewdef(c.oid) view_def
-FROM pg_class c 
-JOIN pg_namespace n ON n.oid = c.relnamespace 
-WHERE c.relkind IN ('v', 'm')
-AND n.nspname not in ('pg_catalog','information_schema')
-"""

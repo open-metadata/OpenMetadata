@@ -46,12 +46,12 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.pgspider.queries import (
-    PGSPIDER_GET_ALL_TABLE_PG_POLICY,
-    PGSPIDER_GET_TABLE_NAMES,
-    PGSPIDER_PARTITION_DETAILS,
-    PGSPIDER_TABLE_COMMENTS,
-    PGSPIDER_VIEW_DEFINITIONS,
+from metadata.ingestion.source.database.postgres.queries import (
+    POSTGRES_GET_ALL_TABLE_PG_POLICY,
+    POSTGRES_GET_TABLE_NAMES,
+    POSTGRES_PARTITION_DETAILS,
+    POSTGRES_TABLE_COMMENTS,
+    POSTGRES_VIEW_DEFINITIONS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -111,7 +111,7 @@ def get_table_comment(
         connection,
         table_name=table_name,
         schema=schema,
-        query=PGSPIDER_TABLE_COMMENTS,
+        query=POSTGRES_TABLE_COMMENTS,
     )
 
 
@@ -128,7 +128,7 @@ def get_view_definition(
         connection,
         table_name=table_name,
         schema=schema,
-        query=PGSPIDER_VIEW_DEFINITIONS,
+        query=POSTGRES_VIEW_DEFINITIONS,
     )
 
 
@@ -162,7 +162,7 @@ class PgspiderSource(CommonDbSourceService):
         and foreign types
         """
         result = self.connection.execute(
-            sql.text(PGSPIDER_GET_TABLE_NAMES),
+            sql.text(POSTGRES_GET_TABLE_NAMES),
             dict(schema=schema_name),
         )
 
@@ -214,7 +214,7 @@ class PgspiderSource(CommonDbSourceService):
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
-            PGSPIDER_PARTITION_DETAILS.format(
+            POSTGRES_PARTITION_DETAILS.format(
                 table_name=table_name, schema_name=schema_name
             )
         ).all()
@@ -234,7 +234,7 @@ class PgspiderSource(CommonDbSourceService):
         """
         try:
             result = self.engine.execute(
-                PGSPIDER_GET_ALL_TABLE_PG_POLICY.format(
+                POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
                     database_name=self.context.database.name.__root__,
                     schema_name=schema_name,
                 )
