@@ -14,7 +14,6 @@ Processor util to fetch pii sensitive columns
 """
 import logging
 import re
-from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import List, Optional
 
@@ -34,12 +33,6 @@ from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, OpenMetadataConnection
 
 PII = "PII"
-
-
-class Scanner(ABC):
-    @abstractmethod
-    def scan(self, text):
-        """scan the text and return array of PiiTypes that are found"""
 
 
 class PiiTypes(Enum):
@@ -65,6 +58,8 @@ class PiiTypes(Enum):
     TAX_ID = auto()
     KEY = auto()
     BANKACC = auto()
+    ORGANIZATION = auto()
+    DATE_TIME = auto()
 
 
 class TagType(Enum):
@@ -72,11 +67,22 @@ class TagType(Enum):
     NONSENSITIVE = "NonSensitive"
 
 
-class NERScanner(Scanner):
+class NERScanner:
     """A scanner that uses Spacy NER for entity recognition"""
 
     def __init__(self):
         self.nlp = spacy.load("en_core_web_sm")
+
+    def get_spacy_to_pii_type(self, spacy_type):
+        spacy_to_pii = {
+            "ORG": PiiTypes.ORGANIZATION.value,
+            "GPE": PiiTypes.LOCATION.value,
+            "TIME": PiiTypes.DATE_TIME.value,
+            "CARDINAL": PiiTypes.UNSUPPORTED.value,
+            "PERSON": PiiTypes.PERSON.value,
+        }
+
+        return spacy_to_pii.get(spacy_type, PiiTypes.UNSUPPORTED.value)
 
     def scan(self, text):
         """Scan the text and return an array of PiiTypes that are found"""
@@ -84,9 +90,13 @@ class NERScanner(Scanner):
         doc = self.nlp(text)
         pii_types = f"{PII}.{TagType.NONSENSITIVE.value}"
 
-        for ent in doc.ents:
+        for ent in list(doc.ents):
             logging.debug("Found %s", ent.label_)
-            if ent.label_ in ColumnNameScanner.sensitive_regex:
+            label = ent.label_
+            if (
+                self.get_spacy_to_pii_type(spacy_type=label)
+                in ColumnNameScanner.sensitive_regex
+            ):
                 pii_types = f"{PII}.{TagType.SENSITIVE.value}"
                 return pii_types
 
@@ -98,9 +108,13 @@ class NERScanner(Scanner):
             pii_tag_type = ""
             for tag in table_entity.columns[idx].tags or []:
                 if PII in tag.tagFQN.__root__:
+                    idx += 1
                     continue
             for row in table_data.rows:
                 pii_tag_type = self.scan(str(row[idx]))
+                if pii_tag_type == f"{PII}.{TagType.SENSITIVE}":
+                    idx += 1
+                    continue
             client.patch_column_tag(
                 entity_id=table_entity.id,
                 column_name=table_entity.columns[idx].name.__root__,
@@ -113,7 +127,7 @@ class ColumnPIIType(BaseModel):
     tag_type: TagType
 
 
-class RegexScanner(Scanner):
+class RegexScanner:
     """A scanner that uses commmon regular expressions to find PII"""
 
     def scan(self, text):
@@ -132,7 +146,7 @@ class RegexScanner(Scanner):
         return types
 
 
-class ColumnNameScanner(Scanner):
+class ColumnNameScanner:
     """
     Column Name Scanner to scan column name
     """
@@ -166,6 +180,12 @@ class ColumnNameScanner(Scanner):
             re.IGNORECASE,
         ),
         PiiTypes.PHONE: re.compile("^.*(phone).*$", re.IGNORECASE),
+        PiiTypes.ORGANIZATION: re.compile(
+            "^.*(organiztion|org|company).*$", re.IGNORECASE
+        ),
+        PiiTypes.DATE_TIME: re.compile(
+            "^.*(created|updated|deleted).*$", re.IGNORECASE
+        ),
     }
 
     def scan(self, text) -> Optional[List[ColumnPIIType]]:

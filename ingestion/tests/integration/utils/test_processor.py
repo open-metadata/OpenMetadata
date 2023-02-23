@@ -12,20 +12,49 @@
 Test Processor Class
 """
 
+import datetime
 from unittest import TestCase
 
+from ingestion.processor.pii import NERScanner, PiiProcessor
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.entity.data.table import Column, DataType, TableType
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
+    Table,
+    TableData,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseServiceType,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import AnyUrl, Href
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.processor import PiiProcessor
 
 MOCK_TABLE: CreateTableRequest = CreateTableRequest(
     name="DataSet Input",
@@ -170,16 +199,7 @@ MOCK_TABLE: CreateTableRequest = CreateTableRequest(
     tablePartition=None,
     tableProfilerConfig=None,
     owner=None,
-    databaseSchema=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="databaseSchema",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
+    databaseSchema="default.default.schema",
     tags=None,
     viewDefinition=None,
     extension=None,
@@ -364,6 +384,451 @@ EXPECTED_COLUMNS = [
     ),
 ]
 
+table_data = TableData(
+    columns=[
+        ColumnName(__root__="customer_id"),
+        ColumnName(__root__="first_name"),
+        ColumnName(__root__="last_name"),
+        ColumnName(__root__="first_order"),
+        ColumnName(__root__="most_recent_order"),
+        ColumnName(__root__="number_of_orders"),
+    ],
+    rows=[
+        [
+            30,
+            "Christina",
+            "W.",
+            datetime.date(2018, 3, 2),
+            datetime.date(2018, 3, 14),
+            2,
+        ],
+        [73, "Alan", "B.", None, None, None],
+        [71, "Gerald", "C.", datetime.date(2018, 1, 18), datetime.date(2018, 2, 24), 3],
+        [35, "Sara", "T.", datetime.date(2018, 2, 21), datetime.date(2018, 3, 21), 2],
+        [22, "Sean", "H.", datetime.date(2018, 1, 26), datetime.date(2018, 3, 1), 3],
+        [50, "Billy", "L.", datetime.date(2018, 1, 5), datetime.date(2018, 2, 20), 2],
+        [
+            76,
+            "Barbara",
+            "W.",
+            datetime.date(2018, 3, 23),
+            datetime.date(2018, 3, 23),
+            1,
+        ],
+        [5, "Katherine", "R.", None, None, None],
+        [31, "Jane", "G.", datetime.date(2018, 2, 17), datetime.date(2018, 2, 17), 1],
+        [45, "Scott", "B.", None, None, None],
+        [21, "Willie", "H.", datetime.date(2018, 3, 28), datetime.date(2018, 3, 28), 1],
+        [18, "Johnny", "K.", datetime.date(2018, 2, 27), datetime.date(2018, 2, 27), 1],
+        [6, "Sarah", "R.", datetime.date(2018, 2, 19), datetime.date(2018, 2, 19), 1],
+        [56, "Joshua", "K.", None, None, None],
+        [79, "Jack", "R.", datetime.date(2018, 2, 28), datetime.date(2018, 3, 11), 2],
+        [94, "Gregory", "H.", datetime.date(2018, 1, 4), datetime.date(2018, 1, 29), 2],
+        [83, "Virginia", "R.", None, None, None],
+        [17, "Kimberly", "R.", None, None, None],
+        [2, "Shawn", "M.", datetime.date(2018, 1, 11), datetime.date(2018, 1, 11), 1],
+        [60, "Norma", "W.", None, None, None],
+        [87, "Phillip", "B.", None, None, None],
+    ],
+)
+
+TABLE_ENTITY = Table(
+    id="c6e75645-62e3-4110-8040-faa0e1ae3289",
+    name="customers",
+    displayName=None,
+    fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers",
+    description=None,
+    version=0.7,
+    updatedAt=1676984225597,
+    updatedBy="admin",
+    href=Href(
+        __root__=AnyUrl(
+            "http://localhost:8585/api/v1/tables/c6e75645-62e3-4110-8040-faa0e1ae3289",
+            scheme="http",
+            host="localhost",
+            host_type="int_domain",
+            port="8585",
+            path="/api/v1/tables/c6e75645-62e3-4110-8040-faa0e1ae3289",
+        )
+    ),
+    tableType="Local",
+    columns=[
+        Column(
+            name=ColumnName(__root__="customer_id"),
+            displayName=None,
+            dataType="INT",
+            arrayDataType=None,
+            dataLength=1,
+            precision=None,
+            scale=None,
+            dataTypeDisplay="int",
+            description="This is an ID identifing a unique customer",
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.customer_id",
+            tags=[
+                TagLabel(
+                    tagFQN="PII.Sensitive",
+                    source=TagSource.Tag.value,
+                    labelType=LabelType.Automated.value,
+                    state=State.Suggested.value,
+                )
+            ],
+            constraint="NULL",
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            customMetrics=None,
+            profile=None,
+        ),
+        Column(
+            name=ColumnName(__root__="first_name"),
+            displayName=None,
+            dataType="VARCHAR",
+            arrayDataType=None,
+            dataLength=10,
+            precision=None,
+            scale=None,
+            dataTypeDisplay="varchar(10)",
+            description=None,
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.first_name",
+            tags=None,
+            constraint="NULL",
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            customMetrics=None,
+            profile=None,
+        ),
+        Column(
+            name=ColumnName(__root__="last_name"),
+            displayName=None,
+            dataType="VARCHAR",
+            arrayDataType=None,
+            dataLength=2,
+            precision=None,
+            scale=None,
+            dataTypeDisplay="varchar(2)",
+            description=None,
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.last_name",
+            tags=None,
+            constraint="NULL",
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            customMetrics=None,
+            profile=None,
+        ),
+        Column(
+            name=ColumnName(__root__="first_order"),
+            displayName=None,
+            dataType="DATE",
+            arrayDataType=None,
+            dataLength=1,
+            precision=None,
+            scale=None,
+            dataTypeDisplay="date",
+            description=None,
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.first_order",
+            tags=None,
+            constraint="NULL",
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            customMetrics=None,
+            profile=None,
+        ),
+        Column(
+            name=ColumnName(__root__="most_recent_order"),
+            displayName=None,
+            dataType="DATE",
+            arrayDataType=None,
+            dataLength=1,
+            precision=None,
+            scale=None,
+            dataTypeDisplay="date",
+            description=None,
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.most_recent_order",
+            tags=None,
+            constraint="NULL",
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            customMetrics=None,
+            profile=None,
+        ),
+        Column(
+            name=ColumnName(__root__="number_of_orders"),
+            displayName=None,
+            dataType="BIGINT",
+            arrayDataType=None,
+            dataLength=1,
+            precision=None,
+            scale=None,
+            dataTypeDisplay="bigint",
+            description=None,
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.number_of_orders",
+            tags=None,
+            constraint="NULL",
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            customMetrics=None,
+            profile=None,
+        ),
+    ],
+    tableConstraints=None,
+    tablePartition=None,
+    owner=None,
+    databaseSchema=EntityReference(
+        id="9db326f8-c23c-49c5-bc75-865cb8e87981",
+        type="databaseSchema",
+        name="dbt_jaffle",
+        fullyQualifiedName="aws_redshift1.dev.dbt_jaffle",
+        description=None,
+        displayName=None,
+        deleted=False,
+        href=Href(
+            __root__=AnyUrl(
+                "http://localhost:8585/api/v1/databaseSchemas/9db326f8-c23c-49c5-bc75-865cb8e87981",
+                scheme="http",
+                host="localhost",
+                host_type="int_domain",
+                port="8585",
+                path="/api/v1/databaseSchemas/9db326f8-c23c-49c5-bc75-865cb8e87981",
+            )
+        ),
+    ),
+    database=EntityReference(
+        id="f74772d0-2827-442a-8aa4-3dfd136f0c53",
+        type="database",
+        name="dev",
+        fullyQualifiedName="aws_redshift1.dev",
+        description=None,
+        displayName=None,
+        deleted=False,
+        href=Href(
+            __root__=AnyUrl(
+                "http://localhost:8585/api/v1/databases/f74772d0-2827-442a-8aa4-3dfd136f0c53",
+                scheme="http",
+                host="localhost",
+                host_type="int_domain",
+                port="8585",
+                path="/api/v1/databases/f74772d0-2827-442a-8aa4-3dfd136f0c53",
+            )
+        ),
+    ),
+    service=EntityReference(
+        id="31964ed7-8b76-468f-8f1d-d3839792a3b0",
+        type="databaseService",
+        name="aws_redshift1",
+        fullyQualifiedName="aws_redshift1",
+        description=None,
+        displayName=None,
+        deleted=False,
+        href=Href(
+            __root__=AnyUrl(
+                "http://localhost:8585/api/v1/services/databaseServices/31964ed7-8b76-468f-8f1d-d3839792a3b0",
+                scheme="http",
+                host="localhost",
+                host_type="int_domain",
+                port="8585",
+                path="/api/v1/services/databaseServices/31964ed7-8b76-468f-8f1d-d3839792a3b0",
+            )
+        ),
+    ),
+    serviceType="Redshift",
+    location=None,
+    viewDefinition=None,
+    tags=None,
+    usageSummary=None,
+    followers=None,
+    joins=None,
+    sampleData=None,
+    tableProfilerConfig=None,
+    profile=None,
+    tableQueries=None,
+    dataModel=None,
+    changeDescription=None,
+    deleted=False,
+    extension=None,
+)
+
+UPDATED_TABLE_ENTITY = [
+    Column(
+        name=ColumnName(__root__="customer_id"),
+        displayName=None,
+        dataType="INT",
+        arrayDataType=None,
+        dataLength=None,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="int",
+        description=None,
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.customer_id",
+        tags=[],
+        constraint=None,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+    Column(
+        name=ColumnName(__root__="first_name"),
+        displayName=None,
+        dataType="VARCHAR",
+        arrayDataType=None,
+        dataLength=20,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="varchar",
+        description=None,
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_name",
+        tags=[
+            TagLabel(
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                description=(
+                    "PII which is easily accessible from public sources and can include zip code, race, "
+                    "gender, and date of birth."
+                ),
+                source="Tag",
+                labelType="Automated",
+                state="Confirmed",
+                href=None,
+            )
+        ],
+        constraint=None,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+    Column(
+        name=ColumnName(__root__="last_name"),
+        displayName=None,
+        dataType="VARCHAR",
+        arrayDataType=None,
+        dataLength=20,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="varchar",
+        description=None,
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.last_name",
+        tags=[
+            TagLabel(
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                description=(
+                    "PII which is easily accessible from public sources and can "
+                    "include zip code, race, gender, and date of birth."
+                ),
+                source="Tag",
+                labelType="Automated",
+                state="Confirmed",
+                href=None,
+            )
+        ],
+        constraint=None,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+    Column(
+        name=ColumnName(__root__="first_order"),
+        displayName=None,
+        dataType="DATE",
+        arrayDataType=None,
+        dataLength=None,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="date",
+        description=None,
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_order",
+        tags=[
+            TagLabel(
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                description=(
+                    "PII which is easily accessible from public sources and can include zip code, "
+                    "race, gender, and date of birth."
+                ),
+                source="Tag",
+                labelType="Automated",
+                state="Confirmed",
+                href=None,
+            )
+        ],
+        constraint=None,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+    Column(
+        name=ColumnName(__root__="most_recent_order"),
+        displayName=None,
+        dataType="DATE",
+        arrayDataType=None,
+        dataLength=None,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="date",
+        description=None,
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.most_recent_order",
+        tags=[
+            TagLabel(
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                description=(
+                    "PII which is easily accessible from public sources and can include zip code, "
+                    "race, gender, and date of birth."
+                ),
+                source="Tag",
+                labelType="Automated",
+                state="Confirmed",
+                href=None,
+            )
+        ],
+        constraint=None,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+    Column(
+        name=ColumnName(__root__="number_of_orders"),
+        displayName=None,
+        dataType="BIGINT",
+        arrayDataType=None,
+        dataLength=None,
+        precision=None,
+        scale=None,
+        dataTypeDisplay="bigint",
+        description=None,
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.number_of_orders",
+        tags=[
+            TagLabel(
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                description=(
+                    "PII which is easily accessible from public sources and can include zip code, "
+                    "race, gender, and date of birth."
+                ),
+                source="Tag",
+                labelType="Automated",
+                state="Confirmed",
+                href=None,
+            )
+        ],
+        constraint=None,
+        ordinalPosition=None,
+        jsonSchema=None,
+        children=None,
+        customMetrics=None,
+        profile=None,
+    ),
+]
+
 
 class PiiProcessorTest(TestCase):
     """
@@ -389,9 +854,66 @@ class PiiProcessorTest(TestCase):
                 "5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
             ),
         )
-        metadata = OpenMetadata(server_config)
-        self.processor = PiiProcessor(metadata_config=metadata)
+        self.metadata = OpenMetadata(server_config)
+        self.processor = PiiProcessor(metadata_config=self.metadata)
+        self.nerscanner_processor = NERScanner()
 
     def test_process(self):
         self.processor.process(MOCK_TABLE)
         assert MOCK_TABLE.columns == EXPECTED_COLUMNS
+
+    def test_nerscanner_process(self):
+        """
+        test function for ner Scanner
+        """
+        service = CreateDatabaseServiceRequest(
+            name="test-service-table-patch",
+            serviceType=DatabaseServiceType.Mysql,
+            connection=DatabaseConnection(
+                config=MysqlConnection(
+                    username="username",
+                    password="password",
+                    hostPort="http://localhost:1234",
+                )
+            ),
+        )
+        service_entity = self.metadata.create_or_update(data=service)
+
+        create_db = CreateDatabaseRequest(
+            name="test-db",
+            service=service_entity.fullyQualifiedName,
+        )
+
+        create_db_entity = self.metadata.create_or_update(data=create_db)
+
+        create_schema = CreateDatabaseSchemaRequest(
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
+        )
+
+        create_schema_entity = self.metadata.create_or_update(data=create_schema)
+
+        created_table = CreateTableRequest(
+            name="customers",
+            columns=[
+                Column(name="customer_id", dataType=DataType.INT),
+                Column(name="first_name", dataType=DataType.VARCHAR, dataLength=20),
+                Column(name="last_name", dataType=DataType.VARCHAR, dataLength=20),
+                Column(name="first_order", dataType=DataType.DATE),
+                Column(name="most_recent_order", dataType=DataType.DATE),
+                Column(name="number_of_orders", dataType=DataType.BIGINT),
+            ],
+            databaseSchema=create_schema_entity.fullyQualifiedName,
+        )
+        table_entity = self.metadata.create_or_update(data=created_table)
+        TABLE_ENTITY.id = table_entity.id
+        self.nerscanner_processor.process(
+            table_data=table_data, table_entity=TABLE_ENTITY, client=self.metadata
+        )
+        updated_table_entity = self.metadata.get_by_id(
+            entity=Table, entity_id=table_entity.id, fields=["tags"]
+        )
+        for _, (expected, original) in enumerate(
+            zip(UPDATED_TABLE_ENTITY, updated_table_entity.columns)
+        ):
+            self.assertEqual(expected.tags, original.tags)
