@@ -11,7 +11,7 @@
 """
 PGSpider usage module
 """
-from metadata.ingestion.source.database.pgspider.queries import PGSPIDER_SQL_STATEMENT
+from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
 from metadata.ingestion.source.database.pgspider.query_parser import (
     PGSpiderQueryParserSource,
 )
@@ -23,7 +23,7 @@ class PgspiderUsageSource(PGSpiderQueryParserSource, UsageSource):
     PGSpider class for Usage
     """
 
-    sql_stmt = PGSPIDER_SQL_STATEMENT
+    sql_stmt = POSTGRES_SQL_STATEMENT
     filters = ""
     database_field = "d.datname"
     schema_field = ""  # schema filtering not available
