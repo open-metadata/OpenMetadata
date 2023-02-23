@@ -12,10 +12,10 @@
 """
 OpenMetadata high-level API Table test
 """
-from unittest import TestCase
-import time
 import logging
+import time
 from typing import Union
+from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -25,6 +25,10 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -37,18 +41,15 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
-from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.type import basic
 
 
 class OMetaTableTest(TestCase):
@@ -165,9 +166,7 @@ class OMetaTableTest(TestCase):
 
         cls.team_2 = cls.metadata.create_or_update(
             data=CreateTeamRequest(
-                name="Team 2",
-                teamType="Group",
-                users=[cls.user_2.id]
+                name="Team 2", teamType="Group", users=[cls.user_2.id]
             )
         )
 
@@ -321,12 +320,16 @@ class OMetaTableTest(TestCase):
         """
         Update owner
         """
+        owner_user_1: EntityReference = EntityReference(id=self.user_1.id, type="user")
+        owner_user_2: EntityReference = EntityReference(id=self.user_2.id, type="user")
+        owner_team_1: EntityReference = EntityReference(id=self.team_1.id, type="team")
+        owner_team_2: EntityReference = EntityReference(id=self.team_2.id, type="team")
+
         # Database, no existing owner, owner is a User -> Modified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
             entity_id=self.db_entity_id,
-            owner_entity=User,
-            owner_id=self.user_1.id,
+            owner=owner_user_1,
         )
         assert updated.owner.id == self.user_1.id
 
@@ -334,8 +337,7 @@ class OMetaTableTest(TestCase):
         updated: Database = self.metadata.patch_owner(
             entity=Database,
             entity_id=self.db_entity_id,
-            owner_entity=User,
-            owner_id=self.user_2.id,
+            owner=owner_user_2,
         )
         assert updated is None
 
@@ -343,8 +345,7 @@ class OMetaTableTest(TestCase):
         updated: Database = self.metadata.patch_owner(
             entity=Database,
             entity_id=self.db_entity_id,
-            owner_entity=User,
-            owner_id=self.user_2.id,
+            owner=owner_user_2,
             force=True,
         )
         assert updated.owner.id == self.user_2.id
@@ -368,8 +369,7 @@ class OMetaTableTest(TestCase):
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
             entity_id=self.db_schema_entity_id,
-            owner_entity=Team,
-            owner_id=self.team_1.id,
+            owner=owner_team_1,
         )
         assert updated.owner.id == self.team_1.id
 
@@ -377,8 +377,7 @@ class OMetaTableTest(TestCase):
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
             entity_id=self.db_schema_entity_id,
-            owner_entity=Team,
-            owner_id=self.team_2.id,
+            owner=owner_team_2,
         )
         assert updated is None
 
@@ -386,8 +385,7 @@ class OMetaTableTest(TestCase):
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
             entity_id=self.db_schema_entity_id,
-            owner_entity=Team,
-            owner_id=self.team_2.id,
+            owner=owner_team_2,
             force=True,
         )
         assert updated.owner.id == self.team_2.id
@@ -411,8 +409,7 @@ class OMetaTableTest(TestCase):
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             entity_id=self.entity_id,
-            owner_entity=Team,
-            owner_id=self.team_1.id,
+            owner=owner_team_1,
         )
         assert updated.owner.id == self.team_1.id
 
@@ -420,8 +417,7 @@ class OMetaTableTest(TestCase):
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             entity_id=self.entity_id,
-            owner_entity=Team,
-            owner_id=self.team_2.id,
+            owner=owner_team_2,
         )
         assert updated is None
 
@@ -429,8 +425,7 @@ class OMetaTableTest(TestCase):
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             entity_id=self.entity_id,
-            owner_entity=Team,
-            owner_id=self.team_2.id,
+            owner=owner_team_2,
             force=True,
         )
         assert updated.owner.id == self.team_2.id
@@ -448,40 +443,22 @@ class OMetaTableTest(TestCase):
             entity_id=self.entity_id,
             force=True,
         )
+        assert updated is not None
         assert updated.owner is None
 
         # Table with non-existent id, existing owner, no owner, force -> Unmodified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id='9facb7b3-1dee-4017-8fca-1254b700afef',
+            entity_id="9facb7b3-1dee-4017-8fca-1254b700afef",
             force=True,
         )
         assert updated is None
 
-        # Table, existing owner, owner entity but no owner ID, force -> Unmodified
+        # Table, existing owner, invalid owner, force -> Unmodified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             entity_id=self.entity_id,
-            owner_entity=Team,
-            force=True,
-        )
-        assert updated is None
-
-        # Table, existing owner, no owner entity but valid owner ID, force -> Unmodified
-        updated: Table = self.metadata.patch_owner(
-            entity=Table,
-            entity_id=self.entity_id,
-            owner_id=self.user_1.id,
-            force=True,
-        )
-        assert updated is None
-
-        # Table, existing owner, invalid owner entity but valid owner ID, force -> Unmodified
-        updated: Table = self.metadata.patch_owner(
-            entity=Table,
-            entity_id=self.entity_id,
-            owner_entity=Table,
-            owner_id=self.entity_id,
+            owner=EntityReference(id=self.entity_id, type="table"),
             force=True,
         )
         assert updated is None

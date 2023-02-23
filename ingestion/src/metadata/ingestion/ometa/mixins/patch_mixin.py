@@ -15,12 +15,13 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import Generic, Optional, Type, TypeVar, Union, Dict
+from typing import Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
@@ -56,6 +57,8 @@ COL_TAG = "/columns/{index}/tags/{tag_index}"
 # Paths
 OWNER_PATH = "/owner"
 
+VALID_OWNER_TYPES = {"user", "team"}
+
 
 class OMetaPatchMixin(Generic[T]):
     """
@@ -67,7 +70,7 @@ class OMetaPatchMixin(Generic[T]):
     client: REST
 
     def _validate_instance_description(
-            self, entity: Type[T], entity_id: Union[str, basic.Uuid]
+        self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
         Validates if we can update a description or not. Will return
@@ -94,9 +97,7 @@ class OMetaPatchMixin(Generic[T]):
         return instance
 
     @staticmethod
-    def _get_owner_type(
-            owner_entity: Type[T]
-    ) -> Optional[str]:
+    def _get_owner_type(owner_entity: Type[T]) -> Optional[str]:
         """
         Validates the owner entity (Team or User) and gets a string to match the API's
         valid values. Will return the string if the entity is a valid type.
@@ -109,19 +110,16 @@ class OMetaPatchMixin(Generic[T]):
         """
 
         entity_name: str = owner_entity.__name__.lower()
-        if (
-                "user" in entity_name
-                or "team" in entity_name
-        ):
+        if "user" in entity_name or "team" in entity_name:
             return entity_name
         return None
 
     def patch_description(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            description: str,
-            force: bool = False,
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        description: str,
+        force: bool = False,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the description.
@@ -172,11 +170,11 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_column_description(
-            self,
-            entity_id: Union[str, basic.Uuid],
-            column_name: str,
-            description: str,
-            force: bool = False,
+        self,
+        entity_id: Union[str, basic.Uuid],
+        column_name: str,
+        description: str,
+        force: bool = False,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the description of the column
 
@@ -238,11 +236,11 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_tag(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            tag_fqn: str,
-            from_glossary: bool = False,
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        tag_fqn: str,
+        from_glossary: bool = False,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the tag.
@@ -295,11 +293,11 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_column_tag(
-            self,
-            entity_id: Union[str, basic.Uuid],
-            column_name: str,
-            tag_fqn: str,
-            from_glossary: bool = False,
+        self,
+        entity_id: Union[str, basic.Uuid],
+        column_name: str,
+        tag_fqn: str,
+        from_glossary: bool = False,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
 
@@ -358,23 +356,20 @@ class OMetaPatchMixin(Generic[T]):
         return None
 
     def patch_owner(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            owner_entity: Optional[Type[U]] = None,
-            owner_id: Optional[Union[str, basic.Uuid]] = None,
-            force: bool = False,
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        owner: Optional[EntityReference] = None,
+        force: bool = False,
     ) -> Optional[T]:
         """
-        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
-        not owner ID are provided, the owner is removed.
+        Given an Entity type and ID, JSON PATCH the owner. If not owner is not provided,
+        the owner is removed.
 
         Args
             entity (T): Entity Type of the entity to be patched
             entity_id: ID of the entity to be patched
-            owner_entity: Entity Type of the owner - Team, Role, or User. If None, the
-                owner will be removed
-            owner_id: owner ID. If None, the owner will be removed
+            owner: EntityReference to a Team or User. If None, the owner will be removed
             force: if True, we will patch any existing owner. Otherwise, we will maintain
                 the existing data.
         Returns
@@ -384,13 +379,6 @@ class OMetaPatchMixin(Generic[T]):
             entity=entity, entity_id=entity_id
         )
         if not instance:
-            return None
-
-        # XOR - owner_entity and owner_id need to both be either None or have a value provided
-        if bool(owner_entity) != bool(owner_id):
-            logger.warning(
-                f"The owner entity and owner id must both be either provided or None."
-            )
             return None
 
         # Don't change existing data without force
@@ -405,30 +393,27 @@ class OMetaPatchMixin(Generic[T]):
             PATH: OWNER_PATH,
         }
 
-        if owner_entity is None and owner_id is None:
+        if owner is None:
             data[OPERATION] = REMOVE
         else:
-            data[OPERATION] = ADD if instance.owner is None else REPLACE
-            owner_type = OMetaPatchMixin._get_owner_type(owner_entity)
-            if not owner_type:
+            if owner.type not in VALID_OWNER_TYPES:
+                valid_types_str = ", ".join(f'"{t}"' for t in VALID_OWNER_TYPES)
                 logger.warning(
-                    f"The owner_entity must be a valid owner type entity: Team, Role, User."
+                    f"The entity with id [{entity_id}] was given an invalid owner type"
+                    f" [{owner.type}]. Must be one of '{valid_types_str}'."
                 )
                 return None
 
+            data[OPERATION] = ADD if instance.owner is None else REPLACE
             data[VALUE] = {
-                "id": model_str(owner_id),
-                "type": owner_type,
+                "id": model_str(owner.id),
+                "type": owner.type,
             }
 
         try:
             res = self.client.patch(
                 path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
-                data=json.dumps(
-                    [
-                        data
-                    ]
-                ),
+                data=json.dumps([data]),
             )
             return entity(**res)
 
