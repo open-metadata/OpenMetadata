@@ -96,24 +96,6 @@ class OMetaPatchMixin(Generic[T]):
 
         return instance
 
-    @staticmethod
-    def _get_owner_type(owner_entity: Type[T]) -> Optional[str]:
-        """
-        Validates the owner entity (Team or User) and gets a string to match the API's
-        valid values. Will return the string if the entity is a valid type.
-        None otherwise.
-
-        Args
-            owner_entity (T): Entity Type
-        Returns
-            string representing the owner entity type
-        """
-
-        entity_name: str = owner_entity.__name__.lower()
-        if "user" in entity_name or "team" in entity_name:
-            return entity_name
-        return None
-
     def patch_description(
         self,
         entity: Type[T],
