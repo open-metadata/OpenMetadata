@@ -13,7 +13,6 @@
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
-from clickhouse_sqlalchemy.types.common import ClickHouseTypeEngine
 from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql.sqltypes import String
@@ -50,22 +49,22 @@ class AggregateFunction(String):
     __visit_name__ = "AggregateFunction"
 
 
-class Map(sqltypes.UserDefinedType):
+class Map(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
 
     __visit_name__ = "Map"
 
 
-class Array(sqltypes.UserDefinedType):
+class Array(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
 
     __visit_name__ = "Array"
 
 
-class Tuple(sqltypes.UserDefinedType):
+class Tuple(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
 
     __visit_name__ = "Tuple"
 
 
-class Enum(sqltypes.UserDefinedType):
+class Enum(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
 
     __visit_name__ = "Enum"
 
@@ -202,8 +201,12 @@ def get_table_comment(
 def _get_column_info(
     self, name, format_type, default_type, default_expression, comment
 ):
-    col_type = self._get_column_type(name, format_type)
-    col_default = self._get_column_default(default_type, default_expression)
+    col_type = self._get_column_type(  # pylint: disable=protected-access
+        name, format_type
+    )
+    col_default = self._get_column_default(  # pylint: disable=protected-access
+        default_type, default_expression
+    )
 
     result = {
         "name": name,
@@ -231,7 +234,9 @@ ClickHouseDialect.get_view_definition = get_view_definition
 ClickHouseDialect.get_table_comment = get_table_comment
 ClickHouseDialect.get_all_view_definitions = get_all_view_definitions
 ClickHouseDialect.get_all_table_comments = get_all_table_comments
-ClickHouseDialect._get_column_info = _get_column_info
+ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
+    _get_column_info
+)
 
 
 class ClickhouseSource(CommonDbSourceService):
