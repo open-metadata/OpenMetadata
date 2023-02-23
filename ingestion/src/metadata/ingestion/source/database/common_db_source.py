@@ -139,6 +139,18 @@ class CommonDbSourceService(
         self.inspector = inspect(self.engine)
         yield database_name
 
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        by default there will be no database description
+        """
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        by default there will be no schema description
+        """
+
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
         From topology.
@@ -148,6 +160,7 @@ class CommonDbSourceService(
         yield CreateDatabaseRequest(
             name=database_name,
             service=self.context.database_service.fullyQualifiedName,
+            description=self.get_database_description(database_name),
         )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -174,6 +187,7 @@ class CommonDbSourceService(
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
             database=self.context.database.fullyQualifiedName,
+            description=self.get_schema_description(schema_name),
         )
 
     @staticmethod
