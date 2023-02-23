@@ -14,6 +14,8 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
+
 from sqlalchemy import column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -47,6 +49,7 @@ class Median(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return MedianFn(column(self.col.name), self.col.table.name)
 
@@ -56,10 +59,15 @@ class Median(StaticMetric):
         return None
 
     @_label
-    def dl_fn(self, data_frame=None):
-        if is_quantifiable(self.col.datatype):
-            return data_frame[self.col.name].median().tolist()
+    def df_fn(self, df=None):
+        """Dataframe function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
+        if is_quantifiable(self.col.type):
+            return df[self.col.name].median().tolist()
         logger.debug(
-            f"Don't know how to process type {self.col.datatype} when computing Median"
+            f"Don't know how to process type {self.col.type} when computing Median"
         )
         return None

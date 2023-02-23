@@ -42,6 +42,9 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+To create lineage between tableau dashboard and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server.
+For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page
