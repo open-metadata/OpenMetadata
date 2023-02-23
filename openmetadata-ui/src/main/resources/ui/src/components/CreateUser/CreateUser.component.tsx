@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
 import {
   Button,
   Form,
@@ -24,6 +23,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { LOADING_STATE } from 'enums/common.enum';
 import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -984,23 +984,14 @@ const CreateUser = ({
             <Button data-testid="cancel-user" type="link" onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            <>
-              {saveState === 'waiting' ? (
-                <Button disabled type="primary">
-                  <Loader size="small" type="white" />
-                </Button>
-              ) : saveState === 'success' ? (
-                <Button disabled icon={<CheckOutlined />} type="primary" />
-              ) : (
-                <Button
-                  data-testid="save-user"
-                  form="create-user-bot-form"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.create')}
-                </Button>
-              )}
-            </>
+            <Button
+              data-testid="save-user"
+              form="create-user-bot-form"
+              htmlType="submit"
+              loading={saveState === LOADING_STATE.WAITING}
+              type="primary">
+              {t('label.create')}
+            </Button>
           </Space>
         </Form>
       </div>
