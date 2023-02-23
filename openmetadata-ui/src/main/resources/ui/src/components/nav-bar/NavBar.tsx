@@ -183,7 +183,6 @@ const NavBar = ({
         });
         path = prepareFeedLink(entityType as string, entityFQN as string);
     }
-
     const notification = new Notification('Notification From OpenMetadata', {
       body: body,
       icon: Logo,
