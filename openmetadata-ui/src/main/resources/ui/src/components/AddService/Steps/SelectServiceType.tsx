@@ -100,7 +100,9 @@ const SelectServiceType = ({
         <Field>
           <Searchbar
             removeMargin
-            placeholder="Search for connector..."
+            placeholder={`${t('label.search-for-type', {
+              type: t('label.connector'),
+            })}...`}
             searchValue={connectorSearchTerm}
             typingInterval={500}
             onSearch={handleConnectorSearchTerm}
@@ -138,7 +140,12 @@ const SelectServiceType = ({
             ))}
           </div>
         </div>
-        {showError && errorMsg('Service is required')}
+        {showError &&
+          errorMsg(
+            t('message.field-text-is-required', {
+              fieldText: t('label.service'),
+            })
+          )}
       </Field>
       <Field className="tw-flex tw-justify-end tw-mt-10">
         <Button

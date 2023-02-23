@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getPolicies, getRoles } from 'rest/rolesAPIV1';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -46,6 +47,7 @@ const AddAttributeModal: FC<Props> = ({
   selectedKeys,
   isModalLoading,
 }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState<EntityReference[]>([]);
   const [searchedData, setSearchedData] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -149,7 +151,9 @@ const AddAttributeModal: FC<Props> = ({
             <Col span={24}>
               <Input
                 data-testid="search-input"
-                placeholder={`Search ${type}`}
+                placeholder={t('label.search-entity', {
+                  entity: type,
+                })}
                 prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
                 onChange={(e) => handleSearch(e.target.value)}
               />

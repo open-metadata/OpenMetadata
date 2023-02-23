@@ -53,11 +53,11 @@ const AddRulePage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: 'Settings',
+        name: t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: 'Policies',
+        name: t('label.policy-plural'),
         url: policiesPath,
       },
       {
@@ -66,7 +66,9 @@ const AddRulePage = () => {
       },
 
       {
-        name: 'Add New Rule',
+        name: t('label.add-new-entity', {
+          entity: t('label.rule'),
+        }),
         url: '',
       },
     ],

@@ -88,10 +88,6 @@ export const fetchSandboxConfig = async () => {
   return response.data;
 };
 
-export const fetchSlackConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/system/config/slackChat');
-};
-
 export const fetchAirflowConfig = async () => {
   const response = await APIClient.get<PipelineServiceClientConfiguration>(
     '/system/config/pipeline-service-client'

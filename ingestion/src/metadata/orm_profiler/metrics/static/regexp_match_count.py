@@ -43,6 +43,7 @@ class RegexCount(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
@@ -50,3 +51,16 @@ class RegexCount(StaticMetric):
         return SumFn(
             case([(column(self.col.name).regexp_match(self.expression), 1)], else_=0)
         )
+
+    @_label
+    def df_fn(self, df):
+        """pandas function"""
+
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
+            )
+
+        return df[self.col.name][
+            df[self.col.name].str.contains(self.expression)
+        ].count()

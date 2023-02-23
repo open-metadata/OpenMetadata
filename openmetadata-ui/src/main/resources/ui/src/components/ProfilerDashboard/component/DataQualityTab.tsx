@@ -167,7 +167,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               {!deletedTable && (
                 <Tooltip
                   placement="bottomRight"
-                  title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     className="flex-center"
                     data-testid={`edit-${record.name}`}
