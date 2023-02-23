@@ -5,7 +5,21 @@
   "description": "GCS Store Connection.",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.objectstore.GCConnection",
+  "definitions": {
+    "gcsType": {
+      "description": "Gcs service type",
+      "type": "string",
+      "enum": ["Gcs"],
+      "default": "Gcs"
+    }
+  },
   "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/gcsType",
+      "default": "Gcs"
+    },
     "credentials": {
       "title": "GCS Credentials",
       "description": "GCS Credentials",

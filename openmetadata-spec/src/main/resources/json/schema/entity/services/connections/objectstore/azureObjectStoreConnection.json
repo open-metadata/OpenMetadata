@@ -5,7 +5,21 @@
   "description": "Azure Store Connection.",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.objectstore.AzureConnection",
+  "definitions": {
+    "azureType": {
+      "description": "Azure service type",
+      "type": "string",
+      "enum": ["Azure"],
+      "default": "Azure"
+    }
+  },
   "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/azureType",
+      "default": "Azure"
+    },
     "credentials": {
       "title": "Azure Credentials",
       "description": "Azure Credentials",
