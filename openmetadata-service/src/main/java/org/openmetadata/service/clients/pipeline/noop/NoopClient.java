@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -43,12 +44,12 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline) {
+  public String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "deploy"));
   }
 
   @Override
-  public String runPipeline(IngestionPipeline ingestionPipeline) {
+  public String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "run"));
   }
 
