@@ -126,13 +126,7 @@ describe('Test MyData page component', () => {
     const { container } = render(<MyDataPageComponent />);
     const myData = await findByText(container, /MyData.component/i);
 
-    const githubStarButton = await findByText(
-      container,
-      /GithubStarButton.component/i
-    );
-
     expect(myData).toBeInTheDocument();
-    expect(githubStarButton).toBeInTheDocument();
   });
 
   describe('render Sad Paths', () => {
