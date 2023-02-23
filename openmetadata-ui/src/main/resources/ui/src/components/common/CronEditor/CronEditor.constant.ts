@@ -18,7 +18,7 @@ import { Combination, ToDisplay } from './CronEditor.interface';
 export const getPeriodOptions = () => {
   return [
     {
-      label: i18n.t('label.none'),
+      label: i18n.t('label.none-lowercase'),
       value: '',
       prep: '',
     },
