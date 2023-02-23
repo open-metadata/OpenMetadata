@@ -22,7 +22,7 @@ const ErrorPlaceHolderIngestion = () => {
         <div className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
           <div>
             <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
-              {t('message.manage-airflow-api')}
+              {t('message.manage-airflow-api-failed')}
             </h6>
 
             <p className="tw-text-grey-body tw-text-sm tw-mb-5">

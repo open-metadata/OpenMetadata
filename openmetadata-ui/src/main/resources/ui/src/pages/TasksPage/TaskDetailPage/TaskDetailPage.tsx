@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown, Layout, MenuProps, Tabs } from 'antd';
+import { Button, Card, Dropdown, Layout, MenuProps, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
@@ -535,7 +535,9 @@ const TaskDetailPage = () => {
                   titleLinks={[
                     ...getBreadCrumbList(entityData, entityType as EntityType),
                     {
-                      name: `Task #${taskDetail.task?.id}`,
+                      name: t('label.task-title', {
+                        title: taskDetail.task?.id,
+                      }),
                       activeTitle: true,
                       url: '',
                     },
@@ -549,7 +551,9 @@ const TaskDetailPage = () => {
                   <p
                     className="tw-text-base tw-font-medium tw-mb-4"
                     data-testid="task-title">
-                    {`Task #${taskId}`} {taskDetail.message}
+                    {t('label.task-title', {
+                      title: `${taskId} ${taskDetail.message}`,
+                    })}
                   </p>
                   <div className="tw-flex tw-mb-4" data-testid="task-metadata">
                     <TaskStatus
@@ -664,9 +668,10 @@ const TaskDetailPage = () => {
                     />
                   )}
 
-                  <div
-                    className="tw-flex tw-justify-end"
-                    data-testid="task-cta-buttons">
+                  <Space
+                    className="m-t-xss"
+                    data-testid="task-cta-buttons"
+                    size="small">
                     {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <Button
                         className="ant-btn-link-custom"
@@ -707,7 +712,7 @@ const TaskDetailPage = () => {
                         )}
                       </Fragment>
                     )}
-                  </div>
+                  </Space>
 
                   {isTaskClosed && <ClosedTask task={taskDetail.task} />}
                 </Card>
@@ -728,7 +733,7 @@ const TaskDetailPage = () => {
                 theme="light"
                 width={600}>
                 <Tabs className="ant-tabs-custom-line" onChange={onTabChange}>
-                  <TabPane key={PanelTab.TASKS} tab="Task">
+                  <TabPane key={PanelTab.TASKS} tab={t('label.task')}>
                     {!isEmpty(taskFeedDetail) ? (
                       <div id="task-feed">
                         <FeedPanelBody
@@ -745,7 +750,9 @@ const TaskDetailPage = () => {
                     ) : null}
                   </TabPane>
 
-                  <TabPane key={PanelTab.CONVERSATIONS} tab="Conversations">
+                  <TabPane
+                    key={PanelTab.CONVERSATIONS}
+                    tab={t('label.conversation-plural')}>
                     {!isEmpty(taskFeedDetail) ? (
                       <ActivityThreadPanelBody
                         className="tw-p-0"

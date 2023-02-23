@@ -103,7 +103,11 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    interceptURL('GET', '/api/v1/system/config/airflow', 'airflow');
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'airflow'
+    );
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
@@ -237,7 +241,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTest', 200);
     cy.get('.Toastify__toast-body')
-      .contains('Test case updated successfully!')
+      .contains('Test case updated successfully.')
       .should('be.visible')
       .wait(200);
     cy.get(`[data-testid="${testName}"]`).should('be.visible').click();
@@ -403,7 +407,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTest', 200);
     cy.get('.Toastify__toast-body')
-      .contains('Test case updated successfully!')
+      .contains('Test case updated successfully.')
       .should('be.visible')
       .wait(200);
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible').click();

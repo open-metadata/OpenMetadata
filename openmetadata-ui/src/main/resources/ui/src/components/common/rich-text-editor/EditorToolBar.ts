@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18n from 'utils/i18next/LocalUtil';
 import MarkdownIcon from '../../../assets/svg/markdown.svg';
 
 /**
@@ -52,8 +53,8 @@ export const EDITOR_TOOLBAR_ITEMS = [
   'code',
   'codeblock',
   {
-    name: 'Markdown Guide',
+    name: i18n.t('label.markdown-guide'),
     el: markdownButton(),
-    tooltip: 'Markdown Guide',
+    tooltip: i18n.t('label.markdown-guide'),
   },
 ];

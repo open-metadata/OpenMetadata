@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -89,9 +88,7 @@ class DomopipelineSource(PipelineServiceSource):
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
                 tasks=[task],
-                service=EntityReference(
-                    id=self.context.pipeline_service.id.__root__, type="pipelineService"
-                ),
+                service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 startDate=pipeline_details.get("created"),
             )
             yield pipeline_yield

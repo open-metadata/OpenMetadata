@@ -575,6 +575,8 @@ site_menu:
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
   - category: How to guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
+  - category: How to guides / How to add Custom Logo
+    url: /how-to-guides/custom-logo/how-to-add-custom-logo
 
   - category: Features
     url: /openmetadata
@@ -1121,6 +1123,8 @@ site_menu:
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
+  - category: SDK / Python SDK / Ingestion / Tags
+    url: /sdk/python/ingestion/tags
   - category: SDK / Python SDK / Build a Connector
     url: /sdk/python/build-connector
   - category: SDK / Python SDK / Build a Connector / Source

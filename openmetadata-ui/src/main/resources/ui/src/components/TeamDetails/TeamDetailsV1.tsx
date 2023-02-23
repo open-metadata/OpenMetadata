@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  CheckOutlined,
-  CloseOutlined,
-  EllipsisOutlined,
-} from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -42,6 +38,7 @@ import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -1089,14 +1086,13 @@ const TeamDetailsV1 = ({
                 trigger={['click']}
                 onOpenChange={setShowActions}>
                 <Button
-                  className="rounded-4 w-6 manage-dropdown-button"
+                  className="rounded-4 w-6 manage-dropdown-button d-flex justify-center"
                   data-testid="teams-dropdown"
-                  size="small">
-                  <EllipsisOutlined
-                    className="text-primary self-center manage-dropdown-icon"
-                    rotate={90}
-                  />
-                </Button>
+                  icon={
+                    <IconDropdown className="text-primary self-center manage-dropdown-icon" />
+                  }
+                  size="small"
+                />
               </Dropdown>
             )}
           </div>

@@ -22,7 +22,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import log_ansi_encoded_string
 
@@ -65,10 +64,9 @@ def create_delete_table(client):
         Column(name="id", columnDataType="INT"),
         Column(name="name", columnDataType="VARCHAR"),
     ]
-    db_ref = EntityReference(
-        id=databases[0].id, name=databases[0].name.__root__, type="database"
+    table = CreateTableRequest(
+        name="test1", columns=columns, database=databases[0].fullyQualifiedName
     )
-    table = CreateTableRequest(name="test1", columns=columns, database=db_ref)
     created_table = client.create_or_update_table(table)
     if table.name.__root__ == created_table.name.__root__:
         requests.delete(
@@ -92,7 +90,8 @@ def create_delete_database(client):
     create_mssql_service = CreateDatabaseServiceRequest(**data)
     mssql_service = client.create_database_service(create_mssql_service)
     create_database_request = CreateDatabaseRequest(
-        name="dwh", service=EntityReference(id=mssql_service.id, type="databaseService")
+        name="dwh",
+        service=mssql_service.fullyQualifiedName,
     )
     created_database = client.create_database(create_database_request)
     resp = create_delete_table(client)

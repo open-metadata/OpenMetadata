@@ -48,10 +48,10 @@ const RecentlyViewed: FunctionComponent = () => {
   return (
     <EntityListWithAntd
       entityList={data}
-      headerTextLabel="Recent Views"
+      headerTextLabel={t('label.recent-views')}
       loading={isLoading}
       noDataPlaceholder={<>{t('message.no-recently-viewed-date')}</>}
-      testIDText="Recently Viewed"
+      testIDText={t('label.recently-viewed')}
     />
   );
 };

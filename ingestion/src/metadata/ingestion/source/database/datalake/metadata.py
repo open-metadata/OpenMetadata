@@ -43,7 +43,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -52,7 +51,9 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -70,23 +71,34 @@ DATALAKE_DATA_TYPES = {
 
 JSON_SUPPORTED_TYPES = (".json", ".json.gz", ".json.zip")
 
-DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".parquet") + JSON_SUPPORTED_TYPES
+DATALAKE_SUPPORTED_FILE_TYPES = (
+    ".csv",
+    ".tsv",
+    ".parquet",
+    ".avro",
+) + JSON_SUPPORTED_TYPES
 
 
 def ometa_to_dataframe(config_source, client, table):
+    """
+    Method to get dataframe for profiling
+    """
+    data = None
     if isinstance(config_source, GCSConfig):
-        return DatalakeSource.get_gcs_files(
+        data = DatalakeSource.get_gcs_files(
             client=client,
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
     if isinstance(config_source, S3Config):
-        return DatalakeSource.get_s3_files(
+        data = DatalakeSource.get_s3_files(
             client=client,
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
-    return None
+    if isinstance(data, DatalakeColumnWrapper):
+        data = data.dataframes
+    return data
 
 
 class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
@@ -131,7 +143,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        database_name = "default"
+        database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
@@ -141,10 +153,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def fetch_gcs_bucket_names(self):
@@ -244,7 +253,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
@@ -418,8 +427,10 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 )
             if isinstance(data_frame, DataFrame):
                 columns = self.get_columns(data_frame)
-            if isinstance(data_frame, list):
+            if isinstance(data_frame, list) and data_frame:
                 columns = self.get_columns(data_frame[0])
+            if isinstance(data_frame, DatalakeColumnWrapper):
+                columns = data_frame.columns
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
@@ -427,10 +438,10 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=EntityReference(
-                        id=self.context.database_schema.id,
-                        type="databaseSchema",
-                    ),
+                    databaseSchema=self.context.database_schema.fullyQualifiedName,
+                )
+                self.process_pii_sensitive_column(
+                    metadata_config=self.metadata, table_request=table_request
                 )
                 yield table_request
                 self.register_record(table_request=table_request)
@@ -445,6 +456,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         Fetch GCS Bucket files
         """
         from metadata.utils.gcs_utils import (  # pylint: disable=import-outside-toplevel
+            read_avro_from_gcs,
             read_csv_from_gcs,
             read_json_from_gcs,
             read_parquet_from_gcs,
@@ -464,6 +476,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             if key.endswith(".parquet"):
                 return read_parquet_from_gcs(key, bucket_name)
 
+            if key.endswith(".avro"):
+                return read_avro_from_gcs(client, key, bucket_name)
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
@@ -477,6 +492,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         Fetch Azure Storage files
         """
         from metadata.utils.azure_utils import (  # pylint: disable=import-outside-toplevel
+            read_avro_from_azure,
             read_csv_from_azure,
             read_json_from_azure,
             read_parquet_from_azure,
@@ -487,9 +503,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 return read_csv_from_azure(client, key, container_name, storage_options)
 
             if key.endswith(JSON_SUPPORTED_TYPES):
-                return read_json_from_azure(
-                    client, key, container_name, storage_options
-                )
+                return read_json_from_azure(client, key, container_name)
 
             if key.endswith(".parquet"):
                 return read_parquet_from_azure(
@@ -500,6 +514,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 return read_csv_from_azure(
                     client, key, container_name, storage_options, sep="\t"
                 )
+
+            if key.endswith(".avro"):
+                return read_avro_from_azure(client, key, container_name)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -514,6 +531,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         Fetch S3 Bucket files
         """
         from metadata.utils.s3_utils import (  # pylint: disable=import-outside-toplevel
+            read_avro_from_s3,
             read_csv_from_s3,
             read_json_from_s3,
             read_parquet_from_s3,
@@ -532,6 +550,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
             if key.endswith(".parquet"):
                 return read_parquet_from_s3(client_kwargs, key, bucket_name)
+
+            if key.endswith(".avro"):
+                return read_avro_from_s3(client, key, bucket_name)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

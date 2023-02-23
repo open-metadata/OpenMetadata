@@ -171,7 +171,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    fetchBots();
+    fetchBots(showDeleted);
   }, [selectedUser]);
 
   const handleSearch = (text: string) => {
@@ -306,6 +306,7 @@ const BotListV1 = ({
 
         <DeleteWidgetModal
           afterDeleteAction={handleDeleteAction}
+          allowSoftDelete={!showDeleted}
           entityId={selectedUser?.id || ''}
           entityName={selectedUser?.displayName || ''}
           entityType={EntityType.BOT}

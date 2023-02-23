@@ -39,7 +39,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityName,
@@ -159,7 +158,9 @@ const DashboardDetails = ({
       setDashboardPermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.dashboard'),
+        })
       );
     }
   }, [dashboardDetails.id, getEntityPermission, setDashboardPermissions]);
@@ -178,7 +179,7 @@ const DashboardDetails = ({
   };
   const tabs = [
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -189,7 +190,7 @@ const DashboardDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -201,7 +202,7 @@ const DashboardDetails = ({
       count: feedCount,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       icon: {
         alt: 'lineage',
         name: 'icon-lineage',
@@ -212,7 +213,7 @@ const DashboardDetails = ({
       position: 3,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 4,
     },

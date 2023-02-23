@@ -84,9 +84,22 @@ def get_columns(bq_schema):
         }
         try:
             if field.policy_tags:
+                policy_tag_name = field.policy_tags.names[0]
+                taxonomy_name = (
+                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
+                )
+                if not taxonomy_name:
+                    raise NotImplementedError(
+                        f"Taxonomy Name not present for {field.name}"
+                    )
+                col_obj["taxonomy"] = (
+                    PolicyTagManagerClient()
+                    .get_taxonomy(name=taxonomy_name)
+                    .display_name
+                )
                 col_obj["policy_tags"] = (
                     PolicyTagManagerClient()
-                    .get_policy_tag(name=field.policy_tags.names[0])
+                    .get_policy_tag(name=policy_tag_name)
                     .display_name
                 )
         except Exception as exc:
@@ -162,11 +175,11 @@ class BigquerySource(CommonDbSourceService):
                     for tag in policy_tags:
                         yield OMetaTagAndClassification(
                             classification_request=CreateClassificationRequest(
-                                name=self.service_connection.classificationName,
+                                name=taxonomy.display_name,
                                 description="",
                             ),
                             tag_request=CreateTagRequest(
-                                classification=self.service_connection.classificationName,
+                                classification=taxonomy.display_name,
                                 name=tag.display_name,
                                 description="Bigquery Policy Tag",
                             ),
@@ -195,7 +208,7 @@ class BigquerySource(CommonDbSourceService):
                     tagFQN=fqn.build(
                         self.metadata,
                         entity_type=Tag,
-                        classification_name=self.service_connection.classificationName,
+                        classification_name=column["taxonomy"],
                         tag_name=column["policy_tags"],
                     ),
                     labelType="Automated",

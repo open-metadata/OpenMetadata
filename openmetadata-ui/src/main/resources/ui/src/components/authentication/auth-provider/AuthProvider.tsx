@@ -31,10 +31,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
-import { getLoggedInUser, getUserByName, updateUser } from 'rest/userAPI';
+import { getLoggedInUser, updateUser } from 'rest/userAPI';
 import appState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
@@ -42,11 +43,9 @@ import { ClientErrors } from '../../../enums/axios.enum';
 import { AuthTypes } from '../../../enums/signin.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthType, User } from '../../../generated/entity/teams/user';
-import jsonData from '../../../jsons/en';
 import {
   extractDetailsFromToken,
   getAuthConfig,
-  getNameFromEmail,
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
@@ -96,6 +95,7 @@ export const AuthProvider = ({
 }: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
@@ -191,7 +191,9 @@ export const AuthProvider = ({
         if (err.response?.status !== 404) {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-logged-in-user-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.logged-in-user-lowercase'),
+            })
           );
         }
       })
@@ -232,14 +234,14 @@ export const AuthProvider = ({
         if (res.data) {
           appState.updateUserDetails(res.data);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((error: AxiosError) => {
         appState.updateUserDetails(existingData);
         showErrorToast(
           error,
-          jsonData['api-error-messages']['update-admin-profile-error']
+          t('server.entity-updating-error', { entity: 'label.admin-profile' })
         );
       });
   };
@@ -329,7 +331,7 @@ export const AuthProvider = ({
       authConfig?.provider === AuthType.Basic
         ? userAPIQueryFields + ',' + isEmailVerifyField
         : userAPIQueryFields;
-    getUserByName(getNameFromEmail(user.profile.email), fields)
+    getLoggedInUser(fields)
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
@@ -458,7 +460,9 @@ export const AuthProvider = ({
           // provider is either null or not supported
           setLoading(false);
           showErrorToast(
-            `The configured SSO Provider "${authConfig?.provider}" is not supported. Please check the authentication configuration in the server.`
+            t('message.configured-sso-provider-is-not-supported', {
+              provider: authConfig?.provider,
+            })
           );
         }
       } else {
@@ -469,8 +473,10 @@ export const AuthProvider = ({
     } catch (error) {
       setLoading(false);
       showErrorToast(
-        error,
-        jsonData['api-error-messages']['fetch-auth-config-error']
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.auth-config-lowercase-plural'),
+        })
       );
     }
   };

@@ -15,7 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import Tags from 'components/Tag/Tags/tags';
 import { LOADING_STATE } from 'enums/common.enum';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -122,7 +122,9 @@ const AddGlossary = ({
         name: name.trim(),
         displayName: name.trim(),
         description: getDescription(),
-        reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
+        reviewers:
+          reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
+          [],
         owner: {
           id: getCurrentUserId(),
           type: 'user',
@@ -198,7 +200,10 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
               <label htmlFor="tags">{t('label.tag-plural')}:</label>
               <AddTags
                 data-testid="tags"

@@ -72,7 +72,7 @@ const EntityInfoDrawer = ({
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while getting ${selectedNode.name} details`
+              t('server.entity-fetch-error', { entity: selectedNode.name })
             );
           })
           .finally(() => {
@@ -92,7 +92,7 @@ const EntityInfoDrawer = ({
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while getting ${selectedNode.name} service`
+                  t('server.entity-fetch-error', { entity: selectedNode.name })
                 );
               });
             setEntityDetail(res);
@@ -101,7 +101,7 @@ const EntityInfoDrawer = ({
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while getting ${selectedNode.name} details`
+              t('server.entity-fetch-error', { entity: selectedNode.name })
             );
           })
           .finally(() => {
@@ -121,7 +121,7 @@ const EntityInfoDrawer = ({
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while getting ${selectedNode.name} service`
+                  t('server.entity-fetch-error', { entity: selectedNode.name })
                 );
               });
             setEntityDetail(res);
@@ -130,7 +130,7 @@ const EntityInfoDrawer = ({
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while getting ${selectedNode.name} details`
+              t('server.entity-fetch-error', { entity: selectedNode.name })
             );
           })
           .finally(() => {

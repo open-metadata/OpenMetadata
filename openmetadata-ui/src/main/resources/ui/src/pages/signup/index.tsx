@@ -18,7 +18,7 @@ import { Button } from 'components/buttons/Button/Button';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
-import { default as React, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
@@ -34,7 +34,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const cookieStorage = new CookieStorage();
 
-const Signup = () => {
+const SignUp = () => {
   const { t } = useTranslation();
   const {
     setIsSigningIn,
@@ -146,7 +146,9 @@ const Signup = () => {
                       data-testid="full-name-input"
                       id="displayName"
                       name="displayName"
-                      placeholder="Your Full name"
+                      placeholder={t('label.your-entity', {
+                        entity: t('label.full-name'),
+                      })}
                       type="text"
                       value={details.displayName}
                       onChange={onChangeHandler}
@@ -168,7 +170,7 @@ const Signup = () => {
                       data-testid="username-input"
                       id="name"
                       name="name"
-                      placeholder="Username"
+                      placeholder={t('label.username')}
                       type="text"
                       value={details.name}
                       onChange={onChangeHandler}
@@ -190,7 +192,9 @@ const Signup = () => {
                       data-testid="email-input"
                       id="email"
                       name="email"
-                      placeholder="Your email address"
+                      placeholder={t('label.your-entity', {
+                        entity: `${t('label.email')} ${t('label.address')}`,
+                      })}
                       type="email"
                       value={details.email}
                       onChange={onChangeHandler}
@@ -240,4 +244,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default SignUp;

@@ -62,6 +62,7 @@ import {
 } from 'rest/tagAPI';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
+  getExplorePath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   TIER_CATEGORY,
@@ -85,10 +86,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getTagPath,
-} from '../../utils/RouterUtils';
+import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -267,9 +265,11 @@ const TagsPage = () => {
     if (errorDataClassification || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
+        errData['name'] = t('message.field-text-is-required', {
+          fieldText: t('label.name'),
+        });
       } else if (delimiterRegex.test(data.name)) {
-        errData['name'] = 'Name with delimiters are not allowed';
+        errData['name'] = t('message.entity-delimiters-not-allowed');
       } else if (
         !isUndefined(
           classifications.find(
@@ -277,11 +277,15 @@ const TagsPage = () => {
           )
         )
       ) {
-        errData['name'] = 'Name already exists';
+        errData['name'] = t('message.entity-already-exists', {
+          entity: t('label.name'),
+        });
       } else if (data.name.length < 2 || data.name.length > 64) {
-        errData['name'] = 'Name size must be between 2 and 64';
+        errData['name'] = t('message.entity-size-must-be-between-2-and-64', {
+          entity: t('label.name'),
+        });
       } else if (!isUrlFriendlyName(data.name.trim())) {
-        errData['name'] = 'Special characters are not allowed';
+        errData['name'] = t('message.special-character-not-allowed');
       }
       setErrorDataClassification(errData);
 
@@ -468,11 +472,19 @@ const TagsPage = () => {
     if (errorDataTag || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
+        errData['name'] = t('label.field-required', {
+          field: t('label.name'),
+        });
       } else if (delimiterRegex.test(data.name)) {
-        errData['name'] = 'Name with delimiters are not allowed';
+        errData['name'] = t('message.entity-delimiters-not-allowed', {
+          entity: t('label.name'),
+        });
       } else if (data.name.length < 2 || data.name.length > 64) {
-        errData['name'] = 'Name size must be between 2 and 64';
+        errData['name'] = t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 64,
+          min: 2,
+        });
       }
       setErrorDataTag(errData);
 
@@ -537,11 +549,13 @@ const TagsPage = () => {
   const getUsageCountLink = (tagFQN: string) => {
     const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
-    return getExplorePathWithInitFilters(
-      '',
-      undefined,
-      `postFilter[${type}.tagFQN][0]=${tagFQN}`
-    );
+    return getExplorePath({
+      extraParameters: {
+        postFilter: {
+          [`${type}.tagFQN`]: [tagFQN],
+        },
+      },
+    });
   };
 
   const handleActionDeleteTag = (record: Tag) => {
@@ -614,11 +628,8 @@ const TagsPage = () => {
               <div className="tw-mb-3">
                 <Tooltip
                   title={
-                    createClassificationPermission
-                      ? t('label.add-entity', {
-                          entity: t('label.classification'),
-                        })
-                      : t('message.no-permission-for-action')
+                    !createClassificationPermission &&
+                    t('message.no-permission-for-action')
                   }>
                   <Button
                     block
@@ -651,7 +662,7 @@ const TagsPage = () => {
                   key={category.name}
                   onClick={() => onClickClassifications(category)}>
                   <Typography.Paragraph
-                    className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
+                    className="ant-typography-ellipsis-custom tag-category label-category self-center"
                     data-testid="tag-name"
                     ellipsis={{ rows: 1, tooltip: true }}>
                     {getEntityName(category as unknown as EntityReference)}

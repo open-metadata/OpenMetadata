@@ -152,7 +152,7 @@ const ElasticSearchIndexPage = () => {
                       disabled={batchLoading}
                       icon={<ReloadOutlined />}
                       size="small"
-                      title="Refresh log"
+                      title={t('label.refresh-log')}
                       onClick={fetchBatchReIndexedData}
                     />
                     <Button
@@ -167,7 +167,7 @@ const ElasticSearchIndexPage = () => {
                 }
                 loading={batchLoading}
                 size="small"
-                title="ElasticSearch">
+                title={t('label.elasticsearch')}>
                 <Row gutter={[16, 8]}>
                   <Col span={24}>
                     <Space wrap direction="horizontal" size={0}>
@@ -215,14 +215,18 @@ const ElasticSearchIndexPage = () => {
                                 className="request-badge running"
                                 count={batchJobData?.stats?.total}
                                 overflowCount={99999999}
-                                title={`Total index sent: ${batchJobData?.stats?.total}`}
+                                title={`${t('label.total-index-sent')}: ${
+                                  batchJobData?.stats?.total
+                                }`}
                               />
 
                               <Badge
                                 className="request-badge success"
                                 count={batchJobData?.stats?.success}
                                 overflowCount={99999999}
-                                title={`Success index: ${batchJobData?.stats?.success}`}
+                                title={`${t('label.entity-index', {
+                                  entity: t('label.success'),
+                                })}: ${batchJobData?.stats?.success}`}
                               />
 
                               <Badge
@@ -230,7 +234,9 @@ const ElasticSearchIndexPage = () => {
                                 className="request-badge failed"
                                 count={batchJobData?.stats?.failed}
                                 overflowCount={99999999}
-                                title={`Failed index: ${batchJobData?.stats?.failed}`}
+                                title={`${t('label.entity-index', {
+                                  entity: t('label.failed'),
+                                })}: ${batchJobData?.stats?.failed}`}
                               />
                             </Space>
                           ) : (
@@ -309,13 +315,13 @@ const ElasticSearchIndexPage = () => {
                     disabled={streamLoading}
                     icon={<ReloadOutlined />}
                     size="small"
-                    title="Refresh log"
+                    title={t('label.refresh-log')}
                     onClick={fetchStreamReIndexedData}
                   />
                 }
                 loading={streamLoading}
                 size="small"
-                title="ElasticSearch">
+                title={t('label.elasticsearch')}>
                 <Row gutter={[16, 8]}>
                   <Col span={24}>
                     <Space direction="horizontal" size={16}>

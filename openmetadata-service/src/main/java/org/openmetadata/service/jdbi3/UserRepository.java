@@ -259,7 +259,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
-      Team team = Entity.getEntity(t, Fields.EMPTY_FIELDS, Include.ALL);
+      Team team = Entity.getEntity(t, "", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {

@@ -151,7 +151,7 @@ public final class EntityUtil {
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
-        EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
         EntityUtil.copy(ref2, ref);
       }
       list.sort(compareEntityReference);
@@ -230,13 +230,13 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
+  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
+    List<String> entityReferences = new ArrayList<>();
     for (T entity : entities) {
-      entityReferences.add(entity.getEntityReference());
+      entityReferences.add(entity.getFullyQualifiedName());
     }
     return entityReferences;
   }
@@ -446,8 +446,34 @@ public final class EntityUtil {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
+  public static List<String> getFqns(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return null;
+    }
+    List<String> fqns = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      fqns.add(getFqn(ref));
+    }
+    return fqns;
+  }
+
   public static EntityReference getEntityReference(EntityInterface entity) {
     return entity == null ? null : entity.getEntityReference();
+  }
+
+  public static EntityReference getEntityReference(String entityType, String fqn) {
+    return fqn == null ? null : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
+  }
+
+  public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (String fqn : fqns) {
+      references.add(getEntityReference(entityType, fqn));
+    }
+    return references;
   }
 
   public static Column getColumn(Table table, String columnName) {
