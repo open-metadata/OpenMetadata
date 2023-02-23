@@ -15,6 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -35,6 +36,7 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
+import SVGIcons from 'utils/SvgUtils';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -60,6 +62,7 @@ function TableSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
+  isLoading,
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
@@ -209,114 +212,124 @@ function TableSummary({
   }, [entityDetails]);
 
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <Row>
-            {entityInfo.map((info) =>
-              info.visible?.includes(componentType) ? (
-                <Col key={info.name} span={24}>
-                  <Row gutter={16}>
-                    <Col data-testid={`${info.name}-label`} span={8}>
-                      <Typography.Text className="text-grey-muted">
-                        {info.name}
-                      </Typography.Text>
-                    </Col>
-                    <Col data-testid={`${info.name}-value`} span={16}>
-                      {info.isLink ? (
-                        <Link
-                          component={Typography.Link}
-                          target={info.isExternal ? '_blank' : '_self'}
-                          to={{ pathname: info.url }}>
-                          {info.value}
-                        </Link>
-                      ) : (
-                        info.value
-                      )}
-                    </Col>
-                  </Row>
-                </Col>
-              ) : null
-            )}
-          </Row>
-        </Col>
-      </Row>
-
-      <Divider className="m-y-xs" />
-
-      {!isExplore ? (
-        <>
-          <SummaryTagsDescription
-            entityDetail={entityDetails}
-            tags={tags ? tags : []}
-          />
-          <Divider className="m-y-xs" />
-        </>
-      ) : null}
-
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="profiler-header">
-            {t('label.profiler-amp-data-quality')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          {isUndefined(overallSummary) ? (
-            <Typography.Text
-              className="text-grey-body"
-              data-testid="no-profiler-enabled-message">
-              {t('message.no-profiler-enabled-summary-message')}
-            </Typography.Text>
-          ) : (
-            <Row gutter={[0, 16]}>
-              {overallSummary.map((field) => (
-                <Col key={field.title} span={10}>
-                  <Row>
-                    <Col span={24}>
-                      <Typography.Text
-                        className="text-grey-muted"
-                        data-testid={`${field.title}-label`}>
-                        {field.title}
-                      </Typography.Text>
-                    </Col>
-                    <Col span={24}>
-                      <Typography.Text
-                        className={classNames(
-                          'summary-panel-statistics-count',
-                          field.className
+    <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {entityInfo.map((info) =>
+                info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row gutter={[16, 32]}>
+                      <Col data-testid={`${info.name}-label`} span={8}>
+                        <Typography.Text className="text-grey-muted">
+                          {info.name}
+                        </Typography.Text>
+                      </Col>
+                      <Col data-testid={`${info.name}-value`} span={16}>
+                        {info.isLink ? (
+                          <Link
+                            component={Typography.Link}
+                            target={info.isExternal ? '_blank' : '_self'}
+                            to={{ pathname: info.url }}>
+                            {info.value}
+                            {info.isExternal ? (
+                              <SVGIcons
+                                alt="external-link"
+                                className="m-l-xs"
+                                icon="external-link"
+                                width="12px"
+                              />
+                            ) : null}
+                          </Link>
+                        ) : (
+                          info.value
                         )}
-                        data-testid={`${field.title}-value`}>
-                        {field.value}
-                      </Typography.Text>
-                    </Col>
-                  </Row>
-                </Col>
-              ))}
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : null
+              )}
             </Row>
-          )}
-        </Col>
-      </Row>
+          </Col>
+        </Row>
 
-      <Divider className="m-y-xs" />
+        <Divider className="m-y-xs" />
 
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="schema-header">
-            {t('label.schema')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList
-            entityType={SummaryEntityType.COLUMN}
-            formattedEntityData={formattedColumnsData}
-          />
-        </Col>
-      </Row>
-    </>
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="profiler-header">
+              {t('label.profiler-amp-data-quality')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            {isUndefined(overallSummary) ? (
+              <Typography.Text
+                className="text-grey-body"
+                data-testid="no-profiler-enabled-message">
+                {t('message.no-profiler-enabled-summary-message')}
+              </Typography.Text>
+            ) : (
+              <Row gutter={[0, 16]}>
+                {overallSummary.map((field) => (
+                  <Col key={field.title} span={10}>
+                    <Row>
+                      <Col span={24}>
+                        <Typography.Text
+                          className="text-grey-muted"
+                          data-testid={`${field.title}-label`}>
+                          {field.title}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={24}>
+                        <Typography.Text
+                          className={classNames(
+                            'summary-panel-statistics-count',
+                            field.className
+                          )}
+                          data-testid={`${field.title}-value`}>
+                          {field.value}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList
+              entityType={SummaryEntityType.COLUMN}
+              formattedEntityData={formattedColumnsData}
+            />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

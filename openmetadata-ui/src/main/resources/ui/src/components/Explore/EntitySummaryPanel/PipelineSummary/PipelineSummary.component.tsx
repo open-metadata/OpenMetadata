@@ -13,6 +13,7 @@
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
 import React, { useMemo } from 'react';
@@ -32,12 +33,14 @@ interface PipelineSummaryProps {
   entityDetails: Pipeline;
   componentType?: string;
   tags?: (TagLabel | undefined)[];
+  isLoading?: boolean;
 }
 
 function PipelineSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
+  isLoading,
 }: PipelineSummaryProps) {
   const { t } = useTranslation();
 
@@ -57,75 +60,81 @@ function PipelineSummary({
   );
 
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <Row>
-            {entityInfo.map((info) =>
-              info.visible?.includes(componentType) ? (
-                <Col key={info.name} span={24}>
-                  <Row gutter={16}>
-                    <Col
-                      data-testid={
-                        info.dataTestId ? info.dataTestId : `${info.name}-label`
-                      }
-                      span={8}>
-                      <Typography.Text className="text-grey-muted">
-                        {info.name}
-                      </Typography.Text>
-                    </Col>
-                    <Col data-testid={`${info.name}-value`} span={16}>
-                      {info.isLink ? (
-                        <Space align="start">
-                          <Typography.Link
-                            data-testid="pipeline-link-name"
-                            href={info.url}
-                            target="_blank">
-                            {info.value}
-                            <SVGIcons
-                              alt="external-link"
-                              className="m-l-xs"
-                              icon="external-link"
-                              width="12px"
-                            />
-                          </Typography.Link>
-                        </Space>
-                      ) : (
-                        info.value
-                      )}
-                    </Col>
-                  </Row>
-                </Col>
-              ) : null
-            )}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-y-xs" />
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {entityInfo.map((info) =>
+                info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row gutter={[16, 32]}>
+                      <Col
+                        data-testid={
+                          info.dataTestId
+                            ? info.dataTestId
+                            : `${info.name}-label`
+                        }
+                        span={8}>
+                        <Typography.Text className="text-grey-muted">
+                          {info.name}
+                        </Typography.Text>
+                      </Col>
+                      <Col data-testid={`${info.name}-value`} span={16}>
+                        {info.isLink ? (
+                          <Space align="start">
+                            <Typography.Link
+                              data-testid="pipeline-link-name"
+                              href={info.url}
+                              target={info.isExternal ? '_blank' : '_self'}>
+                              {info.value}
+                              {info.isExternal ? (
+                                <SVGIcons
+                                  alt="external-link"
+                                  className="m-l-xs"
+                                  icon="external-link"
+                                  width="12px"
+                                />
+                              ) : null}
+                            </Typography.Link>
+                          </Space>
+                        ) : (
+                          info.value
+                        )}
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : null
+              )}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
 
-      {!isExplore ? (
-        <>
-          <SummaryTagsDescription
-            entityDetail={entityDetails}
-            tags={tags ? tags : []}
-          />
-          <Divider className="m-y-xs" />
-        </>
-      ) : null}
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
 
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="tasks-header">
-            {t('label.task-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList formattedEntityData={formattedTasksData} />
-        </Col>
-      </Row>
-    </>
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="tasks-header">
+              {t('label.task-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedTasksData} />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

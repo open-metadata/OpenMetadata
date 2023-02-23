@@ -13,6 +13,7 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
 import React, { useMemo } from 'react';
@@ -22,6 +23,7 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
+import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
@@ -32,12 +34,14 @@ interface MlModelSummaryProps {
   entityDetails: Mlmodel;
   componentType?: string;
   tags?: (TagLabel | undefined)[];
+  isLoading?: boolean;
 }
 
 function MlModelSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
+  isLoading,
 }: MlModelSummaryProps) {
   const { t } = useTranslation();
 
@@ -61,62 +65,72 @@ function MlModelSummary({
   );
 
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <Row>
-            {entityInfo.map((info) =>
-              info.visible?.includes(componentType) ? (
-                <Col key={info.name} span={24}>
-                  <Row gutter={16}>
-                    <Col data-testid={`${info.name}-label`} span={8}>
-                      <Typography.Text className="text-grey-muted">
-                        {info.name}
-                      </Typography.Text>
-                    </Col>
-                    <Col data-testid={`${info.name}-value`} span={16}>
-                      {info.isLink ? (
-                        <Link
-                          target={info.isExternal ? '_blank' : '_self'}
-                          to={{ pathname: info.url }}>
-                          {info.value}
-                        </Link>
-                      ) : (
-                        info.value
-                      )}
-                    </Col>
-                  </Row>
-                </Col>
-              ) : null
-            )}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-y-xs" />
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {entityInfo.map((info) =>
+                info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row gutter={[16, 32]}>
+                      <Col data-testid={`${info.name}-label`} span={8}>
+                        <Typography.Text className="text-grey-muted">
+                          {info.name}
+                        </Typography.Text>
+                      </Col>
+                      <Col data-testid={`${info.name}-value`} span={16}>
+                        {info.isLink ? (
+                          <Link
+                            target={info.isExternal ? '_blank' : '_self'}
+                            to={{ pathname: info.url }}>
+                            {info.value}
+                            {info.isExternal ? (
+                              <SVGIcons
+                                alt="external-link"
+                                className="m-l-xs"
+                                icon="external-link"
+                                width="12px"
+                              />
+                            ) : null}
+                          </Link>
+                        ) : (
+                          info.value
+                        )}
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : null
+              )}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
 
-      {!isExplore ? (
-        <>
-          <SummaryTagsDescription
-            entityDetail={entityDetails}
-            tags={tags ? tags : []}
-          />
-          <Divider className="m-y-xs" />
-        </>
-      ) : null}
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
 
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="features-header">
-            {t('label.feature-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList formattedEntityData={formattedFeaturesData} />
-        </Col>
-      </Row>
-    </>
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="features-header">
+              {t('label.feature-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedFeaturesData} />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

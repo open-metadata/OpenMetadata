@@ -13,6 +13,7 @@
 
 import { Popover } from 'antd';
 import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import {
   LeafNodes,
   LineagePos,
@@ -92,6 +93,22 @@ export const getEntityTags = (
       return [];
   }
 };
+
+export const getOwnerNameWithProfilePic = (
+  owner: EntityReference | undefined
+) =>
+  owner ? (
+    <div className="flex items-center gap-2">
+      {' '}
+      <ProfilePicture
+        displayName={owner.displayName}
+        id={owner.id as string}
+        name={owner.name || ''}
+        width="20"
+      />
+      <span>{getEntityName(owner)}</span>
+    </div>
+  ) : null;
 
 export const getEntityOverview = (
   type: string,
@@ -180,7 +197,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.owner'),
-          value: getEntityName(owner) || NO_DATA,
+          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -227,15 +244,8 @@ export const getEntityOverview = (
     }
 
     case ExplorePageTabs.PIPELINES: {
-      const {
-        owner,
-        tags,
-        pipelineUrl,
-        service,
-        fullyQualifiedName,
-        displayName,
-        serviceType,
-      } = entityDetail as Pipeline;
+      const { owner, tags, pipelineUrl, service, displayName } =
+        entityDetail as Pipeline;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -247,6 +257,7 @@ export const getEntityOverview = (
           value: displayName || NO_DATA,
           url: pipelineUrl,
           isLink: true,
+          isExternal: true,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
@@ -260,11 +271,12 @@ export const getEntityOverview = (
             ServiceCategory.PIPELINE_SERVICES
           ),
           isLink: true,
+          isExternal: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.owner'),
-          value: getEntityName(owner) || NO_DATA,
+          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -275,30 +287,13 @@ export const getEntityOverview = (
           isLink: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
-        {
-          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
-          value:
-            (fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string) ||
-            NO_DATA,
-          url: pipelineUrl as string,
-          isLink: true,
-          isExternal: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
       ];
 
       return overview;
     }
     case ExplorePageTabs.DASHBOARDS: {
-      const {
-        owner,
-        tags,
-        dashboardUrl,
-        service,
-        fullyQualifiedName,
-        displayName,
-        serviceType,
-      } = entityDetail as Dashboard;
+      const { owner, tags, dashboardUrl, service, displayName } =
+        entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -309,6 +304,7 @@ export const getEntityOverview = (
           value: displayName || NO_DATA,
           url: dashboardUrl,
           isLink: true,
+          isExternal: true,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
@@ -321,12 +317,13 @@ export const getEntityOverview = (
             service?.name as string,
             ServiceCategory.DASHBOARD_SERVICES
           ),
+          isExternal: false,
           isLink: true,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.owner'),
-          value: getEntityName(owner) || NO_DATA,
+          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -335,17 +332,7 @@ export const getEntityOverview = (
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
-          value:
-            displayName ||
-            (fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string) ||
-            NO_DATA,
-          url: dashboardUrl as string,
-          isLink: true,
-          isExternal: true,
+          isExternal: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
@@ -354,7 +341,8 @@ export const getEntityOverview = (
     }
 
     case ExplorePageTabs.MLMODELS: {
-      const { algorithm, target, server, dashboard } = entityDetail as Mlmodel;
+      const { algorithm, target, server, dashboard, owner } =
+        entityDetail as Mlmodel;
 
       const overview = [
         {
@@ -382,6 +370,7 @@ export const getEntityOverview = (
           value: server || NO_DATA,
           url: server,
           isLink: true,
+          isExternal: true,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
@@ -392,10 +381,18 @@ export const getEntityOverview = (
           value: getEntityName(dashboard) || NO_DATA,
           url: getDashboardDetailsPath(dashboard?.fullyQualifiedName as string),
           isLink: true,
+          isExternal: false,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
           ],
+        },
+        {
+          name: i18next.t('label.owner'),
+          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
+          isLink: owner ? owner.type === 'team' : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 

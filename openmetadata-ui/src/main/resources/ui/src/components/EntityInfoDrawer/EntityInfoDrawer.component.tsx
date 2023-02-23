@@ -42,7 +42,6 @@ import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
-import Loader from '../Loader/Loader';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.less';
 
@@ -194,6 +193,7 @@ const EntityInfoDrawer = ({
           <TableSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Table}
+            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -203,6 +203,7 @@ const EntityInfoDrawer = ({
           <TopicSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Topic}
+            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -212,6 +213,7 @@ const EntityInfoDrawer = ({
           <DashboardSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Dashboard}
+            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -221,6 +223,7 @@ const EntityInfoDrawer = ({
           <PipelineSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Pipeline}
+            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -230,6 +233,7 @@ const EntityInfoDrawer = ({
           <MlModelSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Mlmodel}
+            isLoading={isLoading}
             tags={tags}
           />
         );
@@ -284,7 +288,7 @@ const EntityInfoDrawer = ({
           </Col>
         </Row>
       }>
-      {isLoading ? <Loader /> : <>{summaryComponent}</>}
+      {summaryComponent}
     </Drawer>
   );
 };

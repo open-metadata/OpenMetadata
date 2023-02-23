@@ -63,7 +63,7 @@ describe('TableSummary component tests', () => {
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
     expect(typeValue).toContainHTML('Regular');
-    expect(queriesValue).toContainHTML('2');
+    expect(queriesValue.textContent).toBe('2 past week');
     expect(columnsValue).toContainHTML('2');
     expect(noProfilerPlaceholder).toContainHTML(
       'message.no-profiler-enabled-summary-message'
@@ -122,7 +122,7 @@ describe('TableSummary component tests', () => {
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
     expect(typeValue).toContainHTML('Regular');
-    expect(queriesValue).toContainHTML('2');
+    expect(queriesValue.textContent).toBe('2 past week');
     expect(columnsValue).toContainHTML('2');
     expect(noProfilerPlaceholder).toContainHTML(
       'message.no-profiler-enabled-summary-message'

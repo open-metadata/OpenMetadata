@@ -13,6 +13,7 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,12 +33,14 @@ interface TopicSummaryProps {
   entityDetails: Topic;
   componentType?: string;
   tags?: (TagLabel | undefined)[];
+  isLoading?: boolean;
 }
 
 function TopicSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
+  isLoading,
 }: TopicSummaryProps) {
   const { t } = useTranslation();
 
@@ -91,69 +94,71 @@ function TopicSummary({
   }, [entityDetails, componentType]);
 
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <Row>
-            {Object.keys(topicConfig).map((fieldName) => {
-              const value =
-                topicConfig[fieldName as keyof TopicConfigObjectInterface];
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {Object.keys(topicConfig).map((fieldName) => {
+                const value =
+                  topicConfig[fieldName as keyof TopicConfigObjectInterface];
 
-              const fieldValue = isArray(value) ? value.join(', ') : value;
+                const fieldValue = isArray(value) ? value.join(', ') : value;
 
-              return (
-                <Col key={fieldName} span={24}>
-                  <Row gutter={16}>
-                    <Col data-testid={`${fieldName}-label`} span={10}>
-                      <Typography.Text className="text-grey-muted">
-                        {fieldName}
-                      </Typography.Text>
-                    </Col>
-                    <Col data-testid={`${fieldName}-value`} span={14}>
-                      {fieldValue ? fieldValue : '-'}
-                    </Col>
-                  </Row>
-                </Col>
-              );
-            })}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-y-xs" />
+                return (
+                  <Col key={fieldName} span={24}>
+                    <Row gutter={[16, 32]}>
+                      <Col data-testid={`${fieldName}-label`} span={10}>
+                        <Typography.Text className="text-grey-muted">
+                          {fieldName}
+                        </Typography.Text>
+                      </Col>
+                      <Col data-testid={`${fieldName}-value`} span={14}>
+                        {fieldValue ? fieldValue : '-'}
+                      </Col>
+                    </Row>
+                  </Col>
+                );
+              })}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
 
-      {!isExplore ? (
-        <>
-          <SummaryTagsDescription
-            entityDetail={entityDetails}
-            tags={tags ? tags : []}
-          />
-          <Divider className="m-y-xs" />
-        </>
-      ) : null}
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
 
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="schema-header">
-            {t('label.schema')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
-            <div className="m-y-md">
-              <Typography.Text data-testid="no-data-message">
-                <Typography.Text className="text-grey-body">
-                  {t('message.no-data-available')}
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
+              <div className="m-y-md">
+                <Typography.Text data-testid="no-data-message">
+                  <Typography.Text className="text-grey-body">
+                    {t('message.no-data-available')}
+                  </Typography.Text>
                 </Typography.Text>
-              </Typography.Text>
-            </div>
-          ) : (
-            <SummaryList formattedEntityData={formattedSchemaFieldsData} />
-          )}
-        </Col>
-      </Row>
-    </>
+              </div>
+            ) : (
+              <SummaryList formattedEntityData={formattedSchemaFieldsData} />
+            )}
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

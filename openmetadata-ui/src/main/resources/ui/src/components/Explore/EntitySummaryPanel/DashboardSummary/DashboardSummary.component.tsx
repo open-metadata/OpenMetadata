@@ -14,6 +14,7 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
 import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -37,12 +38,14 @@ interface DashboardSummaryProps {
   entityDetails: Dashboard;
   componentType?: string;
   tags?: (TagLabel | undefined)[];
+  isLoading?: boolean;
 }
 
 function DashboardSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
+  isLoading,
 }: DashboardSummaryProps) {
   const { t } = useTranslation();
   const [charts, setCharts] = useState<ChartType[]>();
@@ -87,73 +90,77 @@ function DashboardSummary({
   );
 
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <Row>
-            {entityInfo.map((info) =>
-              info.visible?.includes(componentType) ? (
-                <Col key={info.name} span={24}>
-                  <Row gutter={16}>
-                    <Col data-testid={`${info.name}-label`} span={8}>
-                      <Typography.Text className="text-grey-muted">
-                        {info.name}
-                      </Typography.Text>
-                    </Col>
-                    <Col data-testid="dashboard-url-value" span={16}>
-                      {info.isLink ? (
-                        <Link
-                          component={Typography.Link}
-                          target="_blank"
-                          to={{ pathname: info.url }}>
-                          <Typography.Link
-                            className="text-primary"
-                            data-testid="dashboard-link-name">
-                            {info.value}
-                          </Typography.Link>
-                          <SVGIcons
-                            alt="external-link"
-                            className="m-l-xs"
-                            icon="external-link"
-                            width="12px"
-                          />
-                        </Link>
-                      ) : (
-                        info.value
-                      )}
-                    </Col>
-                  </Row>
-                </Col>
-              ) : null
-            )}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-y-xs" />
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {entityInfo.map((info) =>
+                info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row gutter={[16, 32]}>
+                      <Col data-testid={`${info.name}-label`} span={8}>
+                        <Typography.Text className="text-grey-muted">
+                          {info.name}
+                        </Typography.Text>
+                      </Col>
+                      <Col data-testid="dashboard-url-value" span={16}>
+                        {info.isLink ? (
+                          <Link
+                            component={Typography.Link}
+                            target={info.isExternal ? '_blank' : '_self'}
+                            to={{ pathname: info.url }}>
+                            <Typography.Link
+                              className="text-primary"
+                              data-testid="dashboard-link-name">
+                              {info.value}
+                            </Typography.Link>
+                            {info.isExternal ? (
+                              <SVGIcons
+                                alt="external-link"
+                                className="m-l-xs"
+                                icon="external-link"
+                                width="12px"
+                              />
+                            ) : null}
+                          </Link>
+                        ) : (
+                          info.value
+                        )}
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : null
+              )}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
 
-      {!isExplore ? (
-        <>
-          <SummaryTagsDescription
-            entityDetail={entityDetails}
-            tags={tags ? tags : []}
-          />
-          <Divider className="m-y-xs" />
-        </>
-      ) : null}
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
 
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="charts-header">
-            {t('label.chart-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList formattedEntityData={formattedChartsData} />
-        </Col>
-      </Row>
-    </>
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="charts-header">
+              {t('label.chart-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedChartsData} />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

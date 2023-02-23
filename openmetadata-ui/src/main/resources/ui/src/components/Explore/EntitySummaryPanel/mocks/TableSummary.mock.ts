@@ -111,7 +111,7 @@ export const mockTableEntityDetails: Table = {
       percentileRank: 0,
     },
     weeklyStats: {
-      count: 0,
+      count: 2,
       percentileRank: 0,
     },
     monthlyStats: {

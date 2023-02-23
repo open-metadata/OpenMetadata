@@ -60,7 +60,6 @@ describe('DashboardSummary component tests', () => {
       'label.service-label',
       'label.owner-label',
       'label.tier-label',
-      'Superset label.url-lowercase-label',
     ];
 
     await act(async () => {
