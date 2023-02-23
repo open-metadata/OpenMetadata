@@ -17,22 +17,18 @@ import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 
 export const getIngestionHeadingName = (
   ingestionType: string,
   type: string
 ) => {
-  let ingestionName = t(
+  const ingestionName = t(
     `label.${
       PIPELINE_TYPE_LOCALIZATION[
         ingestionType as keyof typeof PIPELINE_TYPE_LOCALIZATION
       ]
     }`
   );
-  if (ingestionType === PipelineType.Dbt) {
-    ingestionName = t('label.dbt-lowercase');
-  }
 
   return type === INGESTION_ACTION_TYPE.ADD
     ? t('label.add-workflow-ingestion', {
