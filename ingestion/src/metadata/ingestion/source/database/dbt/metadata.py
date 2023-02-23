@@ -86,6 +86,8 @@ REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 # Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
 
+NONE_KEYWORDS_LIST = ["none", "null"]
+
 
 class SkipResourceTypeEnum(Enum):
     """
@@ -455,8 +457,10 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
-                            database_name=manifest_node.database,
-                            schema_name=manifest_node.schema_,
+                            database_name=self.get_corrected_name(
+                                manifest_node.database
+                            ),
+                            schema_name=self.get_corrected_name(manifest_node.schema_),
                             table_name=model_name,
                         ),
                         datamodel=DataModel(
@@ -487,6 +491,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         f"Unexpected exception parsing DBT node:{model_name} - {exc}"
                     )
 
+    def get_corrected_name(self, name: Optional[str]):
+        correct_name = None
+        if name:
+            correct_name = None if name.lower() in NONE_KEYWORDS_LIST else name
+        return correct_name
+
     def parse_upstream_nodes(self, manifest_entities, dbt_node):
         """
         Method to fetch the upstream nodes
@@ -509,8 +519,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=parent_node.database,
-                        schema_name=parent_node.schema_,
+                        database_name=self.get_corrected_name(parent_node.database),
+                        schema_name=self.get_corrected_name(parent_node.schema_),
                         table_name=table_name,
                     )
                     if parent_fqn:
