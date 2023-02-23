@@ -1,9 +1,11 @@
 package org.openmetadata.service.resources.query;
 
+import static java.lang.String.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -18,6 +20,8 @@ import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;
@@ -171,5 +175,28 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     final CreateQuery request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+  }
+
+  @Override
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  protected void post_entityWithDots_200() throws HttpResponseException {
+    if (!supportedNameCharacters.contains(".")) { // Name does not support dot
+      return;
+    }
+
+    // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
+    String name = format("%s_foo.bar", Entity.QUERY);
+    CreateQuery request = createRequest(name);
+    Query entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    // as we are setting fqn as entityName_checksum
+    entity.setFullyQualifiedName(entity.getName());
+    // The FQN has quote delimited parts if the FQN is hierarchical.
+    // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
+    // team, webhook and the entity names that are at the root for FQN like services, Classification, and Glossary etc.)
+    // No delimiter is expected.
+    boolean noHierarchicalName = entity.getFullyQualifiedName().equals(entity.getName());
+    assertTrue(noHierarchicalName || entity.getFullyQualifiedName().contains("\""));
+    assertEquals(name, entity.getName());
   }
 }

@@ -939,7 +939,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void post_entityWithDots_200() throws HttpResponseException {
+  protected void post_entityWithDots_200() throws HttpResponseException {
     if (!supportedNameCharacters.contains(".")) { // Name does not support dot
       return;
     }
