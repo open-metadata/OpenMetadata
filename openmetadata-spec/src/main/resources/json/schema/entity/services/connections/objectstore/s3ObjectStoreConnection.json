@@ -5,7 +5,21 @@
   "description": "S3 Store Connection.",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.objectstore.S3Connection",
+  "definitions": {
+    "s3Type": {
+      "description": "S3 service type",
+      "type": "string",
+      "enum": ["S3"],
+      "default": "S3"
+    }
+  },
   "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/s3Type",
+      "default": "S3"
+    },
     "awsConfig": {
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
