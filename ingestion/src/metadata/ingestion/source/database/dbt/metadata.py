@@ -53,6 +53,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
@@ -369,9 +370,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             DbtCommonEnum.UPSTREAM.value
         ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
         self.context.dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
-            item
-            for item in dbt_objects.dbt_run_results.results
-            if item.unique_id == key
+            (
+                item
+                for item in dbt_objects.dbt_run_results.results
+                if item.unique_id == key
+            ),
+            None,
         )
 
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
@@ -418,7 +422,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                     model_name = (
                         manifest_node.alias
-                        if manifest_node.alias
+                        if hasattr(manifest_node, "alias") and manifest_node.alias
                         else manifest_node.name
                     )
                     logger.info(f"Processing DBT node: {model_name}")
@@ -498,7 +502,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 try:
                     parent_node = manifest_entities[node]
                     table_name = (
-                        parent_node.alias if parent_node.alias else parent_node.name
+                        parent_node.alias
+                        if hasattr(parent_node, "alias") and parent_node.alias
+                        else parent_node.name
                     )
                     parent_fqn = fqn.build(
                         self.metadata,
@@ -507,7 +513,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         database_name=parent_node.database,
                         schema_name=parent_node.schema_,
                         table_name=table_name,
-                    ).lower()
+                    )
                     if parent_fqn:
                         upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
@@ -536,12 +542,16 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 column_name = (
                     catalog_column.name if catalog_column else manifest_column.name
                 )
+                column_description = None
+                if catalog_column and catalog_column.comment:
+                    column_description = catalog_column.comment
+
                 columns.append(
                     Column(
                         name=column_name,
                         description=manifest_column.description
                         if manifest_column.description
-                        else catalog_column.comment,
+                        else column_description,
                         dataType=ColumnTypeParser.get_column_type(
                             catalog_column.type
                             if catalog_column
@@ -772,20 +782,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     yield CreateTestCaseRequest(
                         name=manifest_node.name,
                         description=manifest_node.description,
-                        testDefinition=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=manifest_node.name,
-                                entity=TestDefinition,
-                            ).id.__root__,
-                            type="testDefinition",
+                        testDefinition=FullyQualifiedEntityName(
+                            __root__=manifest_node.name
                         ),
                         entityLink=entity_link,
-                        testSuite=EntityReference(
-                            id=self.metadata.get_by_name(
-                                fqn=test_suite_name, entity=TestSuite
-                            ).id.__root__,
-                            type="testSuite",
-                        ),
+                        testSuite=FullyQualifiedEntityName(__root__=test_suite_name),
                         parameterValues=self.create_test_case_parameter_values(
                             dbt_test
                         ),
@@ -863,7 +864,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Failed capture tests results for node: {manifest_node.name} {err}"
+                f"Failed to capture tests results for node: {manifest_node.name} {err}"
             )
 
     def create_test_case_parameter_definitions(self, dbt_test):

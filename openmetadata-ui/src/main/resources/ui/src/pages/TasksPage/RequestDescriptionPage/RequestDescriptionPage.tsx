@@ -163,12 +163,16 @@ const RequestDescription = () => {
       };
       postThread(data)
         .then((res) => {
-          showSuccessToast('Task Created Successfully');
+          showSuccessToast(
+            t('server.create-entity-success', {
+              entity: t('label.task'),
+            })
+          );
           history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot create a task without assignee');
+      showErrorToast(t('server.no-task-creation-without-assignee'));
     }
   };
 
@@ -201,7 +205,13 @@ const RequestDescription = () => {
       <TitleBreadcrumb
         titleLinks={[
           ...getBreadCrumbList(entityData, entityType as EntityType),
-          { name: 'Create Task', activeTitle: true, url: '' },
+          {
+            name: t('label.create-entity', {
+              entity: t('label.task'),
+            }),
+            activeTitle: true,
+            url: '',
+          },
         ]}
       />
       <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
@@ -209,14 +219,26 @@ const RequestDescription = () => {
           className="tw-col-span-2"
           key="request-description"
           style={{ ...cardStyles }}
-          title="Create Task">
+          title={t('label.create-entity', {
+            entity: t('label.task'),
+          })}>
           <Form form={form} layout="vertical" onFinish={onCreateTask}>
-            <Form.Item data-testid="title" label="Title:" name="title">
-              <Input placeholder="Task title" style={{ margin: '4px 0px' }} />
+            <Form.Item
+              data-testid="title"
+              label={`${t('label.task-entity', {
+                entity: t('label.title'),
+              })}:`}
+              name="title">
+              <Input
+                placeholder={t('label.task-entity', {
+                  entity: t('label.title'),
+                })}
+                style={{ margin: '4px 0px' }}
+              />
             </Form.Item>
             <Form.Item
               data-testid="assignees"
-              label="Assignees:"
+              label={`${t('label.assignee-plural')}:`}
               name="assignees">
               <Assignees
                 assignees={assignees}
@@ -227,12 +249,16 @@ const RequestDescription = () => {
             </Form.Item>
             <Form.Item
               data-testid="description-label"
-              label="Suggest description:"
+              label={`${t('label.suggest-entity', {
+                entity: t('label.description'),
+              })}:`}
               name="SuggestDescription">
               <RichTextEditor
                 className="tw-my-0"
                 initialValue=""
-                placeHolder="Suggest description"
+                placeHolder={t('label.suggest-entity', {
+                  entity: t('label.description'),
+                })}
                 ref={markdownRef}
                 style={{ marginTop: '4px' }}
                 onTextChange={onSuggestionChange}

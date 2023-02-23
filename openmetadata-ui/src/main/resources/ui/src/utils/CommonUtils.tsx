@@ -813,6 +813,9 @@ export const refreshPage = () => window.location.reload();
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
 
+export const getEntityFqnArray = (entities: EntityReference[]): string[] =>
+  entities.map((item) => item.fullyQualifiedName!);
+
 export const getTierFromEntityInfo = (entity: FormattedTableData) => {
   return (
     entity.tier?.tagFQN ||

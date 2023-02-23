@@ -71,7 +71,6 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
-import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
@@ -1261,10 +1260,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         )
       );
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['fetch-suggestions-error']
-      );
+      showErrorToast(error as AxiosError, t('server.fetch-suggestions-error'));
     }
   };
 
@@ -1469,12 +1465,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       {showDeleteModal && (
         <Modal
           okText={getLoadingStatusValue(
-            'Confirm',
+            t('label.confirm'),
             deletionState.loading,
             deletionState.status
           )}
           open={showDeleteModal}
-          title="Remove lineage edge"
+          title={t('message.remove-lineage-edge')}
           onCancel={() => {
             setShowDeleteModal(false);
           }}

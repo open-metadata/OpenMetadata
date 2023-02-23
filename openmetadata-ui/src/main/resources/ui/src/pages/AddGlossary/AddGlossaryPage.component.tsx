@@ -115,11 +115,13 @@ const AddGlossaryPage: FunctionComponent = () => {
   useEffect(() => {
     setSlashedBreadcrumb([
       {
-        name: 'Glossary',
+        name: t('label.glossary'),
         url: getGlossaryPath(),
       },
       {
-        name: 'Add Glossary',
+        name: t('label.add-entity', {
+          entity: t('label.glossary'),
+        }),
         url: '',
         activeTitle: true,
       },

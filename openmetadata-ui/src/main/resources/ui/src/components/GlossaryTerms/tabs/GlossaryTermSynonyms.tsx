@@ -73,7 +73,7 @@ const GlossaryTermSynonyms = ({
       key="synonyms"
       setShow={() => setIsViewMode(false)}
       showIcon={isViewMode}
-      title="Synonyms"
+      title={t('label.synonyms')}
       onSave={handleSynonymsSave}>
       <div className="flex" data-testid="synonyms-container">
         {isViewMode ? (
@@ -83,7 +83,7 @@ const GlossaryTermSynonyms = ({
             allowClear
             id="synonyms-select"
             mode="tags"
-            placeholder="Add Synonyms"
+            placeholder={t('label.add-entity', { entity: t('label.synonyms') })}
             style={{ width: '100%' }}
             value={synonyms}
             onChange={(value) => setSynonyms(value)}

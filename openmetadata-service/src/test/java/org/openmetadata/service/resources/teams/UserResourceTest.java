@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static java.util.List.of;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -71,7 +72,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -223,6 +223,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
+  }
+
+  @Test
+  void test_userEmailUnique(TestInfo test) throws IOException {
+    // Create user with different optional fields
+    CreateUser create = createRequest(test, 1).withName("userEmailTest").withEmail("user@domainx.com");
+    createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Creating another user with the same email address must fail
+    create.withName("userEmailTest1");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
   }
 
   @Test
@@ -951,7 +962,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Add new users
     String user2 = "userImportExport2,displayName2,,userImportExport2@domain.com,,,teamImportExport1,";
-    String user21 = "userImportExport21,displayName21,,userImportExport11@domain.com,,,teamImportExport11,";
+    String user21 = "userImportExport21,displayName21,,userImportExport21@domain.com,,,teamImportExport11,";
     List<String> newRecords = listOf(user2, user21);
     testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
 
@@ -995,9 +1006,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // create bot user
     CreateUser createBotUser = createBotUserRequest("test-bot-user").withBotName(botName);
     User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
     // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUser.getName()).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     // put user with a different bot name
     CreateUser createWrongBotUser = createBotUserRequest("test-bot-user").withBotName("test-bot-user-fail-2");
@@ -1014,9 +1024,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // create bot user
     CreateUser createBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
     User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
     // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
+    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUser.getName()).withName(botName);
     botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     // put again user with same bot name
     CreateUser createDifferentBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);

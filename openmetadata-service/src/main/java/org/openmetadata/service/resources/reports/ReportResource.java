@@ -102,9 +102,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getReportByID",
-      summary = "Get a report",
+      summary = "Get a report by Id",
       tags = "reports",
-      description = "Get a report by `id`.",
+      description = "Get a report by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",

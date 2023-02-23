@@ -360,7 +360,7 @@ class AtlasSource(Source):
     def get_database_entity(self, database_name: str) -> Database:
         return CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(id=self.service.id, type="databaseService"),
+            service=self.service.fullyQualifiedName,
         )
 
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:

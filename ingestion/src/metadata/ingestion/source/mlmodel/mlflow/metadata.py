@@ -35,7 +35,6 @@ from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
@@ -117,9 +116,7 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
-            service=EntityReference(
-                id=self.context.mlmodel_service.id, type="mlmodelService"
-            ),
+            service=self.context.mlmodel_service.fullyQualifiedName,
         )
 
     def _get_hyper_params(  # pylint: disable=arguments-differ

@@ -187,7 +187,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Valid
   @Operation(
       operationId = "listTags",
-      summary = "List Tags",
+      summary = "List tags",
       tags = "classification",
       description =
           "Get a list of tags. Use `fields` parameter to get only necessary fields. "
@@ -241,7 +241,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getTagByID",
-      summary = "Get a tag",
+      summary = "Get a tag by id",
       tags = "classification",
       description = "Get a tag by `id`.",
       responses = {
@@ -422,7 +422,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteTag",
-      summary = "Delete a Tag",
+      summary = "Delete a tag by id",
       tags = "classification",
       description = "Delete a tag by `id`.",
       responses = {
@@ -449,7 +449,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTagByName",
-      summary = "Delete a Tag",
+      summary = "Delete a tag by fully qualified name",
       tags = "classification",
       description = "Delete a tag by `fullyQualifiedName`.",
       responses = {
@@ -473,9 +473,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restoreTag",
-      summary = "Restore a soft deleted Tag.",
+      summary = "Restore a soft deleted tag.",
       tags = "classification",
-      description = "Restore a soft deleted Tag.",
+      description = "Restore a soft deleted tag.",
       responses = {
         @ApiResponse(
             responseCode = "200",

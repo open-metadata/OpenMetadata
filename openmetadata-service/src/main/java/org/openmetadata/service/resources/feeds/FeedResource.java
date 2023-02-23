@@ -234,9 +234,9 @@ public class FeedResource {
   @Path("/{id}")
   @Operation(
       operationId = "getThreadByID",
-      summary = "Get a thread",
+      summary = "Get a thread by Id",
       tags = "feeds",
-      description = "Get a thread by `id`.",
+      description = "Get a thread by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -257,9 +257,9 @@ public class FeedResource {
   @Path("/tasks/{id}")
   @Operation(
       operationId = "getTaskByID",
-      summary = "Get a task thread by task id",
+      summary = "Get a task thread by task Id",
       tags = "feeds",
-      description = "Get a task thread by `task id`.",
+      description = "Get a task thread by `task Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -366,7 +366,7 @@ public class FeedResource {
   @Path("/{id}")
   @Operation(
       operationId = "patchThread",
-      summary = "Update a thread by `id`.",
+      summary = "Update a thread by `Id`.",
       tags = "feeds",
       description = "Update an existing thread using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -394,7 +394,7 @@ public class FeedResource {
   @Path("/count")
   @Operation(
       operationId = "countThreads",
-      summary = "count of threads",
+      summary = "Count of threads",
       tags = "feeds",
       description = "Get a count of threads, optionally filtered by `entityLink` for each of the entities.",
       responses = {
@@ -479,7 +479,7 @@ public class FeedResource {
   @Path("/{threadId}/posts/{postId}")
   @Operation(
       operationId = "patchPostOfThread",
-      summary = "Update post of a thread by `id`.",
+      summary = "Update post of a thread by `Id`.",
       tags = "feeds",
       description = "Update a post of an existing thread using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"),
@@ -516,7 +516,7 @@ public class FeedResource {
   @Path("/{threadId}")
   @Operation(
       operationId = "deleteThread",
-      summary = "Delete a thread",
+      summary = "Delete a thread by Id",
       tags = "feeds",
       description = "Delete an existing thread and all its relationships.",
       responses = {

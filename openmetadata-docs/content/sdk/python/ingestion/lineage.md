@@ -43,9 +43,18 @@ All functions that we are going to use related to Lineage can be found in [here]
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+server_config = OpenMetadataConnection(
+    hostPort="http://localhost:8585/api",
+    authProvider="openmetadata",
+    securityConfig=OpenMetadataJWTClientConfig(
+        jwtToken="<token>"
+    ),
+)
 metadata = OpenMetadata(server_config)
 
 assert metadata.health_check()  # Will fail if we cannot reach the server

@@ -168,7 +168,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a topic",
+      summary = "Get a topic by id",
       tags = "topics",
       description = "Get a topic by `id`.",
       responses = {
@@ -201,7 +201,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getTopicByFQN",
-      summary = "Get a topic by name",
+      summary = "Get a topic by fully qualified name",
       tags = "topics",
       description = "Get a topic by fully qualified name.",
       responses = {
@@ -399,7 +399,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteTopic",
-      summary = "Delete a topic",
+      summary = "Delete a topic by id",
       tags = "topics",
       description = "Delete a topic by `id`.",
       responses = {
@@ -422,7 +422,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTopicByFQN",
-      summary = "Delete a topic",
+      summary = "Delete a topic by fully qualified name",
       tags = "topics",
       description = "Delete a topic by `fullyQualifiedName`.",
       responses = {
@@ -446,7 +446,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted topic.",
+      summary = "Restore a soft deleted topic",
       tags = "topics",
       description = "Restore a soft deleted topic.",
       responses = {
@@ -463,7 +463,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   private Topic getTopic(CreateTopic create, String user) throws IOException {
     return copy(new Topic(), create, user)
-        .withService(create.getService())
+        .withService(getEntityReference(Entity.MESSAGING_SERVICE, create.getService()))
         .withPartitions(create.getPartitions())
         .withMessageSchema(create.getMessageSchema())
         .withCleanupPolicies(create.getCleanupPolicies())

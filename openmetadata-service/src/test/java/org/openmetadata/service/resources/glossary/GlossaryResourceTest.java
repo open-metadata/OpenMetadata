@@ -31,8 +31,8 @@ import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
+import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -87,36 +87,33 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public void setupGlossaries() throws IOException {
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
-    GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_REF = GLOSSARY1.getEntityReference();
+    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
-    GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_REF = GLOSSARY2.getEntityReference();
+    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
             .createRequest("g1t1", "", "", null)
             .withRelatedTerms(null)
-            .withGlossary(GLOSSARY1_REF)
+            .withGlossary(GLOSSARY1.getName())
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
-            .withReviewers(GLOSSARY1.getReviewers());
-    GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
+            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+    GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY1_TERM1);
     validateTagLabel(GLOSSARY1_TERM1_LABEL);
 
     createGlossaryTerm =
         glossaryTermResourceTest
             .createRequest("g2t1", "", "", null)
-            .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
-            .withGlossary(GLOSSARY2_REF)
-            .withReviewers(GLOSSARY1.getReviewers());
-    GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_TERM1_REF = GLOSSARY2_TERM1.getEntityReference();
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
+            .withGlossary(GLOSSARY2.getName())
+            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+    GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
+    System.out.println("Setup glossaries done");
   }
 
   @Test
@@ -429,8 +426,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         new CreateGlossaryTerm()
             .withName(name)
             .withDescription("d")
-            .withGlossary(glossary.getEntityReference())
-            .withParent(getEntityReference(parent))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(getFqn(parent))
             .withProvider(provider);
     return resource.createEntity(create, ADMIN_AUTH_HEADERS);
   }

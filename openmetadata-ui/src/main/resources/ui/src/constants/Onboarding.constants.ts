@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.airflow;
-
-import javax.validation.constraints.NotEmpty;
-import lombok.Getter;
-import lombok.Setter;
-
-public class AirflowConfigurationForAPI {
-
-  @NotEmpty @Getter @Setter private String apiEndpoint;
-}
+export const ONBOARDING_STEPS_DATA = [
+  {
+    step: 1,
+    title: 'label.explore-data',
+    description: 'message.onboarding-explore-data-description',
+  },
+  {
+    step: 2,
+    title: 'label.claim-ownership',
+    description: 'message.onboarding-claim-ownership-description',
+  },
+  {
+    step: 3,
+    title: 'label.stay-up-to-date',
+    description: 'message.onboarding-stay-up-to-date-description',
+  },
+];

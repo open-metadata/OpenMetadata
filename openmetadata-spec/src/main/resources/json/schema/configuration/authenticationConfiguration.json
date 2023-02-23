@@ -47,7 +47,7 @@
     },
     "ldapConfiguration": {
       "description": "LDAP Configuration in case the Provider is LDAP",
-      "$ref": "../auth/ldapConfiguration.json"
+      "$ref": "./ldapConfiguration.json"
     }
   },
   "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],
