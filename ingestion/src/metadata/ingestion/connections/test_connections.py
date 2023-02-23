@@ -70,7 +70,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> str:
     for step in steps:
         try:
             step.function()
-            test_connection_result.success.append(f"'{step.name}': pass")
+            test_connection_result.success.append(f"'{step.name}': Pass")
 
         except Exception:
             if step.mandatory:
