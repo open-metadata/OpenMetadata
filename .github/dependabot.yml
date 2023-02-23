@@ -1,0 +1,25 @@
+## Basic dependabot configuration
+##
+## IMPORTANT NOTE: By default this configuration ONLY works for docker enabled repos. Please (un)comment configuration below as needed for your project.
+##
+## See here for additional configuration options:
+## https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+  # - package-ecosystem: pip
+  #   directory: /
+  #   schedule:
+  #     interval: daily
+  # - package-ecosystem: gradle
+  #   directory: /
+  #   schedule:
+  #     interval: daily
+  # - package-ecosystem: terraform
+  #   directory: /
+  #   schedule:
+  #     interval: daily

@@ -1,0 +1,3 @@
+_extends: 'phc-health/probot-config' # Inherit settings from github.com/phc-health/probot-config/blob/main/.github/settings.yml
+repository:
+  description: PHC GitHub Repository Template

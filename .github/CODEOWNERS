@@ -1,12 +1,9 @@
-# Individual scopes
+# All files are owned by engineering and cloud-ops by default
+*   @phc-health/product-engineering @phc-health/cloud-operations-engineering
 
-# Review from UI owners for changes around UI code
-/openmetadata-ui/src/main/resources/ui/ @open-metadata/ui
-
-# Review from Backend owners for changes around Backend code
-/openmetadata-service/ @open-metadata/backend
-
-# Review from Ingestion owners for changes around Ingestion code
-/ingestion @open-metadata/ingestion
-/ingestion-core @open-metadata/ingestion
-
+# The following files should always be reviewed by a cloud-ops member
+*.tf @phc-health/cloud-operations-engineering
+/cloudbuild.yaml @phc-health/cloud-operations-engineering
+/.github/ @phc-health/cloud-operations-engineering
+Dockerfile @phc-health/cloud-operations-engineering
+helm/ @phc-health/cloud-operations-engineering
