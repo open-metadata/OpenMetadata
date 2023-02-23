@@ -55,36 +55,35 @@ class TestConnectionStep(BaseModel):
     mandatory: bool = True
 
 
+class TestConnectionResult(BaseModel):
+    failed: List[str] = []
+    success: List[str] = []
+    warning: List[str] = []
+
+
 def test_connection_steps(steps: List[TestConnectionStep]) -> str:
     """
     Run all the function steps and raise any errors
     """
-    errors = {"mandatory": [], "nonmandatory": []}
+
+    test_connection_result = TestConnectionResult()
     for step in steps:
         try:
             step.function()
-        except Exception as exc:
-            msg = f"Faild to {step.name}, {exc}"
+            test_connection_result.success.append(f"'{step.name}': pass")
+
+        except Exception:
             if step.mandatory:
-                errors["mandatory"].append(
+                test_connection_result.failed.append(
                     f"'{step.name}': This is a mandatory step and we won't be able to extract necessary metadata"
                 )
+
             else:
-                errors["nonmandatory"].append(
+                test_connection_result.warning.append(
                     f"'{step.name}': This is a optional and the ingestion will continue to work as expected"
                 )
 
-    msg_mandatory = ", ".join(errors["mandatory"])
-    msg_nonmandatory = ", ".join(errors["nonmandatory"])
-    msg = f"{msg_mandatory}, {msg_nonmandatory}"
-
-    if errors["mandatory"]:
-        raise SourceConnectionException(msg)
-
-    if errors["nonmandatory"]:
-        return msg_nonmandatory
-
-    return None
+    return test_connection_result
 
 
 @timeout(seconds=120)
