@@ -55,20 +55,8 @@
       "enum": ["TrustAll", "JVMDefault", "HostName", "CustomTrustStore"]
     },
     "trustStoreConfig": {
-      "oneOf": [
-        {
-          "$ref": "./ldapTrustStoreConfig/customTrustManagerConfig.json"
-        },
-        {
-          "$ref": "./ldapTrustStoreConfig/hostNameConfig.json"
-        },
-        {
-          "$ref": "./ldapTrustStoreConfig/jvmDefaultConfig.json"
-        },
-        {
-          "$ref": "./ldapTrustStoreConfig/trustAllConfig.json"
-        }
-      ]
+      "description": "Truststore Configuration",
+      "$ref": "ldapTrustStoreConfig/truststoreConfig.json"
     }
   },
   "required": ["host", "port", "dnAdminPrincipal","dnAdminPassword", "userBaseDN", "mailAttributeName"],

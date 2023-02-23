@@ -319,7 +319,8 @@ export const getExplorePath: (args: {
   tab?: string;
   search?: string;
   extraParameters?: Record<string, unknown>;
-}) => string = ({ tab, search, extraParameters }) => {
+  isPersistFilters?: boolean;
+}) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
   const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
     PLACEHOLDER_ROUTE_TAB,
     tab ?? ''
@@ -329,18 +330,33 @@ export const getExplorePath: (args: {
       ? location.search.substr(1)
       : location.search
   );
-  if (!isUndefined(search)) {
+
+  const { search: paramSearch } = paramsObject;
+
+  /**
+   * persist the filters if isPersistFilters is true
+   * otherwise only persist the search and passed extra params
+   * */
+  if (isPersistFilters) {
+    if (!isUndefined(search)) {
+      paramsObject = {
+        ...paramsObject,
+        search,
+      };
+    }
+    if (!isUndefined(extraParameters)) {
+      paramsObject = {
+        ...paramsObject,
+        ...extraParameters,
+      };
+    }
+  } else {
     paramsObject = {
-      ...paramsObject,
-      search,
+      search: isUndefined(search) ? paramSearch : search,
+      ...(!isUndefined(extraParameters) ? extraParameters : {}),
     };
   }
-  if (!isUndefined(extraParameters)) {
-    paramsObject = {
-      ...paramsObject,
-      ...extraParameters,
-    };
-  }
+
   const query = Qs.stringify(paramsObject);
 
   return `${pathname}?${query}`;

@@ -21,7 +21,6 @@ import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
-import jsonData from '../../jsons/en';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './reset-password.style.less';
@@ -64,10 +63,7 @@ const ResetPassword = () => {
       await handleResetPassword(ResetRequest);
       history.push(ROUTES.SIGNIN);
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
   };
 
@@ -84,7 +80,7 @@ const ResetPassword = () => {
             <Alert
               showIcon
               description="Please re-initiate email verification process"
-              message="Email Verification Token Expired"
+              message={t('message.email-verification-token-expired')}
               type="error"
             />
           </div>
@@ -119,31 +115,36 @@ const ResetPassword = () => {
                 validateMessages={VALIDATION_MESSAGES}
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label="New Password"
+                  label={t('label.new-password')}
                   name="password"
                   rules={[
                     {
                       required: true,
-                      message: 'Password is required',
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.password'),
+                      }),
                     },
                     {
                       pattern: passwordRegex,
-                      message:
-                        'Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character',
+                      message: t('message.password-pattern-error'),
                     },
                   ]}>
                   <Input.Password
                     className="w-full"
-                    placeholder="Enter new password"
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.new-password'),
+                    })}
                   />
                 </Form.Item>
                 <Form.Item
-                  label="Confirm New Password"
+                  label={t('label.confirm-new-password')}
                   name="confirmPassword"
                   rules={[
                     {
                       required: true,
-                      message: 'Confirm password is required',
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.confirm-new-password'),
+                      }),
                     },
                     {
                       validator: (_, value) => {
@@ -151,13 +152,13 @@ const ResetPassword = () => {
                           return Promise.resolve();
                         }
 
-                        return Promise.reject("Password doesn't match");
+                        return Promise.reject(t('label.password-not-match'));
                       },
                     },
                   ]}>
                   <Input.Password
                     className="w-full"
-                    placeholder="Re-enter New Password"
+                    placeholder={t('label.re-enter-new-password')}
                   />
                 </Form.Item>
 

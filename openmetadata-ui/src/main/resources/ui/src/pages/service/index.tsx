@@ -32,10 +32,10 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getDashboards } from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
@@ -84,7 +84,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
@@ -110,6 +109,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
 
 const ServicePage: FunctionComponent = () => {
+  const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
@@ -229,13 +229,15 @@ const ServicePage: FunctionComponent = () => {
         } else {
           setAirflowEndpoint('');
 
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-airflow-config-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.airflow-config-plural'),
+          })
         );
       });
   };
@@ -250,14 +252,18 @@ const ServicePage: FunctionComponent = () => {
         } else {
           setIngestionPaging({} as Paging);
           showErrorToast(
-            jsonData['api-error-messages']['fetch-ingestion-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            })
           );
         }
       })
       .catch((error: AxiosError) => {
         showErrorToast(
           error,
-          jsonData['api-error-messages']['fetch-ingestion-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.ingestion-workflow-lowercase'),
+          })
         );
       })
       .finally(() => {
@@ -281,14 +287,20 @@ const ServicePage: FunctionComponent = () => {
           } else {
             reject();
             showErrorToast(
-              `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+              t('server.ingestion-workflow-operation-error', {
+                operation: t('label.triggering-lowercase'),
+                displayName,
+              })
             );
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+            t('server.ingestion-workflow-operation-error', {
+              operation: t('label.triggering-lowercase'),
+              displayName,
+            })
           );
           reject();
         })
@@ -307,13 +319,17 @@ const ServicePage: FunctionComponent = () => {
               setIsLoading(false);
             }, 500);
           } else {
-            throw jsonData['api-error-messages']['update-ingestion-error'];
+            throw t('server.entity-updating-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            });
           }
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['update-ingestion-error']
+            t('server.entity-updating-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            })
           );
           reject();
         });
@@ -326,14 +342,11 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           getAllIngestionWorkflows();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
+        showErrorToast(err, t('server.unexpected-response'));
       });
   };
 
@@ -350,7 +363,10 @@ const ServicePage: FunctionComponent = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`
+            t('server.ingestion-workflow-operation-error', {
+              operation: t('label.deleting-lowercase'),
+              displayName,
+            })
           );
           reject();
         });
@@ -596,17 +612,12 @@ const ServicePage: FunctionComponent = () => {
         // This api only responds with status 200 on success
         // No data sent on api success
         if (response.status === 200) {
-          showSuccessToast(
-            jsonData['api-success-messages']['test-connection-success']
-          );
+          showSuccessToast(t('server.connection-tested-successfully'));
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          jsonData['api-error-messages']['test-connection-error']
-        );
+        showErrorToast(error as AxiosError, t('server.test-connection-error'));
       } finally {
         setIsTestingConnection(false);
       }
@@ -650,7 +661,9 @@ const ServicePage: FunctionComponent = () => {
             getOtherDetails();
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['fetch-service-error']
+              t('server.entity-fetch-error', {
+                entity: t('label.service-detail-lowercase-plural'),
+              })
             );
           }
         })
@@ -660,7 +673,9 @@ const ServicePage: FunctionComponent = () => {
           } else {
             showErrorToast(
               error,
-              jsonData['api-error-messages']['fetch-service-error']
+              t('server.entity-fetch-error', {
+                entity: t('label.service-detail-lowercase-plural'),
+              })
             );
           }
         })
@@ -731,7 +746,9 @@ const ServicePage: FunctionComponent = () => {
             return resolve();
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['update-owner-error']
+              t('server.entity-updating-error', {
+                entity: t('label.owner-lowercase'),
+              })
             );
           }
 
@@ -740,7 +757,9 @@ const ServicePage: FunctionComponent = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-owner-error']
+            t('server.entity-updating-error', {
+              entity: t('label.owner-lowercase'),
+            })
           );
 
           return reject();
@@ -763,7 +782,9 @@ const ServicePage: FunctionComponent = () => {
             resolve();
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['update-owner-error']
+              t('server.entity-updating-error', {
+                entity: t('label.owner-lowercase'),
+              })
             );
           }
 
@@ -772,7 +793,9 @@ const ServicePage: FunctionComponent = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-owner-error']
+            t('server.entity-updating-error', {
+              entity: t('label.owner-lowercase'),
+            })
           );
 
           reject();
