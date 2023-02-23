@@ -3,13 +3,15 @@ Test dbt
 """
 
 import json
+import uuid
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
 from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
 from pydantic import AnyUrl
 
-from metadata.generated.schema.entity.data.table import Column, DataModel
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -51,1083 +53,20 @@ mock_dbt_config = {
     },
 }
 
-MOCK_SAMPLE_MANIFEST_V4_V5_V6 = r"""{
-    "metadata": {
-        "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v6.json",
-        "dbt_version": "1.3.0",
-        "generated_at": "2023-01-17T19:05:57.859191Z",
-        "invocation_id": "0c4757bf-0a8f-4f24-a18a-4c2638bf7d8e",
-        "env": {},
-        "project_id": "06e5b98c2db46f8a72cc4f66410e9b3b",
-        "user_id": null,
-        "send_anonymous_usage_stats": true,
-        "adapter_type": "redshift"
-    },
-    "nodes": {
-        "model.jaffle_shop.customers": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "model.jaffle_shop.stg_customers",
-                    "model.jaffle_shop.stg_orders",
-                    "model.jaffle_shop.stg_payments"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [
-                    "model_tag_one",
-                    "model_tag_two"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                },
-                "materialized": "table",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "customers"
-            ],
-            "unique_id": "model.jaffle_shop.customers",
-            "raw_sql": "sample customers raw code",
-            "package_name": "jaffle_shop",
-            "root_path": "sample/customers/root/path",
-            "path": "customers.sql",
-            "original_file_path": "models/customers.sql",
-            "name": "customers",
-            "alias": "customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "455b90a31f418ae776213ad9932c7cb72d19a5269a8c722bd9f4e44957313ce8"
-            },
-            "tags": [
-                "model_tag_one",
-                "model_tag_two"
-            ],
-            "refs": [
-                [
-                    "stg_customers"
-                ],
-                [
-                    "stg_orders"
-                ],
-                [
-                    "stg_payments"
-                ]
-            ],
-            "sources": [],
-            "description": "This table has basic information about a customer, as well as some derived facts based on a customer's orders",
-            "columns": {
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "This is a unique identifier for a customer",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "first_name": {
-                    "name": "first_name",
-                    "description": "Customer's first name. PII.",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "last_name": {
-                    "name": "last_name",
-                    "description": "Customer's last name. PII.",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {
-                "owner": "aaron_johnson0"
-            },
-            "docs": {
-                    "show": true
-                },
-            "patch_path": "jaffle_shop://models/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/customers.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "table",
-                "tags": [
-                    "model_tag_one",
-                    "model_tag_two"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                }
-            },
-            "created_at": 1673981809.96386,
-            "compiled_sql": "sample customers compile code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"customers\""
-        },
-        "model.jaffle_shop.orders": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "model.jaffle_shop.stg_orders",
-                    "model.jaffle_shop.stg_payments"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [
-                    "single_tag"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                },
-                "materialized": "table",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "orders"
-            ],
-            "unique_id": "model.jaffle_shop.orders",
-            "raw_sql": "sample raw orders code",
-            "package_name": "jaffle_shop",
-            "root_path": "sample/orders/root/path",
-            "path": "orders.sql",
-            "original_file_path": "models/orders.sql",
-            "name": "orders",
-            "alias": "orders",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "53950235d8e29690d259e95ee49bda6a5b7911b44c739b738a646dc6014bcfcd"
-            },
-            "tags": [
-                "single_tag"
-            ],
-            "refs": [
-                [
-                    "stg_orders"
-                ],
-                [
-                    "stg_payments"
-                ]
-            ],
-            "sources": [],
-            "description": "This table has basic information about orders, as well as some derived facts based on payments",
-            "columns": {
-                "order_id": {
-                    "name": "order_id",
-                    "description": "This is a unique identifier for an order",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "Foreign key to the customers table",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {
-                "owner": "aaron_johnson0"
-            },
-            "docs": {
-                    "show": true
-                },
-            "patch_path": "jaffle_shop://models/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/orders.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "table",
-                "tags": "single_tag",
-                "meta": {
-                    "owner": "aaron_johnson0"
-                }
-            },
-            "created_at": 1673982251.742371,
-            "compiled_sql": "sample compiled code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"orders\""
-        },
-        "model.jaffle_shop.stg_customers": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "seed.jaffle_shop.raw_customers"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [],
-                "meta": {},
-                "materialized": "view",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "staging",
-                "stg_customers"
-            ],
-            "unique_id": "model.jaffle_shop.stg_customers",
-            "raw_sql": "sample stg_customers raw_code",
-            "package_name": "jaffle_shop",
-            "root_path": "sample/stg_customers/root/path",
-            "path": "staging/stg_customers.sql",
-            "original_file_path": "models/staging/stg_customers.sql",
-            "name": "stg_customers",
-            "alias": "stg_customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "6f18a29204dad1de6dbb0c288144c4990742e0a1e065c3b2a67b5f98334c22ba"
-            },
-            "tags": [],
-            "refs": [
-                [
-                    "raw_customers"
-                ]
-            ],
-            "sources": [],
-            "description": "",
-            "columns": {
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "This is a unique identifier for an customer",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {},
-            "docs": {
-                    "show": true
-                },
-            "patch_path": "jaffle_shop://models/staging/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/staging/stg_customers.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "view"
-            },
-            "created_at": 1673978228.757611,
-            "compiled_sql": "sample stg_customers compiled code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"stg_customers\""
-        }
-    },
-    "sources": {},
-    "macros": {
-       
-    },
-    "docs": {
-    },
-    "exposures": {},
-    "metrics": {},
-    "selectors": {},
-    "disabled": {},
-    "parent_map": {},
-    "child_map": {}
-}
-"""
+MOCK_SAMPLE_MANIFEST_V4_V5_V6 = "resources/datasets/manifest_v4_v5_v6.json"
 
-MOCK_SAMPLE_MANIFEST_V7 = r"""
-{
-    "metadata": {
-        "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v7.json",
-        "dbt_version": "1.3.0",
-        "generated_at": "2023-01-17T19:05:57.859191Z",
-        "invocation_id": "0c4757bf-0a8f-4f24-a18a-4c2638bf7d8e",
-        "env": {},
-        "project_id": "06e5b98c2db46f8a72cc4f66410e9b3b",
-        "user_id": null,
-        "send_anonymous_usage_stats": true,
-        "adapter_type": "redshift"
-    },
-    "nodes": {
-        "model.jaffle_shop.customers": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "model.jaffle_shop.stg_customers",
-                    "model.jaffle_shop.stg_orders",
-                    "model.jaffle_shop.stg_payments"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [
-                    "model_tag_one",
-                    "model_tag_two"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                },
-                "materialized": "table",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true,
-                    "node_color": null
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "customers"
-            ],
-            "unique_id": "model.jaffle_shop.customers",
-            "raw_code": "sample customers raw code",
-            "language": "sql",
-            "package_name": "jaffle_shop",
-            "root_path": "sample/customers/root/path",
-            "path": "customers.sql",
-            "original_file_path": "models/customers.sql",
-            "name": "customers",
-            "alias": "customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "455b90a31f418ae776213ad9932c7cb72d19a5269a8c722bd9f4e44957313ce8"
-            },
-            "tags": [
-                "model_tag_one",
-                "model_tag_two"
-            ],
-            "refs": [
-                [
-                    "stg_customers"
-                ],
-                [
-                    "stg_orders"
-                ],
-                [
-                    "stg_payments"
-                ]
-            ],
-            "sources": [],
-            "metrics": [],
-            "description": "This table has basic information about a customer, as well as some derived facts based on a customer's orders",
-            "columns": {
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "This is a unique identifier for a customer",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "first_name": {
-                    "name": "first_name",
-                    "description": "Customer's first name. PII.",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "last_name": {
-                    "name": "last_name",
-                    "description": "Customer's last name. PII.",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {
-                "owner": "aaron_johnson0"
-            },
-            "docs": {
-                "show": true,
-                "node_color": null
-            },
-            "patch_path": "jaffle_shop://models/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/customers.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "table",
-                "tags": [
-                    "model_tag_one",
-                    "model_tag_two"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                }
-            },
-            "created_at": 1673981809.96386,
-            "compiled_code": "sample customers compile code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"customers\""
-        },
-        "model.jaffle_shop.orders": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "model.jaffle_shop.stg_orders",
-                    "model.jaffle_shop.stg_payments"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [
-                    "single_tag"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                },
-                "materialized": "table",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true,
-                    "node_color": null
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "orders"
-            ],
-            "unique_id": "model.jaffle_shop.orders",
-            "raw_code": "sample raw orders code",
-            "language": "sql",
-            "package_name": "jaffle_shop",
-            "root_path": "sample/orders/root/path",
-            "path": "orders.sql",
-            "original_file_path": "models/orders.sql",
-            "name": "orders",
-            "alias": "orders",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "53950235d8e29690d259e95ee49bda6a5b7911b44c739b738a646dc6014bcfcd"
-            },
-            "tags": [
-                "single_tag"
-            ],
-            "refs": [
-                [
-                    "stg_orders"
-                ],
-                [
-                    "stg_payments"
-                ]
-            ],
-            "sources": [],
-            "metrics": [],
-            "description": "This table has basic information about orders, as well as some derived facts based on payments",
-            "columns": {
-                "order_id": {
-                    "name": "order_id",
-                    "description": "This is a unique identifier for an order",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "Foreign key to the customers table",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {
-                "owner": "aaron_johnson0"
-            },
-            "docs": {
-                "show": true,
-                "node_color": null
-            },
-            "patch_path": "jaffle_shop://models/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/orders.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "table",
-                "tags": "single_tag",
-                "meta": {
-                    "owner": "aaron_johnson0"
-                }
-            },
-            "created_at": 1673982251.742371,
-            "compiled_code": "sample compiled code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"orders\""
-        },
-        "model.jaffle_shop.stg_customers": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "seed.jaffle_shop.raw_customers"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [],
-                "meta": {},
-                "materialized": "view",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true,
-                    "node_color": null
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "staging",
-                "stg_customers"
-            ],
-            "unique_id": "model.jaffle_shop.stg_customers",
-            "raw_code": "sample stg_customers raw_code",
-            "language": "sql",
-            "package_name": "jaffle_shop",
-            "root_path": "sample/stg_customers/root/path",
-            "path": "staging/stg_customers.sql",
-            "original_file_path": "models/staging/stg_customers.sql",
-            "name": "stg_customers",
-            "alias": "stg_customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "6f18a29204dad1de6dbb0c288144c4990742e0a1e065c3b2a67b5f98334c22ba"
-            },
-            "tags": [],
-            "refs": [
-                [
-                    "raw_customers"
-                ]
-            ],
-            "sources": [],
-            "metrics": [],
-            "description": "",
-            "columns": {
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "This is a unique identifier for an customer",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {},
-            "docs": {
-                "show": true,
-                "node_color": null
-            },
-            "patch_path": "jaffle_shop://models/staging/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/staging/stg_customers.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "view"
-            },
-            "created_at": 1673978228.757611,
-            "compiled_code": "sample stg_customers compiled code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"stg_customers\""
-        }
-    },
-    "sources": {},
-    "macros": {
-       
-    },
-    "docs": {
-    },
-    "exposures": {},
-    "metrics": {},
-    "selectors": {},
-    "disabled": {},
-    "parent_map": {},
-    "child_map": {}
-}
-"""
+MOCK_SAMPLE_MANIFEST_V7 = "resources/datasets/manifest_v7.json"
 
-MOCK_SAMPLE_MANIFEST_V8 = r"""{
-    "metadata": {
-        "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v8.json",
-        "dbt_version": "1.3.0",
-        "generated_at": "2023-01-17T19:05:57.859191Z",
-        "invocation_id": "0c4757bf-0a8f-4f24-a18a-4c2638bf7d8e",
-        "env": {},
-        "project_id": "06e5b98c2db46f8a72cc4f66410e9b3b",
-        "user_id": null,
-        "send_anonymous_usage_stats": true,
-        "adapter_type": "redshift"
-    },
-    "nodes": {
-        "model.jaffle_shop.customers": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "model.jaffle_shop.stg_customers",
-                    "model.jaffle_shop.stg_orders",
-                    "model.jaffle_shop.stg_payments"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [
-                    "model_tag_one",
-                    "model_tag_two"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                },
-                "materialized": "table",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true,
-                    "node_color": null
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "customers"
-            ],
-            "unique_id": "model.jaffle_shop.customers",
-            "raw_code": "sample customers raw code",
-            "language": "sql",
-            "package_name": "jaffle_shop",
-            "path": "customers.sql",
-            "original_file_path": "sample/customers/root/path/models/customers.sql",
-            "name": "customers",
-            "alias": "customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "455b90a31f418ae776213ad9932c7cb72d19a5269a8c722bd9f4e44957313ce8"
-            },
-            "tags": [
-                "model_tag_one",
-                "model_tag_two"
-            ],
-            "refs": [
-                [
-                    "stg_customers"
-                ],
-                [
-                    "stg_orders"
-                ],
-                [
-                    "stg_payments"
-                ]
-            ],
-            "sources": [],
-            "metrics": [],
-            "description": "This table has basic information about a customer, as well as some derived facts based on a customer's orders",
-            "columns": {
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "This is a unique identifier for a customer",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "first_name": {
-                    "name": "first_name",
-                    "description": "Customer's first name. PII.",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "last_name": {
-                    "name": "last_name",
-                    "description": "Customer's last name. PII.",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {
-                "owner": "aaron_johnson0"
-            },
-            "docs": {
-                "show": true,
-                "node_color": null
-            },
-            "patch_path": "jaffle_shop://models/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/customers.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "table",
-                "tags": [
-                    "model_tag_one",
-                    "model_tag_two"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                }
-            },
-            "created_at": 1673981809.96386,
-            "compiled_code": "sample customers compile code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"customers\""
-        },
-        "model.jaffle_shop.orders": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "model.jaffle_shop.stg_orders",
-                    "model.jaffle_shop.stg_payments"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [
-                    "single_tag"
-                ],
-                "meta": {
-                    "owner": "aaron_johnson0"
-                },
-                "materialized": "table",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true,
-                    "node_color": null
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "orders"
-            ],
-            "unique_id": "model.jaffle_shop.orders",
-            "raw_code": "sample raw orders code",
-            "language": "sql",
-            "package_name": "jaffle_shop",
-            "path": "orders.sql",
-            "original_file_path": "sample/orders/root/path/models/orders.sql",
-            "name": "orders",
-            "alias": "orders",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "53950235d8e29690d259e95ee49bda6a5b7911b44c739b738a646dc6014bcfcd"
-            },
-            "tags": [
-                "single_tag"
-            ],
-            "refs": [
-                [
-                    "stg_orders"
-                ],
-                [
-                    "stg_payments"
-                ]
-            ],
-            "sources": [],
-            "metrics": [],
-            "description": "This table has basic information about orders, as well as some derived facts based on payments",
-            "columns": {
-                "order_id": {
-                    "name": "order_id",
-                    "description": "This is a unique identifier for an order",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                },
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "Foreign key to the customers table",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {
-                "owner": "aaron_johnson0"
-            },
-            "docs": {
-                "show": true,
-                "node_color": null
-            },
-            "patch_path": "jaffle_shop://models/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/orders.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "table",
-                "tags": "single_tag",
-                "meta": {
-                    "owner": "aaron_johnson0"
-                }
-            },
-            "created_at": 1673982251.742371,
-            "compiled_code": "sample compiled code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"orders\""
-        },
-        "model.jaffle_shop.stg_customers": {
-            "compiled": true,
-            "resource_type": "model",
-            "depends_on": {
-                "macros": [],
-                "nodes": [
-                    "seed.jaffle_shop.raw_customers"
-                ]
-            },
-            "config": {
-                "enabled": true,
-                "alias": null,
-                "schema": null,
-                "database": null,
-                "tags": [],
-                "meta": {},
-                "materialized": "view",
-                "incremental_strategy": null,
-                "persist_docs": {},
-                "quoting": {},
-                "column_types": {},
-                "full_refresh": null,
-                "unique_key": null,
-                "on_schema_change": "ignore",
-                "grants": {},
-                "packages": [],
-                "docs": {
-                    "show": true,
-                    "node_color": null
-                },
-                "post-hook": [],
-                "pre-hook": []
-            },
-            "database": "dev",
-            "schema": "dbt_jaffle",
-            "fqn": [
-                "jaffle_shop",
-                "staging",
-                "stg_customers"
-            ],
-            "unique_id": "model.jaffle_shop.stg_customers",
-            "raw_code": "sample stg_customers raw_code",
-            "language": "sql",
-            "package_name": "jaffle_shop",
-            "path": "staging/stg_customers.sql",
-            "original_file_path": "sample/stg_customers/root/path/models/staging/stg_customers.sql",
-            "name": "stg_customers",
-            "alias": "stg_customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": "6f18a29204dad1de6dbb0c288144c4990742e0a1e065c3b2a67b5f98334c22ba"
-            },
-            "tags": [],
-            "refs": [
-                [
-                    "raw_customers"
-                ]
-            ],
-            "sources": [],
-            "metrics": [],
-            "description": "",
-            "columns": {
-                "customer_id": {
-                    "name": "customer_id",
-                    "description": "This is a unique identifier for an customer",
-                    "meta": {},
-                    "data_type": null,
-                    "quote": null,
-                    "tags": []
-                }
-            },
-            "meta": {},
-            "docs": {
-                "show": true,
-                "node_color": null
-            },
-            "patch_path": "jaffle_shop://models/staging/schema.yml",
-            "compiled_path": "target/compiled/jaffle_shop/models/staging/stg_customers.sql",
-            "build_path": null,
-            "deferred": false,
-            "unrendered_config": {
-                "materialized": "view"
-            },
-            "created_at": 1673978228.757611,
-            "compiled_code": "sample stg_customers compiled code",
-            "extra_ctes_injected": true,
-            "extra_ctes": [],
-            "relation_name": "\"dev\".\"dbt_jaffle\".\"stg_customers\""
-        }
-    },
-    "sources": {},
-    "macros": {
-       
-    },
-    "docs": {
-    },
-    "exposures": {},
-    "metrics": {},
-    "selectors": {},
-    "disabled": {},
-    "parent_map": {},
-    "child_map": {}
-}
-"""
+MOCK_SAMPLE_MANIFEST_V8 = "resources/datasets/manifest_v8.json"
+
+MOCK_SAMPLE_MANIFEST_NULL_DB = "resources/datasets/manifest_null_db.json"
 
 
 EXPECTED_DATA_MODEL_FQNS = [
     "dbt_test.dev.dbt_jaffle.customers",
     "dbt_test.dev.dbt_jaffle.orders",
     "dbt_test.dev.dbt_jaffle.stg_customers",
+    "dbt_test.dev.dbt_jaffle.customers_null_db",
 ]
 
 EXPECTED_DATA_MODELS = [
@@ -1285,6 +224,45 @@ EXPECTED_DATA_MODELS = [
     ),
 ]
 
+EXPECTED_DATA_MODEL_NULL_DB = [
+    DataModel(
+        modelType="DBT",
+        description=None,
+        path="sample/customers_null_db/root/path/models/staging/customers_null_db.sql",
+        rawSql="sample customers_null_db raw_code",
+        sql="sample customers_null_db compiled code",
+        upstream=[],
+        owner=EntityReference(
+            id="cb2a92f5-e935-4ad7-911c-654280046538",
+            type="user",
+            name=None,
+            fullyQualifiedName="aaron_johnson0",
+            description=None,
+            displayName=None,
+            deleted=None,
+            href=AnyUrl(
+                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                scheme="http",
+                host="localhost",
+                host_type="int_domain",
+                port="8585",
+                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+            ),
+        ),
+        tags=None,
+        columns=[
+            Column(
+                name="customer_id",
+                displayName=None,
+                dataType="VARCHAR",
+                dataLength=1,
+                description="This is a unique identifier for an customer",
+            )
+        ],
+        generatedAt=None,
+    ),
+]
+
 MOCK_OWNER = EntityReference(
     id="cb2a92f5-e935-4ad7-911c-654280046538",
     type="user",
@@ -1302,6 +280,16 @@ MOCK_OWNER = EntityReference(
         path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
     ),
 )
+
+MOCK_NULL_DB_TABLE = [
+    Table(
+        id=uuid.uuid4(),
+        name="test",
+        databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        fullyQualifiedName="dbt_test.dev.dbt_jaffle.customers_null_db",
+        columns=[],
+    )
+]
 
 
 class DbtUnitTest(TestCase):
@@ -1323,20 +311,46 @@ class DbtUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     def test_dbt_manifest_v4_v5_v6(self, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
-        self.execute_test(MOCK_SAMPLE_MANIFEST_V4_V5_V6)
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_V4_V5_V6,
+            expected_records=4,
+            expected_data_models=EXPECTED_DATA_MODELS,
+        )
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     def test_dbt_manifest_v7(self, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
-        self.execute_test(MOCK_SAMPLE_MANIFEST_V7)
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_V7,
+            expected_records=4,
+            expected_data_models=EXPECTED_DATA_MODELS,
+        )
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     def test_dbt_manifest_v8(self, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
-        self.execute_test(MOCK_SAMPLE_MANIFEST_V8)
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_V8,
+            expected_records=4,
+            expected_data_models=EXPECTED_DATA_MODELS,
+        )
 
-    def execute_test(self, mock_manifest):
-        dbt_files = DbtFiles(dbt_manifest=json.loads(mock_manifest))
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_dbt_manifest_null_db(self, es_search_from_fqn, get_dbt_owner):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.return_value = MOCK_NULL_DB_TABLE
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_NULL_DB,
+            expected_records=2,
+            expected_data_models=EXPECTED_DATA_MODEL_NULL_DB,
+        )
+
+    def execute_test(self, mock_manifest, expected_records, expected_data_models):
+        mock_file_path = Path(__file__).parent / mock_manifest
+        with open(mock_file_path) as file:
+            mock_data: dict = json.load(file)
+        dbt_files = DbtFiles(dbt_manifest=mock_data)
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(dbt_files.dbt_catalog)
             if dbt_files.dbt_catalog
@@ -1346,18 +360,20 @@ class DbtUnitTest(TestCase):
             if dbt_files.dbt_run_results
             else None,
         )
-        self.check_dbt_validate(dbt_files=dbt_files)
-        self.check_yield_datamodel(dbt_objects=dbt_objects)
+        self.check_dbt_validate(dbt_files=dbt_files, expected_records=expected_records)
+        self.check_yield_datamodel(
+            dbt_objects=dbt_objects, expected_data_models=expected_data_models
+        )
 
-    def check_dbt_validate(self, dbt_files):
+    def check_dbt_validate(self, dbt_files, expected_records):
         with self.assertLogs() as captured:
             self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
-        self.assertEqual(len(captured.records), 4)
+        self.assertEqual(len(captured.records), expected_records)
         for record in captured.records:
             self.assertNotIn("Error", record.getMessage())
             self.assertNotIn("Unable", record.getMessage())
 
-    def check_yield_datamodel(self, dbt_objects):
+    def check_yield_datamodel(self, dbt_objects, expected_data_models):
         data_model_list = []
         yield_data_models = self.dbt_source_obj.yield_data_models(
             dbt_objects=dbt_objects
@@ -1368,6 +384,6 @@ class DbtUnitTest(TestCase):
                 data_model_list.append(data_model_link.datamodel)
 
         for _, (exptected, original) in enumerate(
-            zip(EXPECTED_DATA_MODELS, data_model_list)
+            zip(expected_data_models, data_model_list)
         ):
             self.assertEqual(exptected, original)
