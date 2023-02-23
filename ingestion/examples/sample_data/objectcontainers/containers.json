@@ -1,0 +1,38 @@
+{
+  "containers": [
+    {
+      "name": "transactions",
+      "displayName": "Company Predictions",
+      "description": "Bucket containing all the company's transactions",
+      "parent": null,
+      "prefix": "/",
+      "dataModel": {
+        "isPartitioned": true,
+        "columns": [
+          {
+            "name": "transaction_id",
+            "dataType": "NUMERIC",
+            "dataTypeDisplay": "numeric",
+            "description": "The ID of the executed transaction. This column is the primary key for this table.",
+            "tags": [],
+            "constraint": "PRIMARY_KEY",
+            "ordinalPosition": 1
+          },
+          {
+            "name": "transaction_time",
+            "dataType": "NUMERIC",
+            "dataTypeDisplay": "numeric",
+            "description": "The ID of the product. This column is a foreign key reference to the product_id column in dim.product table.",
+            "tags": [],
+            "ordinalPosition": 2
+          }
+        ]
+      },
+      "numberOfObjects": "3",
+      "size": "4096",
+      "fileFormats": [
+        "parquet"
+      ]
+    }
+  ]
+}
