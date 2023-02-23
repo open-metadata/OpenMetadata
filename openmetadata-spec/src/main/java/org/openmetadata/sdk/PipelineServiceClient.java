@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
@@ -53,6 +54,25 @@ public abstract class PipelineServiceClient {
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
+
+  public static final Map<String, String> TYPE_TO_TASK =
+      Map.of(
+          PipelineType.METADATA.toString(),
+          "ingestion_task",
+          PipelineType.PROFILER.toString(),
+          "profiler_task",
+          PipelineType.LINEAGE.toString(),
+          "lineage_task",
+          PipelineType.DBT.toString(),
+          "dbt_task",
+          PipelineType.USAGE.toString(),
+          "usage_task",
+          PipelineType.TEST_SUITE.toString(),
+          "test_suite_task",
+          PipelineType.DATA_INSIGHT.toString(),
+          "data_insight_task",
+          PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
+          "elasticsearch_reindex_task");
 
   public static final String SERVER_VERSION;
 
