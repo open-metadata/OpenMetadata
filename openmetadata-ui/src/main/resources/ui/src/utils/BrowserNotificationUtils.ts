@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+export const isNotificationAPIAvailable = () => 'Notification' in window;
+
 export const shouldRequestPermission = () =>
+  isNotificationAPIAvailable() &&
   !['granted', 'denied'].includes(Notification.permission);
 
 export const hasNotificationPermission = () =>
-  Notification.permission === 'granted';
+  isNotificationAPIAvailable() && Notification.permission === 'granted';
