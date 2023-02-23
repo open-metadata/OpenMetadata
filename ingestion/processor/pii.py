@@ -112,7 +112,7 @@ class NERScanner:
                     continue
             for row in table_data.rows:
                 pii_tag_type = self.scan(str(row[idx]))
-                if pii_tag_type == f"{PII}.{TagType.SENSITIVE}":
+                if pii_tag_type == f"{PII}.{TagType.SENSITIVE.value}":
                     idx += 1
                     continue
             client.patch_column_tag(

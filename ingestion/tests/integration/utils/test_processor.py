@@ -15,7 +15,6 @@ Test Processor Class
 import datetime
 from unittest import TestCase
 
-from ingestion.processor.pii import NERScanner, PiiProcessor
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -55,6 +54,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from ingestion.processor.pii import NERScanner, PiiProcessor
 
 MOCK_TABLE: CreateTableRequest = CreateTableRequest(
     name="DataSet Input",
