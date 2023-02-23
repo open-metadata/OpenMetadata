@@ -44,8 +44,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -317,14 +319,25 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
-  private Integer getUserCount(UUID teamId) throws IOException {
-    List<EntityRelationshipRecord> userIds = findTo(teamId, TEAM, Relationship.HAS, Entity.USER);
-    int userCount = userIds.size();
+  private List<EntityRelationshipRecord> getUsersRelationshipRecords(UUID teamId) throws IOException {
+    List<EntityRelationshipRecord> userRecord = findTo(teamId, TEAM, Relationship.HAS, Entity.USER);
     List<EntityReference> children = getChildren(teamId);
     for (EntityReference child : children) {
-      userCount += getUserCount(child.getId());
+      userRecord.addAll(getUsersRelationshipRecords(child.getId()));
     }
-    return userCount;
+    return userRecord;
+  }
+
+  private Integer getUserCount(UUID teamId) throws IOException {
+    List<String> userIds = new ArrayList<>();
+    List<EntityRelationshipRecord> userRecordList = getUsersRelationshipRecords(teamId);
+    for (EntityRelationshipRecord userRecord : userRecordList) {
+      userIds.add(userRecord.getId().toString());
+    }
+    Set<String> userIdsSet = new HashSet<>(userIds);
+    userIds.clear();
+    userIds.addAll(userIdsSet);
+    return userIds.size();
   }
 
   private List<EntityReference> getOwns(Team team) throws IOException {

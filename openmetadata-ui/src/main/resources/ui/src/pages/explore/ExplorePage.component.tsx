@@ -19,6 +19,7 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
+import { SORT_ORDER } from 'enums/common.enum';
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -30,7 +31,6 @@ import AppState from '../../AppState';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
-  INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -57,7 +57,7 @@ const ExplorePage: FunctionComponent = () => {
 
   const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
 
-  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
+  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
