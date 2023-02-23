@@ -44,7 +44,11 @@ const ForgotPassword = () => {
         style={{ maxWidth: '430px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <SVGIcons
+              alt={t('label.open-metadata-logo')}
+              icon={Icons.LOGO}
+              width="152"
+            />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
             <Typography.Text className="text-xl font-medium text-grey-muted">
@@ -58,13 +62,15 @@ const ForgotPassword = () => {
             onFinish={handleSubmit}>
             <Col span={24}>
               <Form.Item
-                label="Email"
+                label={t('label.email')}
                 name="email"
                 rules={[
                   {
                     required: true,
                     type: 'email',
-                    message: 'Email is invalid',
+                    message: t('label.field-invalid', {
+                      field: t('label.email'),
+                    }),
                   },
                 ]}>
                 <Input type="email" />
@@ -85,7 +91,7 @@ const ForgotPassword = () => {
                 <div className="flex border-1 border-main rounded-4 p-sm success-alert">
                   <div className="m-r-xs">
                     <SVGIcons
-                      alt="success"
+                      alt={t('label.success')}
                       className="w-5"
                       data-testid="success-icon"
                       icon={Icons.SUCCESS_BADGE}

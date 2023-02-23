@@ -257,7 +257,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
-      <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact

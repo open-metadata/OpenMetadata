@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   basicAuthRegister,
@@ -30,7 +31,6 @@ import {
 import { ROUTES } from '../../../constants/constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
-import jsonData from '../../../jsons/en';
 import { getBase64EncodedString } from '../../../utils/CommonUtils';
 import localState from '../../../utils/LocalStorageUtils';
 import {
@@ -88,6 +88,7 @@ const BasicAuthProvider = ({
   onLoginSuccess,
   onLoginFailure,
 }: BasicAuthProps) => {
+  const { t } = useTranslation();
   const { setLoadingIndicator } = useAuthContext();
   const [loginError, setLoginError] = useState<string | null>(null);
   const history = useHistory();
@@ -126,10 +127,7 @@ const BasicAuthProvider = ({
         onLoginFailure();
       }
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unauthorized-user']
-      );
+      showErrorToast(err as AxiosError, t('server.unauthorized-user'));
     }
   };
 
@@ -141,12 +139,12 @@ const BasicAuthProvider = ({
         await basicAuthRegister(request);
 
         showSuccessToast(
-          jsonData['api-success-messages']['create-user-account']
+          t('server.create-entity-success', { entity: t('label.user-account') })
         );
-        showInfoToast(jsonData['label']['email-confirmation']);
+        showInfoToast(t('server.email-confirmation'));
         history.push(ROUTES.SIGNIN);
       } else {
-        return showErrorToast(jsonData['api-error-messages']['email-found']);
+        return showErrorToast(t('server.email-found'));
       }
     } catch (err) {
       if (
@@ -154,18 +152,12 @@ const BasicAuthProvider = ({
         HTTP_STATUS_CODE.FAILED_DEPENDENCY
       ) {
         showSuccessToast(
-          jsonData['api-success-messages']['create-user-account']
+          t('server.create-entity-success', { entity: t('label.user-account') })
         );
-        showErrorToast(
-          err as AxiosError,
-          jsonData['api-error-messages']['email-verification-err']
-        );
+        showErrorToast(err as AxiosError, t('server.email-verification-error'));
         history.push(ROUTES.SIGNIN);
       } else {
-        showErrorToast(
-          err as AxiosError,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
+        showErrorToast(err as AxiosError, t('server.unexpected-response'));
       }
     } finally {
       setLoadingIndicator(false);
@@ -181,11 +173,9 @@ const BasicAuthProvider = ({
         (err as AxiosError).response?.status ===
         HTTP_STATUS_CODE.FAILED_DEPENDENCY
       ) {
-        showErrorToast(
-          jsonData['api-error-messages']['forgot-password-email-err']
-        );
+        showErrorToast(t('server.forgot-password-email-error'));
       } else {
-        showErrorToast(jsonData['api-error-messages']['email-not-found']);
+        showErrorToast(t('server.email-not-found'));
       }
     } finally {
       setLoadingIndicator(false);
@@ -197,9 +187,7 @@ const BasicAuthProvider = ({
 
     const response = await resetPassword(payload);
     if (response) {
-      showSuccessToast(
-        jsonData['api-success-messages']['reset-password-success']
-      );
+      showSuccessToast(t('server.reset-password-success'));
     }
 
     setLoadingIndicator(false);

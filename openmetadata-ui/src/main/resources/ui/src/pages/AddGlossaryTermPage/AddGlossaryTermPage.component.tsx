@@ -21,6 +21,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addGlossaryTerm,
@@ -31,7 +32,6 @@ import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm'
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
-import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -39,6 +39,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AddGlossaryTermPage = () => {
   const { glossaryName, glossaryTermsFQN } =
     useParams<{ [key: string]: string }>();
+  const { t } = useTranslation();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -93,14 +94,18 @@ const AddGlossaryTermPage = () => {
           }, 500);
         } else {
           handleSaveFailure(
-            jsonData['api-error-messages']['add-glossary-term-error']
+            t('server.add-entity-error', {
+              entity: t('label.glossary-term'),
+            })
           );
         }
       })
       .catch((err: AxiosError) => {
         handleSaveFailure(
           err,
-          jsonData['api-error-messages']['add-glossary-term-error']
+          t('server.add-entity-error', {
+            entity: t('label.glossary-term'),
+          })
         );
       });
   };
@@ -113,7 +118,9 @@ const AddGlossaryTermPage = () => {
         } else {
           setGlossaryData(undefined);
           showErrorToast(
-            jsonData['api-error-messages']['fetch-glossary-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.glossary'),
+            })
           );
         }
       })
@@ -121,7 +128,9 @@ const AddGlossaryTermPage = () => {
         setGlossaryData(undefined);
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-glossary-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.glossary'),
+          })
         );
       })
       .finally(() => setIsLoading(false));
@@ -140,7 +149,9 @@ const AddGlossaryTermPage = () => {
         } else {
           setParentGlossaryData(undefined);
           showErrorToast(
-            jsonData['api-error-messages']['fetch-glossary-term-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.glossary-term'),
+            })
           );
         }
       })
@@ -148,7 +159,10 @@ const AddGlossaryTermPage = () => {
         setParentGlossaryData(undefined);
         const errMsg = get(err, 'response.data.message', '');
         showErrorToast(
-          errMsg || jsonData['api-error-messages']['fetch-glossary-term-error']
+          errMsg ||
+            t('server.entity-fetch-error', {
+              entity: t('label.glossary-term'),
+            })
         );
       });
   };
@@ -190,12 +204,12 @@ const AddGlossaryTermPage = () => {
 
     setSlashedBreadcrumb([
       {
-        name: 'Glossary',
+        name: t('label.glossary'),
         url: getGlossaryPath(),
       },
       ...breadcrumb,
       {
-        name: 'Add Glossary Term',
+        name: t('label.add-entity', { entity: t('label.glossary-term') }),
         url: '',
         activeTitle: true,
       },

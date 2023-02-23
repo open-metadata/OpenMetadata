@@ -267,7 +267,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return DataLakeTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
-            data_frame=ometa_to_dataframe(
+            df=ometa_to_dataframe(
                 service_connection_config.configSource,
                 get_connection(service_connection_config).client,
                 table_entity,

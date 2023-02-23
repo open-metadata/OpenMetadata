@@ -11,22 +11,18 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'antd';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import React, { FC, HTMLAttributes } from 'react';
-import { background, contentStyles } from '../TaskPage.styles';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface Props extends HTMLAttributes<HTMLDivElement> {}
 
 const TaskPageLayout: FC<Props> = ({ children }) => {
-  const { Content, Sider } = Layout;
-
   return (
-    <Layout style={{ ...background, height: '100vh' }}>
-      <Sider data-testid="left-sider" style={background} width={180} />
-      <Content style={contentStyles}>{children}</Content>
-      <Sider data-testid="right-sider" style={background} width={180} />
-    </Layout>
+    <PageContainerV1>
+      <PageLayoutV1 center>{children}</PageLayoutV1>
+    </PageContainerV1>
   );
 };
 
