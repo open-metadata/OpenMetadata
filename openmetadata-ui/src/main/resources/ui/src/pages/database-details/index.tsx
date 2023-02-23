@@ -174,7 +174,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const tabs = [
     {
-      name: 'Schemas',
+      name: t('label.schema-plural'),
       icon: {
         alt: 'schemas',
         name: 'schema-grey',
@@ -186,7 +186,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feeds',
+      name: t('label.activity-feed-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
