@@ -1,5 +1,5 @@
 {
-  "type": "objectstore_s3",
+  "type": "s3",
   "serviceName": "sample_data",
   "serviceConnection": {
     "config": {
