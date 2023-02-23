@@ -183,20 +183,26 @@ const NavBar = ({
         });
         path = prepareFeedLink(entityType as string, entityFQN as string);
     }
-    const notification = new Notification('Notification From OpenMetadata', {
-      body: body,
-      icon: Logo,
-    });
-    notification.onclick = () => {
-      const isChrome = window.navigator.userAgent.indexOf('Chrome');
-      // Applying logic to open a new window onclick of browser notification from chrome
-      // As it does not open the concerned tab by default.
-      if (isChrome > -1) {
-        window.open(path);
-      } else {
-        history.push(path);
-      }
-    };
+
+    if ('Notification' in window) {
+      const notification = new Notification('Notification From OpenMetadata', {
+        body: body,
+        icon: Logo,
+      });
+      notification.onclick = () => {
+        const isChrome = window.navigator.userAgent.indexOf('Chrome');
+        // Applying logic to open a new window onclick of browser notification from chrome
+        // As it does not open the concerned tab by default.
+        if (isChrome > -1) {
+          window.open(path);
+        } else {
+          history.push(path);
+        }
+      };
+    } else {
+      // Handle the case when the Notification API is not supported
+      console.error('Notifications are not supported in this browser.');
+    }
   };
 
   const governanceMenu = [
