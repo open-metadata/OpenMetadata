@@ -12,6 +12,7 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
+import { SORT_ORDER } from 'enums/common.enum';
 import { JsonTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -65,7 +66,7 @@ export interface ExploreProps {
   onChangeSortValue: (sortValue: string) => void;
 
   sortOrder: string;
-  onChangeSortOder: (sortOder: string) => void;
+  onChangeSortOder: (sortOder: SORT_ORDER) => void;
 
   showDeleted: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
