@@ -13,15 +13,11 @@
 
 import { findByText, queryByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
-import { fetchSandboxConfig, getAllEntityCount } from 'rest/miscAPI';
+import { getAllEntityCount } from 'rest/miscAPI';
 import MyDataPageComponent from './MyDataPage.component';
 
 const mockAuth = {
   isAuthDisabled: true,
-};
-
-const mockErrors = {
-  sandboxMode: 'SandboxModeError',
 };
 
 jest.mock('react', () => {
@@ -127,12 +123,6 @@ describe('Test MyData page component', () => {
   });
 
   it('Component should render in sandbox mode', async () => {
-    (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        sandboxModeEnabled: true,
-      })
-    );
-
     const { container } = render(<MyDataPageComponent />);
     const myData = await findByText(container, /MyData.component/i);
 
@@ -147,12 +137,6 @@ describe('Test MyData page component', () => {
 
   describe('render Sad Paths', () => {
     it('show error message on failing of config/sandbox api', async () => {
-      (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({
-          response: { data: { message: mockErrors.sandboxMode } },
-        })
-      );
-
       const { container } = render(<MyDataPageComponent />);
       const myData = await findByText(container, /MyData.component/i);
 
@@ -166,10 +150,6 @@ describe('Test MyData page component', () => {
     });
 
     it('show error message on no data from config/sandbox api', async () => {
-      (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({})
-      );
-
       const { container } = render(<MyDataPageComponent />);
       const myData = await findByText(container, /MyData.component/i);
 
