@@ -175,8 +175,12 @@ export const goToAdvanceSearch = () => {
     .should('exist')
     .and('be.visible');
 
-  // Click on advance search button
-  cy.get('[data-testid="advance-search-button"]').should('be.visible').click();
+  cy.wait('@explorePage').then(() => {
+    // Click on advance search button
+    cy.get('[data-testid="advance-search-button"]')
+      .should('be.visible')
+      .click();
+  });
 };
 
 export const checkmustPaths = (
@@ -328,8 +332,8 @@ export const addOwner = (searchTerm, ownerName) => {
 
 export const addTier = (tier) => {
   cy.get('[data-testid="appbar-item-explore"]')
-    .should('exist')
     .scrollIntoView()
+    .should('exist')
     .and('be.visible')
     .click();
 
@@ -358,6 +362,9 @@ export const addTier = (tier) => {
 };
 
 export const addTag = (tag) => {
+  cy.intercept('/api/v1/testCase?fields=testCaseResult*').as('testCaseResults');
+  cy.intercept('/api/v1/feed?entityLink=*').as('entityLink');
+
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
     .and('be.visible')
@@ -368,23 +375,29 @@ export const addTag = (tag) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
-    .eq(0)
-    .should('be.visible')
-    .scrollIntoView()
-    .click();
 
-  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
+  cy.wait(['@testCaseResults', '@entityLink']).then(() => {
+    cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+      .eq(0)
+      .should('be.visible')
+      .scrollIntoView()
+      .click();
 
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-  ).contains(tag);
-  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-  cy.get('[data-testid="entity-tags"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .contains(tag);
+    cy.get('[data-testid="tag-selector"]')
+      .should('be.visible')
+      .click()
+      .type(tag);
+
+    cy.get('.ant-select-item-option-content').should('be.visible').click();
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+    ).contains(tag);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(tag);
+  });
 };
 
 export const checkAddGroupWithOperator = (
@@ -451,7 +464,11 @@ export const checkAddGroupWithOperator = (
   cy.get('.ant-modal-header').click();
 
   // Select add-group button
-  cy.get('.action--ADD-GROUP').eq(0).should('be.visible').click();
+  cy.get('.action--ADD-GROUP')
+    .eq(0)
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
   // Select the AND/OR condition
   cy.get(
