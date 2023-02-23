@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -127,10 +128,10 @@ public abstract class PipelineServiceClient {
   public abstract HttpResponse<String> testConnection(TestServiceConnection testServiceConnection);
 
   /* Deploy a pipeline to the pipeline service */
-  public abstract String deployPipeline(IngestionPipeline ingestionPipeline);
+  public abstract String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Deploy run the pipeline at the pipeline service */
-  public abstract String runPipeline(IngestionPipeline ingestionPipeline);
+  public abstract String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Stop and delete a pipeline at the pipeline service */
   public abstract String deletePipeline(IngestionPipeline ingestionPipeline);

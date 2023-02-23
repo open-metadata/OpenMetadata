@@ -51,6 +51,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
@@ -74,6 +75,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
@@ -412,7 +414,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline);
-    pipelineServiceClient.deployPipeline(ingestionPipeline);
+    ServiceEntityInterface service =
+        Entity.getEntity(
+            ingestionPipeline.getService(), "", Include.NON_DELETED);
+    pipelineServiceClient.deployPipeline(ingestionPipeline, service);
     createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
   }
@@ -443,7 +448,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline);
-    pipelineServiceClient.runPipeline(ingestionPipeline);
+    ServiceEntityInterface service =
+        Entity.getEntity(
+            ingestionPipeline.getService(), "", Include.NON_DELETED);
+    pipelineServiceClient.runPipeline(ingestionPipeline, service);
     return addHref(uriInfo, ingestionPipeline);
   }
 

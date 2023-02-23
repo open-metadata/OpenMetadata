@@ -26,6 +26,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -101,7 +102,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline) {
+  public String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     HttpResponse<String> response;
     try {
       String deployEndpoint = "%s/%s/deploy";
@@ -137,7 +138,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String runPipeline(IngestionPipeline ingestionPipeline) {
+  public String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
