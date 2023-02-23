@@ -24,7 +24,7 @@ SET json = JSON_REPLACE(
     true
   )
 where de2.serviceType = 'Postgres'
-  and JSON_EXTRACT(json, '$.connection.config.database') is NULL
+  and JSON_EXTRACT(json, '$.connection.config.database') is NULL;
 
 
 drop table alert_entity;
