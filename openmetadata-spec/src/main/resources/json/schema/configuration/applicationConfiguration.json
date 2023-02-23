@@ -16,12 +16,20 @@
           "type": "string",
           "enum": ["openmetadata","filePath","url"]
         },
-        "logoAbsoluteFilePath": {
-          "description": "Absolute File Path For Logo Image",
+        "loginPageLogoAbsoluteFilePath": {
+          "description": "Login Page Absolute File Path For Logo Image",
           "type": "string"
         },
-        "logoUrlPath": {
-          "description": "Logo Image Url",
+        "loginPageLogoUrlPath": {
+          "description": "Login Page Logo Image Url",
+          "type": "string"
+        },
+        "navBarLogoAbsoluteFilePath": {
+          "description": "Navigation Bar Absolute File Path For Logo Image",
+          "type": "string"
+        },
+        "navBarLogoUrlPath": {
+          "description": "Navigation Bar Logo Image Url",
           "type": "string"
         }
       },
