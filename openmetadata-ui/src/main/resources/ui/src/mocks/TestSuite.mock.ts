@@ -622,3 +622,46 @@ export const MOCK_TEST_CASE = [
     deleted: false,
   },
 ] as TestCase[];
+
+export const MOCK_CHART_COLLECTION_DATA = {
+  data: [
+    {
+      name: '21/Feb 11:42',
+      timestamp: 1676959933,
+      rowCount: 10256,
+    },
+    {
+      name: '21/Feb 11:42',
+      timestamp: 1676959935,
+      rowCount: 13256,
+    },
+    {
+      name: '21/Feb 11:42',
+      timestamp: 1676959944,
+      rowCount: 14567,
+    },
+    {
+      name: '22/Feb 11:42',
+      timestamp: 1677046333,
+      rowCount: 13256,
+    },
+    {
+      name: '22/Feb 11:42',
+      timestamp: 1677046335,
+      rowCount: 14567,
+    },
+    {
+      name: '23/Feb 11:42',
+      timestamp: 1677132733,
+      rowCount: 14567,
+    },
+  ],
+  information: [
+    {
+      title: 'Row Count',
+      dataKey: 'rowCount',
+      color: '#008376',
+      latestValue: 14567,
+    },
+  ],
+};
