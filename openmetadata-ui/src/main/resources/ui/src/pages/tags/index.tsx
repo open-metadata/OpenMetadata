@@ -628,11 +628,8 @@ const TagsPage = () => {
               <div className="tw-mb-3">
                 <Tooltip
                   title={
-                    createClassificationPermission
-                      ? t('label.add-entity', {
-                          entity: t('label.classification'),
-                        })
-                      : t('message.no-permission-for-action')
+                    !createClassificationPermission &&
+                    t('message.no-permission-for-action')
                   }>
                   <Button
                     block
@@ -665,7 +662,7 @@ const TagsPage = () => {
                   key={category.name}
                   onClick={() => onClickClassifications(category)}>
                   <Typography.Paragraph
-                    className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
+                    className="ant-typography-ellipsis-custom tag-category label-category self-center"
                     data-testid="tag-name"
                     ellipsis={{ rows: 1, tooltip: true }}>
                     {getEntityName(category as unknown as EntityReference)}

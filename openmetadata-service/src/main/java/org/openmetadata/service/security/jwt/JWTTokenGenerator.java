@@ -88,11 +88,11 @@ public class JWTTokenGenerator {
     }
   }
 
-  public JWTAuthMechanism generateJWTToken(String userName, String email, JWTTokenExpiry expiry, boolean isBot) {
+  public JWTAuthMechanism generateJWTToken(String userName, String email, long expiryInSeconds, boolean isBot) {
     try {
-      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
+      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-      Date expires = getExpiryDate(expiry);
+      Date expires = getCustomExpiryDate(expiryInSeconds);
       String token =
           JWT.create()
               .withIssuer(issuer)
@@ -137,6 +137,11 @@ public class JWTTokenGenerator {
         expiryDate = null;
     }
     return expiryDate != null ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant()) : null;
+  }
+
+  public Date getCustomExpiryDate(long seconds) {
+    LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(seconds);
+    return Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant());
   }
 
   public JWKSResponse getJWKSResponse() {
