@@ -132,3 +132,8 @@ POSTGRES_SQL_STATEMENT_TEST = """
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
         JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
     """
+
+
+POSTGRES_GET_DB_NAMES = """
+select datname from pg_catalog.pg_database
+"""
