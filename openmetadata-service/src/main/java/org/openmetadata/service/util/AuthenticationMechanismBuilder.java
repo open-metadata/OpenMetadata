@@ -33,7 +33,7 @@ public class AuthenticationMechanismBuilder {
    * @param authMechanism the auth mechanism object
    * @return auth mechanism object with concrete classes
    */
-  public static AuthenticationMechanism build(AuthenticationMechanism authMechanism) {
+  public static AuthenticationMechanism addDefinedConfig(AuthenticationMechanism authMechanism) {
     if (authMechanism != null) {
       if (JWT.equals(authMechanism.getAuthType())) {
         authMechanism.setConfig(JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class));

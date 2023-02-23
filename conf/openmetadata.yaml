@@ -241,6 +241,9 @@ secretsManagerConfiguration:
     accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
+security:
+  alwaysMaskPasswords: false
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s

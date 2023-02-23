@@ -118,6 +118,9 @@ migrationConfiguration:
 secretsManagerConfiguration:
   secretsManager: in-memory
 
+security:
+  alwaysMaskPasswords: false
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 5s

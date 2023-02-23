@@ -91,6 +91,12 @@ public class DefaultAuthorizer implements Authorizer {
     return subjectContext.isAdmin() || subjectContext.isBot();
   }
 
+  @Override
+  public boolean maskPasswords(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return !subjectContext.isBot();
+  }
+
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");

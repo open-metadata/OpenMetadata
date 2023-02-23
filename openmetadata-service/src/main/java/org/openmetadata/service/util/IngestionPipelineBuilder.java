@@ -51,7 +51,7 @@ public class IngestionPipelineBuilder {
    * @param ingestionPipeline the ingestion pipeline object
    * @return ingestion pipeline with concrete classes
    */
-  public static IngestionPipeline build(IngestionPipeline ingestionPipeline) {
+  public static IngestionPipeline addDefinedConfig(IngestionPipeline ingestionPipeline) {
     if (DBT.equals(ingestionPipeline.getPipelineType())) {
       DbtPipeline dbtPipeline =
           JsonUtils.convertValue(ingestionPipeline.getSourceConfig().getConfig(), DbtPipeline.class);

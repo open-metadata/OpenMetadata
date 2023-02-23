@@ -35,6 +35,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
+import org.openmetadata.service.security.SecurityConfiguration;
 
 @Getter
 @Setter
@@ -85,6 +86,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
+
+  @JsonProperty("security")
+  private SecurityConfiguration securityConfiguration;
 
   @JsonProperty("eventMonitoringConfiguration")
   private EventMonitorConfiguration eventMonitorConfiguration;

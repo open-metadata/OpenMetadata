@@ -353,7 +353,7 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update)
       throws IOException {
     MetadataService service = getMetadataService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }

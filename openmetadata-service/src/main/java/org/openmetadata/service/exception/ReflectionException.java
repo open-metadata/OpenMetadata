@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.secrets;
+package org.openmetadata.service.exception;
 
-import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
-import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import javax.ws.rs.core.Response;
+import org.openmetadata.sdk.exception.WebServiceException;
 
-@Getter
-@Setter
-public class SecretsManagerConfiguration {
+public class ReflectionException extends WebServiceException {
 
-  public static final SecretsManagerProvider DEFAULT_SECRET_MANAGER = SecretsManagerProvider.NOOP;
-
-  private SecretsManagerProvider secretsManager;
-
-  private Map<String, String> parameters;
+  public ReflectionException(String message) {
+    super(Response.Status.INTERNAL_SERVER_ERROR, message);
+  }
 }
