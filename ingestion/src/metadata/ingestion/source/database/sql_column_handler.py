@@ -94,6 +94,7 @@ class SqlColumnHandlerMixin:
                 data_type_display = column["type"]
             if col_type == DataType.ARRAY.value and not arr_data_type:
                 arr_data_type = DataType.VARCHAR.value
+            data_type_display = data_type_display or column.get("display_type")
         return data_type_display, arr_data_type, parsed_string
 
     @staticmethod

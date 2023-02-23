@@ -268,10 +268,15 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
-slackChat:
-  slackUrl: ${SLACK_CHAT_SLACK_URL:-"https://slack.open-metadata.org/"}
+applicationConfig:
+  logoConfig:
+    logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , based on this specify either '*AbsoluteFilePath' or '*LogoUrlPath' }
+    loginPageLogoAbsoluteFilePath: ${OM_LOGO_LOGIN_LOCATION_FILE_PATH:-""} #login page logo , work in "filePath" mode
+    loginPageLogoUrlPath: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""} #login page logo , work in "url" mode
+    navBarLogoAbsoluteFilePath: ${OM_LOGO_NAVBAR_LOCATION_FILE_PATH:-""} #nav bar logo , work in "filePath" mode
+    navBarLogoUrlPath: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""} #nav bar logo , work in "url" mode
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
-login:
-  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}

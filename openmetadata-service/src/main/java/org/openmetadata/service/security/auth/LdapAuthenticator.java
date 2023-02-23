@@ -69,7 +69,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
-    this.loginConfiguration = config.getLoginSettings();
+    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
@@ -115,7 +115,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     User storedUser = lookUserInProvider(loginRequest.getEmail());
     validatePassword(storedUser, loginRequest.getPassword());
     User omUser = checkAndCreateUser(loginRequest.getEmail());
-    return getJwtResponse(omUser);
+    return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   private User checkAndCreateUser(String email) throws IOException {
