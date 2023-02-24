@@ -144,7 +144,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       operationId = "listAllDatabaseVersion",
       summary = "List database versions",
       tags = "databases",
-      description = "Get a list of all the versions of a database identified by `id`",
+      description = "Get a list of all the versions of a database identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -163,9 +163,9 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Path("/{id}")
   @Operation(
       operationId = "getDatabaseByID",
-      summary = "Get a database",
+      summary = "Get a database by Id",
       tags = "databases",
-      description = "Get a database by `id`.",
+      description = "Get a database by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -196,7 +196,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getDatabaseByFQN",
-      summary = "Get a database by name",
+      summary = "Get a database by fully qualified name",
       tags = "databases",
       description = "Get a database by `fullyQualifiedName`.",
       responses = {
@@ -233,7 +233,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the database",
       tags = "databases",
-      description = "Get a version of the database by given `id`",
+      description = "Get a version of the database by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -342,9 +342,9 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Path("/{id}")
   @Operation(
       operationId = "deleteDatabase",
-      summary = "Delete a database",
+      summary = "Delete a database by Id",
       tags = "databases",
-      description = "Delete a database by `id`. Database can only be deleted if it has no tables.",
+      description = "Delete a database by `Id`. Database can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
@@ -369,7 +369,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDatabaseByFQN",
-      summary = "Delete a database",
+      summary = "Delete a database by fully qualified name",
       tags = "databases",
       description = "Delete a database by `fullyQualifiedName`. Databases can only be deleted if it has no tables.",
       responses = {

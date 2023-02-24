@@ -26,7 +26,6 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -100,16 +99,16 @@ const UserListV1: FC<UserListV1Props> = ({
       if (data) {
         afterDeleteAction();
         showSuccessToast(
-          jsonData['api-success-messages']['user-restored-success']
+          t('message.entity-restored-success', { entity: t('label.user') })
         );
         setShowReactiveModal(false);
       } else {
-        throw jsonData['api-error-messages']['update-user-error'];
+        throw t('server.entity-updating-error', { entity: t('label.user') });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-user-error']
+        t('server.entity-updating-error', { entity: t('label.user') })
       );
     } finally {
       setIsLoading(false);
@@ -254,7 +253,9 @@ const UserListV1: FC<UserListV1Props> = ({
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder="Search for user..."
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user'),
+          })}...`}
           searchValue={searchTerm}
           typingInterval={500}
           onSearch={onSearch}

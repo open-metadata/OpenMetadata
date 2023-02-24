@@ -199,9 +199,9 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{id}")
   @Operation(
       operationId = "getWebAnalyticEventTypeById",
-      summary = "Get a web analytic event type by id",
+      summary = "Get a web analytic event type by Id",
       tags = "webAnalyticEvent",
-      description = "Get a web analytic event type by `ID`.",
+      description = "Get a web analytic event type by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -234,7 +234,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{id}")
   @Operation(
       operationId = "patchWebAnalyticEventTypeById",
-      summary = "Update a web analytic event type",
+      summary = "Update a web analytic event type by Id",
       tags = "webAnalyticEvent",
       description = "Update a web analytic event type.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -261,9 +261,9 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{id}")
   @Operation(
       operationId = "deleteWebAnalyticEventTypeById",
-      summary = "delete a web analytic event type",
+      summary = "Delete a web analytic event type by Id",
       tags = "webAnalyticEvent",
-      description = "Delete a web analytic event type by id.",
+      description = "Delete a web analytic event type by Id.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Web Analytic event for instance {id} is not found")
@@ -285,7 +285,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteWebAnalyticEventTypeByName",
-      summary = "delete a web analytic event type",
+      summary = "Delete a web analytic event type by fully qualified name",
       tags = "webAnalyticEvent",
       description = "Delete a web analytic event type by `fullyQualifiedName`.",
       responses = {
@@ -310,9 +310,9 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted WebAnalyticEvent.",
+      summary = "Restore a soft deleted web analytic event",
       tags = "webAnalyticEvent",
-      description = "Restore a soft deleted WebAnalyticEvent.",
+      description = "Restore a soft deleted web analytic event.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -368,7 +368,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       operationId = "listAllWebAnalyticEventTypeVersion",
       summary = "List web analytic event type versions",
       tags = "webAnalyticEvent",
-      description = "Get a list of all the version of a web analytic event type by `id`.",
+      description = "Get a list of all the version of a web analytic event type by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -390,7 +390,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       operationId = "getSpecificWebAnalyticEventTypeVersion",
       summary = "Get a version of the report definition",
       tags = "webAnalyticEvent",
-      description = "Get a version of the web analytic event type by `id`",
+      description = "Get a version of the web analytic event type by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -441,7 +441,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{name}/{timestamp}/collect")
   @Operation(
       operationId = "deleteWebAnalyticEventData",
-      summary = "delete web analytic event data before a timestamp",
+      summary = "Delete web analytic event data before a timestamp",
       tags = "webAnalyticEvent",
       description = "Delete web analytic event data before a timestamp.",
       responses = {@ApiResponse(responseCode = "200", description = "Successfully deleted Web Analytic Event Data")})

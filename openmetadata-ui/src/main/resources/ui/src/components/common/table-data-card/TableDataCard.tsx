@@ -24,6 +24,7 @@ import { ExtraInfo } from 'Models';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
+import i18n from 'utils/i18next/LocalUtil';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -99,7 +100,7 @@ const TableDataCard: FunctionComponent<Props> = ({
 
   const OtherDetails: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: i18n.t('label.owner'),
       value: getOwnerValue(owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -111,11 +112,11 @@ const TableDataCard: FunctionComponent<Props> = ({
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
-    { key: 'Tier', value: getTier() },
+    { key: i18n.t('label.tier'), value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
     OtherDetails.push({
-      key: 'Usage',
+      key: i18n.t('label.usage'),
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage, true)
@@ -124,7 +125,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   }
   if (tableType) {
     OtherDetails.push({
-      key: 'Type',
+      key: i18n.t('label.type'),
       value: tableType,
       showLabel: true,
     });

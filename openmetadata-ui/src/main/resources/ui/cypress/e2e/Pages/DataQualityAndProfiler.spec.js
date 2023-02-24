@@ -241,7 +241,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTest', 200);
     cy.get('.Toastify__toast-body')
-      .contains('Test case updated successfully!')
+      .contains('Test case updated successfully.')
       .should('be.visible')
       .wait(200);
     cy.get(`[data-testid="${testName}"]`).should('be.visible').click();
@@ -407,7 +407,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTest', 200);
     cy.get('.Toastify__toast-body')
-      .contains('Test case updated successfully!')
+      .contains('Test case updated successfully.')
       .should('be.visible')
       .wait(200);
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible').click();

@@ -210,10 +210,10 @@ const AddGlossaryTerm = ({
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
     const updatedTerms = relatedTerms.map(function (term) {
-      return term.fullyQualifiedName!;
+      return term.fullyQualifiedName || '';
     });
     const updatedReviewers = reviewer.map(function (r) {
-      return r.fullyQualifiedName!;
+      return r.fullyQualifiedName || '';
     });
 
     if (validateForm(updatedReference)) {
@@ -356,7 +356,10 @@ const AddGlossaryTerm = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
               <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
               <AddTags
                 data-testid="tags"
@@ -375,7 +378,7 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder="Enter comma seprated keywords"
+              placeholder={t('message.enter-comma-separated-keywords')}
               type="text"
               value={synonyms}
               onChange={handleValidation}
@@ -407,6 +410,7 @@ const AddGlossaryTerm = ({
                 </label>
                 <Button
                   className="tw-h-5 tw-px-2"
+                  data-testid="add-reference"
                   size="x-small"
                   theme="primary"
                   variant="contained"
@@ -477,6 +481,7 @@ const AddGlossaryTerm = ({
               </p>
               <Button
                 className="tw-h-5 tw-px-2"
+                data-testid="add-related-terms"
                 size="x-small"
                 theme="primary"
                 variant="contained"

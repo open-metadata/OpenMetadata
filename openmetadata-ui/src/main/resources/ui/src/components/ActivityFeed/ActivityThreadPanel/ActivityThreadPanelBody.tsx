@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Switch } from 'antd';
+import { Button, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -251,10 +251,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           />
         )}
         {isTaskType && (
-          <div className="tw-flex tw-justify-end tw-mr-2 tw-mt-2">
+          <Space
+            align="center"
+            className="w-full justify-end p-r-xs m-t-xs"
+            size={4}>
             <Switch size="small" onChange={onSwitchChange} />
             <span className="tw-ml-1">{t('label.closed-task-plural')}</span>
-          </div>
+          </Space>
         )}
 
         {!isUndefined(selectedThread) ? (

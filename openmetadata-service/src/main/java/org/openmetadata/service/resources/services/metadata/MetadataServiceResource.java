@@ -178,9 +178,9 @@ public class MetadataServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getMetadataServiceByID",
-      summary = "Get a Metadata Service",
+      summary = "Get a metadata service by Id",
       tags = "metadataService",
-      description = "Get a Metadata Service by `id`.",
+      description = "Get a Metadata Service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -213,7 +213,7 @@ public class MetadataServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "getMetadataServiceByFQN",
-      summary = "Get Metadata Service by name",
+      summary = "Get a metadata service by name",
       tags = "metadataService",
       description = "Get a Metadata Service by the service `name`.",
       responses = {
@@ -249,9 +249,9 @@ public class MetadataServiceResource
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllMetadataServiceVersion",
-      summary = "List Metadata Service versions",
+      summary = "List metadata service versions",
       tags = "metadataService",
-      description = "Get a list of all the versions of a Metadata Service identified by `id`",
+      description = "Get a list of all the versions of a Metadata Service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -285,9 +285,9 @@ public class MetadataServiceResource
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificMetadataServiceVersion",
-      summary = "Get a version of the Metadata Service",
+      summary = "Get a version of the metadata service",
       tags = "metadataService",
-      description = "Get a version of the Metadata Service by given `id`",
+      description = "Get a version of the Metadata Service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -315,7 +315,7 @@ public class MetadataServiceResource
   @POST
   @Operation(
       operationId = "createMetadataService",
-      summary = "Create Metadata Service",
+      summary = "Create metadata service",
       tags = "metadataService",
       description = "Create a new Metadata Service.",
       responses = {
@@ -338,7 +338,7 @@ public class MetadataServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateMetadataService",
-      summary = "Update Metadata Service",
+      summary = "Update metadata service",
       tags = "metadataService",
       description = "Update an existing or create a new Metadata Service.",
       responses = {
@@ -362,7 +362,7 @@ public class MetadataServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "patchMetadataService",
-      summary = "Update a Metadata service",
+      summary = "Update a metadata service",
       tags = "metadataService",
       description = "Update an existing Metadata service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -388,7 +388,7 @@ public class MetadataServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteMetadataService",
-      summary = "Delete a Metadata Service",
+      summary = "Delete a metadata service by Id",
       tags = "metadataService",
       description = "Delete a metadata services. If some service belong the service, it can't be " + "deleted.",
       responses = {
@@ -415,7 +415,7 @@ public class MetadataServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteMetadataServiceByName",
-      summary = "Delete a Metadata Service",
+      summary = "Delete a metadata service by name",
       tags = "metadataService",
       description =
           "Delete a metadata services by `name`. If some service belong the service, it can't be " + "deleted.",

@@ -71,6 +71,7 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #tests
 .coverage*
+!ingestion/.coveragerc
 /ingestion/coverage.xml
 /ingestion/ci-coverage.xml
 /ingestion/junit/*

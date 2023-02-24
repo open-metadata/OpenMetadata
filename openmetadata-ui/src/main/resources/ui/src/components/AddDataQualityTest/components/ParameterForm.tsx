@@ -15,6 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Switch } from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   TestCaseParameterDefinition,
   TestDataType,
@@ -24,11 +25,25 @@ import '../../TableProfiler/tableProfiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
+  const { t } = useTranslation();
+
   const prepareForm = (data: TestCaseParameterDefinition) => {
-    let Field = <Input placeholder={`Enter ${data.displayName}`} />;
+    let Field = (
+      <Input
+        placeholder={`${t('message.enter-a-field', {
+          field: data.displayName,
+        })}`}
+      />
+    );
     switch (data.dataType) {
       case TestDataType.String:
-        Field = <Input placeholder={`Enter ${data.displayName}`} />;
+        Field = (
+          <Input
+            placeholder={`${t('message.enter-a-field', {
+              field: data.displayName,
+            })}`}
+          />
+        );
 
         break;
       case TestDataType.Number:
@@ -39,7 +54,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
         Field = (
           <InputNumber
             className="tw-w-full"
-            placeholder={`Enter ${data.displayName}`}
+            placeholder={`${t('message.enter-a-field', {
+              field: data.displayName,
+            })}`}
           />
         );
 
@@ -51,7 +68,11 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
       case TestDataType.Array:
       case TestDataType.Set:
         Field = (
-          <Input placeholder={`Enter comma(,) separated ${data.displayName}`} />
+          <Input
+            placeholder={`${t('message.enter-comma-separated-field', {
+              field: data.displayName,
+            })}`}
+          />
         );
 
         return (
@@ -84,10 +105,16 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
                       rules={[
                         {
                           required: data.required,
-                          message: `${data.displayName} is required!`,
+                          message: `${t('message.field-text-is-required', {
+                            fieldText: data.displayName,
+                          })}`,
                         },
                       ]}>
-                      <Input placeholder={`Enter ${data.displayName}`} />
+                      <Input
+                        placeholder={`${t('message.enter-a-field', {
+                          field: data.displayName,
+                        })}`}
+                      />
                     </Form.Item>
                     <Button
                       icon={
@@ -116,7 +143,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
         rules={[
           {
             required: data.required,
-            message: `${data.displayName} is required!`,
+            message: `${t('message.field-text-is-required', {
+              fieldText: data.displayName,
+            })}`,
           },
         ]}
         tooltip={data.description}>

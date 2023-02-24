@@ -134,6 +134,12 @@ the changes.
 - **Consumer Config**: Confluent Kafka Consumer Config.
 - **Schema Registry Config**:Confluent Kafka Schema Registry Config.
 
+<Note>
+
+To ingest the topic schema `Schema Registry URL` must be passed
+
+</Note>
+
 ### 6. Configure Metadata Ingestion
 
 In this step we will configure the metadata ingestion pipeline,

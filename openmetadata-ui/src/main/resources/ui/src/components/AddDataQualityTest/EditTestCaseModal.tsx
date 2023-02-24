@@ -30,7 +30,6 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
-import jsonData from '../../jsons/en';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -149,7 +148,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         await updateTestCaseById(testCase.id || '', jsonPatch);
         onUpdate && onUpdate();
         showSuccessToast(
-          jsonData['api-success-messages']['update-test-case-success']
+          t('server.update-entity-success', { entity: t('label.test-case') })
         );
         onCancel();
         form.resetFields();

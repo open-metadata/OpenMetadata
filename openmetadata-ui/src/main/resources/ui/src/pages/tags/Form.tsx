@@ -101,7 +101,7 @@ const Form: React.FC<FormProp> = forwardRef(
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 data-testid="name"
                 name="name"
-                placeholder="Name"
+                placeholder={t('label.name')}
                 type="text"
                 value={data.name}
                 onChange={onChangeHandler}
