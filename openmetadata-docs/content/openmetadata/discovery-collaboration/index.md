@@ -10,13 +10,13 @@ OpenMetadata supports a rich set of features to enable Data Discovery & Collabor
 Search is at the front and center of OpenMetadata and is available in the top Menu bar across all 
 the different pages.
 
-<Image src="/images/openmetadata/discovery-collaboration/search-top-bar.png" alt="search-top-bar"/>
+<Image src="/images/openmetadata/discovery-collaboration/search-top-bar.webp" alt="search-top-bar"/>
 
 Users can also start searching by invoking the Keyboard shortcut <kbd>Ctrl</kbd> + <kbd>K</kbd> in Windows or <kbd>Cmd</kbd> + <kbd>K</kbd> in Mac OS. 
 The popup search dialog supports a full set of keyboard navigation to highlight and select the result by using 
 the arrow keys and <kbd>Return</kbd> button.
 
-<Image src="/images/openmetadata/discovery-collaboration/command-k-search.png" alt="command-k-search"/>
+<Image src="/images/openmetadata/discovery-collaboration/command-k-search.webp" alt="command-k-search"/>
 
 The Search APIs are backed by Elastic Search.
 
@@ -30,18 +30,18 @@ threads around all the various activities across any data asset. In release 0.11
 
 Across OpenMetadata, users can start conversations around description, column description or tags of an entity by clicking the chat icon as shown in the screen-shot below.
 
-<Image src="/images/openmetadata/discovery-collaboration/add-conversation.png" alt="add-conversation"/>
+<Image src="/images/openmetadata/discovery-collaboration/add-conversation.webp" alt="add-conversation"/>
 
-<Image src="/images/openmetadata/discovery-collaboration/conversation.png" alt="conversation"/>
+<Image src="/images/openmetadata/discovery-collaboration/conversation.webp" alt="conversation"/>
 
 Users can also reply or react with emojis for any Conversation by hovering over the conversation.
 
-<Image src="/images/openmetadata/discovery-collaboration/conversation-reply.png" alt="conversation-reply"/>
+<Image src="/images/openmetadata/discovery-collaboration/conversation-reply.webp" alt="conversation-reply"/>
 
 The Conversations also show up in the Activity Feed of every user for added convenience to be able to view and filter
 all the relevant conversations in a single place.
 
-<Image src="/images/openmetadata/discovery-collaboration/activity-feed.png" alt="activity-feed"/>
+<Image src="/images/openmetadata/discovery-collaboration/activity-feed.webp" alt="activity-feed"/>
 
 
 ## Tasks
@@ -58,13 +58,13 @@ Informing users about upcoming changes to the data is a big challenge. In most o
 
 With the Announcements feature, you can now inform your entire team of all the upcoming events and changes, such as deprecation, deletion, or schema changes. These announcements can be scheduled with a start date and an end date. All the users following your data are not only notified in Activity Feeds but a banner is also shown on the data asset details page for users to discover (or be reminded of) the announcement.
 
-<Image src="/images/openmetadata/discovery-collaboration/create-announcement.png" alt="create-announcement"/>
+<Image src="/images/openmetadata/discovery-collaboration/create-announcement.webp" alt="create-announcement"/>
 
-<Image src="/images/openmetadata/discovery-collaboration/announcement-banner.png" alt="announcement-banner"/>
+<Image src="/images/openmetadata/discovery-collaboration/announcement-banner.webp" alt="announcement-banner"/>
 
 Furthermore, users can react with emojis and reply to the announcements from both the Activity Feed in the homepage and from the data asset page. 
 
-<Image src="/images/openmetadata/discovery-collaboration/announcement-reply.png" alt="announcement-reply"/>
+<Image src="/images/openmetadata/discovery-collaboration/announcement-reply.webp" alt="announcement-reply"/>
 
 ## Glossaries
 

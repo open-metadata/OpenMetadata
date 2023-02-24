@@ -41,7 +41,7 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 7. **Connection Timeout**: Enter the desired connection timeout.
 8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
-![webhook-generic](https://user-images.githubusercontent.com/83201188/188461969-7f318869-4048-4625-a896-da88bce811c2.png)
+![webhook-generic](https://user-images.githubusercontent.com/83201188/188461969-7f318869-4048-4625-a896-da88bce811c2.webp)
 
 ## How to Set up Slack Type Webhook:
 1. **Name**: Add the name of the webhook
@@ -54,7 +54,7 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 7. **Connection Timeout**: Enter the desired connection timeout.
 8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
-![webhook-slack](https://user-images.githubusercontent.com/83201188/188462920-2028f777-af0e-4868-b4d2-01e45f520a25.png)
+![webhook-slack](https://user-images.githubusercontent.com/83201188/188462920-2028f777-af0e-4868-b4d2-01e45f520a25.webp)
 
 ## How to Set up Microsoft Teams Type Webhook:
 1. **Name**: Add the name of the webhook
@@ -67,7 +67,7 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 7. **Connection Timeout**: Enter the desired connection timeout.
 8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
-![webhook-msteams](https://user-images.githubusercontent.com/83201188/188462667-bd8443ce-a07d-4742-ae5d-42da3fc2d402.png)  
+![webhook-msteams](https://user-images.githubusercontent.com/83201188/188462667-bd8443ce-a07d-4742-ae5d-42da3fc2d402.webp)  
 
 ## How to Set up Google Chat Type Webhook:
 1. **Name**: Add the name of the webhook

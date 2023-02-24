@@ -137,10 +137,10 @@ pip3 install --upgrade "openmetadata-ingestion[<connectorname>]"
 
 Go to Settings -> Elasticsearch
 
-<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex"/>
+<Image src="/images/deployment/upgrade/elasticsearch-re-index.webp" alt="create-project" caption="Reindex"/>
 
 Click on reindex all
 
 in the dialog box choose Recreate Indexes to All
 
-<Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
+<Image src="/images/deployment/upgrade/reindex-ES.webp" alt="create-project" caption="Reindex"/>

@@ -1106,7 +1106,7 @@ export const mockDatasetData = {
     {
       name: 'bigquery',
       url: '/service/databaseServices/BigQuery/bigquery',
-      imgSrc: '/service-icon-query.png',
+      imgSrc: '/service-icon-query.webp',
     },
     {
       name: 'shopify',

@@ -23,64 +23,64 @@ Security requirements for your **production** environment:
 - Go to [Create Google Cloud Account](https://console.cloud.google.com/)
 - Click on `Create Project`
 
-<Image src="/images/deployment/security/google/create-account.png" alt="create-account" caption="Create a New Account"/>
+<Image src="/images/deployment/security/google/create-account.webp" alt="create-account" caption="Create a New Account"/>
 
 ### Step 2: Create a New Project
 Enter the **Project name**.
 Enter the parent organization or folder in the **Location box**. That resource will be the hierarchical parent of the new project.
 Click **Create**.
-<Image src="/images/deployment/security/google/create-project.png" alt="create-project" caption="Create a New Project"/>
+<Image src="/images/deployment/security/google/create-project.webp" alt="create-project" caption="Create a New Project"/>
 
 ### Step 3: How to Configure OAuth Consent
 - Select the project you created above and click on **APIs & Services** on the left-side panel.
-<Image src="/images/deployment/security/google/configure-oauth-consent.png" alt="configure-oauth-consent"/>
+<Image src="/images/deployment/security/google/configure-oauth-consent.webp" alt="configure-oauth-consent"/>
 
 - Click on the **OAuth Consent Screen** available on the left-hand side panel.
 - Choose User Type **Internal**.
-<Image src="/images/deployment/security/google/select-user-type.png" alt="select-user-type"/>
+<Image src="/images/deployment/security/google/select-user-type.webp" alt="select-user-type"/>
 
 - Once the user type is selected, provide the **App Information** and other details.
 - Click **Save and Continue**.
-<Image src="/images/deployment/security/google/save-app-information.png" alt="save-app-information"/>
+<Image src="/images/deployment/security/google/save-app-information.webp" alt="save-app-information"/>
 
 - On the **Scopes Screen**, Click on **ADD OR REMOVE SCOPES** and select the scopes.
 - Once done click on **Update**.
-<Image src="/images/deployment/security/google/scopes-screen.png" alt="scopes-screen"/>
+<Image src="/images/deployment/security/google/scopes-screen.webp" alt="scopes-screen"/>
 
 - Click **Save and Continue**.
-<Image src="/images/deployment/security/google/save-edit-app-registration.png" alt="save-edit-app-registration"/>
+<Image src="/images/deployment/security/google/save-edit-app-registration.webp" alt="save-edit-app-registration"/>
 
 - Click on **Back to Dashboard**.
-<Image src="/images/deployment/security/google/back-to-dashboard.png" alt="back-to-dashboard"/>
-<Image src="/images/deployment/security/google/back-to-dashboard-2.png" alt="back-to-dashboard"/>
+<Image src="/images/deployment/security/google/back-to-dashboard.webp" alt="back-to-dashboard"/>
+<Image src="/images/deployment/security/google/back-to-dashboard-2.webp" alt="back-to-dashboard"/>
 
 ### Step 4: Create Credentials for the Project
 - Once the OAuth Consent is configured, click on **Credentials** available on the left-hand side panel.
-<Image src="/images/deployment/security/google/create-credentials.png" alt="create-credentials"/>
+<Image src="/images/deployment/security/google/create-credentials.webp" alt="create-credentials"/>
 
 - Click on **Create Credentials**
 - Select **OAuth client ID** from the dropdown.
-<Image src="/images/deployment/security/google/select-outh-client-id.png" alt="cselect-outh-client-id"/>
+<Image src="/images/deployment/security/google/select-outh-client-id.webp" alt="cselect-outh-client-id"/>
 
 - Once selected, you will be asked to select the **Application type**. Select **Web application**.
-<Image src="/images/deployment/security/google/select-web-application.png" alt="select-web-application"/>
+<Image src="/images/deployment/security/google/select-web-application.webp" alt="select-web-application"/>
 
 After selecting the **Application Type**, name your project and give the authorized URIs:
   - domain/callback
   - domain/silent-callback
-<Image src="/images/deployment/security/google/authorized-urls.png" alt="authorized-urls"/>
+<Image src="/images/deployment/security/google/authorized-urls.webp" alt="authorized-urls"/>
 
 - Click **Create**
 - You will get the credentials
-<Image src="/images/deployment/security/google/get-the-credentials.png" alt="get-the-credentials"/>
+<Image src="/images/deployment/security/google/get-the-credentials.webp" alt="get-the-credentials"/>
 
 ### Step 5: Where to Find the Credentials
 - Go to **Credentials**
 - Click on the **pencil icon (Edit OAuth Client)** on the right side of the screen
-<Image src="/images/deployment/security/google/find-credentials.png" alt="find-credentials"/>
+<Image src="/images/deployment/security/google/find-credentials.webp" alt="find-credentials"/>
 
 - You will find the **Client ID** and **Client Secret** in the top right corner
-<Image src="/images/deployment/security/google/find-clientid-and-secret.png" alt="find-clientid-and-secret"/>
+<Image src="/images/deployment/security/google/find-clientid-and-secret.webp" alt="find-clientid-and-secret"/>
 
 ## Create Service Account (optional)
 
@@ -89,16 +89,16 @@ the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployme
 
 ### Step 1: Create Service-Account
 - Navigate to your project dashboard
-<Image src="/images/deployment/security/google/create-service-account.png" alt="create-service-account"/>
+<Image src="/images/deployment/security/google/create-service-account.webp" alt="create-service-account"/>
 
 - Click on **Credentials** on the left side panel
-<Image src="/images/deployment/security/google/click-credentials.png" alt="click-credentials"/>
+<Image src="/images/deployment/security/google/click-credentials.webp" alt="click-credentials"/>
 
 - Click on **Manage service accounts** available on the center-right side.
-<Image src="/images/deployment/security/google/manage-service-accounts.png" alt="manage-service-accounts"/>
+<Image src="/images/deployment/security/google/manage-service-accounts.webp" alt="manage-service-accounts"/>
 
 - Click on **CREATE SERVICE ACCOUNT**
-<Image src="/images/deployment/security/google/click-save-create-service-account.png" alt="click-save-create-service-account"/>
+<Image src="/images/deployment/security/google/click-save-create-service-account.webp" alt="click-save-create-service-account"/>
 
 - Provide the required service account details.
 
@@ -107,42 +107,42 @@ the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployme
 Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AND CONTINUE**. If you chose a different Service Account Id, add it to the default bots in OpenMetadata Server Configuration -> authorizerConfig section 
 
 </Note>
-<Image src="/images/deployment/security/google/required-account-details.png" alt="required-account-details"/>
+<Image src="/images/deployment/security/google/required-account-details.webp" alt="required-account-details"/>
 
 - Click on **Select a role** and give the **Owner** role. Then click **Continue**.
-<Image src="/images/deployment/security/google/select-owner-role.png" alt="select-owner-role"/>
+<Image src="/images/deployment/security/google/select-owner-role.webp" alt="select-owner-role"/>
 
 
 - Click **DONE**
-<Image src="/images/deployment/security/google/click-done-service-account.png" alt="click-done-service-account"/>
+<Image src="/images/deployment/security/google/click-done-service-account.webp" alt="click-done-service-account"/>
 
 
 - Now you should see your service account listed.
-<Image src="/images/deployment/security/google/listed-service-account.png" alt="listed-service-account"/>
+<Image src="/images/deployment/security/google/listed-service-account.webp" alt="listed-service-account"/>
 
 
 ### Step 2: Enable Domain-Wide Delegation
 
 - Click on the service account in the list.
-<Image src="/images/deployment/security/google/enable-domain-wide-delegation.png" alt="enable-domain-wide-delegation"/>
+<Image src="/images/deployment/security/google/enable-domain-wide-delegation.webp" alt="enable-domain-wide-delegation"/>
 
 
 - On the details page, click on **SHOW DOMAIN-WIDE DELEGATION**
-<Image src="/images/deployment/security/google/show-domain-wide-delegation.png" alt="show-domain-wide-delegation"/>
+<Image src="/images/deployment/security/google/show-domain-wide-delegation.webp" alt="show-domain-wide-delegation"/>
 
 - Enable Google Workspace Domain-wide Delegation
 - Click on **SAVE**
-<Image src="/images/deployment/security/google/enable-google-domain-wide-delegation.png" alt="enable-google-domain-wide-delegation"/>
+<Image src="/images/deployment/security/google/enable-google-domain-wide-delegation.webp" alt="enable-google-domain-wide-delegation"/>
 
 ### How to Generate Private-Key/Service-Account JSON File
 
 - Once done with the above steps, click on **KEYS** available next to the **DETAILS** tab.
 - Click on **ADD KEY** and select **Create a new key**.
-<Image src="/images/deployment/security/google/create-new-key.png" alt="create-new-key"/>
+<Image src="/images/deployment/security/google/create-new-key.webp" alt="create-new-key"/>
 
 - Select the format. The **JSON format** is recommended.
 - Next, click on **CREATE**
-<Image src="/images/deployment/security/google/save-json.png" alt="save-json"/>
+<Image src="/images/deployment/security/google/save-json.webp" alt="save-json"/>
 
 - The private-key/service-account JSON file will be downloaded.
 

@@ -20,7 +20,7 @@ The goal of this first section is to get familiar with the high-level concepts a
 
 Here we have the main actors of the solution:
 
-<Image src="/images/main-concepts/high-level-design/system-context.png" alt="system-context"/>
+<Image src="/images/main-concepts/high-level-design/system-context.webp" alt="system-context"/>
 
 - **API**: This is the main pillar of OpenMetadata. Here we have defined how we can interact with the metadata Entities. 
   It powers all the other components of the solution.
@@ -69,7 +69,7 @@ information, validating the Entities data and all the relationships.
 Having a Serving Layer (API) decoupled from the Storage Layer allows users and integrations to ask for what they need 
 in a simple language (REST), without the learning curve of diving into specific data models and design choices.
 
-<Image src="/images/main-concepts/high-level-design/api-container-diagram.png" alt="api-container-diagram"/>
+<Image src="/images/main-concepts/high-level-design/api-container-diagram.webp" alt="api-container-diagram"/>
 
 ## Entity Resource
 
@@ -168,7 +168,7 @@ like to use as an example to its implementation of Resource and Repository.
 We will start with the simplest scenario: Creating a new Entity via a `POST` call. This is a great first point to review
 as part of the logic and methods are reused during updates.
 
-<Image src="/images/main-concepts/high-level-design/create-new-entity.png" alt="create-new-entity"/>
+<Image src="/images/main-concepts/high-level-design/create-new-entity.webp" alt="create-new-entity"/>
 
 #### Create
 
@@ -209,7 +209,7 @@ which have been validated and stored accordingly. We can then return the created
 
 Let's now build on top of what we learned during the `POST` discussion, expanding the example to a `PUT` request handling.
 
-<Image src="/images/main-concepts/high-level-design/create-or-update.png" alt="create-update-entity"/>
+<Image src="/images/main-concepts/high-level-design/create-or-update.webp" alt="create-update-entity"/>
 
 The first steps are fairly similar:
 

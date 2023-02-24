@@ -32,7 +32,7 @@ Everything in OpenMetadata is centralized and managed via the API. Then, the Wor
 via the OpenMetadata server APIs. Morover, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
 can find [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json).
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png" alt="system context"/>
+<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.webp" alt="system context"/>
 
 Note how OpenMetadata here acts as a middleware, connecting the actions being triggered in the UI to external orchestration
 systems, which will be the ones managing the heavy lifting of getting a workflow created, scheduled and run. Out of the box,
@@ -68,7 +68,7 @@ After creating a new workflow from the UI or when editing it, there are two call
 - `POST` or `PUT` call to update the `Ingestion Pipeline Entity`,
 - `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png" alt="software system"/>
+<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.webp" alt="software system"/>
 
 ### Creating the Ingestion Pipeline
 
@@ -90,7 +90,7 @@ this up in future releases.
 
 </Note>
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png" alt="container create"/>
+<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.webp" alt="container create"/>
 
 Here, the process of creating an Ingestion Pipeline is then the same as with any other Entity.
 
@@ -104,7 +104,7 @@ The role of OpenMetadata here is just to pass the required communication to the 
 DAG. Basically we need a way to send a call to the Orchestrator that generated a DAG / Workflow object that will be run
 using the proper functions and classes from the Ingestion Framework.
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png" alt="deploy"/>
+<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.webp" alt="deploy"/>
 
 Any Orchestration system that is capable to **DYNAMICALLY** create a workflow based on a given input (that can be obtained
 from the `IngestionPipeline` Entity information) is a potentially valid candidate to be used as a Pipeline Service.

@@ -13,10 +13,10 @@
 
 /* eslint-disable max-len */
 
-import entitySpclCharImg from '../../../assets/img/EntitySplChar.png';
-import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
-import ingestionFramework from '../../../assets/img/IngestionFramework.png';
-import tagCategoryImg from '../../../assets/img/TagCategory.png';
+import entitySpclCharImg from '../../../assets/img/EntitySplChar.webp';
+import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.webp';
+import ingestionFramework from '../../../assets/img/IngestionFramework.webp';
+import tagCategoryImg from '../../../assets/img/TagCategory.webp';
 
 export const LATEST_VERSION_ID = 12;
 

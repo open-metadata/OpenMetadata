@@ -11,13 +11,13 @@ The above error might have occurred due to the pvc volumes not setup or pvc volu
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/deployment/troubleshoot/dag-log.png"
+  src="/images/deployment/troubleshoot/dag-log.webp"
   alt="dag-log"
 />
 </div>
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/deployment/troubleshoot/permission-pod-events.png"
+  src="/images/deployment/troubleshoot/permission-pod-events.webp"
   alt="permission-pod-events"
   caption="Permission pod events"
 />

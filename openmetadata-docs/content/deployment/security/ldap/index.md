@@ -72,7 +72,7 @@ Mandatory LDAP Specific Configuration:
 
 Please see the below image for a sample LDAP Configuration in ApacheDS.
 
-<Image src="/images/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap"/>
+<Image src="/images/deployment/security/ldap/Ldap_ScreenShot1.webp" alt="apache-ldap"/>
 
 Advanced LDAP Specific Configuration (Optional):
 

@@ -40,7 +40,7 @@ const Reaction: FC<ReactionProps> = ({
   onReactionSelect,
   onHide,
 }) => {
-  const { image } = useImage(`emojis/${reaction.reaction}.png`);
+  const { image } = useImage(`emojis/${reaction.reaction}.webp`);
 
   const handleOnClick = (e: React.MouseEvent) => {
     e.stopPropagation();

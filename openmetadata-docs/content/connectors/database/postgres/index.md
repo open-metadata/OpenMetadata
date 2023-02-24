@@ -100,7 +100,7 @@ metadata, usage, and profiler workflows.
 To visit the Services page, select Services from the Settings menu.
 
 <Image
-src="/images/openmetadata/connectors/visit-services.png"
+src="/images/openmetadata/connectors/visit-services.webp"
 alt="Visit Services Page"
 caption="Find Services under the Settings menu"
 />
@@ -110,7 +110,7 @@ caption="Find Services under the Settings menu"
 Click on the Add New Service button to start the Service creation.
 
 <Image
-src="/images/openmetadata/connectors/create-service.png"
+src="/images/openmetadata/connectors/create-service.webp"
 alt="Create a new service"
 caption="Add a new Service from the Services page"
 />
@@ -121,7 +121,7 @@ Select PostgreSQL as the service type and click Next.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/postgres/select-service.png"
+  src="/images/openmetadata/connectors/postgres/select-service.webp"
   alt="Select Service"
   caption="Select your service from the list"
 />
@@ -141,7 +141,7 @@ from.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/postgres/add-new-service.png"
+  src="/images/openmetadata/connectors/postgres/add-new-service.webp"
   alt="Add New Service"
   caption="Provide a Name and description for your Service"
 />
@@ -157,7 +157,7 @@ desired.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/postgres/service-connection.png"
+  src="/images/openmetadata/connectors/postgres/service-connection.webp"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />
@@ -169,7 +169,7 @@ the changes.
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/test-connection.png"
+  src="/images/openmetadata/connectors/test-connection.webp"
   alt="Test Connection"
   caption="Test the connection and save the Service"
 />
@@ -191,7 +191,7 @@ In this step we will configure the metadata ingestion pipeline,
 Please follow the instructions below
 
 <Image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-database.png"
+src="/images/openmetadata/connectors/configure-metadata-ingestion-database.webp"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page"
 />
@@ -227,7 +227,7 @@ If something doesn't look right, click the Back button to return to the
 appropriate step and change the settings as needed.
 
 <Image
-src="/images/openmetadata/connectors/schedule.png"
+src="/images/openmetadata/connectors/schedule.webp"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy"
 />
@@ -241,7 +241,7 @@ Once the workflow has been successfully deployed, you can view the
 Ingestion Pipeline running from the Service Page.
 
 <Image
-src="/images/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/openmetadata/connectors/view-ingestion-pipeline.webp"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page"
 />
@@ -255,7 +255,7 @@ present in the Ingestion container.
 You can then edit the Ingestion Pipeline and Deploy it again.
 
 <Image
-src="/images/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/openmetadata/connectors/workflow-deployment-error.webp"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline"
 />

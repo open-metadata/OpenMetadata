@@ -12,11 +12,11 @@
  */
 
 import { CarouselProps } from 'antd';
-import lineage from '../assets/img/lineage.png';
-import screenShot2 from '../assets/img/screenShot1.png';
-import screenShot1 from '../assets/img/screenShot2.png';
-import screenShot3 from '../assets/img/screenShot3.png';
-import screenShot4 from '../assets/img/screenShot4.png';
+import lineage from '../assets/img/lineage.webp';
+import screenShot2 from '../assets/img/screenShot1.webp';
+import screenShot1 from '../assets/img/screenShot2.webp';
+import screenShot3 from '../assets/img/screenShot3.webp';
+import screenShot4 from '../assets/img/screenShot4.webp';
 
 export const LOGIN_SLIDE = [
   {

@@ -17,6 +17,6 @@ In OpenMetadata we have hierarchal team structure with `teamType` that can be `O
 
 - `Group` is the last level of the team in the hierarchy. It can have only `Users` as children and not any other teams. It can have all the team types as parents. ** It can have multiple parents **.
 
-<Image src="/images/how-to-guides/teams-and-users/teams-structure.png" alt="team-structure"/>
+<Image src="/images/how-to-guides/teams-and-users/teams-structure.webp" alt="team-structure"/>
 <br/>
 <br/>

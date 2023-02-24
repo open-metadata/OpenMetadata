@@ -7,11 +7,11 @@ To change the Logo for the application, we need to update logo at two locations.
 
 1. Login Page
 
-<Image src="/images/how-to-guides/custom-logo/login-Page-Logo.png" alt="loginPage-image"/>
+<Image src="/images/how-to-guides/custom-logo/login-Page-Logo.webp" alt="loginPage-image"/>
 
 2. Navigation Bar
 
-<Image src="/images/how-to-guides/custom-logo/nav-Bar-Logo.png" alt="navBar-image"/>
+<Image src="/images/how-to-guides/custom-logo/nav-Bar-Logo.webp" alt="navBar-image"/>
 
 # How to add a custom logo for the application
 

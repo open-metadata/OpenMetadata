@@ -264,7 +264,7 @@ settings:
       extensions:
         - '.js'
         - '.jsx'
-        - '.png'
+        - '.webp'
         - '.svg'
   react:
     version: detect

@@ -51,6 +51,6 @@ src/generated/
 
 # Assets
 *.svg
-*.png
+*.webp
 *.ico
 *.ttf

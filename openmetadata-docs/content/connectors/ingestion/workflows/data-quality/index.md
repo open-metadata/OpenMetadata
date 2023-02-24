@@ -54,7 +54,7 @@ Test Cases specify a Test Definition. It will define what condition a test must 
 ### Step 1: Creating a Test Suite
 From your table service click on the `profiler` tab. From there you will be able to create table tests by clicking on the purple background `Add Test` top button or column tests by clicking on the white background `Add Test` button.
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/profiler-tab-view.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/profiler-tab-view.webp"}
     alt="Write your first test"
     caption="Write your first test"
 />  
@@ -62,7 +62,7 @@ From your table service click on the `profiler` tab. From there you will be able
 On the next page you will be able to either select an existing Test Suite or Create a new one. If you select an existing one your Test Case will automatically be added to the Test Suite
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-page.webp"}
     alt="Create test suite"
     caption="Create test suite"
 />  
@@ -73,7 +73,7 @@ On the next page, you will create a Test Case. You will need to select a Test De
 **Note:** Test Case name needs to be unique across the whole platform. A warning message will show if your Test Case name is not unique.
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/test-case-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-case-page.webp"}
     alt="Create test case"
     caption="Create test case"
 /> 
@@ -84,7 +84,7 @@ If you have created a new test suite you will see a purple background `Add Inges
 After clicking `Add Ingestion` you will be able to select an execution schedule for your Test Suite (note that you can edit this later). Once you have selected the desired scheduling time, click submit and you are all set.
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/ingestion-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/ingestion-page.webp"}
     alt="Create ingestion workflow"
     caption="Create ingestion workflow"
 /> 
@@ -233,21 +233,21 @@ configurations specified above.
 ### From the Test Suite View
 From the home page click on the Test Suite menu in the left pannel.
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-home-page.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-home-page.webp"}
     alt="Test suite home page"
     caption="Test suite home page"
 /> 
 
 This will bring you to the Test Suite page where you can select a specific Test Suite.
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-landing.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-landing.webp"}
     alt="Test suite landing page"
     caption="Test suite landing page"
 />
 
 From there you can select a Test Suite and visualize the results associated with this specific Test Suite.
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-results.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/test-suite-results.webp"}
     alt="Test suite results page"
     caption="Test suite results page"
 />
@@ -257,7 +257,7 @@ Navigate to your table and click on the `profiler` tab. From there you'll be abl
 #### Table Level Test Results
 In the top pannel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/table-results-entity.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/table-results-entity.webp"}
     alt="Test suite results table"
     caption="Test suite results table"
 />
@@ -265,7 +265,7 @@ In the top pannel, click on the white background `Data Quality` button. This wil
 #### Column Level Test Results
 On the profiler page, click on a specific column name. This will bring you to a new page where you can click the white background `Quality Test` button to see all the tests results related to your column.
 <Image
-    src={"/images/openmetadata/ingestion/workflows/data-quality/colum-level-test-results.png"}
+    src={"/images/openmetadata/ingestion/workflows/data-quality/colum-level-test-results.webp"}
     alt="Test suite results table"
     caption="Test suite results table"
 />

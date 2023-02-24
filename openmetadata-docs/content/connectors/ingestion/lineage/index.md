@@ -51,7 +51,7 @@ table written down in SQL. To close this gap, we run a query against ElasticSear
 Once we have identified all the ingredients in OpenMetadata as Entities, we can run the Lineage API to add the
 relationship between the nodes.
 
-![query-parser](/images/openmetadata/ingestion/lineage/query-parser.png)
+![query-parser](/images/openmetadata/ingestion/lineage/query-parser.webp)
 
 What we just described is the core process of identifying and ingesting lineage, and it will be reused (or partially reused)
 for the rest of the options as well.
@@ -136,7 +136,7 @@ the data feeding the Dashboards and Charts.
 When ingesting the Dashboards metadata, the workflow will pick up the origin tables (or database, in the case of 
 PowerBI), and prepare the lineage information.
 
-<Image src="/images/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.png" alt="Dashboard Lineage"/>
+<Image src="/images/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.webp" alt="Dashboard Lineage"/>
 
 ## Pipeline Services
 

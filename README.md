@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./openmetadata-docs/images/readme/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
+    <img src="./openmetadata-docs/images/readme/openmetadata-banner.webp" align="center" alt="OpenMetadata" height="350"/>
   <hr />
 
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
@@ -12,19 +12,18 @@
 [![openmetadata](https://img.shields.io/endpoint?url=https://cloud.cypress.io/badge/simple/a9yxci/main&style=social&logo=cypress)](https://cloud.cypress.io/projects/a9yxci/runs)
 </div>
 
-- [What is OpenMetadata?](#what-is-openmetadata )
-- [Features](#features)
-- [Try our Sandbox](#try-our-sandbox)
-- [Install & Run](#install-and-run-openmetadata)
-- [Roadmap](https://docs.open-metadata.org/overview/roadmap)
-- [Documentation and support](#documentation-and-support)
-- [Contributors](#contributors)
-- [License](#license)
+- [What is OpenMetadata?](#what-is-openmetadata)
+  - [Features](#features)
+  - [Try our Sandbox](#try-our-sandbox)
+  - [Install and Run OpenMetadata](#install-and-run-openmetadata)
+  - [Documentation and Support](#documentation-and-support)
+  - [Contributors](#contributors)
+  - [License](#license)
 
 # What is OpenMetadata?
 [OpenMetadata](https://open-metadata.org/) is an all-in-one platform for data discovery, data lineage, data quality, observability, governance, and team collaboration. It is one of the fastest growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
 
-<img src="./openmetadata-docs/images/readme/components.png" width="800">
+<img src="./openmetadata-docs/images/readme/components.webp" width="800">
 
 OpenMetadata includes the following:
 - **Metadata Schemas** - Defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard. Also supports extensibility of entities and types with custom properties.
@@ -67,7 +66,7 @@ Check out for more [here](https://docs.open-metadata.org/overview/features) ✨
 
 Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
-[<img src="./openmetadata-docs/images/readme/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
+[<img src="./openmetadata-docs/images/readme/demo-button.webp" height="50"/>](http://sandbox.open-metadata.org)
 
 
 ## Install and Run OpenMetadata

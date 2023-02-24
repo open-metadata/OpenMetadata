@@ -60,7 +60,7 @@ const mockEntityInfoProp = {
     {
       name: 'bigquery_gcp',
       url: '/service/databaseServices/bigquery_gcp',
-      imgSrc: '/service-icon-query.png',
+      imgSrc: '/service-icon-query.webp',
     },
     {
       name: 'shopify',

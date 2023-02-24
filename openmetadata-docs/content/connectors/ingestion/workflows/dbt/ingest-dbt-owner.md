@@ -52,10 +52,10 @@ While linking the owner from `manifest.json` or `catalog.json` files to the enti
 
 #### Following steps shows adding a User to OpenMetadata:
 1. Click on the `Users` section from homepage
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page.png" alt="click-users-page" caption="Click Users page"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page.webp" alt="click-users-page" caption="Click Users page"/>
 
 2. Click on the `Add User` button
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-add-user.png" alt="click-add-user" caption="Click Add User"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-add-user.webp" alt="click-add-user" caption="Click Add User"/>
 
 3. Enter the details as shown for the user
 
@@ -65,14 +65,14 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 
 </Note>
 
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.png" alt="add-user-dbt" caption="Add User"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.webp" alt="add-user-dbt" caption="Add User"/>
 
 #### Following steps shows adding a Team to OpenMetadata:
 1. Click on the `Teams` section from homepage
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page.png" alt="click-teams-page" caption="Click Teams page"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page.webp" alt="click-teams-page" caption="Click Teams page"/>
 
 2. Click on the `Add Team` button
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-add-team.png" alt="click-add-team" caption="Click Add Team"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/click-add-team.webp" alt="click-add-team" caption="Click Add Team"/>
 
 3. Enter the details as shown for the team
 
@@ -82,13 +82,13 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 
 </Note>
 
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.png" alt="add-team-dbt" caption="Add Team"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.webp" alt="add-team-dbt" caption="Add Team"/>
 
 ## Linking the Owner to the table
 
 After runing the ingestion workflow with dbt you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
 
-<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png" alt="linked-user" caption="Linked User"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.webp" alt="linked-user" caption="Linked User"/>
 
 <Note>
 

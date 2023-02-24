@@ -13,14 +13,14 @@
 
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
-import IconAuth0 from '../assets/img/icon-auth0.png';
-import IconCognito from '../assets/img/icon-aws-cognito.png';
-import IconAzure from '../assets/img/icon-azure.png';
-import IconGithub from '../assets/img/icon-github.png';
-import IconGoogle from '../assets/img/icon-google.png';
-import IconOkta from '../assets/img/icon-okta.png';
+import IconAuth0 from '../assets/img/icon-auth0.webp';
+import IconCognito from '../assets/img/icon-aws-cognito.webp';
+import IconAzure from '../assets/img/icon-azure.webp';
+import IconGithub from '../assets/img/icon-github.webp';
+import IconGoogle from '../assets/img/icon-google.webp';
+import IconOkta from '../assets/img/icon-okta.webp';
 import IconNoDataFoundPlaceHolder from '../assets/img/no-data-placeholder.svg';
-import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconWelcomePopper from '../assets/img/welcome-popper-icon.webp';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';

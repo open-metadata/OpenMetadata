@@ -90,7 +90,7 @@ If everything goes as planned, all the data would be displayed using the paramet
 like:
 
 <p/>
-<Image src="/images/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store/ssm-parameter-store-console.png" alt="ssm-parameter-store-console"/>
+<Image src="/images/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store/ssm-parameter-store-console.webp" alt="ssm-parameter-store-console"/>
 <p/>
 
 **Note:** If we want to change the starting path for our secrets names from `openmetadata` to a different one, we have 

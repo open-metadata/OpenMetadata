@@ -265,11 +265,11 @@ to clean up the whole environment and pick up the new ingredients from a fresh s
 
 </Tip>
 
-<Image src="/images/quickstart/docker/openmetadata.png" alt="UI"/>
+<Image src="/images/quickstart/docker/openmetadata.webp" alt="UI"/>
 
 ## Go on a tour and start discovering the power of metadata & collaboration
 
-<Image src="/images/quickstart/tour.png" alt="tour"/>
+<Image src="/images/quickstart/tour.webp" alt="tour"/>
 
 ## Log in to Airflow
 

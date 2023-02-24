@@ -36,7 +36,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the Lineage tab from the Table Entity Page.
 
-<Image src="/images/openmetadata/ingestion/workflows/lineage/table-entity-page.png" alt="table-entity-page" caption="Table Entity Page"/>
+<Image src="/images/openmetadata/ingestion/workflows/lineage/table-entity-page.webp" alt="table-entity-page" caption="Table Entity Page"/>
 
 We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Lineage Ingestion will be in charge of obtaining this data.
 
@@ -44,13 +44,13 @@ We can create a workflow that will obtain the query log and table creation infor
 
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Lineage Ingestion.
 
-<Image src="/images/openmetadata/ingestion/workflows/lineage/add-ingestion.png" alt="add-ingestion" caption="Add Ingestion"/>
+<Image src="/images/openmetadata/ingestion/workflows/lineage/add-ingestion.webp" alt="add-ingestion" caption="Add Ingestion"/>
 
 ### 2. Configure the Lineage Ingestion
 
 Here you can enter the Lineage Ingestion details:
 
-<Image src="/images/openmetadata/ingestion/workflows/lineage/configure-lineage-ingestion.png" alt="configure-lineage-ingestion" caption="Configure the Lineage Ingestion"/>
+<Image src="/images/openmetadata/ingestion/workflows/lineage/configure-lineage-ingestion.webp" alt="configure-lineage-ingestion" caption="Configure the Lineage Ingestion"/>
 
 <Collapse title="Lineage Options">
 
@@ -66,4 +66,4 @@ Set the limit for the query log results to be run at a time.
 ### 3. Schedule and Deploy
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
 
-<Image src="/images/openmetadata/ingestion/workflows/lineage/scheule-and-deploy.png" alt="schedule-and-deploy" caption="View Service Ingestion pipelines"/>
+<Image src="/images/openmetadata/ingestion/workflows/lineage/scheule-and-deploy.webp" alt="schedule-and-deploy" caption="View Service Ingestion pipelines"/>

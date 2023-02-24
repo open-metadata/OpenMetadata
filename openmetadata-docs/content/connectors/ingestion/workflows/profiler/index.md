@@ -13,13 +13,13 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary-table.png"}
+    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary-table.webp"}
     alt="Table profile summary page"
     caption="Table profile summary page"
 />
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary-colomn.png"}
+    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary-colomn.webp"}
     alt="Column profile summary page"
     caption="Column profile summary page"
 />
@@ -29,7 +29,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Profiler Ingestion.
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/add-profiler-workflow.png"}
+    src={"/images/openmetadata/ingestion/workflows/profiler/add-profiler-workflow.webp"}
     alt="Add a profiler service"
     caption="Add a profiler service"
 />
@@ -38,7 +38,7 @@ From the Service Page, go to the Ingestions tab to add a new ingestion and click
 Here you can enter the Profiler Ingestion details.
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/configure-profiler-workflow.png"}
+    src={"/images/openmetadata/ingestion/workflows/profiler/configure-profiler-workflow.webp"}
     alt="Set profiler configuration"
     caption="Set profiler configuration"
 />
@@ -79,13 +79,13 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
 Once you have created your profiler you can adjust some behavior at the table level by going to the table and clicking on the profiler tab 
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/accessing-table-profile-settings.png"}
+    src={"/images/openmetadata/ingestion/workflows/profiler/accessing-table-profile-settings.webp"}
     alt="table profile settings"
     caption="table profile settings"
 />
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/table-profile-summary-view.png"}
+    src={"/images/openmetadata/ingestion/workflows/profiler/table-profile-summary-view.webp"}
     alt="table profile settings"
     caption="table profile settings"
 />

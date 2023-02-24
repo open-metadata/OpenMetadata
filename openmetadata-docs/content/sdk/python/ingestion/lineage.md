@@ -217,7 +217,7 @@ If the node were to have other edges already, they would be showing up here.
 
 If we validate the Lineage from the UI, we will see:
 
-<Image src="/images/sdk/python/ingestion/lineage/simple-lineage.png" alt="simple-lineage"/>
+<Image src="/images/sdk/python/ingestion/lineage/simple-lineage.webp" alt="simple-lineage"/>
 
 
 ### 7. Fetching Lineage
@@ -344,7 +344,7 @@ created_lineage = metadata.add_lineage(data=add_lineage_request)
 
 This information will now be reflected in the UI as well:
 
-<Image src="/images/sdk/python/ingestion/lineage/lineage-col.png" alt="lineage-col"/>
+<Image src="/images/sdk/python/ingestion/lineage/lineage-col.webp" alt="lineage-col"/>
 
 ### Adding a Pipeline Reference
 

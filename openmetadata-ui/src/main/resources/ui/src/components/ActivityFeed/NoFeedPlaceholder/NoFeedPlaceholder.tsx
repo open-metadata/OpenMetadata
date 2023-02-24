@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FC, HTMLAttributes } from 'react';
-import EditorImg from '../../../assets/img/feedEditor.png';
+import EditorImg from '../../../assets/img/feedEditor.webp';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface NoFeedPlaceholderProp extends HTMLAttributes<HTMLDivElement> {

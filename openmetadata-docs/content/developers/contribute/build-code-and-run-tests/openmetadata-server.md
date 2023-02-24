@@ -76,32 +76,32 @@ Add a new Run/Debug configuration like the below screenshot.
 2. Click on "Edit Configurations"
 3. Click + sign and Select Application and make sure your config looks similar to the below image
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-runtime-config.png" alt="Intellij Runtime Configuration" caption="Intellij Runtime Configuration"/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-runtime-config.webp" alt="Intellij Runtime Configuration" caption="Intellij Runtime Configuration"/>
 
 ## Add missing dependency
 Right-click on openmetadata-service
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-openmetadata-service.png" alt="Open project" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-openmetadata-service.webp" alt="Open project" caption=" "/>
 
 Click on "Open Module Settings"
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-open-settings.png" alt="Open Module Settings" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-open-settings.webp" alt="Open Module Settings" caption=" "/>
 
 Go to "Dependencies"
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-dependencies.png" alt="Go to dependencies" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-dependencies.webp" alt="Go to dependencies" caption=" "/>
 
 Click “+” at the bottom of the dialog box and click "Add"
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-add-dependencies.png" alt="Add dependency" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-add-dependencies.webp" alt="Add dependency" caption=" "/>
 
 Click on Library
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-library.png" alt="Click on Library" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-library.webp" alt="Click on Library" caption=" "/>
 
 In that list look for "jersey-client:2.25.1"
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" "/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.webp" alt="Add jersey-client dependency" caption=" "/>
 
 Select it and click "OK". 
 

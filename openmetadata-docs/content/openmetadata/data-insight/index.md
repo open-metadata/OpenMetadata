@@ -16,7 +16,7 @@ The Data Assets reports display important metrics around your data assets in Ope
 This chart represents the total number of data assets present in OpenMetadata. It offers a view of your data assets broken down by asset type (i.e. Database, Table, ML Model, etc.)
 
 <Image
-    src="/images/openmetadata/data-insight/total-data-assets.png"
+    src="/images/openmetadata/data-insight/total-data-assets.webp"
     alt="Total Data Assets Chart"
     caption="Total Data Assets Chart"
 />
@@ -25,7 +25,7 @@ This chart represents the total number of data assets present in OpenMetadata. I
 This chart represents the percentage of data assets present in OpenMetadata with a description. For Table asset type, this condition is true only if the table and column description are filed. It allows you to quickly view the description coverage for your data assets in OpenMetadata.
 
 <Image
-    src="/images/openmetadata/data-insight/percentage-description.png"
+    src="/images/openmetadata/data-insight/percentage-description.webp"
     alt="Percentage of Assets with Description"
     caption="Percentage of Assets with Description"
 />
@@ -34,7 +34,7 @@ This chart represents the percentage of data assets present in OpenMetadata with
 This chart represents the percentage of data assets present in OpenMetadata with an owner assigned. Data assets that do not support assigning an owner will not be counted in this percentage. It allows you to quickly view the ownership coverage for your data assets in OpenMetadata.
 
 <Image
-    src="/images/openmetadata/data-insight/percentage-owner.png"
+    src="/images/openmetadata/data-insight/percentage-owner.webp"
     alt="Percentage of Assets with Owner Assigned"
     caption="Percentage of Assets with Owner Assigned"
 />
@@ -43,7 +43,7 @@ This chart represents the percentage of data assets present in OpenMetadata with
 This chart represents a broken down view of data assets by Tiers. Data Assets with no tiers assigned are not included in this. It allows you to quickly view the breakdown of data assets by tier.
 
 <Image
-    src="/images/openmetadata/data-insight/data-assets-by-tier.png"
+    src="/images/openmetadata/data-insight/data-assets-by-tier.webp"
     alt="Data Asset by Tier"
     caption="Data Asset by Tier"
 />
@@ -55,7 +55,7 @@ The App Analytics report provides important metrics around the usage of OpenMeta
 This chart shows the top 10 data assets the most viewed in your platform. It offers a quick view to understand what are the data assets with the most interest in your organization.
 
 <Image
-    src="/images/openmetadata/data-insight/most-viewed-assets.png"
+    src="/images/openmetadata/data-insight/most-viewed-assets.webp"
     alt="Most Viewed Assets"
     caption="Most Viewed Assets"
 />
@@ -64,7 +64,7 @@ This chart shows the top 10 data assets the most viewed in your platform. It off
 This chart shows the total number of page views by asset type. This allows you to understand which asset familly drives the most interest in your organization
 
 <Image
-    src="/images/openmetadata/data-insight/views-by-assets.png"
+    src="/images/openmetadata/data-insight/views-by-assets.webp"
     alt="Page Views by Assets"
     caption="Page Views by Assets"
 />
@@ -73,7 +73,7 @@ This chart shows the total number of page views by asset type. This allows you t
 This chart shows the number of daily active users on your platform. Active users are users with at least one session. This report allows to understand the platform usage and see how your organization leverage OpenMetadata.
 
 <Image
-    src="/images/openmetadata/data-insight/daily-active-users.png"
+    src="/images/openmetadata/data-insight/daily-active-users.webp"
     alt="Daily Active Users"
     caption="Daily Active Users"
 />
@@ -82,7 +82,7 @@ This chart shows the number of daily active users on your platform. Active users
 This chart shows the top 10 most active users. These users are your power users in your organization. They can be turned into evangelist to promote OpenMetadata inside your company.
 
 <Image
-    src="/images/openmetadata/data-insight/most-active-users.png"
+    src="/images/openmetadata/data-insight/most-active-users.webp"
     alt="Daily Active Users"
     caption="Daily Active Users"
 />
@@ -92,7 +92,7 @@ This chart shows the top 10 most active users. These users are your power users 
 Navigate to `settings > Metadata > OpenMetadata Service`.
 
 <Image
-    src="/images/openmetadata/data-insight/metadata-nav.png"
+    src="/images/openmetadata/data-insight/metadata-nav.webp"
     alt="Metadata Service Page"
     caption="Metadata Service Page"
 />
@@ -100,7 +100,7 @@ Navigate to `settings > Metadata > OpenMetadata Service`.
 On the `OpenMetadata Service` click on `Add Ingestion > Add Data Insight Ingestion`
 
 <Image
-    src="/images/openmetadata/data-insight/data-insight-add-ingestion.png"
+    src="/images/openmetadata/data-insight/data-insight-add-ingestion.webp"
     alt="Add Data Insight Ingestion"
     caption="Add Data Insight Ingestion"
 />
@@ -109,7 +109,7 @@ On the `OpenMetadata Service` click on `Add Ingestion > Add Data Insight Ingesti
 Pick a name for your ingestion workflow or leave it as is.
 
 <Image
-    src="/images/openmetadata/data-insight/data-insight-ingestion-name.png"
+    src="/images/openmetadata/data-insight/data-insight-ingestion-name.webp"
     alt="Data Insight Ingestion Name"
     caption="Data Insight Ingestion Name"
 />
@@ -117,7 +117,7 @@ Pick a name for your ingestion workflow or leave it as is.
 Add any elasticsearch configuration relevant to your setup. Note that if you are deploying OpenMetadata with no custom elasticsearch deployment you can skip this configuration step.
 
 <Image
-    src="/images/openmetadata/data-insight/data-insight-ingestion-es-config.png"
+    src="/images/openmetadata/data-insight/data-insight-ingestion-es-config.webp"
     alt="Data Insight Ingestion ES Config"
     caption="Data Insight Ingestion ES Config"
 />
@@ -125,7 +125,7 @@ Add any elasticsearch configuration relevant to your setup. Note that if you are
 Choose a schedule exection time for your workflow. The schedule time is displayed in UTC. We recommend to run this workflow overnight or when activity on the platform is at its lowest to ensure accurate data.
 
 <Image
-    src="/images/openmetadata/data-insight/data-insight-ingestion-schedule.png"
+    src="/images/openmetadata/data-insight/data-insight-ingestion-schedule.webp"
     alt="Data Insight Ingestion Schedule"
     caption="Data Insight Ingestion Schedule"
 />
@@ -137,7 +137,7 @@ Navigate to the `Insights` page. You should see your data insights reports. Note
 While data insights reports gives an analytical view of OpenMetadata platform, KPIs are here to drive platform adoption. 
 
 <Image
-    src="/images/openmetadata/data-insight/data-insight-kpi.png"
+    src="/images/openmetadata/data-insight/data-insight-kpi.webp"
     alt="Data Insight KPI"
     caption="Data Insight KPI"
 />
@@ -158,7 +158,7 @@ On the `Insights` page, click on `Add KPI`. This will open the KPI configuration
 - `Start date` / `End date`: this will determine the start and end date of your KPI. It sets an objective for your organization
 
 <Image
-    src="/images/openmetadata/data-insight/configure-kpi.png"
+    src="/images/openmetadata/data-insight/configure-kpi.webp"
     alt="KPI Configuration"
     caption="KPI Configuration"
 />

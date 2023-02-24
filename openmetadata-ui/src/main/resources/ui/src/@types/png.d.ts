@@ -12,4 +12,4 @@
  */
 
 // Module declaration to allow importing PNG files
-declare module '*.png';
+declare module '*.webp';

@@ -15,7 +15,7 @@ import { Button } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import notFoundImage from '../../assets/img/404-image.png';
+import notFoundImage from '../../assets/img/404-image.webp';
 import notFoundNumber from '../../assets/svg/404-number.svg';
 import { ROUTES } from '../../constants/constants';
 

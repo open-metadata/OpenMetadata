@@ -24,7 +24,7 @@ Security requirements for your **production** environment:
 - You need an administrator account. If you don't have, see [Creating the first administrator](https://www.keycloak.org/docs/latest/server_admin/#creating-first-admin_server_administration_guide).
 - Go to the URL for the Admin Console. For example, for localhost, use this URL: http://localhost:8080/admin/
 
-<Image src="/images/deployment/security/keycloak/1-login-page.png" alt="login-page"/>
+<Image src="/images/deployment/security/keycloak/1-login-page.webp" alt="login-page"/>
 
 - Enter the username and password you created.
 
@@ -32,7 +32,7 @@ Security requirements for your **production** environment:
 - The Keycloak use Realms as the primary form of organization, we can't use the realm "master" for new clients (apps), only for administration, so change for your specific realm or create a new.
 - In this example we are used an existing one called "Data-sec".
 
-<Image src="/images/deployment/security/keycloak/2-change-realm.png" alt="change-realm"/>
+<Image src="/images/deployment/security/keycloak/2-change-realm.webp" alt="change-realm"/>
 
 ### Step 3: Create OpenMetadata as a new Client
 - Click on `Clients` in the menu.
@@ -40,18 +40,18 @@ Security requirements for your **production** environment:
 - Enter the Client ID and Protocol as the image.
 - Click on `Save` button.
 
-<Image src="/images/deployment/security/keycloak/3-add-client.png" alt="add-client"/>
+<Image src="/images/deployment/security/keycloak/3-add-client.webp" alt="add-client"/>
 
 ### Step 4: Edit settings of the client
 - Change "Acess Type" value from "public" to "confidential".
 - Change "implicit flow" and "service accounts" to enabled.
 
-<Image src="/images/deployment/security/keycloak/4-edit-settings-client.png" alt="edit-settings-client"/>
+<Image src="/images/deployment/security/keycloak/4-edit-settings-client.webp" alt="edit-settings-client"/>
 
 - At the bottom of the same settings page, change the configurations to the openmetadata address.
 - The image below shows different possibilities, such as running locally or with a custom domain.
 
-<Image src="/images/deployment/security/keycloak/5-edit-settings-url.png" alt="edit-settings-url.png"/>
+<Image src="/images/deployment/security/keycloak/5-edit-settings-url.webp" alt="edit-settings-url.webp"/>
 
 - Click on `Save` button.
 
@@ -68,12 +68,12 @@ the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployme
 - Navigate to the `Credentials` tab.
 - You will find your Client `Secret` related to the Client id "open-metadata"
 
-<Image src="/images/deployment/security/keycloak/6-client-credentials.png" alt="client-credentials"/>
+<Image src="/images/deployment/security/keycloak/6-client-credentials.webp" alt="client-credentials"/>
 
 - Navigate to the `Service Account Roles` tab.
 - You will find your service account id related to the Client id "open-metadata"
 
-<Image src="/images/deployment/security/keycloak/7-client-service-account.png" alt="client-service-account.png"/>
+<Image src="/images/deployment/security/keycloak/7-client-service-account.webp" alt="client-service-account.webp"/>
 
 After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
 

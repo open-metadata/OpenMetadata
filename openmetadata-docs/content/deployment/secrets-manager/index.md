@@ -16,7 +16,7 @@ Postgres) encrypted.
 The following diagram shows how is the process between the OM server and Airflow workflows:
 
 <p/>
-<Image src="/images/deployment/secrets-manager/om-secrets-manager-disabled.png" alt="om-secrets-manager-disabled"/>
+<Image src="/images/deployment/secrets-manager/om-secrets-manager-disabled.webp" alt="om-secrets-manager-disabled"/>
 <p/>
 
 As you can see, the `Workflow` consumed by Airflow contains the service information as an `EntityReference`. We use that 
@@ -27,7 +27,7 @@ When the Secrets Manager is enabled, sensitive information stop being stored in 
 the KMS will act as a mediator, as we can observe in the diagram below:
 
 <p/>
-<Image src="/images/deployment/secrets-manager/om-secrets-manager-enabled.png" alt="om-secrets-manager-enabled"/>
+<Image src="/images/deployment/secrets-manager/om-secrets-manager-enabled.webp" alt="om-secrets-manager-enabled"/>
 <p/>
 
 In 0.13 and up, OpenMetadata will communicate through an interface to read/write sensitive information -- removing the 

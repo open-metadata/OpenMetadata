@@ -85,7 +85,7 @@ export const dashboardVersionProps = {
     {
       name: 'sample_superset',
       url: '/service/dashboardServices/sample_superset',
-      imgSrc: '/service-icon-superset.png',
+      imgSrc: '/service-icon-superset.webp',
     },
     {
       name: 'ETA Predictions Performance',

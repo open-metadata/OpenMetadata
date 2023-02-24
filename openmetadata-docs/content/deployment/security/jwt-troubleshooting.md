@@ -32,7 +32,7 @@ First Open Open-Metadata UI than go to settings > Bots > Ingestion Bot
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/deployment/troubleshoot/jwt-token.png"
+  src="/images/deployment/troubleshoot/jwt-token.webp"
   alt="jwt-token"
   caption="JWT token in Openmetada UI"
 />
@@ -42,7 +42,7 @@ You can validate that in [jwt.io](https://jwt.io/). if there's something wrong o
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/deployment/troubleshoot/jwt-validation.png"
+  src="/images/deployment/troubleshoot/jwt-validation.webp"
   alt="jwt.io"
   caption="jwt.io tool for validating JWT claims"
 />

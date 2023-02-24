@@ -716,7 +716,7 @@ body .profiler-graph .recharts-active-dot circle {
   min-width: max-content;
 }
 .react-flow__background {
-  background-image: url('../assets/img/graph-bg.png');
+  background-image: url('../assets/img/graph-bg.webp');
   background-repeat: repeat;
 }
 

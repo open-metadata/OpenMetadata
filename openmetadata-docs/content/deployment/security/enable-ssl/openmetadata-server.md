@@ -25,13 +25,13 @@ Keystore. Run the below command to generate an X509 Certificate and import it in
 keytool -keystore openmetadata.keystore.jks -alias localhost -keyalg RSA -keysize 2048 -sigalg SHA256withRSA -genkey -validity 365
 ```
 
-<Image src="/images/deployment/security/enable-ssl/openmetadata-server/keystore-1.png" alt="keystore"/>
+<Image src="/images/deployment/security/enable-ssl/openmetadata-server/keystore-1.webp" alt="keystore"/>
 
 
 For this example, we are configuring the password to be `test12`. Copy the generated `openmetadata.keystore.jks` to
 OpenMetadata installation path under the `conf` directory.
 
-<Image src="/images/deployment/security/enable-ssl/openmetadata-server/keystore-2.png" alt="keystore"/>
+<Image src="/images/deployment/security/enable-ssl/openmetadata-server/keystore-2.webp" alt="keystore"/>
 
 
 ## Configure openmetadata.yaml 
@@ -59,7 +59,7 @@ These steps are not necessary if you used proper X509 certificated signed by tru
 Since we used self-signed certificates, browsers such as Chrome or Brave will not allow you to visit 
 [https://localhost:8585](https://localhost:8585). You'll get the following error page and there is no way to proceed.
 
-<Image src="/images/deployment/security/enable-ssl/openmetadata-server/browser.png" alt="browser"/>
+<Image src="/images/deployment/security/enable-ssl/openmetadata-server/browser.webp" alt="browser"/>
 
 However, the Safari browser allows you to visit if you click advanced and click proceed. To work around this issue, on
 OS X, you can import the certificate into the keychain and trust it so that browsers can trust and allow you to access
@@ -77,16 +77,16 @@ keytool -export -alias localhost -keystore openmetadata.keystore.jks -rfc -file 
 
 Open the KeyChain app in OS X, drag and drop the `public.cert` file generated in the previous command into the Keychain:
 
-<Image src="/images/deployment/security/enable-ssl/openmetadata-server/import-1.png" alt="import"/>
+<Image src="/images/deployment/security/enable-ssl/openmetadata-server/import-1.webp" alt="import"/>
 
 Double-click on `localhost`:
 
-<Image src="/images/deployment/security/enable-ssl/openmetadata-server/import-2.png" alt="import"/>
+<Image src="/images/deployment/security/enable-ssl/openmetadata-server/import-2.webp" alt="import"/>
 
 
 Click on `Trust` to open and set `Always Trust`:
 
-<Image src="/images/deployment/security/enable-ssl/openmetadata-server/import-3.png" alt="import"/>
+<Image src="/images/deployment/security/enable-ssl/openmetadata-server/import-3.webp" alt="import"/>
 
 Once the above steps are finished, all the browsers will allow you to visit the OpenMetadata server using HTTPS.
 However, you'll still a warning in the address bar. All of these steps are not necessary with an X509 certificate issued

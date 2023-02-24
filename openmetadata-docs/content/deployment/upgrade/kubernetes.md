@@ -60,7 +60,7 @@ Then, follow the next steps to create a virtual environment and install the late
 
 You can get changes from artifact hub of [openmetadata helm chart](https://artifacthub.io/packages/helm/open-metadata/openmetadata) release. Click on Default Values >> Compare to Version.
 
-<Image src="/images/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison"/>
+<Image src="/images/deployment/upgrade/artifact-hub-compare-to-version.webp" alt="Helm Chart Release Comparison"/>
 
 ## Upgrade Helm Repository with a new release
 
@@ -126,11 +126,11 @@ You might need to pass your own `values.yaml` with the `--values` flag
 ### Re-index all your metadata
 
 Go to Settings -> Elasticsearch
-<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
+<Image src="/images/deployment/upgrade/elasticsearch-re-index.webp" alt="create-project" caption="Create a New Project"/>
 
 Click on reindex all
 in the dialog box choose Recreate Indexes to All
-<Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
+<Image src="/images/deployment/upgrade/reindex-ES.webp" alt="create-project" caption="Reindex"/>
 
 ## Troubleshooting
 

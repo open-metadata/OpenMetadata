@@ -28,7 +28,7 @@ Openmetadata fetches the lineage information from the `manifest.json` file. Belo
 ```
 
 For the above case the lineage will be created as shown in below:
-<Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-lineage-customers.png" alt="dbt-lineage-customers" caption="dbt Lineage"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-lineage-customers.webp" alt="dbt-lineage-customers" caption="dbt Lineage"/>
 
 ### 2. Lineage information from dbt queries
 Openmetadata fetches the dbt query information from the `manifest.json` file. 

@@ -48,7 +48,7 @@ const Emoji: FC<EmojiProps> = ({
     [reactionType]
   );
 
-  const { image } = useImage(`emojis/${reactionObject?.reaction}.png`);
+  const { image } = useImage(`emojis/${reactionObject?.reaction}.webp`);
 
   // get current user details
   const currentUser = useMemo(

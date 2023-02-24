@@ -12,7 +12,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the dbt tab from the Table Entity Page.
 
-<Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-query.png" alt="dbt" caption="dbt"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-query.webp" alt="dbt" caption="dbt"/>
 
 We can create a workflow that will obtain the dbt information from the dbt files and feed it to OpenMetadata. The dbt Ingestion will be in charge of obtaining this data.
 

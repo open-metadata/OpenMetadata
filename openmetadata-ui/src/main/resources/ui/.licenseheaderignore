@@ -25,6 +25,7 @@
 # Assets
 *.svg
 *.png
+*.webp
 *.ico
 *.ttf
 

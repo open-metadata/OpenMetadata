@@ -20,7 +20,7 @@ You need to create database services before ingesting the metadata from Amundsen
 from 3 data sources i.e., `hive`, `dynamo` & `delta` so in OpenMetadata we have to create database services with the same name
 as the source.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-db-service.png" alt="db-service" caption="Amundsen dashboard"/>
+<Image src="/images/openmetadata/connectors/amundsen/create-db-service.webp" alt="db-service" caption="Amundsen dashboard"/>
 
 To create database service follow these steps:
 
@@ -30,13 +30,13 @@ The first step is ingesting the metadata from your sources. Under Settings, you 
 source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler
 workflows.To visit the Services page, select Services from the Settings menu.serv
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-1.png" alt="db-service" caption="Navigate to Settings >> Services"/>
+<Image src="/images/openmetadata/connectors/amundsen/create-service-1.webp" alt="db-service" caption="Navigate to Settings >> Services"/>
 
 ### 2. Create a New Service
 
 Click on the Add New Service button to start the Service creation.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-2.png" alt="db-service" caption="Add a New Service from the Database Services Page"/>
+<Image src="/images/openmetadata/connectors/amundsen/create-service-2.webp" alt="db-service" caption="Add a New Service from the Database Services Page"/>
 
 ### 3. Select the Service Type
 
@@ -44,15 +44,15 @@ Select the service type which are available on the amundsen and create a service
 need to create services for hive, dynamo db & deltalake. Possible service names are `athena`, `bigquery`, `db2`, `druid`, `delta`,
 `salesforce`, `oracle`, `glue`, `snowflake` or `hive`.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-3.png" alt="db-service"/>
+<Image src="/images/openmetadata/connectors/amundsen/create-service-3.webp" alt="db-service"/>
 
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-4.png" alt="db-service"/>
+<Image src="/images/openmetadata/connectors/amundsen/create-service-4.webp" alt="db-service"/>
 
 Note: Adding ingestion in this step is optional, because we will fetch the metadata from Amundsen. After creating all
 the database services, `my service` page looks like below, and we are ready to start with the Amundsen ingestion via the CLI.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-5.png" alt="db-service"/>
+<Image src="/images/openmetadata/connectors/amundsen/create-service-5.webp" alt="db-service"/>
 
 ## Metadata Ingestion
 

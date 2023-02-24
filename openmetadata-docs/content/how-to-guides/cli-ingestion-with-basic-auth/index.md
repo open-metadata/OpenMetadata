@@ -26,12 +26,12 @@ From `0.12.1` OpenMetadata has changed the default `no-auth` to `Basic` auth, So
 ## How to get the JWT token
 
 1. Go to the `settings` page from the navbar and then scroll down to the `Integrations` Section. Click on the `Bots` and you will see the list of bots, then click on the `ingestion-bot`.
-   <Image src="/images/cli-ingestion-with-basic-auth/bot-list.png" alt="bot-list"/>
+   <Image src="/images/cli-ingestion-with-basic-auth/bot-list.webp" alt="bot-list"/>
    <br/>
    <br/>
 
 2. You will be redirected to the `ingestion-bot` details page. there you will get the JWT token, click on the copy button and copy the JWT token.
-   <Image src="/images/cli-ingestion-with-basic-auth/bot-token.png" alt="bot-token"/>
+   <Image src="/images/cli-ingestion-with-basic-auth/bot-token.webp" alt="bot-token"/>
    <br/>
    <br/>
 

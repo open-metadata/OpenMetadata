@@ -34,23 +34,23 @@ Admin permissions are required to register the application on the Azure portal.
 
 - From the Azure Active Directory, navigate to the `App Registrations` section from the left nav bar.
 
-<Image src="/images/deployment/security/azure/create-app-1.png" alt="create-app"/>
+<Image src="/images/deployment/security/azure/create-app-1.webp" alt="create-app"/>
 
 - Click on `New Registration`. This step is for registering the OpenMetadata UI.
 
-<Image src="/images/deployment/security/azure/create-app-2.png" alt="create-app"/>
+<Image src="/images/deployment/security/azure/create-app-2.webp" alt="create-app"/>
 
 - Provide an Application Name for registration.
 - Provide a redirect URL as a `Single Page Application`.
 - Click on `Register`.
 
-<Image src="/images/deployment/security/azure/create-app-3.png" alt="create-app"/>
+<Image src="/images/deployment/security/azure/create-app-3.webp" alt="create-app"/>
 
 ### Step 3: Where to Find the Credentials
 
 - The `Client ID` and the `Tenant ID` are displayed in the Overview section of the registered application.
 
-<Image src="/images/deployment/security/azure/where-to-find-credentials.png" alt="create-app"/>
+<Image src="/images/deployment/security/azure/where-to-find-credentials.webp" alt="create-app"/>
 
 - When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example
   below. `https://login.microsoftonline.com/TenantID`
@@ -71,18 +71,18 @@ the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployme
 - Select the checkboxes for` Access Token` and `ID Tokens`.
 - Click `Save`.
 
-<Image src="/images/deployment/security/azure/access-tokens.png" alt="access-tokens"/>
+<Image src="/images/deployment/security/azure/access-tokens.webp" alt="access-tokens"/>
 
 ### Step 2: Expose an API
 
 - Navigate to the section `Expose an API`.
 
-<Image src="/images/deployment/security/azure/expose-api-1.png" alt="expose-api"/>
+<Image src="/images/deployment/security/azure/expose-api-1.webp" alt="expose-api"/>
 
 - Set the `App ID URI`. If it has not been set, the default value is `api://<client_id>`.
 - Click Save.
 
-<Image src="/images/deployment/security/azure/expose-api-2.png" alt="expose-api"/>
+<Image src="/images/deployment/security/azure/expose-api-2.webp" alt="expose-api"/>
 
 ### Step 3: Add a Scope
 
@@ -90,7 +90,7 @@ the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployme
 - Enter the details with a custom scope name to expose.
 - Once completed, click on Add Scope.
 
-<Image src="/images/deployment/security/azure/add-scope.png" alt="add-scope"/>
+<Image src="/images/deployment/security/azure/add-scope.webp" alt="add-scope"/>
 
 ### Step 4: Register Another Azure Application
 
@@ -100,7 +100,7 @@ Another Azure Application must be registered for Service ingestion.
 - `public client redirect URI` will be blank.
 - Click on Register.
 
-<Image src="/images/deployment/security/azure/register-another-app.png" alt="add-app"/>
+<Image src="/images/deployment/security/azure/register-another-app.webp" alt="add-app"/>
 
 ### Step 5: API Permissions
 
@@ -108,16 +108,16 @@ Another Azure Application must be registered for Service ingestion.
 - Navigate to the section on API Permissions.
 - Click on Add a Permission.
 
-<Image src="/images/deployment/security/azure/api-permissions-1.png" alt="api-permissions"/>
+<Image src="/images/deployment/security/azure/api-permissions-1.webp" alt="api-permissions"/>
 
 - Click on Add a Permission.
 
-<Image src="/images/deployment/security/azure/api-permissions-2.png" alt="api-permissions"/>
+<Image src="/images/deployment/security/azure/api-permissions-2.webp" alt="api-permissions"/>
 
 - Select the custom scope created in Step 3.
 - Click on Add Permissions.
 
-<Image src="/images/deployment/security/azure/api-permissions-3.png" alt="api-permissions"/>
+<Image src="/images/deployment/security/azure/api-permissions-3.webp" alt="api-permissions"/>
 
 ### Step 6: Grant Admin Consent for Default Directory
 
@@ -132,29 +132,29 @@ the application access scope.
 - Click on Permissions.
 - Click on `Grant Admin Consent for Default Directory`.
 
-<Image src="/images/deployment/security/azure/admin-consent.png" alt="admin-consent"/>
+<Image src="/images/deployment/security/azure/admin-consent.webp" alt="admin-consent"/>
 
 ### Step 7: Set the App ID URI
 
 - Navigate to the `Azure Active Directory >> App Registrations >> [OpenMetadata Ingestion Application] >> Expose an API`.
 - Click on Set in Application ID URI
 
-<Image src="/images/deployment/security/azure/set-app-id-1.png" alt="app-id"/>
+<Image src="/images/deployment/security/azure/set-app-id-1.webp" alt="app-id"/>
 
 - Click on Save to set the App ID URI which is required for scopes while connecting from manual ingestion.
 
-<Image src="/images/deployment/security/azure/set-app-id-2.png" alt="app-id"/>
+<Image src="/images/deployment/security/azure/set-app-id-2.webp" alt="app-id"/>
 
 ### Step 8: Create a Client Secret
 
 - Navigate to `Certificates & Secrets` to generate the clientSecret.
 - Click on New Client Secret.
 
-<Image src="/images/deployment/security/azure/client-secret-1.png" alt="client-secret"/>
+<Image src="/images/deployment/security/azure/client-secret-1.webp" alt="client-secret"/>
 
 - Enter a description and an expiry period.
 
-<Image src="/images/deployment/security/azure/client-secret-2.png" alt="client-secret"/>
+<Image src="/images/deployment/security/azure/client-secret-2.webp" alt="client-secret"/>
 
 - The `secret_key` is required for ingestion.
 
@@ -167,7 +167,7 @@ below. `https://login.microsoftonline.com/TenantID`
 - `scopes`: The scopes for running the ingestion to get token using Client Credentials Flow. This will be in the format of `<application-id-uri>/.default` (Application Id URI will be available from [Step 7](/deployment/security/azure#step-7-set-the-app-id-uri))
 - `object-id`: You can fetch the `object id` of Azure Application created for OpenMetadata Service Application as provided in the below image. This is required for setting the OpenMetadata with YAML configurations as well as Updating Ingestion-Bot from UI. You can find `object id` in Azure `Active Directory >> Enterprise Applications`.
 
-<Image src="/images/deployment/security/azure/azure-service-application-object-id.png" alt="object-id" />
+<Image src="/images/deployment/security/azure/azure-service-application-object-id.webp" alt="object-id" />
 
 This information is required to configure ingestion-bot from OpenMetadata UI from 0.12.1 Release.
 
@@ -204,7 +204,7 @@ After the applying these steps, you can update the configuration of your deploym
 
 Starting from 0.12.1, Navigate to `Settings >> Bots >> ingestion-bot` and click on edit.
 
-<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png"/>
+<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.webp"/>
 
 Update the Auth Mechanism as Azure SSO and update `Email`, `ClientSecret`, `ClientId`, `Authority`, and `Scopes` as mentioned in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
 
@@ -212,7 +212,7 @@ The `Email` will be in the format of `<object-id-for-azure-service-application-e
 
 Next, Click on Save.
 
-<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.png" />
+<Image src="/images/deployment/security/azure/update-ingestion-bot-service-application.webp" />
 
 This will enable all the Service Connector Ingestions created from UI to securely use Azure SSO Service Applications for connecting with OpenMetadata APIs.
 

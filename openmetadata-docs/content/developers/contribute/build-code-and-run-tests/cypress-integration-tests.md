@@ -24,7 +24,7 @@ yarn run cypress:open
 
 - Select a browser of your choice from the dropdown list and click on the "Run {n} integration specs" button to run all the tests
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/cypress-screenshot.png" alt="Cypress screenshot" caption="Screen-shot of Cypress window"/>
+<Image src="/images/developers/contribute/build-code-and-run-tests/cypress-screenshot.webp" alt="Cypress screenshot" caption="Screen-shot of Cypress window"/>
 
 ## Troubleshooting
 Cypress tests can leave side effects on the environment and can result in failures when run repeatedly. If the tests are to be run for the second time, the database needs to be reset to a clean slate and the OM server needs to be restarted.

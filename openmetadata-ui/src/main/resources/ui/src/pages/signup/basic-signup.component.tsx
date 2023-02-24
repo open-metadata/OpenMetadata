@@ -18,7 +18,7 @@ import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import loginBG from '../../assets/img/login-bg.png';
+import loginBG from '../../assets/img/login-bg.webp';
 import { ROUTES } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
