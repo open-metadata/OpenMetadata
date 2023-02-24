@@ -125,7 +125,7 @@ public class WebhookCallbackResource {
     String key = eventType + ":" + entityType;
     List<ChangeEvent> list = entityCallbackMap.get(key);
     if (list == null) {
-      list = new ArrayList<>();
+      list = new ArrayList<>(events.getData());
       entityCallbackMap.put(key, list);
     } else {
       list.addAll(events.getData());

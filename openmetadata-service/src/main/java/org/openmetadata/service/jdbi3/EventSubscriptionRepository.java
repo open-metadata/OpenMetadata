@@ -170,7 +170,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID id) {
-    return subscriptionPublisherMap.get(id).getEventSubscription().getStatusDetails();
+    SubscriptionPublisher publisher = subscriptionPublisherMap.get(id);
+    if (publisher != null) {
+      return publisher.getEventSubscription().getStatusDetails();
+    }
+    return null;
   }
 
   @Override
