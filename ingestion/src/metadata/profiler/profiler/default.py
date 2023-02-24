@@ -17,10 +17,10 @@ from typing import List, Optional
 from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
-from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.profiler.metrics.core import Metric, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.core import Profiler
+from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
 
 
 def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:

@@ -112,6 +112,15 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         """
         return self._sampler
 
+    @property
+    def table(self):
+        """getter method for the table object
+
+        Returns:
+            Table: table object
+        """
+        return self._table
+
     def _create_sampler(self) -> Sampler:
         """Create sampler instance"""
         return Sampler(

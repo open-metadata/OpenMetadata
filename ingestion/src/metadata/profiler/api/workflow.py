@@ -18,18 +18,14 @@ Workflow definition for the ORM Profiler.
 """
 import traceback
 from copy import deepcopy
-from typing import Iterable, List, Optional, cast
+from typing import Iterable, List, Optional, Tuple, Union, cast
 
 from pydantic import ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -58,23 +54,21 @@ from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.interfaces.datalake.datalake_profiler_interface import (
-    DataLakeProfilerInterface,
-)
-from metadata.interfaces.profiler_protocol import (
-    ProfilerInterfaceArgs,
-    ProfilerProtocol,
-)
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.profiler.api.models import (
     ProfilerProcessorConfig,
     ProfilerResponse,
-    ProfileSampleConfig,
     TableConfig,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.core import Profiler
 from metadata.profiler.profiler.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.profiler.interface.pandas.pandas_profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
@@ -83,7 +77,6 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
-from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_profiler_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -104,7 +97,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
     metadata: OpenMetadata
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
-        self.profiler_obj = None  # defined in `create_profiler_obj()``
+        self.profiler = None  # defined in `create_profiler()``
         self.config = config
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
@@ -138,7 +131,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 "If so, make sure the profiler service name matches the service name specified during ingestion "
                 "and that your ingestion token (settings > bots) is still valid."
             )
-        self._table_entity = None
 
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
@@ -196,106 +188,12 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         return None
 
-    def get_profile_sample(self, entity: Table) -> Optional[dict]:
-        """Get profile sample
-
-        Args:
-            entity: table entity
-        """
-        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config:
-            return ProfileSampleConfig(
-                profile_sample=entity_config.profileSample,
-                profile_sample_type=entity_config.profileSampleType,
-            )
-
-        if (
-            hasattr(entity, "tableProfilerConfig")
-            and hasattr(entity.tableProfilerConfig, "profileSample")
-            and entity.tableProfilerConfig.profileSample
-        ):
-
-            return ProfileSampleConfig(
-                profile_sample=entity.tableProfilerConfig.profileSample,
-                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
-            )
-
-        if self.source_config.profileSample:
-            return ProfileSampleConfig(
-                profile_sample=self.source_config.profileSample,
-                profile_sample_type=self.source_config.profileSampleType,
-            )
-        return None
-
-    def get_profile_query(self, entity: Table) -> Optional[str]:
-        """Get profile sample
-
-        Args:
-            entity: table entity
-        """
-        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config:
-            return entity_config.profileQuery
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileQuery
-
-        return None
-
-    def get_partition_details(self, entity: Table) -> Optional[PartitionProfilerConfig]:
-        """Get partition details
-
-        Args:
-            entity: table entity
-        """
-        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-
-        if entity_config:  # check if a yaml config was pass with partition definition
-            return entity_config.partitionConfig
-
-        return get_partition_details(entity)
-
-    def create_profiler_interface(
-        self,
-        service_connection_config,
-        table_entity: Table,
-        sqa_metadata_obj,
-    ):
-        """Creates a profiler interface object"""
-        try:
-
-            self._table_entity = table_entity
-            self._profiler_interface_args = ProfilerInterfaceArgs(
-                service_connection_config=service_connection_config,
-                sqa_metadata_obj=sqa_metadata_obj,
-                ometa_client=create_ometa_client(self.metadata_config),
-                thread_count=self.source_config.threadCount,
-                table_entity=self._table_entity,
-                profile_sample_config=self.get_profile_sample(self._table_entity)
-                if not self.get_profile_query(self._table_entity)
-                else None,
-                table_sample_query=self.get_profile_query(self._table_entity)
-                if not self.get_profile_sample(self._table_entity)
-                else None,
-                table_partition_config=self.get_partition_details(self._table_entity)
-                if not self.get_profile_query(self._table_entity)
-                else None,
-                timeout_seconds=self.source_config.timeoutSeconds,
-            )
-            if isinstance(service_connection_config, DatalakeConnection):
-                return DataLakeProfilerInterface(self._profiler_interface_args)
-            return SQAProfilerInterface(self._profiler_interface_args)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error("We could not create a profiler interface")
-            raise ProfilerInterfaceInstantiationError(exc)
-
-    def create_profiler_obj(
+    def create_profiler(
         self, table_entity: Table, profiler_interface: ProfilerProtocol
     ):
         """Profile a single entity"""
         if not self.profiler_config.profiler:
-            self.profiler_obj = DefaultProfiler(
+            self.profiler = DefaultProfiler(
                 profiler_interface=profiler_interface,
                 include_columns=self.get_include_columns(table_entity),
                 exclude_columns=self.get_exclude_columns(table_entity),
@@ -307,7 +205,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 else get_default_metrics(profiler_interface.table)
             )
 
-            self.profiler_obj = Profiler(
+            self.profiler = Profiler(
                 *metrics,  # type: ignore
                 profiler_interface=profiler_interface,
                 include_columns=self.get_include_columns(table_entity),
@@ -366,7 +264,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
     def get_database_entities(self):
         """List all databases in service"""
 
-        return [
+        databases = [
             self.filter_databases(database)
             for database in self.metadata.list_all_entities(
                 entity=Database,
@@ -374,6 +272,15 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             )
             if self.filter_databases(database)
         ]
+
+        if not databases:
+            raise ValueError(
+                "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
+                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
+                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
+            )
+
+        return databases
 
     def get_table_entities(self, database):
         """
@@ -390,7 +297,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         Same with `schema_filter_pattern`.
         """
-        all_tables = self.metadata.list_all_entities(
+        tables = self.metadata.list_all_entities(
             entity=Table,
             fields=[
                 "tableProfilerConfig",
@@ -406,7 +313,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             },  # type: ignore
         )
 
-        yield from self.filter_entities(all_tables)
+        yield from self.filter_entities(tables)
 
     def copy_service_config(self, database) -> DatabaseService.__config__:
         copy_service_connection_config = deepcopy(
@@ -428,60 +335,55 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         return copy_service_connection_config
 
-    def run_profiler_workflow(self):
+    def run_profiler(
+        self, entity: Table, copied_service_config, sqa_metadata=None
+    ) -> Tuple[Optional[ProfilerResponse], Optional[List]]:
         """
         Main logic for the profiler workflow
         """
-        databases = self.get_database_entities()
-
-        if not databases:
-            raise ValueError(
-                "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
-                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
-                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
+        try:
+            profiler_interface: Union[
+                SQAProfilerInterface, PandasProfilerInterface
+            ] = ProfilerProtocol.create(
+                (
+                    copied_service_config.__class__.__name__
+                    if isinstance(copied_service_config, DatalakeConnection)
+                    else self.config.source.serviceConnection.__root__.__class__.__name__
+                ),
+                entity,
+                self.get_config_for_entity(entity),
+                self.source_config,
+                copied_service_config,
+                create_ometa_client(self.metadata_config),
+                sqa_metadata=sqa_metadata,
             )
+            self.create_profiler(entity, profiler_interface)
+            self.profiler = cast(Profiler, self.profiler)  # satisfy type checker
+            profile: ProfilerResponse = self.profiler.process(
+                self.source_config.generateSampleData
+            )
+        except Exception as exc:  # pylint: disable=broad-except
 
-        for database in databases:
-            copied_service_config = self.copy_service_config(database)
+            logger.debug(traceback.format_exc())
+            logger.error(
+                "Unexpected exception processing entity "
+                f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
+            )
             try:
-                sqa_metadata_obj = MetaData()
-                for entity in self.get_table_entities(database=database):
-                    try:
-                        profiler_interface = self.create_profiler_interface(
-                            sqa_metadata_obj=sqa_metadata_obj,
-                            service_connection_config=copied_service_config,
-                            table_entity=entity,
-                        )
-                        self.create_profiler_obj(entity, profiler_interface)
-                        profile: ProfilerResponse = self.profiler_obj.process(
-                            self.source_config.generateSampleData
-                        )
-                        profiler_interface.close()
-                        if hasattr(self, "sink"):
-                            self.sink.write_record(profile)
-                        self.status.failures.extend(
-                            profiler_interface.processor_status.failures
-                        )  # we can have column level failures we need to report
-                        self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
-                        self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
-                    except Exception as exc:  # pylint: disable=broad-except
-
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            "Unexpected exception processing entity "
-                            f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
-                        )
-                        self.status.failures.extend(
-                            profiler_interface.processor_status.failures  # type: ignore
-                        )
-                        self.source_status.failure(
-                            entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
-                        )
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Unexpected exception executing in database [{database}]: {exc}"
+                # if we fail to instatiate a profiler_interface, we won't have a profiler_interface variable
+                self.status.failures.extend(
+                    profiler_interface.processor_status.failures  # type: ignore
                 )
+            except UnboundLocalError:
+                pass
+            self.source_status.failure(
+                entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
+            )
+            profile = None  # type: ignore
+        else:
+            return profile, profiler_interface.processor_status.failures
+
+        return None, None
 
     def execute(self):
         """
@@ -489,7 +391,25 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
 
         try:
-            self.run_profiler_workflow()
+            for database in self.get_database_entities():
+                copied_service_config = self.copy_service_config(database)
+                sqa_metadata = (
+                    MetaData()
+                    if not isinstance(copied_service_config, DatalakeConnection)
+                    else None
+                )  # we only need this for sqlalchemy based services
+                for entity in self.get_table_entities(database=database):
+                    profile, failures = self.run_profiler(
+                        entity, copied_service_config, sqa_metadata
+                    )
+                    if hasattr(self, "sink") and profile:
+                        self.sink.write_record(profile)
+                    if failures:
+                        self.status.failures.extend(
+                            failures
+                        )  # we can have column level failures we need to report on
+                    self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
+                    self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success
             self.set_ingestion_pipeline_status(PipelineState.success)
 

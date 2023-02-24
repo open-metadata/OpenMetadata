@@ -32,7 +32,6 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
-from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.metrics.core import (
     ComposedMetric,
@@ -46,6 +45,7 @@ from metadata.profiler.metrics.core import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
