@@ -45,7 +45,7 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine) -> str:
     """
     Test Clickhouse connection
     """
@@ -55,13 +55,24 @@ def test_connection(engine: Engine) -> None:
         return list(cursor.all())
 
     inspector = inspect(engine)
+
+    def custom_executor_for_tables():
+        schema_name = inspector.get_schema_names()
+
+        if schema_name:
+            for schema in schema_name:
+                if schema not in ("INFORMATION_SCHEMA", "system"):
+                    table_name = inspector.get_table_names(schema)
+                    return table_name
+        return None
+
     steps = [
         TestConnectionStep(
             function=inspector.get_schema_names,
             name="Get Schemas",
         ),
         TestConnectionStep(
-            function=inspector.get_table_names,
+            function=partial(custom_executor_for_tables),
             name="Get Tables",
         ),
         TestConnectionStep(
@@ -80,4 +91,4 @@ def test_connection(engine: Engine) -> None:
         ),
     ]
 
-    test_connection_db_common(engine, steps)
+    return test_connection_db_common(engine, steps)
