@@ -21,7 +21,7 @@ export default defineConfig({
   defaultCommandTimeout: 5000,
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
-  //   numTestsKeptInMemory: 0,
+  numTestsKeptInMemory: 0,
   e2e: {
     experimentalSessionAndOrigin: true,
     // We've imported your old cypress plugins here.
