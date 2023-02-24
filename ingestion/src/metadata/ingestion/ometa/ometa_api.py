@@ -17,6 +17,10 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.data.container import Container
+
+from metadata.generated.schema.entity.services.objectstoreService import ObjectStoreService
+
 try:
     from typing import get_args
 except ImportError:
@@ -321,6 +325,9 @@ class OpenMetadata(
         if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
             return "/users"
 
+        if issubclass(entity, get_args(Union[Container, self.get_create_entity_type(Container)])):
+            return "/containers"
+
         # Services Schemas
         if issubclass(
             entity,
@@ -377,6 +384,14 @@ class OpenMetadata(
             ),
         ):
             return "/services/metadataServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[ObjectStoreService, self.get_create_entity_type(ObjectStoreService)]
+            ),
+        ):
+            return "/services/objectstoreServices"
 
         if issubclass(
             entity,
