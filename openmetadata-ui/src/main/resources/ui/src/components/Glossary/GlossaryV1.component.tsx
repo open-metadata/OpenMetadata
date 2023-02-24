@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { EllipsisOutlined } from '@ant-design/icons';
-import { Col, Dropdown, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Dropdown, Row, Tooltip, Typography } from 'antd';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
@@ -20,6 +19,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -33,7 +33,7 @@ import {
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
+import '../common/entityPageInfo/ManageButton/ManageButton.less';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
@@ -322,6 +322,7 @@ const GlossaryV1 = ({
             trigger={['click']}
             onOpenChange={setShowActions}>
             <Tooltip
+              placement="right"
               title={
                 glossaryPermission.Delete || glossaryTermPermission.Delete
                   ? isGlossaryActive
@@ -332,18 +333,14 @@ const GlossaryV1 = ({
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
-                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-flex"
+                className="manage-dropdown-button"
                 data-testid="manage-button"
                 disabled={
                   !(glossaryPermission.Delete || glossaryTermPermission.Delete)
                 }
                 size="small"
-                theme="primary"
-                variant="outlined"
                 onClick={() => setShowActions(true)}>
-                <span>
-                  <EllipsisOutlined rotate={90} />
-                </span>
+                <IconDropdown className="anticon text-primary self-center manage-dropdown-icon" />
               </Button>
             </Tooltip>
           </Dropdown>

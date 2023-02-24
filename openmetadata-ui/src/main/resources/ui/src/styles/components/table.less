@@ -21,8 +21,6 @@
   }
   .ant-table-bordered {
     table {
-      border: 1px solid #dde3ea;
-
       tbody {
         tr {
           td {
@@ -52,8 +50,24 @@
         }
       }
     }
-    .ant-table-container > .ant-table-content > table > tbody > tr > td {
-      border-right: none;
+    .ant-table-container {
+      border: none;
+
+      .ant-table-content > table {
+        border: 1px solid #dde3ea;
+        border-radius: 4px;
+        overflow: hidden;
+
+        tbody > tr {
+          td {
+            border-right: none;
+          }
+
+          &:last-child td {
+            border-bottom: none;
+          }
+        }
+      }
     }
   }
 }

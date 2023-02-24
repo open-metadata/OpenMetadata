@@ -18,27 +18,27 @@ import { Combination, ToDisplay } from './CronEditor.interface';
 export const getPeriodOptions = () => {
   return [
     {
-      label: i18n.t('label.none-lowercase'),
+      label: i18n.t('label.none'),
       value: '',
       prep: '',
     },
     {
-      label: i18n.t('label.minute-plural-lowercase'),
+      label: i18n.t('label.minute-plural'),
       value: 'minute',
       prep: '',
     },
     {
-      label: i18n.t('label.hour-lowercase'),
+      label: i18n.t('label.hour'),
       value: 'hour',
       prep: 'at',
     },
     {
-      label: i18n.t('label.day-lowercase'),
+      label: i18n.t('label.day'),
       value: 'day',
       prep: 'at',
     },
     {
-      label: i18n.t('label.week-lowercase'),
+      label: i18n.t('label.week'),
       value: 'week',
       prep: 'on',
     } /* ,
