@@ -455,6 +455,7 @@
     "minor": "Minor",
     "minute-lowercase": "minute",
     "minute-plural": "Minutes",
+    "minute-plural-lowercase": "minutes",
     "ml-model": "ML Model",
     "ml-model-plural": "ML Models",
     "mode": "Mode",
