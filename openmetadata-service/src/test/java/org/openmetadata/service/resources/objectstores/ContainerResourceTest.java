@@ -100,20 +100,18 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   @Test
   void post_ContainerWithoutObjectStoreService_400(TestInfo test) {
-    CreateContainer create = createRequest(test).withObjectStoreService(null);
-    assertResponse(
-        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[objectStoreService must not be null]");
+    CreateContainer create = createRequest(test).withService(null);
+    assertResponse(() -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[service must not be null]");
   }
 
   @Test
-  void post_ContainerWithInvalidObjectStoreReference_404(TestInfo test) {
-    EntityReference randomObjectStoreReference =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.OBJECT_STORE_SERVICE);
-    CreateContainer create = createRequest(test).withObjectStoreService(randomObjectStoreReference);
+  void post_ContainerWithInvalidObjectStoreReference_404(TestInfo test) throws IOException {
+    String serviceFQN = UUID.randomUUID().toString();
+    CreateContainer create = createRequest(test).withService(serviceFQN);
     assertResponse(
         () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        String.format("objectStoreService instance for %s not found", randomObjectStoreReference.getId()));
+        String.format("objectStoreService instance for %s not found", serviceFQN));
   }
 
   @Test
@@ -179,7 +177,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     CreateContainer createRootContainer =
         new CreateContainer()
             .withName("0_root")
-            .withObjectStoreService(S3_OBJECT_STORE_SERVICE_REFERENCE)
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0)
             .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
             .withSize(0);
@@ -188,7 +186,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     CreateContainer createChildOneContainer =
         new CreateContainer()
             .withName("1_child_1")
-            .withObjectStoreService(S3_OBJECT_STORE_SERVICE_REFERENCE)
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(rootContainer.getEntityReference())
             .withNumberOfObjects(0)
             .withSize(0);
@@ -197,7 +195,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     CreateContainer createChildTwoContainer =
         new CreateContainer()
             .withName("2_child_2")
-            .withObjectStoreService(S3_OBJECT_STORE_SERVICE_REFERENCE)
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(rootContainer.getEntityReference())
             .withNumberOfObjects(0)
             .withSize(0);
@@ -206,7 +204,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     CreateContainer createChildThreeContainer =
         new CreateContainer()
             .withName("3_child_3")
-            .withObjectStoreService(S3_OBJECT_STORE_SERVICE_REFERENCE)
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(childOneContainer.getEntityReference())
             .withNumberOfObjects(0)
             .withSize(0);
@@ -273,7 +271,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   public CreateContainer createRequest(String name) {
     return new CreateContainer()
         .withName(name)
-        .withObjectStoreService(S3_OBJECT_STORE_SERVICE_REFERENCE)
+        .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getFullyQualifiedName())
         .withDataModel(PARTITIONED_DATA_MODEL)
         .withFileFormats(FILE_FORMATS)
         .withNumberOfObjects(3)
@@ -284,7 +282,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   public void validateCreatedEntity(
       Container createdEntity, CreateContainer createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertReference(createRequest.getObjectStoreService(), createdEntity.getObjectStoreService());
+    assertReference(createRequest.getService(), createdEntity.getService());
     assertReference(createRequest.getParent(), createdEntity.getParent());
     if (createRequest.getDataModel() != null) {
       assertEquals(createRequest.getDataModel().getIsPartitioned(), createdEntity.getDataModel().getIsPartitioned());
@@ -301,16 +299,15 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals(
         createdEntity.getParent() != null
             ? FullyQualifiedName.add(createdEntity.getParent().getFullyQualifiedName(), createdEntity.getName())
-            : FullyQualifiedName.add(
-                createdEntity.getObjectStoreService().getFullyQualifiedName(), createdEntity.getName()),
+            : FullyQualifiedName.add(createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
   }
 
   @Override
   public void compareEntities(Container expected, Container patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    TestUtils.validateEntityReference(patched.getObjectStoreService());
-    assertEquals(expected.getObjectStoreService().getId(), patched.getObjectStoreService().getId());
+    TestUtils.validateEntityReference(patched.getService());
+    assertEquals(expected.getService().getId(), patched.getService().getId());
     if (expected.getDataModel() != null) {
       assertEquals(expected.getDataModel().getIsPartitioned(), patched.getDataModel().getIsPartitioned());
       assertColumns(expected.getDataModel().getColumns(), patched.getDataModel().getColumns());
@@ -332,7 +329,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         byName
             ? getEntityByName(container.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(container.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNotNull(container.getObjectStoreService());
+    assertListNotNull(container.getService());
     assertListNull(
         container.getParent(),
         container.getChildren(),
@@ -348,7 +345,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         byName
             ? getEntityByName(container.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(container.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(container.getObjectStoreService());
+    assertListNotNull(container.getService());
     assertListNotNull(container.getDataModel());
 
     // Checks for other owner, tags, and followers is done in the base class

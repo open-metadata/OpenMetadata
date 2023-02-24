@@ -59,7 +59,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   public Container addHref(UriInfo uriInfo, Container container) {
     container.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, container.getId()));
     Entity.withHref(uriInfo, container.getOwner());
-    Entity.withHref(uriInfo, container.getObjectStoreService());
+    Entity.withHref(uriInfo, container.getService());
     Entity.withHref(uriInfo, container.getParent());
     Entity.withHref(uriInfo, container.getChildren());
     Entity.withHref(uriInfo, container.getFollowers());
@@ -435,7 +435,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
 
   private Container getContainer(CreateContainer create, String user) throws IOException {
     return copy(new Container(), create, user)
-        .withObjectStoreService(create.getObjectStoreService())
+        .withService(getEntityReference(Entity.OBJECT_STORE_SERVICE, create.getService()))
         .withParent(create.getParent())
         .withDataModel(create.getDataModel())
         .withPrefix(create.getPrefix())

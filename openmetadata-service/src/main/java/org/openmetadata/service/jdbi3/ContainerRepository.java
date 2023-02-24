@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -67,7 +68,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   private void setDefaultFields(Container container) throws IOException {
     EntityReference parentObjectStoreServiceRef =
         getFromEntityRef(container.getId(), Relationship.CONTAINS, OBJECT_STORE_SERVICE, true);
-    container.withObjectStoreService(parentObjectStoreServiceRef);
+    container.withService(parentObjectStoreServiceRef);
   }
 
   private List<EntityReference> getChildrenContainers(Container container) throws IOException {
@@ -86,7 +87,7 @@ public class ContainerRepository extends EntityRepository<Container> {
           FullyQualifiedName.add(container.getParent().getFullyQualifiedName(), container.getName()));
     } else {
       container.setFullyQualifiedName(
-          FullyQualifiedName.add(container.getObjectStoreService().getName(), container.getName()));
+          FullyQualifiedName.add(container.getService().getFullyQualifiedName(), container.getName()));
     }
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
@@ -107,33 +108,25 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public void prepare(Container container) throws IOException {
     // the objectStoreService is not fully filled in terms of props - go to the db and get it in full and re-set it
-    ObjectStoreService objectStoreService =
-        Entity.getEntity(container.getObjectStoreService(), "", Include.NON_DELETED);
-    container.withObjectStoreService(objectStoreService.getEntityReference());
+    ObjectStoreService objectStoreService = Entity.getEntity(container.getService(), "", Include.NON_DELETED);
+    container.withService(objectStoreService.getEntityReference());
 
     // validate parent reference
     if (container.getParent() != null) {
-      daoCollection.containerDAO().findEntityReferenceById(container.getParent().getId());
+      Container parent = Entity.getEntity(container.getParent(), "owner", ALL);
+      container.withParent(parent.getEntityReference());
     }
   }
 
   @Override
   public void storeEntity(Container container, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    // adds entry in the objectstore_container_entity database table
-    EntityReference objectStoreService = container.getObjectStoreService();
+    EntityReference objectStoreService = container.getService();
     EntityReference parent = container.getParent();
     List<EntityReference> children = container.getChildren();
     EntityReference owner = container.getOwner();
     List<TagLabel> tags = container.getTags();
 
-    container
-        .withObjectStoreService(null)
-        .withParent(null)
-        .withChildren(null)
-        .withOwner(null)
-        .withHref(null)
-        .withTags(null);
+    container.withService(null).withParent(null).withChildren(null).withOwner(null).withHref(null).withTags(null);
 
     // Don't store datamodel column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = Lists.newArrayList();
@@ -146,12 +139,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     store(container, update);
 
     // Restore the relationships
-    container
-        .withObjectStoreService(objectStoreService)
-        .withParent(parent)
-        .withChildren(children)
-        .withOwner(owner)
-        .withTags(tags);
+    container.withService(objectStoreService).withParent(parent).withChildren(children).withOwner(owner).withTags(tags);
     if (container.getDataModel() != null) {
       container.getDataModel().setColumns(columnWithTags);
     }
@@ -162,7 +150,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     // Patch can't make changes to following fields. Ignore the changes
     updated
         .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withObjectStoreService(original.getObjectStoreService())
+        .withService(original.getService())
         .withParent(original.getParent())
         .withName(original.getName())
         .withId(original.getId());
@@ -172,7 +160,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void storeRelationships(Container container) throws IOException {
 
     // store each relationship separately in the entity_relationship table
-    EntityReference service = container.getObjectStoreService();
+    EntityReference service = container.getService();
     addRelationship(service.getId(), container.getId(), service.getType(), CONTAINER, Relationship.CONTAINS);
 
     // parent container if exists
