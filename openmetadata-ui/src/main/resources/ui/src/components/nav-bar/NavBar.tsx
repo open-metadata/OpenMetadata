@@ -322,6 +322,7 @@ const NavBar = ({
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <Image
                 alt="OpenMetadata Logo"
+                data-testid="image"
                 fallback={Logo}
                 height={30}
                 preview={false}
