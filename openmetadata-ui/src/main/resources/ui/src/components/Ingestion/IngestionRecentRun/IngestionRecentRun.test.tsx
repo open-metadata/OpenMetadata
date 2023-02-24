@@ -80,4 +80,188 @@ describe('Test IngestionRecentRun component', () => {
     expect(successRun).toBeInTheDocument();
     expect(runs).toHaveLength(4);
   });
+
+  it('should render queued runs when API returns runs with status queued', async () => {
+    (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          pipelineState: 'queued',
+          startDate: 1667307722,
+          timestamp: 1667307722,
+          endDate: 1667307725,
+        },
+        {
+          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
+          pipelineState: 'success',
+          startDate: 1667304123,
+          timestamp: 1667304123,
+          endDate: 1667304126,
+        },
+        {
+          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
+          pipelineState: 'success',
+          startDate: 1667301533,
+          timestamp: 1667301533,
+          endDate: 1667301536,
+        },
+        {
+          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
+          pipelineState: 'success',
+          startDate: 1667297370,
+          timestamp: 1667297370,
+          endDate: 1667297373,
+        },
+      ],
+      paging: { total: 4 },
+    });
+
+    await act(async () => {
+      render(<IngestionRecentRuns ingestion={mockIngestion} />);
+    });
+
+    const runs = await screen.findAllByTestId('pipeline-status');
+    const successRun = await screen.findByText(/Queued/);
+
+    expect(successRun).toBeInTheDocument();
+    expect(runs).toHaveLength(4);
+  });
+
+  it('should render running runs when API returns runs with status running', async () => {
+    (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          pipelineState: 'running',
+          startDate: 1667307722,
+          timestamp: 1667307722,
+          endDate: 1667307725,
+        },
+        {
+          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
+          pipelineState: 'success',
+          startDate: 1667304123,
+          timestamp: 1667304123,
+          endDate: 1667304126,
+        },
+        {
+          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
+          pipelineState: 'success',
+          startDate: 1667301533,
+          timestamp: 1667301533,
+          endDate: 1667301536,
+        },
+        {
+          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
+          pipelineState: 'success',
+          startDate: 1667297370,
+          timestamp: 1667297370,
+          endDate: 1667297373,
+        },
+      ],
+      paging: { total: 4 },
+    });
+
+    await act(async () => {
+      render(<IngestionRecentRuns ingestion={mockIngestion} />);
+    });
+
+    const runs = await screen.findAllByTestId('pipeline-status');
+    const successRun = await screen.findByText(/Running/);
+
+    expect(successRun).toBeInTheDocument();
+    expect(runs).toHaveLength(4);
+  });
+
+  it('should render failed runs when API returns runs with status failed', async () => {
+    (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          pipelineState: 'failed',
+          startDate: 1667307722,
+          timestamp: 1667307722,
+          endDate: 1667307725,
+        },
+        {
+          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
+          pipelineState: 'success',
+          startDate: 1667304123,
+          timestamp: 1667304123,
+          endDate: 1667304126,
+        },
+        {
+          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
+          pipelineState: 'success',
+          startDate: 1667301533,
+          timestamp: 1667301533,
+          endDate: 1667301536,
+        },
+        {
+          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
+          pipelineState: 'success',
+          startDate: 1667297370,
+          timestamp: 1667297370,
+          endDate: 1667297373,
+        },
+      ],
+      paging: { total: 4 },
+    });
+
+    await act(async () => {
+      render(<IngestionRecentRuns ingestion={mockIngestion} />);
+    });
+
+    const runs = await screen.findAllByTestId('pipeline-status');
+    const successRun = await screen.findByText(/Failed/);
+
+    expect(successRun).toBeInTheDocument();
+    expect(runs).toHaveLength(4);
+  });
+
+  it('should render partialSuccess runs when API returns runs with status partialSuccess', async () => {
+    (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          pipelineState: 'partialSuccess',
+          startDate: 1667307722,
+          timestamp: 1667307722,
+          endDate: 1667307725,
+        },
+        {
+          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
+          pipelineState: 'success',
+          startDate: 1667304123,
+          timestamp: 1667304123,
+          endDate: 1667304126,
+        },
+        {
+          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
+          pipelineState: 'success',
+          startDate: 1667301533,
+          timestamp: 1667301533,
+          endDate: 1667301536,
+        },
+        {
+          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
+          pipelineState: 'success',
+          startDate: 1667297370,
+          timestamp: 1667297370,
+          endDate: 1667297373,
+        },
+      ],
+      paging: { total: 4 },
+    });
+
+    await act(async () => {
+      render(<IngestionRecentRuns ingestion={mockIngestion} />);
+    });
+
+    const runs = await screen.findAllByTestId('pipeline-status');
+    const successRun = await screen.findByText(/Partial Success/);
+
+    expect(successRun).toBeInTheDocument();
+    expect(runs).toHaveLength(4);
+  });
 });

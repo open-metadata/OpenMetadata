@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space } from 'antd';
-import { capitalize, isEmpty } from 'lodash';
+import { Popover, Skeleton, Space, Tag } from 'antd';
+import { isEmpty, startCase } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -38,6 +38,14 @@ interface Props {
 const queryParams = {
   startTs: getPastDaysDateTimeMillis(1),
   endTs: getCurrentDateTimeMillis(),
+};
+
+const COLOR = {
+  queued: '#777777',
+  success: '#07a35a',
+  failed: '#e54937',
+  running: '#276ef1',
+  partialSuccess: '#439897',
 };
 
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
@@ -84,18 +92,33 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
         recentRunStatus.map((r, i) => {
           const status =
             i === recentRunStatus.length - 1 ? (
-              <p
-                className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-px-1 tw-text-white tw-text-center`}
-                data-testid="pipeline-status"
-                key={i}>
-                {capitalize(r?.pipelineState)}
-              </p>
-            ) : (
-              <p
-                className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r?.pipelineState} `}
+              <Tag
+                className="h-5 m-0"
+                color={COLOR[r?.pipelineState ?? 'success']}
                 data-testid="pipeline-status"
                 key={i}
-              />
+                style={{
+                  display: 'block',
+                  borderRadius: '0.125rem',
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                }}>
+                {startCase(r?.pipelineState)}
+              </Tag>
+            ) : (
+              <Tag
+                className="h-5 w-4 m-0"
+                color={COLOR[r?.pipelineState ?? 'success']}
+                data-testid="pipeline-status"
+                key={i}
+                style={{
+                  display: 'block',
+                  borderRadius: '0.125rem',
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                }}>
+                {' '}
+              </Tag>
             );
 
           const showTooltip = r?.endDate || r?.startDate || r?.timestamp;
