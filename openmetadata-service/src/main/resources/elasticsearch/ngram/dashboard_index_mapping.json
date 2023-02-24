@@ -54,13 +54,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "ngram_text_analyzer",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "ngram_text_analyzer"
       },
       "description": {
         "type": "text",

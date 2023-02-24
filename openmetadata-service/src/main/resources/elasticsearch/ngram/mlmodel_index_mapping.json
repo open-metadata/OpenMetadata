@@ -54,13 +54,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "ngram_text_analyzer",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "ngram_text_analyzer"
       },
       "description": {
         "type": "text",
@@ -85,7 +79,13 @@
       "mlFeatures": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "dataType": {
             "type": "text"
@@ -112,7 +112,8 @@
       "mlHyperParameters": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ngram_text_analyzer"
           },
           "value": {
             "type": "text"

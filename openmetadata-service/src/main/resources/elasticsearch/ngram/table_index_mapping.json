@@ -55,17 +55,13 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "ngram_text_analyzer",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "ngram_text_analyzer"
       },
       "description": {
         "type": "text",
-        "analyzer": "ngram_text_analyzer"
+        "index_options": "docs",
+        "analyzer": "ngram_text_analyzer",
+        "norms": false
       },
       "version": {
         "type": "float"
@@ -83,7 +79,14 @@
       "columns": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "dataType": {
             "type": "text"
@@ -93,7 +96,9 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "ngram_text_analyzer"
+            "index_options": "docs",
+            "analyzer": "ngram_text_analyzer",
+            "norms": false
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -139,6 +144,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -177,6 +183,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -253,6 +260,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
