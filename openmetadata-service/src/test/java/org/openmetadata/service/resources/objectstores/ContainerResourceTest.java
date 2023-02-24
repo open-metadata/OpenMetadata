@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.databases.TableResourceTest.assertColumns;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -118,13 +119,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   @Test
   void post_ContainerWithInvalidParentContainerReference_404(TestInfo test) {
+    UUID randomUUID = UUID.randomUUID();
     EntityReference randomContainerReference =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTAINER);
+        new EntityReference().withId(randomUUID).withType(Entity.CONTAINER);
     CreateContainer create = createRequest(test).withParent(randomContainerReference);
     assertResponse(
-        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        String.format("container instance for %s not found", randomContainerReference.getId()));
+            entityNotFound(Entity.CONTAINER, randomUUID.toString()));
   }
 
   @Test

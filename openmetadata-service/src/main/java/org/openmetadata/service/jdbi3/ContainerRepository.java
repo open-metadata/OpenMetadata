@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -80,7 +82,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void setFullyQualifiedName(Container container) throws IOException {
+  public void setFullyQualifiedName(Container container) {
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(container.getParent().getFullyQualifiedName(), container.getName()));
@@ -111,9 +113,9 @@ public class ContainerRepository extends EntityRepository<Container> {
         Entity.getEntity(container.getObjectStoreService(), "", Include.NON_DELETED);
     container.withObjectStoreService(objectStoreService.getEntityReference());
 
-    // validate parent reference
     if (container.getParent() != null) {
-      daoCollection.containerDAO().findEntityReferenceById(container.getParent().getId());
+      Container parent = Entity.getEntity(container.getParent(), "owner", ALL);
+      container.withParent(parent.getEntityReference());
     }
   }
 
@@ -139,7 +141,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     List<Column> columnWithTags = Lists.newArrayList();
     if (container.getDataModel() != null) {
       columnWithTags.addAll(container.getDataModel().getColumns());
-      container.getDataModel().setColumns(TableRepository.cloneWithoutTags(columnWithTags));
+      container.getDataModel().setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
       container.getDataModel().getColumns().forEach(column -> column.setTags(null));
     }
 

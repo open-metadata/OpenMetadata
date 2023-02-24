@@ -750,7 +750,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
-    table.setColumns(cloneWithoutTags(columnWithTags));
+    table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
     table.getColumns().forEach(column -> column.setTags(null));
 
     store(table, update);
@@ -774,33 +774,6 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
     return new TableUpdater(original, updated, operation);
-  }
-
-  public static List<Column> cloneWithoutTags(List<Column> columns) {
-    if (nullOrEmpty(columns)) {
-      return columns;
-    }
-    List<Column> copy = new ArrayList<>();
-    columns.forEach(c -> copy.add(cloneWithoutTags(c)));
-    return copy;
-  }
-
-  private static Column cloneWithoutTags(Column column) {
-    List<Column> children = cloneWithoutTags(column.getChildren());
-    return new Column()
-        .withDescription(column.getDescription())
-        .withName(column.getName())
-        .withDisplayName(column.getDisplayName())
-        .withFullyQualifiedName(column.getFullyQualifiedName())
-        .withArrayDataType(column.getArrayDataType())
-        .withConstraint(column.getConstraint())
-        .withDataTypeDisplay(column.getDataTypeDisplay())
-        .withDataType(column.getDataType())
-        .withDataLength(column.getDataLength())
-        .withPrecision(column.getPrecision())
-        .withScale(column.getScale())
-        .withOrdinalPosition(column.getOrdinalPosition())
-        .withChildren(children);
   }
 
   private void applyTags(List<Column> columns) {
