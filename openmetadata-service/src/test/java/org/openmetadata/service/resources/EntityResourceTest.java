@@ -151,6 +151,7 @@ import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
@@ -361,20 +362,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new BotResourceTest().setupBots();
 
     runWebhookTests = new Random().nextBoolean();
-    if (runWebhookTests) {
+    if (true) {
       webhookCallbackResource.clearEvents();
-      //      AlertResourceTest alertResourceTest = new AlertResourceTest();
-      //      alertResourceTest.startWebhookSubscription(true);
-      //      alertResourceTest.startWebhookEntitySubscriptions(entityType);
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      alertResourceTest.startWebhookSubscription(true);
+      alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    if (runWebhookTests) {
-      //      AlertResourceTest alertResourceTest = new AlertResourceTest();
-      //      alertResourceTest.validateWebhookEvents();
-      //      alertResourceTest.validateWebhookEntityEvents(entityType);
+    if (true) {
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      alertResourceTest.validateWebhookEvents();
+      alertResourceTest.validateWebhookEntityEvents(entityType);
     }
     delete_recursiveTest();
   }

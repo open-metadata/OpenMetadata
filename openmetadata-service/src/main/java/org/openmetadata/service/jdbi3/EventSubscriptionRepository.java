@@ -36,8 +36,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
   private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
       new ConcurrentHashMap<>();
-  static final String ALERT_PATCH_FIELDS = "owner,filteringRules";
-  static final String ALERT_UPDATE_FIELDS = "owner,filteringRules";
+  static final String ALERT_PATCH_FIELDS = "owner,enabled,batchSize,timeout";
+  static final String ALERT_UPDATE_FIELDS =
+      "owner,enabled,batchSize,timeout,filteringRules,subscriptionType,subscriptionConfig";
 
   public EventSubscriptionRepository(CollectionDAO dao) {
     super(
@@ -52,6 +53,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public EventSubscription setFields(EventSubscription entity, Fields fields) throws IOException {
+    entity.setStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
     return entity; // No fields to set
   }
 
@@ -98,21 +100,24 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public void addSubscriptionPublisher(EventSubscription eventSubscription) {
+    SubscriptionPublisher publisher = AlertUtil.getAlertPublisher(eventSubscription, daoCollection);
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
-      SubscriptionStatus details =
-          new SubscriptionStatus()
-              .withStatus(SubscriptionStatus.Status.DISABLED)
-              .withTimestamp(System.currentTimeMillis());
-      eventSubscription.setStatusDetails(details);
-      return;
+      eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+    } else {
+      eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
+      BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
+      publisher.setProcessor(processor);
     }
-
-    SubscriptionPublisher publisher = AlertUtil.getAlertPublisher(eventSubscription, daoCollection);
-    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
-    publisher.setProcessor(processor);
     subscriptionPublisherMap.put(eventSubscription.getId(), publisher);
-    LOG.info("Webhook publisher subscription started for {}", eventSubscription.getName());
+    LOG.info(
+        "Webhook publisher subscription started as {} : status {}",
+        eventSubscription.getName(),
+        eventSubscription.getStatusDetails().getStatus());
+  }
+
+  private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {
+    return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
   }
 
   @SneakyThrows
@@ -137,7 +142,20 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       }
     } else {
       // Remove the webhook publisher
-      deleteEventSubscriptionPublisher(eventSubscription.getId());
+      removeProcessorForEventSubscription(
+          eventSubscription.getId(), getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+    }
+  }
+
+  public void removeProcessorForEventSubscription(UUID id, SubscriptionStatus reasonForRemoval)
+      throws InterruptedException {
+    SubscriptionPublisher publisher = subscriptionPublisherMap.get(id);
+    if (publisher != null) {
+      publisher.getProcessor().halt();
+      publisher.awaitShutdown();
+      EventPubSub.removeProcessor(publisher.getProcessor());
+      publisher.getEventSubscription().setStatusDetails(reasonForRemoval);
+      LOG.info("Webhook publisher deleted for {}", publisher.getEventSubscription().getName());
     }
   }
 
@@ -152,11 +170,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID id) {
-    SubscriptionPublisher publisher = subscriptionPublisherMap.get(id);
-    if (publisher != null) {
-      return publisher.getEventSubscription().getStatusDetails();
-    }
-    throw new RuntimeException("Publisher for Given Id does not exist");
+    return subscriptionPublisherMap.get(id).getEventSubscription().getStatusDetails();
   }
 
   @Override
@@ -175,31 +189,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());
-      //      recordChange("status", original.g(), updated.getStatus());
-      //      recordChange("endPoint", original.getEndpoint(), updated.getEndpoint());
-      //      updateEventFilters();
-      //      if (fieldsChanged()) {
-      //        // If updating the other fields, opportunistically use it to capture failure details
-      //        SubscriptionPublisher publisher = EventSubscriptionRepository.this.getPublisher(original.getId());
-      //        if (publisher != null && updated != publisher.getEventSubscription()) {
-      //          updated
-      //              .withStatus(publisher.getWebhook().getStatus())
-      //              .withFailureDetails(publisher.getWebhook().getFailureDetails());
-      //          if (Boolean.FALSE.equals(updated.getEnabled())) {
-      //            updated.setStatusDetails(new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED));
-      //          }
-      //        }
-      //        recordChange(
-      //            "failureDetails", original.getFailureDetails(), updated.getFailureDetails(), true,
-      // failureDetailsMatch);
+      recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules());
+      recordChange("subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
+      recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig());
     }
   }
-
-  //    private void updateEventFilters() throws JsonProcessingException {
-  //      List<EventFilter> origFilter = original.getEventFilters();
-  //      List<EventFilter> updatedFilter = updated.getEventFilters();
-  //      List<EventFilter> added = new ArrayList<>();
-  //      List<EventFilter> deleted = new ArrayList<>();
-  //      recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
-  //    }
 }

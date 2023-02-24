@@ -192,10 +192,6 @@
     "statusDetails": {
       "$ref": "#/definitions/subscriptionStatus"
     },
-    "requiresDisruptor": {
-      "description": "When `true` indicates the subscription will use the Disruptor to generate a BatchEventProcessor",
-      "type": "boolean"
-    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",

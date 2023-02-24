@@ -29,7 +29,6 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.EventResource;
 
@@ -53,12 +52,10 @@ import org.openmetadata.service.resources.events.EventResource;
 public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
-  private final CollectionDAO daoCollection;
   private final EventSubscriptionRepository eventSubscriptionRepository;
 
   public SubscriptionPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub);
-    this.daoCollection = dao;
     this.eventSubscriptionRepository = new EventSubscriptionRepository(dao);
   }
 
@@ -92,25 +89,33 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
     eventSubscribed.setSubscriptionConfig(updatedEventSub.getSubscriptionConfig());
   }
 
-  protected void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
-      throws IOException, InterruptedException {
-    if (!attemptTime.equals(eventSubscribed.getStatusDetails().getLastFailedAt())) {
-      setStatus(FAILED, attemptTime, statusCode, reason, null);
-    }
-    eventSubscriptionRepository.deleteEventSubscriptionPublisher(eventSubscribed.getId());
+  protected synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
+      throws InterruptedException {
+    SubscriptionStatus status = setStatus(FAILED, attemptTime, statusCode, reason, null);
+    eventSubscriptionRepository.removeProcessorForEventSubscription(eventSubscribed.getId(), status);
     throw new RuntimeException(reason);
   }
 
-  protected void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException {
-    if (!attemptTime.equals(eventSubscribed.getStatusDetails().getLastFailedAt())) {
-      setStatus(AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
-    }
+  protected synchronized void setAwaitingRetry(Long attemptTime, int statusCode, String reason) {
+    setStatus(AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
   }
 
-  protected void setStatus(
-      SubscriptionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp)
-      throws IOException {
-    EventSubscription stored = daoCollection.eventSubscriptionDAO().findEntityById(eventSubscribed.getId());
+  protected synchronized SubscriptionStatus setSuccessStatus(Long updateTime) {
+    SubscriptionStatus subStatus =
+        new SubscriptionStatus()
+            .withStatus(ACTIVE)
+            .withLastFailedAt(null)
+            .withLastFailedStatusCode(null)
+            .withLastFailedReason(null)
+            .withNextAttempt(null)
+            .withTimestamp(updateTime)
+            .withLastSuccessfulAt(updateTime);
+    eventSubscribed.setStatusDetails(subStatus);
+    return subStatus;
+  }
+
+  protected synchronized SubscriptionStatus setStatus(
+      SubscriptionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp) {
     SubscriptionStatus subStatus =
         new SubscriptionStatus()
             .withStatus(status)
@@ -119,20 +124,8 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
             .withLastFailedReason(reason)
             .withNextAttempt(timestamp)
             .withTimestamp(attemptTime);
-    stored.setStatusDetails(subStatus);
-
-    // Update
-    EventSubscriptionRepository.EventSubscriptionUpdater updater =
-        eventSubscriptionRepository.getUpdater(stored, stored, EntityRepository.Operation.PUT);
-    updater.update();
-  }
-
-  protected void setSuccessStatus(Long updateTime) {
-    SubscriptionStatus status =
-        new SubscriptionStatus().withStatus(ACTIVE).withLastSuccessfulAt(updateTime).withTimestamp(updateTime);
-
-    // TODO: Fix
-    eventSubscribed.setStatusDetails(status);
+    eventSubscribed.setStatusDetails(subStatus);
+    return subStatus;
   }
 
   public void awaitShutdown() throws InterruptedException {

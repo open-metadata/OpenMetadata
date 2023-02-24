@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Event Subscription  collection", tags = "Event Subscription Collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "eventsSubscription") // init after alertAction Resource
+@Collection(name = "events/subscription") // init after alertAction Resource
 public class EventSubscriptionResource extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscription";
   public static final String FIELDS = "owner,filteringRules";
@@ -283,7 +283,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                     schema = @Schema(implementation = CreateEventSubscription.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createAlert(
+  public Response createEventSubscription(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription request)
       throws IOException {
     EventSubscription eventSub = getEventSubscription(request, securityContext.getUserPrincipal().getName());
@@ -308,7 +308,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                     schema = @Schema(implementation = CreateEventSubscription.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response updateAlert(
+  public Response createOrUpdateEventSubscription(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription create)
       throws IOException {
     EventSubscription eventSub = getEventSubscription(create, securityContext.getUserPrincipal().getName());
@@ -403,7 +403,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "deleteEventSubscription",
       summary = "Delete an Event Subscription by Id",
-      tags = "alerts",
+      tags = "eventSubscription",
       description = "Delete an Event Subscription",
       responses = {
         @ApiResponse(
@@ -413,7 +413,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                 @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Response deleteAlert(
+  public Response deleteEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
@@ -428,13 +428,13 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "deleteEventSubscriptionByName",
       summary = "Delete an Event Subscription by name",
-      tags = "alerts",
+      tags = "eventSubscription",
       description = "Delete an Event Subscription by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Entity for instance {name} is not found")
       })
-  public Response delete(
+  public Response deleteEventSubscriptionByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string")) @PathParam("name")
@@ -446,7 +446,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   }
 
   @GET
-  @Path("/{eventSubscriptionName}/status")
+  @Path("/name/{eventSubscriptionName}/status")
   @Valid
   @Operation(
       operationId = "getEventSubscriptionStatus",
@@ -541,10 +541,12 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
 
   public EventSubscription getEventSubscription(CreateEventSubscription create, String user) throws IOException {
     return copy(new EventSubscription(), create, user)
+        .withEnabled(create.getEnabled())
+        .withBatchSize(create.getBatchSize())
+        .withTimeout(create.getTimeout())
         .withFilteringRules(create.getFilteringRules())
         .withSubscriptionType(create.getSubscriptionType())
-        .withSubscriptionConfig(create.getSubscriptionConfig())
-        .withEnabled(create.getEnabled());
+        .withSubscriptionConfig(create.getSubscriptionConfig());
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
