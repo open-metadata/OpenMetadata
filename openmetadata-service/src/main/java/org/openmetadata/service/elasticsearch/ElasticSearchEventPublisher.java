@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +33,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.ElasticsearchException;
@@ -58,7 +56,6 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -593,47 +590,41 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName
             };
         BulkRequest request = new BulkRequest();
-        SearchResponse searchResponse = searchResponse(indexes, "tags.tagFQN", event.getEntityFullyQualifiedName());
-        SearchHits searchHits = searchResponse.getHits();
-        SearchHit[] allHits;
-        if (searchHits.getTotalHits().value > searchHits.getHits().length) {
-          SearchRequest newSearchRequest = new SearchRequest(indexes);
-          SearchSourceBuilder newSearchSourceBuilder = new SearchSourceBuilder();
-          newSearchSourceBuilder
-              .query(QueryBuilders.matchQuery("tags.tagFQN", event.getEntityFullyQualifiedName()))
-              .size((int) searchHits.getTotalHits().value - searchHits.getHits().length)
-              .from(searchHits.getHits().length);
-          newSearchRequest.source(newSearchSourceBuilder);
-          SearchResponse newSearchResponse = client.search(newSearchRequest, RequestOptions.DEFAULT);
-          SearchHits newSearchHits = newSearchResponse.getHits();
-          allHits =
-              Stream.concat(Arrays.stream(searchHits.getHits()), Arrays.stream(newSearchHits.getHits()))
-                  .toArray(SearchHit[]::new);
-        } else {
-          allHits = searchHits.getHits();
-        }
-        for (SearchHit hit : allHits) {
-          Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-          List<TagLabel> listTags = (List<TagLabel>) sourceAsMap.get("tags");
-          Script script = generateTagScript(listTags);
-          if (!script.toString().isEmpty()) {
-            request.add(
-                updateRequests(sourceAsMap.get("entityType").toString(), sourceAsMap.get("id").toString(), script));
+        SearchRequest searchRequest;
+        SearchResponse response;
+        int batchSize = 50;
+        int totalHits;
+        int currentHits = 0;
+
+        do {
+          searchRequest =
+              searchRequest(indexes, "tags.tagFQN", event.getEntityFullyQualifiedName(), batchSize, currentHits);
+          response = client.search(searchRequest, RequestOptions.DEFAULT);
+          totalHits = (int) response.getHits().getTotalHits().value;
+          for (SearchHit hit : response.getHits()) {
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            List<TagLabel> listTags = (List<TagLabel>) sourceAsMap.get("tags");
+            Script script = generateTagScript(listTags);
+            if (!script.toString().isEmpty()) {
+              request.add(
+                  updateRequests(sourceAsMap.get("entityType").toString(), sourceAsMap.get("id").toString(), script));
+            }
           }
-        }
+          currentHits += response.getHits().getHits().length;
+        } while (currentHits < totalHits);
         client.bulk(request, RequestOptions.DEFAULT);
     }
   }
 
-  private SearchResponse searchResponse(String[] indexes, String field, String value) throws IOException {
+  private SearchRequest searchRequest(String[] indexes, String field, String value, int batchSize, int from) {
     SearchRequest searchRequest = new SearchRequest(indexes);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.matchQuery(field, value));
-    searchSourceBuilder.size(10);
+    searchSourceBuilder.from(from);
+    searchSourceBuilder.size(batchSize);
     searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return searchResponse;
+    return searchRequest;
   }
 
   private Script generateTagScript(List<TagLabel> listTags) {

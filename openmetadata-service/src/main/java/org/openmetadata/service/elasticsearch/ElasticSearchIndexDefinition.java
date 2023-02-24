@@ -46,16 +46,14 @@ public class ElasticSearchIndexDefinition {
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
 
-  public static HashMap<String, String> ENTITY_TYPE_TO_INDEX_MAP = entityTypeToIndexMap();
-
+  public static final HashMap<String, String> ENTITY_TYPE_TO_INDEX_MAP;
   private final RestHighLevelClient client;
 
-  public static HashMap<String, String> entityTypeToIndexMap() {
+  static {
     ENTITY_TYPE_TO_INDEX_MAP = new HashMap<>();
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
       ENTITY_TYPE_TO_INDEX_MAP.put(elasticSearchIndexType.entityType, elasticSearchIndexType.indexName);
     }
-    return ENTITY_TYPE_TO_INDEX_MAP;
   }
 
   public ElasticSearchIndexDefinition(RestHighLevelClient client, CollectionDAO dao) {
