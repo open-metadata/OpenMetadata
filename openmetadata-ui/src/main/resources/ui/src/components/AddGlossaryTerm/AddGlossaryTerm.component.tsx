@@ -461,7 +461,7 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt={t('label.valid-url-endpoint')}
+                    alt={t('message.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
                     width="16px"

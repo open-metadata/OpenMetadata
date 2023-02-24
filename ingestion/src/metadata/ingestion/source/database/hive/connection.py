@@ -80,7 +80,7 @@ def get_connection(connection: HiveConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine) -> str:
     """
     Test connection
     """
@@ -100,4 +100,4 @@ def test_connection(engine: Engine) -> None:
             mandatory=False,
         ),
     ]
-    test_connection_db_common(engine, steps)
+    return test_connection_db_common(engine, steps)
