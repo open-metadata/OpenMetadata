@@ -120,13 +120,12 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   @Test
   void post_ContainerWithInvalidParentContainerReference_404(TestInfo test) {
     UUID randomUUID = UUID.randomUUID();
-    EntityReference randomContainerReference =
-        new EntityReference().withId(randomUUID).withType(Entity.CONTAINER);
+    EntityReference randomContainerReference = new EntityReference().withId(randomUUID).withType(Entity.CONTAINER);
     CreateContainer create = createRequest(test).withParent(randomContainerReference);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-            entityNotFound(Entity.CONTAINER, randomUUID.toString()));
+        entityNotFound(Entity.CONTAINER, randomUUID.toString()));
   }
 
   @Test

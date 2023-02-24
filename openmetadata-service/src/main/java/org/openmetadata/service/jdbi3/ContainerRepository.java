@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
