@@ -58,7 +58,7 @@ ENV LD_LIBRARY_PATH=/instantclient
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
-COPY ingestion/operators/docker/main.py .
+COPY ingestion/operators/docker/*.py .
 
 RUN pip install --upgrade pip
 
