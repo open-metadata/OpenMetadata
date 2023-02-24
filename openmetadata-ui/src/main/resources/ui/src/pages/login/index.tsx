@@ -11,12 +11,24 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Form,
+  Image,
+  Input,
+  Row,
+  Typography,
+} from 'antd';
+import Logo from 'assets/svg/logo.svg';
 import classNames from 'classnames';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import Loader from 'components/Loader/Loader';
 import LoginButton from 'components/LoginButton/LoginButton';
+import { LogoLocationType } from 'generated/configuration/applicationConfiguration';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -32,6 +44,7 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const { logoConfig } = useApplicationConfigProvider();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -65,6 +78,20 @@ const SigninPage = () => {
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
+
+  const brandLogoUrl = useMemo(() => {
+    switch (logoConfig?.logoLocationType) {
+      case LogoLocationType.FilePath:
+        return logoConfig?.loginPageLogoAbsoluteFilePath;
+
+      case LogoLocationType.URL:
+        return logoConfig?.loginPageLogoUrlPath;
+
+      case LogoLocationType.Openmetadata:
+      default:
+        return Logo;
+    }
+  }, [logoConfig]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
@@ -194,7 +221,13 @@ const SigninPage = () => {
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <Image
+              alt="OpenMetadata Logo"
+              fallback={Logo}
+              preview={false}
+              src={brandLogoUrl}
+              width={152}
+            />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
