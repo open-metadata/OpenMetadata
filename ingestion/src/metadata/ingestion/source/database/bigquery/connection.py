@@ -15,6 +15,7 @@ Source connection handler
 import os
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -28,7 +29,10 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionStep,
+    test_connection_db_common,
+)
 from metadata.utils.credentials import set_google_credentials
 
 
@@ -74,8 +78,28 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine) -> str:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+
+    inspector = inspect(engine)
+    steps = [
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+            mandatory=True,
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+            mandatory=True,
+        ),
+    ]
+
+    return test_connection_db_common(engine, steps)
