@@ -23,7 +23,7 @@ export const getPeriodOptions = () => {
       prep: '',
     },
     {
-      label: i18n.t('label.minute-plural'),
+      label: i18n.t('label.minute-plural-lowercase'),
       value: 'minute',
       prep: '',
     },
