@@ -274,32 +274,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     );
   };
 
-  const getAddIngestionName = (type: PipelineType): string => {
-    let name;
-    switch (type) {
-      case PipelineType.ElasticSearchReindex:
-        name = t('label.add-workflow-ingestion', {
-          workflow: t('label.elastic-search-re-index'),
-        });
-
-        break;
-
-      case PipelineType.Dbt:
-        name = t('label.add-workflow-ingestion', {
-          workflow: t('label.dbt-lowercase'),
-        });
-
-        break;
-
-      default:
-        name = t('label.add-workflow-ingestion', {
-          workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
-        });
-    }
-
-    return name;
-  };
-
   const getAddIngestionDropdown = (types: PipelineType[]) => {
     return (
       <Fragment>
@@ -332,7 +306,9 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
-              name: getAddIngestionName(type),
+              name: t('label.add-workflow-ingestion', {
+                workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
+              }),
               disabled:
                 type === PipelineType.DataInsight
                   ? isDataSightIngestionExists
