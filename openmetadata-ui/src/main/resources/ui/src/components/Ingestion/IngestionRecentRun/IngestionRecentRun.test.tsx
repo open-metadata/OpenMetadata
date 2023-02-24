@@ -17,6 +17,30 @@ import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
+const executionRuns = [
+  {
+    runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
+    pipelineState: 'success',
+    startDate: 1667304123,
+    timestamp: 1667304123,
+    endDate: 1667304126,
+  },
+  {
+    runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
+    pipelineState: 'success',
+    startDate: 1667301533,
+    timestamp: 1667301533,
+    endDate: 1667301536,
+  },
+  {
+    runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
+    pipelineState: 'success',
+    startDate: 1667297370,
+    timestamp: 1667297370,
+    endDate: 1667297373,
+  },
+];
+
 jest.mock('rest/ingestionPipelineAPI', () => ({
   getRunHistoryForPipeline: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -28,27 +52,7 @@ jest.mock('rest/ingestionPipelineAPI', () => ({
           timestamp: 1667307722,
           endDate: 1667307725,
         },
-        {
-          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
-          pipelineState: 'success',
-          startDate: 1667304123,
-          timestamp: 1667304123,
-          endDate: 1667304126,
-        },
-        {
-          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
-          pipelineState: 'success',
-          startDate: 1667301533,
-          timestamp: 1667301533,
-          endDate: 1667301536,
-        },
-        {
-          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
-          pipelineState: 'success',
-          startDate: 1667297370,
-          timestamp: 1667297370,
-          endDate: 1667297373,
-        },
+        ...executionRuns,
       ],
       paging: { total: 4 },
     })
@@ -91,27 +95,7 @@ describe('Test IngestionRecentRun component', () => {
           timestamp: 1667307722,
           endDate: 1667307725,
         },
-        {
-          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
-          pipelineState: 'success',
-          startDate: 1667304123,
-          timestamp: 1667304123,
-          endDate: 1667304126,
-        },
-        {
-          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
-          pipelineState: 'success',
-          startDate: 1667301533,
-          timestamp: 1667301533,
-          endDate: 1667301536,
-        },
-        {
-          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
-          pipelineState: 'success',
-          startDate: 1667297370,
-          timestamp: 1667297370,
-          endDate: 1667297373,
-        },
+        ...executionRuns,
       ],
       paging: { total: 4 },
     });
@@ -137,27 +121,7 @@ describe('Test IngestionRecentRun component', () => {
           timestamp: 1667307722,
           endDate: 1667307725,
         },
-        {
-          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
-          pipelineState: 'success',
-          startDate: 1667304123,
-          timestamp: 1667304123,
-          endDate: 1667304126,
-        },
-        {
-          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
-          pipelineState: 'success',
-          startDate: 1667301533,
-          timestamp: 1667301533,
-          endDate: 1667301536,
-        },
-        {
-          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
-          pipelineState: 'success',
-          startDate: 1667297370,
-          timestamp: 1667297370,
-          endDate: 1667297373,
-        },
+        ...executionRuns,
       ],
       paging: { total: 4 },
     });
@@ -183,27 +147,7 @@ describe('Test IngestionRecentRun component', () => {
           timestamp: 1667307722,
           endDate: 1667307725,
         },
-        {
-          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
-          pipelineState: 'success',
-          startDate: 1667304123,
-          timestamp: 1667304123,
-          endDate: 1667304126,
-        },
-        {
-          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
-          pipelineState: 'success',
-          startDate: 1667301533,
-          timestamp: 1667301533,
-          endDate: 1667301536,
-        },
-        {
-          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
-          pipelineState: 'success',
-          startDate: 1667297370,
-          timestamp: 1667297370,
-          endDate: 1667297373,
-        },
+        ...executionRuns,
       ],
       paging: { total: 4 },
     });
@@ -229,27 +173,7 @@ describe('Test IngestionRecentRun component', () => {
           timestamp: 1667307722,
           endDate: 1667307725,
         },
-        {
-          runId: 'c95cc97b-9ea2-465c-9b5a-255401674324',
-          pipelineState: 'success',
-          startDate: 1667304123,
-          timestamp: 1667304123,
-          endDate: 1667304126,
-        },
-        {
-          runId: '60b3e15c-3865-4c81-a1ee-36ff85d2be8e',
-          pipelineState: 'success',
-          startDate: 1667301533,
-          timestamp: 1667301533,
-          endDate: 1667301536,
-        },
-        {
-          runId: 'a2c6fbf9-952f-4ddd-9b01-c203bf54f0fe',
-          pipelineState: 'success',
-          startDate: 1667297370,
-          timestamp: 1667297370,
-          endDate: 1667297373,
-        },
+        ...executionRuns,
       ],
       paging: { total: 4 },
     });

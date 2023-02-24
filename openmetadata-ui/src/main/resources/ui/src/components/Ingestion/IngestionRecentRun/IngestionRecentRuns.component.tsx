@@ -12,6 +12,7 @@
  */
 
 import { Popover, Skeleton, Space, Tag } from 'antd';
+import { PIPELINE_INGESTION_RUN_STATUS } from 'constants/pipeline.constants';
 import { isEmpty, startCase } from 'lodash';
 import React, {
   FunctionComponent,
@@ -30,6 +31,7 @@ import {
   getDateTimeFromMilliSeconds,
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
+import './ingestion-recent-run.style.less';
 
 interface Props {
   ingestion: IngestionPipeline;
@@ -38,14 +40,6 @@ interface Props {
 const queryParams = {
   startTs: getPastDaysDateTimeMillis(1),
   endTs: getCurrentDateTimeMillis(),
-};
-
-const COLOR = {
-  queued: '#777777',
-  success: '#07a35a',
-  failed: '#e54937',
-  running: '#276ef1',
-  partialSuccess: '#439897',
 };
 
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
@@ -93,30 +87,22 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           const status =
             i === recentRunStatus.length - 1 ? (
               <Tag
-                className="h-5 m-0"
-                color={COLOR[r?.pipelineState ?? 'success']}
+                className="ingestion-run-badge latest"
+                color={
+                  PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
+                }
                 data-testid="pipeline-status"
-                key={i}
-                style={{
-                  display: 'block',
-                  borderRadius: '0.125rem',
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                }}>
+                key={i}>
                 {startCase(r?.pipelineState)}
               </Tag>
             ) : (
               <Tag
-                className="h-5 w-4 m-0"
-                color={COLOR[r?.pipelineState ?? 'success']}
+                className="ingestion-run-badge"
+                color={
+                  PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
+                }
                 data-testid="pipeline-status"
-                key={i}
-                style={{
-                  display: 'block',
-                  borderRadius: '0.125rem',
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                }}>
+                key={i}>
                 {' '}
               </Tag>
             );
