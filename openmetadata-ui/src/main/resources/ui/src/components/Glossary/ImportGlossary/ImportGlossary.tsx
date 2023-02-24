@@ -148,7 +148,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       </Col>
       <Col span={24}>
         <Typography.Title data-testid="title" level={5}>
-          {t('label.import-glossary-terms')}
+          {t('label.import-glossary-term-plural')}
         </Typography.Title>
       </Col>
       <Col span={24}>

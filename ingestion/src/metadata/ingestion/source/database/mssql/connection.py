@@ -52,7 +52,7 @@ def get_connection(connection: MssqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: MssqlConnection) -> None:
+def test_connection(engine: MssqlConnection) -> str:
     """
     Test connection
     """
@@ -95,4 +95,4 @@ def test_connection(engine: MssqlConnection) -> None:
         ),
     ]
 
-    test_connection_db_common(engine, steps)
+    return test_connection_db_common(engine, steps)
