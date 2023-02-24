@@ -23,9 +23,11 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
-from metadata.test_suite.validations.core import validation_enum_registry
+from metadata.test_suite.validations.validator import Validator
+from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -43,10 +45,10 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         ometa_client: OpenMetadata = None,
         service_connection_config: DatalakeConnection = None,
         table_entity=None,
-        data_frame: DataFrame = None,
+        df: DataFrame = None,
     ):
         self.table_entity = table_entity
-        self.data_frame = data_frame
+        self.df = df
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
 
@@ -64,16 +66,24 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         """
 
         try:
-            return validation_enum_registry.registry[
-                test_case.testDefinition.fullyQualifiedName
-            ](
-                self.data_frame,
+            TestHandler = import_test_case_class(  # pylint: disable=invalid-name
+                self.ometa_client.get_by_id(
+                    TestDefinition, test_case.testDefinition.id
+                ).entityType.value,
+                "pandas",
+                test_case.testDefinition.fullyQualifiedName,
+            )
+
+            test_handler = TestHandler(
+                self.df,
                 test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
             )
-        except KeyError as err:
-            logger.warning(
-                f"Test definition {test_case.testDefinition.fullyQualifiedName} not registered in OpenMetadata "
-                f"TestDefintion registry. Skipping test case {test_case.name.__root__} - {err}"
+
+            return Validator(validator_obj=test_handler).validate()
+        except Exception as err:
+            logger.error(
+                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             )
-            return None
+
+            raise RuntimeError(err)

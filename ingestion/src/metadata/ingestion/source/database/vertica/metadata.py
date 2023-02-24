@@ -200,14 +200,14 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
                     + match.group(3)
                 )
 
-    column_info = dict(
-        name=name,
-        type=coltype,
-        nullable=nullable,
-        default=default,
-        autoincrement=autoincrement,
-        comment=comment,
-    )
+    column_info = {
+        "name": name,
+        "type": coltype,
+        "nullable": nullable,
+        "default": default,
+        "autoincrement": autoincrement,
+        "comment": comment,
+    }
     return column_info
 
 
@@ -215,6 +215,19 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
 def get_view_definition(
     self, connection, view_name, schema=None, **kw
 ):  # pylint: disable=unused-argument,unused-argument
+    """
+    If we create a view as:
+        CREATE VIEW vendor_dimension_v AS
+        SELECT vendor_key, vendor_name
+        FROM public.vendor_dimension_new;
+    Then the VIEW_DEFINITION statement from V_CATALOG.VIEWS
+    will only contain the SELECT query:
+        SELECT vendor_key, vendor_name
+        FROM public.vendor_dimension_new;
+    We will add the `CREATE VIEW XYZ AS` piece
+    to ensure that the column lineage and target table
+    can be properly inferred.
+    """
     if schema is not None:
         schema_condition = f"lower(table_schema) = '{schema.lower()}'"
     else:
@@ -229,7 +242,7 @@ def get_view_definition(
     )
     rows = list(connection.execute(sql_query))
     if len(rows) >= 1:
-        return rows[0][0]
+        return f"CREATE VIEW {view_name} AS {rows[0][0]}"
     return None
 
 

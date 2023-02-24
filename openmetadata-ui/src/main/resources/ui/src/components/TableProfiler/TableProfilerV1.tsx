@@ -70,7 +70,10 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({
+  isTableDeleted,
+  permissions,
+}) => {
   const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
@@ -165,7 +168,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const overallSummery: OverallTableSummeryType[] = useMemo(() => {
     return [
       {
-        title: t('label.row-count'),
+        title: t('label.entity-count', {
+          entity: t('label.row'),
+        }),
         value: formatNumberWithComma(profile?.rowCount ?? 0),
       },
       {
@@ -332,7 +337,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   }, [table, viewTest]);
 
   useEffect(() => {
-    if (datasetFQN) {
+    if (!isTableDeleted && datasetFQN) {
       fetchLatestProfilerData();
     }
   }, [datasetFQN]);
@@ -401,23 +406,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                   />
                 )}
 
-                <Tooltip
-                  title={
+                <Link
+                  to={
                     editTest
-                      ? t('label.add-entity', {
-                          entity: t('label.test'),
-                        })
-                      : t('message.no-permission-for-action')
+                      ? getAddDataQualityTableTestPath(
+                          ProfilerDashboardType.TABLE,
+                          `${table?.fullyQualifiedName}`
+                        )
+                      : '#'
                   }>
-                  <Link
-                    to={
-                      editTest
-                        ? getAddDataQualityTableTestPath(
-                            ProfilerDashboardType.TABLE,
-                            `${table?.fullyQualifiedName}`
-                          )
-                        : '#'
-                    }>
+                  <Tooltip
+                    title={!editTest && t('message.no-permission-for-action')}>
                     <Button
                       className="rounded-4"
                       data-testid="profiler-add-table-test-btn"
@@ -427,10 +426,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                         entity: t('label.test'),
                       })}
                     </Button>
-                  </Link>
-                </Tooltip>
+                  </Tooltip>
+                </Link>
 
                 <Tooltip
+                  placement="topRight"
                   title={
                     editTest
                       ? t('label.setting-plural')
@@ -463,7 +463,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                     pathname:
                       'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
                   }}>
-                  {t('label.here-lowercase')}.
+                  {`${t('label.here-lowercase')}.`}
                 </Link>
               </p>
             </div>

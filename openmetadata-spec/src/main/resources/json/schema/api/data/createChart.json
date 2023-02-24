@@ -27,8 +27,11 @@
       "type": "string"
     },
     "tables": {
-      "description": "Link to tables used in this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "description": "Link to list of table fully qualified names used in this chart.",
+      "type" : "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     },
     "tags": {
       "description": "Tags for this chart",
@@ -44,7 +47,7 @@
     },
     "service": {
       "description": "Link to the chart service where this chart is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["name", "service"],

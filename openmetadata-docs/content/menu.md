@@ -133,6 +133,8 @@ site_menu:
     url: /deployment/security/enable-ssl/nginx
   - category: Deployment / Enable Security / Enable SSL / Use the OpenMetadata Server
     url: /deployment/security/enable-ssl/openmetadata-server
+  - category: Deployment / Enable Security / Enable SSL / SSL Troubleshooting
+    url: /deployment/security/enable-ssl/ssl-troubleshooting
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
@@ -348,40 +350,19 @@ site_menu:
     url: /connectors/database/vertica/troubleshooting
   - category: Connectors / Dashboard
     url: /connectors/dashboard
+
+  - category: Connectors / Dashboard / Domo Dashboard
+    url: /connectors/dashboard/domo-dashboard
+  - category: Connectors / Dashboard / Domo Dashboard / Airflow
+    url: /connectors/dashboard/domo-dashboard/airflow
+  - category: Connectors / Dashboard / Domo Dashboard / CLI
+    url: /connectors/dashboard/domo-dashboard/cli
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Airflow
     url: /connectors/dashboard/looker/airflow
   - category: Connectors / Dashboard / Looker / CLI
     url: /connectors/dashboard/looker/cli
-  - category: Connectors / Dashboard / Redash
-    url: /connectors/dashboard/redash
-  - category: Connectors / Dashboard / Redash / Airflow
-    url: /connectors/dashboard/redash/airflow
-  - category: Connectors / Dashboard / Redash / CLI
-    url: /connectors/dashboard/redash/cli
-  - category: Connectors / Dashboard / Tableau
-    url: /connectors/dashboard/tableau
-  - category: Connectors / Dashboard / Tableau / Airflow
-    url: /connectors/dashboard/tableau/airflow
-  - category: Connectors / Dashboard / Tableau / CLI
-    url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / PowerBI
-    url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
-  - category: Connectors / Dashboard / PowerBI / Airflow
-    url: /connectors/dashboard/powerbi/airflow
-  - category: Connectors / Dashboard / PowerBI / CLI
-    url: /connectors/dashboard/powerbi/cli
-  - category: Connectors / Dashboard / Superset
-    url: /connectors/dashboard/superset
-  - category: Connectors / Dashboard / Superset / Airflow
-    url: /connectors/dashboard/superset/airflow
-  - category: Connectors / Dashboard / Superset / CLI
-    url: /connectors/dashboard/superset/cli
-  - category: Connectors / Dashboard / Superset / SSO
-    url: /connectors/dashboard/superset/sso
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Airflow
@@ -394,14 +375,40 @@ site_menu:
     url: /connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
     url: /connectors/dashboard/mode/cli
-  - category: Connectors / Dashboard
-  - category: Connectors / Dashboard / Domo Dashboard
-    url: /connectors/dashboard/domo-dashboard
-  - category: Connectors / Dashboard / Domo Dashboard / Airflow
-    url: /connectors/dashboard/domo-dashboard/airflow
-  - category: Connectors / Dashboard / Domo Dashboard / CLI
-    url: /connectors/dashboard/domo-dashboard/cli
-
+  - category: Connectors / Dashboard / PowerBI
+    url: /connectors/dashboard/powerbi
+  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
+    url: /connectors/dashboard/powerbi/powerbi-account-setup
+  - category: Connectors / Dashboard / PowerBI / Airflow
+    url: /connectors/dashboard/powerbi/airflow
+  - category: Connectors / Dashboard / PowerBI / CLI
+    url: /connectors/dashboard/powerbi/cli
+  - category: Connectors / Dashboard / Redash
+    url: /connectors/dashboard/redash
+  - category: Connectors / Dashboard / Redash / Airflow
+    url: /connectors/dashboard/redash/airflow
+  - category: Connectors / Dashboard / Redash / CLI
+    url: /connectors/dashboard/redash/cli
+  - category: Connectors / Dashboard / Superset
+    url: /connectors/dashboard/superset
+  - category: Connectors / Dashboard / Superset / Airflow
+    url: /connectors/dashboard/superset/airflow
+  - category: Connectors / Dashboard / Superset / CLI
+    url: /connectors/dashboard/superset/cli
+  - category: Connectors / Dashboard / Superset / SSO
+    url: /connectors/dashboard/superset/sso
+  - category: Connectors / Dashboard / Tableau
+    url: /connectors/dashboard/tableau
+  - category: Connectors / Dashboard / Tableau / Airflow
+    url: /connectors/dashboard/tableau/airflow
+  - category: Connectors / Dashboard / Tableau / CLI
+    url: /connectors/dashboard/tableau/cli
+  - category: Connectors / Dashboard / Quicksight
+    url: /connectors/dashboard/quicksight
+  - category: Connectors / Dashboard / Quicksight / Airflow
+    url: /connectors/dashboard/quicksight/airflow
+  - category: Connectors / Dashboard / Quicksight / CLI
+    url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
   - category: Connectors / Messaging / Kafka
@@ -568,6 +575,8 @@ site_menu:
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
   - category: How to guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
+  - category: How to guides / How to add Custom Logo
+    url: /how-to-guides/custom-logo/how-to-add-custom-logo
 
   - category: Features
     url: /openmetadata
@@ -1114,6 +1123,8 @@ site_menu:
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
+  - category: SDK / Python SDK / Ingestion / Tags
+    url: /sdk/python/ingestion/tags
   - category: SDK / Python SDK / Build a Connector
     url: /sdk/python/build-connector
   - category: SDK / Python SDK / Build a Connector / Source

@@ -133,6 +133,7 @@ export interface AddIngestionState {
   timeoutSeconds: number;
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
+  processPii: boolean;
 }
 
 export enum ShowFilter {

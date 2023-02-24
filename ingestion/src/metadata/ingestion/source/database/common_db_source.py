@@ -38,7 +38,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
@@ -52,6 +51,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.ingestion.source.database.processor import PiiProcessor
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
@@ -139,6 +139,18 @@ class CommonDbSourceService(
         self.inspector = inspect(self.engine)
         yield database_name
 
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        by default there will be no database description
+        """
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        by default there will be no schema description
+        """
+
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
         From topology.
@@ -147,10 +159,8 @@ class CommonDbSourceService(
 
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
+            description=self.get_database_description(database_name),
         )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -176,7 +186,8 @@ class CommonDbSourceService(
 
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
+            description=self.get_schema_description(schema_name),
         )
 
     @staticmethod
@@ -364,14 +375,17 @@ class CommonDbSourceService(
                 columns=columns,
                 viewDefinition=view_definition,
                 tableConstraints=table_constraints if table_constraints else None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
                 tags=self.get_tag_labels(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
+
+            # Process pii sensitive column and append tags
+            if self.source_config.processPiiSensitive:
+                processor = PiiProcessor(metadata_config=self.metadata)
+                processor.process(table_request)
+
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )

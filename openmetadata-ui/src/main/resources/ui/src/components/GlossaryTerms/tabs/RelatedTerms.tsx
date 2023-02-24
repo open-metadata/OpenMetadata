@@ -12,6 +12,7 @@
  */
 
 import { Select, Spin, Typography } from 'antd';
+import { t } from 'i18next';
 import { cloneDeep, debounce, includes } from 'lodash';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -125,7 +126,7 @@ const RelatedTerms = ({
       key="related_term"
       setShow={() => setIsIconVisible(false)}
       showIcon={isIconVisible}
-      title="Related Terms"
+      title={t('label.related-terms')}
       onSave={handleRelatedTermsSave}>
       <div className="flex" data-testid="related-term-container">
         {isIconVisible ? (
@@ -150,7 +151,7 @@ const RelatedTerms = ({
             ))
           ) : (
             <Typography.Text type="secondary">
-              No related terms available.
+              {t('message.no-related-terms-available')}
             </Typography.Text>
           )
         ) : (
@@ -160,7 +161,9 @@ const RelatedTerms = ({
             mode="multiple"
             notFoundContent={isLoading ? <Spin size="small" /> : null}
             options={formatOptions(options)}
-            placeholder="Add Related Terms"
+            placeholder={t('label.add-entity', {
+              entity: t('label.related-terms'),
+            })}
             style={{ width: '100%' }}
             value={selectedOption}
             onChange={(_, data) => {

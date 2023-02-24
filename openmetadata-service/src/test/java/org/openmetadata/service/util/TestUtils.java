@@ -483,12 +483,13 @@ public final class TestUtils {
     if (expected == null && actual == null) {
       return;
     }
-    if (listOrEmpty(expected).isEmpty()) {
+    expected = listOrEmpty(expected);
+    actual = listOrEmpty(actual);
+    if (expected.isEmpty()) {
       return;
     }
-    for (UUID id : listOrEmpty(expected)) {
-      actual = listOrEmpty(actual);
-      assertEquals(expected.size(), actual.size());
+    assertEquals(expected.size(), actual.size());
+    for (UUID id : expected) {
       assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
     }
     validateEntityReferences(actual);
@@ -505,7 +506,16 @@ public final class TestUtils {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
-    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferenceNames(List<String> expected, List<EntityReference> actual) {
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (String e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e, true);
+      }
+    }
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -522,6 +532,26 @@ public final class TestUtils {
     } else {
       if (ref != null) {
         assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
+  }
+
+  // TODO clean up
+  public static void existsInEntityReferenceList(List<EntityReference> list, String fqn, boolean expectedExistsInList) {
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      // TODO Change description does not href in EntityReferences
+      // validateEntityReference(r);
+      if (r.getFullyQualifiedName().equals(fqn)) {
+        ref = r;
+        break;
+      }
+    }
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + fqn);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + fqn);
       }
     }
   }

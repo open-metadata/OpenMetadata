@@ -13,7 +13,6 @@ The dbt workflow requires the below keys to be present in the node of a manifest
 - resource_type (compulsory)
 - alias/name (any one of them compulsory)
 - schema (compulsory)
-- database (compulsory)
 - description (required if description needs to be updated)
 - compiled_code/compiled_sql (required if the dbt model query is to be shown in dbt tab and for query lineage)
 - depends_on (required if lineage information needs to exctracted)

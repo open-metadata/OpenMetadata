@@ -17,7 +17,7 @@ import Tags from 'components/Tag/Tags/tags';
 import { sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
-import { LIST_SIZE } from '../../../constants/constants';
+import { ELLIPSES, LIST_SIZE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TagsViewerProps } from './tags-viewer.interface';
 
@@ -75,7 +75,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           placement="bottom"
           trigger="click">
           <span className="cursor-pointer text-xs link-text v-align-sub">
-            •••
+            {ELLIPSES}
           </span>
         </Popover>
       )}

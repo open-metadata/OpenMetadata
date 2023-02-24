@@ -1048,7 +1048,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
     if (entityReferences != null) {
       for (EntityReference entityReference : entityReferences) {
-        EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref =
+            entityReference.getId() != null
+                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId())
+                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName());
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
@@ -1156,7 +1159,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Entities can be only owned by team of type 'group'
     if (owner.getType().equals(Entity.TEAM)) {
-      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, ALL);
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
       if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
       }

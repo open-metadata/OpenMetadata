@@ -175,15 +175,6 @@ jest.mock('../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
-}));
-
-jest.mock('@fortawesome/free-solid-svg-icons', () => ({
-  faCaretDown: jest.fn().mockReturnValue(<i>faCaretDown</i>),
-  faCaretRight: jest.fn().mockReturnValue(<i>faCaretRight</i>),
-}));
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });

@@ -123,7 +123,7 @@ export const PropertyValue: FC<Props> = ({
         propertyValue
       ) : (
         <span className="tw-text-grey-muted" data-testid="no-data">
-          No data
+          {t('message.no-data')}
         </span>
       );
     } else {
@@ -131,7 +131,7 @@ export const PropertyValue: FC<Props> = ({
         propertyValue
       ) : (
         <span className="tw-text-grey-muted" data-testid="no-data">
-          No data
+          {t('message.no-data')}
         </span>
       );
     }

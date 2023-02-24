@@ -58,16 +58,7 @@ EXPTECTED_DATABASE_SCHEMA = [
         displayName=None,
         description=None,
         owner=None,
-        database=EntityReference(
-            id="a58b1856-729c-493b-bc87-6d2269b43ec0",
-            type="database",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        database="domodatabase_source.do_it_all_with_default_config",
     )
 ]
 
@@ -226,16 +217,7 @@ EXPTECTED_TABLE = [
         tablePartition=None,
         tableProfilerConfig=None,
         owner=None,
-        databaseSchema=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="databaseSchema",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        databaseSchema="domodashboard_source_test",
         tags=None,
         viewDefinition=None,
         extension=None,

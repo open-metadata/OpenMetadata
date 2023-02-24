@@ -40,7 +40,6 @@ import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
@@ -87,7 +86,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration = config.getLoginSettings();
+    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
   }
 
   @Override
@@ -248,6 +247,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Fetch user
     User storedUser = userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
+
+    // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
+    // for the user is null
+    if (storedUser.getAuthenticationMechanism() == null) {
+      storedUser.setAuthenticationMechanism(
+          new AuthenticationMechanism().withAuthType(BASIC).withConfig(new BasicAuthMechanism().withPassword("")));
+    }
+
     BasicAuthMechanism storedBasicAuthMechanism =
         JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
 
@@ -328,7 +335,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), request);
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
-            .generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+            .generateJWTToken(
+                storedUser.getName(), storedUser.getEmail(), loginConfiguration.getJwtTokenExpiryTime(), false);
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");
     response.setAccessToken(jwtAuthMechanism.getJWTToken());
@@ -405,7 +413,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser);
+    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   @Override
@@ -431,6 +439,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   public void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException {
+    // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
+    // for the user is null
+    if (storedUser.getAuthenticationMechanism() == null) {
+      throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
+    }
     @SuppressWarnings("unchecked")
     LinkedHashMap<String, String> storedData =
         (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();

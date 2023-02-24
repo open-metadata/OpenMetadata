@@ -217,6 +217,6 @@ a couple of points to validate:
 
 The main root cause here is a version mismatch between the server and the client. Make sure that the `openmetadata-ingestion`
 python package you installed on the Airflow host has the same version as the OpenMetadata server. For example, to set up
-OpenMetadata server 0.13.1 you will need to install `openmetadata-ingestion==0.13.1.0`. Note that we are validating
+OpenMetadata server 0.13.2 you will need to install `openmetadata-ingestion~=0.13.2`. Note that we are validating
 the version as in `x.y.z`. Any differences after the PATCH versioning are not taken into account, as they are usually
 small bugfixes on existing functionalities.

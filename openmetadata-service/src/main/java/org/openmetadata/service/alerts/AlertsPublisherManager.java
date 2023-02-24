@@ -18,8 +18,8 @@ import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.jdbi3.AlertActionRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 
 @Slf4j
 public class AlertsPublisherManager {
@@ -47,10 +47,10 @@ public class AlertsPublisherManager {
   }
 
   public void addAlertActionPublishers(Alert alert) throws IOException {
-    EntityRepository<AlertAction> alertActionEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
+    AlertActionRepository alertActionRepository = (AlertActionRepository) Entity.getEntityRepository(ALERT_ACTION);
     for (EntityReference alertActionRef : alert.getAlertActions()) {
       AlertAction action =
-          alertActionEntityRepository.get(null, alertActionRef.getId(), alertActionEntityRepository.getFields("*"));
+          alertActionRepository.get(null, alertActionRef.getId(), alertActionRepository.getFields("*"));
       addAlertActionPublisher(alert, action);
     }
   }

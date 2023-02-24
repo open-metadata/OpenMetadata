@@ -12,11 +12,74 @@ OpenMetadata community will be doing feature releases and stable releases.
  - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
  - Stable releases are to upgrade your production environments and share it with your users.
 
+## 0.13.2 - Stable Release
+
+OpenMetadata 0.13.2 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release)
+
+If you are upgrading production this is the recommended version to upgrade.
+
+## Breaking Changes for 0.13.2 Stable Release
+
+### EntityName
+To better manage and harmonize `entityName` value and allow users to form better expectations around these values the team introduced an enforcement of the `entityName` format using regex pattern.
+
+All the OpenMetadata entities `entityName` fields will enforce by the default the following regex pattern:
+- `^[\w'\- .&]+$`: match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'- .&`. For example when creating a pipeline service the following name will not be allowed `MyPipelineIngestion?!` while the following will be `My-Pipeline `.
+
+Some entities are enforcing specific patterns:
+- Users: `([\w\-.]|[^@])+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.` and don't match the character `@`
+- Webhook: `^[\w'\-.]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.` 
+- Table: `^[\w'\- ./]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'-. /` 
+- Location: `^[\w'\-./]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.'/`
+- Type: `^[a-z][\w]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) starting with a lowercase letter (e.g. `tHisChar` will match, `ThisChar` will not)
+
+If an entity name does not follow the pattern an error will be returned by the OpenMetadata platform.
+
+**The change should be transparent for the end user and no action should be required.**
+
+## EntityLink
+Similar to the implementation done for `entityName`, `entityLink` will now enforce a specific pattern. The structure of `entityLink` is in the form `<#E::{entities}::{entityType}::{field}::{fieldName}::{fieldValue}>`
+
+All the OpenMetadata entities `entityLink` fields will enforce by the default the following regex pattern:
+- `^<#E::\w+::[\w'\- .&/\:+\"\\]+>$`: this means that `{entities}` value needs to match any word characters (equivalent to `[a-zA-Z0-9_]`) and the part after `{entities}` can match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'- .&/\:+\"\`
+
+If an entity name does not follow the pattern an error will be returned by the OpenMetadata platform.
+
+**The change should be transparent for the end user and no action should be required.**
+
+### Tags API
+
+Tags APIs were coded long before other entities' APIs were added. Due to this, tag API does not follow the API convention 
+that all the other entities are following. This issue makes backward incompatible changes to follow the same convention as glossaries.
+
+You can find the full list of API paths changes in the following [issue](https://github.com/open-metadata/OpenMetadata/issues/9259).
+
+### Metabase and Domo Dashboards `name`
+
+With the new restrictions on the `EntityName` and to ensure unicity of the assets, the **Metabase** and **Domo Dashboard** sources
+now ingest the `name` of the charts and dashboards with their internal ID value. Their `name` value will be used
+as the display name, but not as the OpenMetadata `name` anymore.
+
+The recommended approach here is to create a new service and ingest the metadata again. If you ingest from the same
+service, the assets in there will end up being duplicated, as the `name` in OpenMetadata is used to identify each asset.
+
+Let us know if you have any questions around this topic.
+
+### Ingestion Framework sources directory structure
+
+We have converted source modules (e.g., `redshift.py`) into packages containing all the necessary information (e.g., `redshift/metadata.py`).
+This has helped us reorganise functionalities and easily focus on each connector independently.
+
+If you're extending any of the sources, you'll need to update your imports. You can take a look at the new
+structure [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/ingestion/source).
+
+### MySQL Helm Chart Version Reverted to 8.8.23
+
+OpenMetadata Helm Chart Release with Application Version `0.13.2` updates the Bitnami MySQL Helm Chart version from `9.2.1` to `8.8.23`. This is a breaking change and users will face an issue as mentioned in the documentation [here](/deployment/upgrade/kubernetes#mysql-pod-fails-on-upgrade). Please note that OpenMetadata Dependencies Helm Chart is not recommended for production use cases. The steps mentioned in the section will help you fix the issue.
+
 ## 0.13.1 - Stable Release
 
 OpenMetadata 0.13.1 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) 
-
-If you are upgrading production this is the recommended version to upgrade.
 
 ## Breaking Changes for 0.13.1 Stable Release
 
@@ -67,96 +130,6 @@ OpenMetadata 0.13.0 is a **feature release**.
 **Don't upgrade your production with 0.13.0 feature release** 
 
 Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.org/deployment) and please give us any feedback on our [community slack](https://slack.open-metadata.org)
-
-
-## 0.12.3 - Stable release
- 
- OpenMetadata 0.12.3 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) 
-
-If you are upgrading production this is the recommended version to upgrade.
-## Breaking Changes from 0.12.x Stable Release
-
-OpenMetadata Release 0.12.x introduces below breaking changes -
-
-### Change of OpenMetadata Service Namespace
-
-Under the [openmetadata.yaml](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml), all the class names are updated from `org.openmetadata.catalog.*` to `org.openmetadata.service.*`.
-
-- If you are using a previous version of openmetadata.yaml config file with [bare metal](/deployment/bare-metal) installation, make sure to migrate all these values as per new openmetadata.yaml configurations. Check the below example code snippet from openmetadata.yaml configuration
-
-```yaml
-...
-authorizerConfiguration:
-  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
-  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
-...
-```
-
-- If you are using [docker](/deployment/docker) installation with your custom env file, update all the environement variables from `org.openmetadata.catalog.*` to `org.openmetadata.service.*`.
-
-```
-AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-```
-
-- If you are running openmetadata on [kubernetes with helm charts](/deployment/kubernetes), make sure to update `global.authorizer.className` and `global.authorizer.containerRequestFilter` with below values for your custom openmetadata helm chart values file.
-
-```yaml
-global:
-  ...
-  authorizer:
-    className: "org.openmetadata.service.security.DefaultAuthorizer"
-    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
-  ...
-```
-
-### Centralising of openmetadata/ingestion and openmetadata/airflow docker images
-
-Starting 0.12.1 Release, we have centralized openmetadata/airflow and openmetadata/ingestion docker images 
-with openmetadata/ingestion docker image which will be used with docker compose installation and kubernetes helm chart installation. This docker image is based on apache-airflow 2.3.3 image with python 3.9.9. This will be a rootless docker image for enhanced security.
-
-- There is no change or effect with docker installation
-
-- This is a breaking change if you are using a custom openmetadata-dependencies kubernetes helm chart values file.
-You will need to manually update the airflow image and tag with openmetadata/ingestion:0.13.1
-
-```yaml
-...
-airflow:
-  airflow:
-    image:
-      repository: openmetadata/ingestion
-      tag: 0.13.1
-      pullPolicy: "IfNotPresent"
-  ...
-```
-
-<p>
-If you are extending openmetadata/airflow docker image with 0.13.1 release, you can safely replace that with openmetadata/ingestion:0.13.1 Docker Image.
-</p>
-
-```Dockerfile
-FROM openmetadata/ingestion:0.13.1
-USER airflow
-...
-```
-
-### Basic Authentication enabled by default
-
-We have deprecated and removed no-auth as the authentication mechanism starting 0.12.1 Release with OpenMetadata.
-
-The default Authentication mechanism will be basic authentication. You can login to OpenMetadata UI with below default credentials -
-
-```
-Username - admin
-Password - admin
-```
-
-### Enabled JWT Token Configuration by default
-
-Starting 0.12.1 Release, OpenMetadata Installation will provide a default configuration that will enable JWT Token Configuration for the OpenMetadata Instance.
-
-If you want to setup a production Open Metadata instance, it is recommended to follow [enable jwt tokens](/deployment/security/enable-jwt-tokens) to setup and configure your own JWT Token configurations.
 
 ## Backup Metadata
 

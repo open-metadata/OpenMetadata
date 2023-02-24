@@ -19,8 +19,8 @@ authenticationConfiguration:
   provider: "custom-oidc"
   providerName: "KeyCloak"
   publicKeyUrls:
-    - "http://localhost:8081/realms/data-sec/protocol/openid-connect/certs"
-  authority: "http://localhost:8081/realms/data-sec"
+    - "http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs"
+  authority: "http://localhost:8081/auth/realms/data-sec"
   clientId: "open-metadata"
   callbackUrl: "http://localhost:8585/callback"
 ```

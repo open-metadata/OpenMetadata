@@ -47,8 +47,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final String TOPIC_UPDATE_FIELDS = "owner,tags,extension";
-  private static final String TOPIC_PATCH_FIELDS = "owner,tags,extension";
+  private static final String TOPIC_UPDATE_FIELDS = "owner,tags,extension,followers";
+  private static final String TOPIC_PATCH_FIELDS = "owner,tags,extension,followers";
 
   @Override
   public void setFullyQualifiedName(Topic topic) {
@@ -71,7 +71,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException {
-    MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+    MessagingService messagingService = Entity.getEntity(topic.getService(), "", Include.ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     // Validate field tags

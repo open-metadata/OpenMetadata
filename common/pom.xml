@@ -18,25 +18,20 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.13.2-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <properties>
-    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>2.1.4-1</dropwizard.swagger.version>
   </properties>
 
   <artifactId>common</artifactId>
 
   <dependencies>
-    <!-- Required dependency for logging -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
     </dependency>
     <!-- Required dependency for @Slf4j annotation -->
     <dependency>
@@ -69,6 +64,12 @@
           <artifactId>snakeyaml</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-jersey</artifactId>
+      <version>2.1.4</version>
+      <scope>compile</scope>
     </dependency>
 
   </dependencies>

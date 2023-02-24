@@ -12,6 +12,7 @@
  */
 
 import { Button } from 'antd';
+import { t } from 'i18next';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
@@ -80,10 +81,10 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="catalog-file">
-          dbt Catalog File Path
+          {t('label.dbt-catalog-file-path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt catalog file to extract dbt models with their column schemas.
+          {t('message.dbt-catalog-file-extract-path')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -100,11 +101,10 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-file">
-          {requiredField('dbt Manifest File Path')}
+          {requiredField(t('message.dbt-manifest-file-path'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt manifest file path to extract dbt models and associate with
-          tables.
+          {t('message.dbt-manifest-file-path')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -121,10 +121,10 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="run-result-file">
-          dbt Run Results File Path
+          {t('label.dbt-run-result-file-path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt run results file path to extract the test results information.
+          {t('message.dbt-result-file-path')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"

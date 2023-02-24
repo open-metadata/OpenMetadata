@@ -202,12 +202,14 @@ const getCommonQueryBuilderFields = (
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
+
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entitySearchIndex,
           entityField: EntityFields.OWNER,
         }),
+        useAsyncSearch: true,
       },
     },
 
@@ -221,6 +223,7 @@ const getCommonQueryBuilderFields = (
           entitySearchIndex,
           entityField: EntityFields.TAG,
         }),
+        useAsyncSearch: true,
       },
     },
 
@@ -234,6 +237,7 @@ const getCommonQueryBuilderFields = (
           entitySearchIndex,
           entityField: EntityFields.TIER,
         }),
+        useAsyncSearch: true,
       },
     },
   };
@@ -257,6 +261,7 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
           entitySearchIndex: index,
           entityField: EntityFields.SERVICE,
         }),
+        useAsyncSearch: true,
       },
     },
   };
@@ -279,6 +284,7 @@ const tableQueryBuilderFields: Fields = {
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE,
       }),
+      useAsyncSearch: true,
     },
   },
 
@@ -293,6 +299,7 @@ const tableQueryBuilderFields: Fields = {
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE_SCHEMA,
       }),
+      useAsyncSearch: true,
     },
   },
 
@@ -307,6 +314,7 @@ const tableQueryBuilderFields: Fields = {
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.COLUMN,
       }),
+      useAsyncSearch: true,
     },
   },
 };
@@ -457,3 +465,5 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 };
 
 export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
+
+export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';

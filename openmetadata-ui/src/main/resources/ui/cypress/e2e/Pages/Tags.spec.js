@@ -18,10 +18,31 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import {
+  DELETE_TERM,
   NEW_TAG,
   NEW_TAG_CATEGORY,
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
+
+const permanentDeleteModal = (entity) => {
+  cy.get('[data-testid="delete-confirmation-modal"]')
+    .should('exist')
+    .then(() => {
+      cy.get('[role="dialog"]').should('be.visible');
+      cy.get('[data-testid="modal-header"]').should('be.visible');
+    });
+  cy.get('[data-testid="modal-header"]')
+    .should('be.visible')
+    .should('contain', `Delete ${entity}`);
+  cy.get('[data-testid="confirmation-text-input"]')
+    .should('be.visible')
+    .type(DELETE_TERM);
+
+  cy.get('[data-testid="confirm-button"]')
+    .should('be.visible')
+    .should('not.disabled')
+    .click();
+};
 
 describe('Tags page should work', () => {
   beforeEach(() => {
@@ -211,14 +232,8 @@ describe('Tags page should work', () => {
       .click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    cy.get('[data-testid="confirmation-modal"]').within(() => {
-      cy.get("[role='dialog']").should('be.visible');
-    });
-    cy.contains(
-      `Are you sure you want to delete the tag "${NEW_TAG.name}"?`
-    ).should('be.visible');
+    permanentDeleteModal(NEW_TAG.name);
 
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteTag', 200);
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
     cy.get('[data-testid="data-summary-container"]')
@@ -248,14 +263,8 @@ describe('Tags page should work', () => {
       .click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    cy.get('[data-testid="confirmation-modal"]').within(() => {
-      cy.get("[role='dialog']").should('be.visible');
-    });
-    cy.contains(
-      `Are you sure you want to delete the classification "${NEW_TAG_CATEGORY.name}"?`
-    ).should('be.visible');
+    permanentDeleteModal(NEW_TAG_CATEGORY.name);
 
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deletTagClassification', 200);
     cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_TAG_CATEGORY.name)

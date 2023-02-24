@@ -5,13 +5,30 @@ slug: /connectors/database/bigquery/airflow
 
 # Run BigQuery using the Airflow SDK 
 
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
+
 In this section, we provide guides and references to use the BigQuery connector.
 
 Configure and schedule BigQuery metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 ## Requirements
@@ -40,6 +57,7 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 <h4>GCP Permissions</h4>
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
+<Table>
 
 | # | GCP Permission | GCP Role | Required For |
 | :---------- | :---------- | :---------- | :---------- |
@@ -54,6 +72,8 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 | 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
 | 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
 | 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+
+</Table>
 
 
 ## Metadata Ingestion
@@ -97,6 +117,7 @@ source:
           clientX509CertUrl: https://cert.url
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -403,9 +424,9 @@ with DAG(
 Note that from connector to connector, this recipe will always be the same.
 By updating the YAML configuration, you will be able to extract metadata from different sources.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
-To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same.
+To ingest the Query Usage, the `serviceConnection` configuration will remain the same.
 However, the `sourceConfig` is now modeled after this JSON Schema.
 
 ### 1. Define the YAML Config
@@ -678,6 +699,10 @@ with DAG(
        python_callable=metadata_ingestion_workflow,
    )
 ```
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
 
 ## dbt Integration
 

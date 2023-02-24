@@ -107,7 +107,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                 <div className="tw-text-left">
                   {r.timestamp && (
                     <p>
-                      {t('label.execution-date')} :{' '}
+                      {`${t('label.execution-date')}:`}{' '}
                       {getDateTimeFromMilliSeconds(r.timestamp)}
                     </p>
                   )}
@@ -119,7 +119,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   )}
                   {r.endDate && (
                     <p>
-                      {t('label.end-date')} :{' '}
+                      {`${t('label.end-date')}"`}{' '}
                       {getDateTimeFromMilliSeconds(r.endDate)}
                     </p>
                   )}

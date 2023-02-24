@@ -15,8 +15,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
-import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -167,10 +166,9 @@ const ServiceConnectionDetails = ({
             <div className="tw-flex">
               <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
               <Tooltip position="bottom" title={description} trigger="hover">
-                <FontAwesomeIcon
+                <InfoCircleOutlined
                   className="tw-mx-1"
-                  color="#C4C4C4"
-                  icon={{ ...faInfoCircle }}
+                  style={{ color: 'C4C4C4' }}
                 />
               </Tooltip>
             </div>

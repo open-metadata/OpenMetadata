@@ -349,16 +349,13 @@ class AtlasUnitTest(TestCase):
                 description=None,
                 tags=None,
                 owner=None,
-                service=EntityReference(
-                    id=mock_database_service_object.id,
-                    type="databaseService",
-                ),
+                service=mock_database_service_object.fullyQualifiedName,
             )
         )
         mock_database_schema_object = self.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="Reporting",
-                database=EntityReference(id=mock_database_object.id, type="database"),
+                database=mock_database_object.fullyQualifiedName,
             )
         )
         _ = self.metadata.create_or_update(
@@ -444,9 +441,7 @@ class AtlasUnitTest(TestCase):
                         profile=None,
                     ),
                 ],
-                databaseSchema=EntityReference(
-                    id=mock_database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=mock_database_schema_object.fullyQualifiedName,
             ),
         )
 

@@ -7,7 +7,7 @@
       "fullyQualifiedName": "local_superset.8",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/1/",
-      "charts": [183, 170, 197],
+      "charts": ["sample_superset.183", "sample_superset.170", "sample_superset.197"],
       "href": "http://localhost:8585/api/v1/dashboards/d4dc7baf-1b17-45f8-acd5-a15b78cc7c5f"
     },
     {
@@ -17,7 +17,7 @@
       "fullyQualifiedName": "local_superset.9",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/8/",
-      "charts": [117, 197],
+      "charts": ["sample_superset.117", "sample_superset.197"],
       "href": "http://localhost:8585/api/v1/dashboards/063cd787-8630-4809-9702-34d3992c7248"
     },
     {
@@ -27,7 +27,7 @@
       "fullyQualifiedName": "local_superset.10",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/deck/",
-      "charts": [127, 166, 114],
+      "charts": ["sample_superset.127", "sample_superset.166", "sample_superset.114"],
       "href": "http://localhost:8585/api/v1/dashboards/df6c698e-066a-4440-be0a-121025573b73"
     },
     {
@@ -37,7 +37,7 @@
       "fullyQualifiedName": "local_superset.11",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/7/",
-      "charts": [183, 197, 170, 180],
+      "charts": ["sample_superset.183", "sample_superset.197", "sample_superset.170", "sample_superset.180"],
       "href": "http://localhost:8585/api/v1/dashboards/98b38a49-b5c6-431b-b61f-690e39f8ead2"
     },
     {
@@ -47,7 +47,7 @@
       "fullyQualifiedName": "local_superset.12",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/misc_charts/",
-      "charts": [127, 197],
+      "charts": ["sample_superset.127", "sample_superset.197"],
       "href": "http://localhost:8585/api/v1/dashboards/dffcf9b2-4f43-4881-a5f5-10109655bf50"
     },
     {
@@ -57,7 +57,7 @@
       "fullyQualifiedName": "local_superset.31",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/6/",
-      "charts": [92,117,166],
+      "charts": ["sample_superset.92", "sample_superset.117", "sample_superset.166"],
       "href": "http://localhost:8585/api/v1/dashboards/2583737d-6236-421e-ba0f-cd0b79adb216"
     },
     {
@@ -67,7 +67,7 @@
       "fullyQualifiedName": "local_superset.33",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/10/",
-      "charts": [114, 92, 127],
+      "charts": ["sample_superset.114", "sample_superset.92", "sample_superset.127"],
       "href": "http://localhost:8585/api/v1/dashboards/6bf9bfcb-4e80-4af0-9f0c-13e47bbc27a2"
     },
     {
@@ -77,7 +77,7 @@
       "fullyQualifiedName": "local_superset.34",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/unicode-test/",
-      "charts": [161, 170, 180],
+      "charts": ["sample_superset.161", "sample_superset.170", "sample_superset.180"],
       "href": "http://localhost:8585/api/v1/dashboards/1f02caf2-c5e5-442d-bda3-b8ce3e757b45"
     },
     {
@@ -87,7 +87,7 @@
       "fullyQualifiedName": "local_superset.45",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/births/",
-      "charts": [180],
+      "charts": ["sample_superset.180"],
       "href": "http://localhost:8585/api/v1/dashboards/a3ace318-ee37-4da1-974a-62eddbd77d20"
     },
     {
@@ -97,7 +97,7 @@
       "fullyQualifiedName": "local_superset.51",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/11/",
-      "charts": [127, 183],
+      "charts": ["sample_superset.127", "sample_superset.183"],
       "href": "http://localhost:8585/api/v1/dashboards/e6e21717-1164-403f-8807-d12be277aec6"
     },
     {
@@ -107,7 +107,7 @@
       "fullyQualifiedName": "local_superset.eta_predictions_performance",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/eta_predictions_performance/",
-      "charts": [210],
+      "charts": ["sample_superset.210"],
       "href": "http://localhost:8585/api/v1/dashboards/d2b0af00-f419-4905-bb43-036697ce53a5"
     },
     {
@@ -117,7 +117,7 @@
       "fullyQualifiedName": "local_superset.forecast_sales_performance",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/forecast_sales_performance/",
-      "charts": [211],
+      "charts": ["sample_superset.211"],
       "href": "http://localhost:8585/api/v1/dashboards/d2b0af00-f419-4905-bb43-036697ce53a5"
     }
   ]

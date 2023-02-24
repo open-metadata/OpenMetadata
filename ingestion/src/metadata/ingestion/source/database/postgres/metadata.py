@@ -48,6 +48,7 @@ from metadata.ingestion.source.database.common_db_source import (
 )
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
+    POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
     POSTGRES_TABLE_COMMENTS,
@@ -163,7 +164,7 @@ class PostgresSource(CommonDbSourceService):
         """
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES),
-            dict(schema=schema_name),
+            {"schema": schema_name},
         )
 
         return [
@@ -174,14 +175,12 @@ class PostgresSource(CommonDbSourceService):
         ]
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
-        if configured_db:
+        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.__root__.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(
-                "select datname from pg_catalog.pg_database"
-            )
+            results = self.connection.execute(POSTGRES_GET_DB_NAMES)
             for res in results:
                 row = list(res)
                 new_database = row[0]

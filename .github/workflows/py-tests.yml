@@ -19,6 +19,10 @@ on:
       - 'openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths:
+      - "ingestion/**"
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
 
 permissions:
   contents: read
