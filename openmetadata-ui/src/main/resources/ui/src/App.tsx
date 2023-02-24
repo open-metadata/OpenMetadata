@@ -12,6 +12,7 @@
  */
 
 import Appbar from 'components/app-bar/Appbar';
+import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
@@ -35,16 +36,18 @@ const App: FunctionComponent = () => {
           <I18nextProvider i18n={i18n}>
             <ErrorBoundry>
               <AuthProvider childComponentType={AppRouter}>
-                <WebAnalyticsProvider>
-                  <PermissionProvider>
-                    <WebSocketProvider>
-                      <GlobalSearchProvider>
-                        <Appbar />
-                        <AppRouter />
-                      </GlobalSearchProvider>
-                    </WebSocketProvider>
-                  </PermissionProvider>
-                </WebAnalyticsProvider>
+                <ApplicationConfigProvider>
+                  <WebAnalyticsProvider>
+                    <PermissionProvider>
+                      <WebSocketProvider>
+                        <GlobalSearchProvider>
+                          <Appbar />
+                          <AppRouter />
+                        </GlobalSearchProvider>
+                      </WebSocketProvider>
+                    </PermissionProvider>
+                  </WebAnalyticsProvider>
+                </ApplicationConfigProvider>
               </AuthProvider>
             </ErrorBoundry>
           </I18nextProvider>
