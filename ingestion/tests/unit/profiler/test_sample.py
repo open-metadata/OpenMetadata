@@ -26,11 +26,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.profiler.core import Profiler
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 from metadata.profiler.profiler.sampler import Sampler
 
 Base = declarative_base()
@@ -74,13 +76,13 @@ class SampleTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-                sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
+            sqlite_conn,
+            None,
+            table_entity,
+            None,
+            None,
+            None,
+            None,
         )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -144,13 +146,13 @@ class SampleTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                    self.sqlite_conn,
-                    None,
-                    self.table_entity,
-                    ProfileSampleConfig(profile_sample=50.0),
-                    None,
-                    None,
-                    None,
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                ProfileSampleConfig(profile_sample=50.0),
+                None,
+                None,
+                None,
             )
 
         sample = sqa_profiler_interface._create_thread_safe_sampler(
@@ -188,13 +190,13 @@ class SampleTest(TestCase):
             profiler = Profiler(
                 count,
                 profiler_interface=SQAProfilerInterface(
-                        self.sqlite_conn,
-                        None,
-                        self.table_entity,
-                        ProfileSampleConfig(profile_sample=50),
-                        None,
-                        None,
-                        None,
+                    self.sqlite_conn,
+                    None,
+                    self.table_entity,
+                    ProfileSampleConfig(profile_sample=50),
+                    None,
+                    None,
+                    None,
                 ),
             )
         res = profiler.compute_metrics()._column_results
@@ -211,13 +213,13 @@ class SampleTest(TestCase):
             profiler = Profiler(
                 hist,
                 profiler_interface=SQAProfilerInterface(
-                        self.sqlite_conn,
-                        None,
-                        self.table_entity,
-                        ProfileSampleConfig(profile_sample=50),
-                        None,
-                        None,
-                        None,
+                    self.sqlite_conn,
+                    None,
+                    self.table_entity,
+                    ProfileSampleConfig(profile_sample=50),
+                    None,
+                    None,
+                    None,
                 ),
             )
         res = profiler.compute_metrics()._column_results

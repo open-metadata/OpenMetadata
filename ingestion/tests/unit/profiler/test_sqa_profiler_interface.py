@@ -38,7 +38,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
@@ -47,6 +46,9 @@ from metadata.profiler.metrics.core import (
 )
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.profiler.default import get_default_metrics
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 
 class User(declarative_base()):
@@ -78,13 +80,13 @@ class SQAInterfaceTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             self.sqa_profiler_interface = SQAProfilerInterface(
-                    sqlite_conn,
-                    None,
-                    table_entity,
-                    None,
-                    None,
-                    None,
-                    None,
+                sqlite_conn,
+                None,
+                table_entity,
+                None,
+                None,
+                None,
+                None,
             )
         self.table = User
 
@@ -118,13 +120,13 @@ class SQAInterfaceTestMultiThread(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-                sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
+            sqlite_conn,
+            None,
+            table_entity,
+            None,
+            None,
+            None,
+            None,
         )
 
     @classmethod

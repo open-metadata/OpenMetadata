@@ -40,11 +40,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.core import MissingMetricException, Profiler
 from metadata.profiler.profiler.default import DefaultProfiler
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 Base = declarative_base()
 
@@ -85,13 +87,13 @@ class ProfilerTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-                sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
+            sqlite_conn,
+            None,
+            table_entity,
+            None,
+            None,
+            None,
+            None,
         )
 
     @classmethod
@@ -239,14 +241,14 @@ class ProfilerTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                    self.sqlite_conn,
-                    None,
-                    self.table_entity,
-                    None,
-                    None,
-                    None,
-                    None,
-                    timeout_seconds=0,
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                None,
+                None,
+                None,
+                None,
+                timeout_seconds=0,
             )
 
         simple = DefaultProfiler(

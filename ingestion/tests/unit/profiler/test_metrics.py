@@ -27,11 +27,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.profiler.core import Profiler
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 Base = declarative_base()
 
@@ -83,14 +85,14 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             cls.sqa_profiler_interface = SQAProfilerInterface(
-                    cls.sqlite_conn,
-                    None,
-                    cls.table_entity,
-                    None,
-                    None,
-                    None,
-                    None,
-                    thread_count=1,
+                cls.sqlite_conn,
+                None,
+                cls.table_entity,
+                None,
+                None,
+                None,
+                None,
+                thread_count=1,
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
 
@@ -705,13 +707,13 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                    self.sqlite_conn,
-                    None,
-                    self.table_entity,
-                    None,
-                    None,
-                    None,
-                    None,
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                None,
+                None,
+                None,
+                None,
             )
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
