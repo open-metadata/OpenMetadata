@@ -138,7 +138,7 @@ const FormBuilder: FunctionComponent<Props> = ({
 
       case 'initial':
       default:
-        return 'Test your connections before creating the service';
+        return t('message.test-your-connection-before-creating-service');
     }
   };
 

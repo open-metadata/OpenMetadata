@@ -171,12 +171,16 @@ const NavBar = ({
     let path: string;
     switch (type) {
       case 'Task':
-        body = `${createdBy} assigned you a new task.`;
+        body = t('message.user-assign-new-task', {
+          user: createdBy,
+        });
         path = getTaskDetailPath(toString(id)).pathname;
 
         break;
       case 'Conversation':
-        body = `${createdBy} mentioned you in a comment.`;
+        body = t('message.user-mentioned-in-comment', {
+          user: createdBy,
+        });
         path = prepareFeedLink(entityType as string, entityFQN as string);
     }
     const notification = new Notification('Notification From OpenMetadata', {

@@ -23,6 +23,7 @@ import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
 import { startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from 'rest/serviceAPI';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -40,6 +41,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
+  const { t } = useTranslation();
   const { serviceFQN, serviceCategory } = useParams() as Record<string, string>;
   const [isLoading, setIsloading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -118,7 +120,7 @@ function EditConnectionFormPage() {
               url: getPathByServiceFQN(serviceCategory, serviceFQN),
             },
             {
-              name: 'Edit Connection',
+              name: t('label.edit-connection'),
               url: '',
               activeTitle: true,
             },
@@ -153,7 +155,9 @@ function EditConnectionFormPage() {
           <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
           <div className="form-container">
             <Typography.Title level={5}>
-              {`Edit ${serviceFQN} Service Connection`}
+              {t('message.edit-service-entity-connection', {
+                entity: serviceFQN,
+              })}
             </Typography.Title>
             <ServiceConfig
               data={serviceDetails as ServicesData}
