@@ -217,7 +217,7 @@ const SigninPage = () => {
             })}>
             <Image
               alt="OpenMetadata Logo"
-              data-testid="image"
+              data-testid="brand-logo-image"
               fallback={Logo}
               preview={false}
               src={brandLogoUrl}
