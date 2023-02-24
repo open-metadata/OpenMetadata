@@ -92,7 +92,7 @@
       "description": "Owner of this container.",
       "$ref": "../../type/entityReference.json"
     },
-    "objectStoreService": {
+    "service": {
       "description": "Link to the object store service where this container is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
@@ -161,7 +161,7 @@
   "required": [
     "id",
     "name",
-    "objectStoreService"
+    "service"
   ],
   "additionalProperties": false
 }

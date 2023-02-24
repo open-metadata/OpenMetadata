@@ -20,9 +20,9 @@
       "description": "Description of the Container instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "objectStoreService": {
+    "service": {
       "description": "Link to the object store service where this container is hosted in.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parent": {
       "description": "Link to the parent container under which this entity sits.",
@@ -73,6 +73,6 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
-  "required": ["name", "objectStoreService"],
+  "required": ["name", "service"],
   "additionalProperties": false
 }
