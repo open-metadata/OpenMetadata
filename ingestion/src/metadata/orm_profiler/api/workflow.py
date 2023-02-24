@@ -113,8 +113,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             self.config.processor.dict().get("config")
         )
         self.metadata = OpenMetadata(self.metadata_config)
-        self.test_connection()
         self._retrieve_service_connection_if_needed()
+        self.test_connection()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
@@ -564,7 +564,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         service_type: ServiceType = get_service_type_from_source_type(
             self.config.source.type
         )
-        if self.config.source.serviceConnection:
+        if not self.config.source.serviceConnection:
             service_name = self.config.source.serviceName
             try:
                 service: ServiceWithConnectionType = cast(
