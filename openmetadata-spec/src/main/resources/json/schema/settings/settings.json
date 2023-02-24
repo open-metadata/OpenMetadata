@@ -56,12 +56,6 @@
           "$ref": "../configuration/jwtTokenConfiguration.json"
         },
         {
-          "$ref": "../configuration/slackChatConfiguration.json"
-        },
-        {
-          "$ref": "../configuration/slackEventPubConfiguration.json"
-        },
-        {
           "$ref": "../configuration/taskNotificationConfiguration.json"
         }
 

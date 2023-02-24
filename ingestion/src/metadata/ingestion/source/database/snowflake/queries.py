@@ -73,3 +73,17 @@ SNOWFLAKE_GET_CLUSTER_KEY = """
   where  TABLE_TYPE = 'BASE TABLE'
   and CLUSTERING_KEY is not null
 """
+
+
+SNOWFLAKE_GET_SCHEMA_COMMENTS = """
+SELECT 
+      catalog_name DATABASE_NAME,
+      SCHEMA_NAME,
+      COMMENT 
+FROM information_schema.schemata
+"""
+
+
+SNOWFLAKE_GET_DATABASE_COMMENTS = """
+select DATABASE_NAME,COMMENT from information_schema.databases
+"""
