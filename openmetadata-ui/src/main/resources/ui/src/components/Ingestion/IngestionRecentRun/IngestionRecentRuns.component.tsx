@@ -102,9 +102,8 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
                 }
                 data-testid="pipeline-status"
-                key={i}>
-                {' '}
-              </Tag>
+                key={i}
+              />
             );
 
           const showTooltip = r?.endDate || r?.startDate || r?.timestamp;
