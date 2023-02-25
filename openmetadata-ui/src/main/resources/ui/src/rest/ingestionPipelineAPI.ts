@@ -16,8 +16,10 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { IngestionPipelineLogByIdInterface } from 'pages/LogsViewer/LogsViewer.interfaces';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { PipelineStatus } from '../generated/entity/data/pipeline';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineStatus,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
