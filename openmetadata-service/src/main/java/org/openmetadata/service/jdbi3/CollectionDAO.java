@@ -61,6 +61,7 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -80,6 +81,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
+import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -214,6 +216,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   StorageServiceDAO storageServiceDAO();
+
+  @CreateSqlObject
+  ObjectStoreServiceDAO objectStoreServiceDAO();
+
+  @CreateSqlObject
+  ContainerDAO containerDAO();
 
   @CreateSqlObject
   FeedDAO feedDAO();
@@ -367,6 +375,40 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "name";
+    }
+  }
+
+  interface ObjectStoreServiceDAO extends EntityDAO<ObjectStoreService> {
+    @Override
+    default String getTableName() {
+      return "objectstore_service_entity";
+    }
+
+    @Override
+    default Class<ObjectStoreService> getEntityClass() {
+      return ObjectStoreService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface ContainerDAO extends EntityDAO<Container> {
+    @Override
+    default String getTableName() {
+      return "objectstore_container_entity";
+    }
+
+    @Override
+    default Class<Container> getEntityClass() {
+      return Container.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
     }
   }
 
@@ -3156,12 +3198,14 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
+                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as containerCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
+                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectstoreservicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
@@ -3173,12 +3217,14 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
+                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as containerCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
+                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectstoreservicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>  ) as testSuiteCount",
