@@ -80,16 +80,10 @@ const SigninPage = () => {
   }, [isAuthDisabled, isAuthenticated]);
 
   const brandLogoUrl = useMemo(() => {
-    switch (logoConfig?.logoLocationType) {
-      case LogoLocationType.FilePath:
-        return logoConfig?.loginPageLogoAbsoluteFilePath;
-
-      case LogoLocationType.URL:
-        return logoConfig?.loginPageLogoUrlPath;
-
-      case LogoLocationType.Openmetadata:
-      default:
-        return Logo;
+    if (logoConfig?.logoLocationType === LogoLocationType.URL) {
+      return logoConfig?.loginPageLogoUrlPath;
+    } else {
+      return Logo;
     }
   }, [logoConfig]);
 
@@ -223,7 +217,7 @@ const SigninPage = () => {
             })}>
             <Image
               alt="OpenMetadata Logo"
-              data-testid="image"
+              data-testid="brand-logo-image"
               fallback={Logo}
               preview={false}
               src={brandLogoUrl}

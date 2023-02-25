@@ -301,16 +301,10 @@ const NavBar = ({
   );
 
   const brandLogoUrl = useMemo(() => {
-    switch (logoConfig?.logoLocationType) {
-      case LogoLocationType.FilePath:
-        return logoConfig?.navBarLogoAbsoluteFilePath;
-
-      case LogoLocationType.URL:
-        return logoConfig?.navBarLogoUrlPath;
-
-      case LogoLocationType.Openmetadata:
-      default:
-        return Logo;
+    if (logoConfig?.logoLocationType === LogoLocationType.URL) {
+      return logoConfig?.navBarLogoUrlPath;
+    } else {
+      return Logo;
     }
   }, [logoConfig]);
 

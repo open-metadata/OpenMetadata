@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -26,6 +31,18 @@ jest.mock('react-router-dom', () => ({
 jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
+jest.mock(
+  'components/ApplicationConfigProvider/ApplicationConfigProvider',
+  () => ({
+    useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
+      logoConfig: {
+        logoLocationType: 'url',
+        loginPageLogoUrlPath: 'https://logo.com/logo.png',
+        navBarLogoUrlPath: 'https://logo.com/logo.png',
+      },
+    })),
+  })
+);
 
 jest.mock(
   'components/containers/PageContainer',
@@ -111,5 +128,24 @@ describe('Test SigninPage Component', () => {
     const signinButton = await findByText(container, /label.sign-in-with-sso/i);
 
     expect(signinButton).toBeInTheDocument();
+  });
+
+  it('Page should render the correct logo image', async () => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
+      onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
+    });
+    render(<SigninPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const brandLogoImage = await screen.findByTestId('brand-logo-image');
+    const logoImage = brandLogoImage.querySelector('img') as HTMLImageElement;
+
+    expect(brandLogoImage).toBeInTheDocument();
+
+    expect(logoImage.src).toEqual('https://logo.com/logo.png');
   });
 });
