@@ -188,13 +188,14 @@ class SampleDataSourceStatus(SourceStatus):
 
 class SampleDataSource(
     Source[Entity]
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        # pylint: disable=too-many-statements
         super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config

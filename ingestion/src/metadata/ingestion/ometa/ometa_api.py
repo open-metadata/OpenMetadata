@@ -17,11 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
-
 try:
     from typing import get_args
 except ImportError:
@@ -41,6 +36,7 @@ from metadata.generated.schema.entity.classification.classification import (
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -65,6 +61,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
