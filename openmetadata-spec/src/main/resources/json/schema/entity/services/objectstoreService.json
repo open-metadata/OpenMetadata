@@ -1,0 +1,134 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/objectstoreService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Object Store Service",
+  "description": "This schema defines the Object Store Service entity, such as S3, GCS, AZURE.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.ObjectStoreService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "objectStoreServiceType": {
+      "description": "Type of object store service such as S3, GFS, AZURE...",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "type": "string",
+      "enum": [
+        "S3",
+        "GCS",
+        "AZURE"
+      ],
+      "javaEnums": [
+        {
+          "name": "S3"
+        },
+        {
+          "name": "GCS"
+        },
+        {
+          "name": "AZURE"
+        }
+      ]
+    },
+    "objectStoreConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ObjectStoreConnection",
+      "description": "Object Store Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "connections/objectstore/s3ObjectStoreConnection.json"
+            },
+            {
+              "$ref": "connections/objectstore/gcsObjectStoreConnection.json"
+            },
+            {
+              "$ref": "connections/objectstore/azureObjectStoreConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this object store service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this object store service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this object store service.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of object store service such as S3, GCS, AZURE...",
+      "$ref": "#/definitions/objectStoreServiceType"
+    },
+    "description": {
+      "description": "Description of a object store service instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "connection": {
+      "$ref": "#/definitions/objectStoreConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this object store service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this Object Store Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this object store service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this object store service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "serviceType"],
+  "additionalProperties": false
+}

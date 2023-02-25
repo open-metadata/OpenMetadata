@@ -1870,7 +1870,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(expectedColumn.getChildren(), actualColumn.getChildren());
   }
 
-  private static void assertColumns(List<Column> expectedColumns, List<Column> actualColumns)
+  public static void assertColumns(List<Column> expectedColumns, List<Column> actualColumns)
       throws HttpResponseException {
     if (expectedColumns == actualColumns) {
       return;
