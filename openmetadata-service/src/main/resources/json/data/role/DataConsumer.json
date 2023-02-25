@@ -1,0 +1,13 @@
+{
+  "name": "DataConsumer",
+  "displayName": "Data Consumer",
+  "description": "Users with Data Consumer role use different data assets for their day to day work.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DataConsumerPolicy"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createTestDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestDefinitionRequest",
+  "description": "Schema corresponding to a Test Definition",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this test case.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test case.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this TestCase definition.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "entityType": {
+      "$ref": "../../tests/testDefinition.json#/definitions/entityType"
+    },
+    "testPlatforms": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testDefinition.json#/definitions/testPlatform"
+      }
+    },
+    "supportedDataTypes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/dataType"
+      }
+    },
+    "parameterDefinition": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
+      }
+    }
+  },
+  "required": ["name", "description","entityType", "testPlatforms"],
+  "additionalProperties": false
+}

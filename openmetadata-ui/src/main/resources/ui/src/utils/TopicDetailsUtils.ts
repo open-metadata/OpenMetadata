@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,30 +11,38 @@
  *  limitations under the License.
  */
 
+import { TopicConfigObjectInterface } from 'components/TopicDetails/TopicDetails.interface';
+import { t } from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
+import { Topic } from '../generated/entity/data/topic';
 
 export const topicDetailsTabs = [
   {
-    name: 'Schema',
+    name: t('label.schema'),
     path: 'schema',
   },
   {
-    name: 'Activity Feed',
+    name: t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Sample Data',
+    name: t('label.sample-data'),
     path: 'sample_data',
     field: TabSpecificField.SAMPLE_DATA,
   },
   {
-    name: 'Config',
+    name: t('label.config'),
     path: 'config',
   },
   {
-    name: 'Manage',
-    path: 'manage',
+    name: t('label.lineage'),
+    path: 'lineage',
+    field: TabSpecificField.LINEAGE,
+  },
+  {
+    name: t('label.custom-property-plural'),
+    path: 'custom_properties',
   },
 ];
 
@@ -53,8 +61,12 @@ export const getCurrentTopicTab = (tab: string) => {
       currentTab = 4;
 
       break;
-    case 'manage':
+    case 'lineage':
       currentTab = 5;
+
+      break;
+    case 'custom_properties':
+      currentTab = 6;
 
       break;
 
@@ -66,4 +78,17 @@ export const getCurrentTopicTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getConfigObject = (
+  topicDetails: Topic
+): TopicConfigObjectInterface => {
+  return {
+    Partitions: topicDetails.partitions,
+    'Replication Factor': topicDetails.replicationFactor,
+    'Retention Size': topicDetails.retentionSize,
+    'CleanUp Policies': topicDetails.cleanupPolicies,
+    'Max Message Size': topicDetails.maximumMessageSize,
+    'Schema Type': topicDetails.messageSchema?.schemaType,
+  };
 };

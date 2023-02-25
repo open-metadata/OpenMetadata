@@ -20,8 +20,9 @@ on:
   push:
     branches:
       - main
+      - '0.[0-9]+.[0-9]+'
     paths:
-      - 'catalog-rest-service/src/main/resources/json/schema/**'
+      - 'openmetadata-service/src/main/resources/json/schema/**'
       - 'ingestion-core/src/metadata/_version.py'
 
 concurrency: 
@@ -31,17 +32,18 @@ jobs:
   py-core-build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv antlr4
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install, Generate and Publish Test PyPi packages
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
+          sudo make install_antlr_cli
           make core_publish

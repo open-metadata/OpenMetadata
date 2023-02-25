@@ -1,0 +1,18 @@
+{
+  "name": "tableCustomSQLQuery",
+  "fullyQualifiedName": "tableCustomSQLQuery",
+  "displayName": "Custom SQL Query",
+  "description": "Test if a custom SQL returns 0 row or `COUNT(<x>) == 0`",
+  "entityType": "TABLE",
+  "testPlatforms": ["OpenMetadata"],
+  "parameterDefinition": [
+      {
+        "name": "sqlExpression",
+        "displayName": "SQL Expression",
+        "description": "SQL expression to run against the table",
+        "dataType": "STRING",
+        "required": "true"
+      }
+    ]
+  }
+  

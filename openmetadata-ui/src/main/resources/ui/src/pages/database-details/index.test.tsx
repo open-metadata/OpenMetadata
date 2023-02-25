@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
-} from '../../axiosAPIs/databaseAPI';
+} from 'rest/databaseAPI';
 import DatabaseDetails from './';
 
 const mockDatabase = {
@@ -100,24 +100,102 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
+const mockAllFeeds = {
+  data: [
+    {
+      id: 'ac2e6128-9f23-4f28-acf8-31d50b06f8cc',
+      type: 'Task',
+      href: 'http://localhost:8585/api/v1/feed/ac2e6128-9f23-4f28-acf8-31d50b06f8cc',
+      threadTs: 1664445686074,
+      about: '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
+      entityId: 'c514ca18-2ea4-44b1-aa06-0c66bc0cd355',
+      createdBy: 'bharatdussa',
+      updatedAt: 1664445691373,
+      updatedBy: 'bharatdussa',
+      resolved: false,
+      message: 'Update tags for table',
+      postsCount: 1,
+      posts: [
+        {
+          id: 'd497bea2-0bfe-4a9f-9ce6-d560129fef4a',
+          message: 'Resolved the Task with Tag(s) - PersonalData.Personal',
+          postTs: 1664445691368,
+          from: 'bharatdussa',
+          reactions: [],
+        },
+      ],
+      reactions: [],
+      task: {
+        id: 11,
+        type: 'UpdateTag',
+        assignees: [
+          {
+            id: 'f187364d-114c-4426-b941-baf6a15f70e4',
+            type: 'user',
+            name: 'bharatdussa',
+            fullyQualifiedName: 'bharatdussa',
+            displayName: 'Bharat Dussa',
+            deleted: false,
+          },
+        ],
+        status: 'Closed',
+        closedBy: 'bharatdussa',
+        closedAt: 1664445691340,
+        oldValue:
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+        suggestion:
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+        newValue:
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+      },
+    },
+  ],
+  paging: { after: 'MTY2NDQ0NDcyODY1MA==', total: 134 },
+};
 
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => {
-    return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
-  }
-);
+const mockFeedCount = {
+  totalCount: 6,
+  counts: [
+    {
+      count: 3,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::columns::comments::tags>',
+    },
+    {
+      count: 1,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::owner>',
+    },
+    {
+      count: 1,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
+    },
+    {
+      count: 1,
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::description>',
+    },
+  ],
+};
+
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -137,20 +215,33 @@ jest.mock('../../AppState', () => {
   });
 });
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
+    .mockImplementation(() => Promise.resolve(mockDatabase)),
   patchDatabaseDetails: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
+    .mockImplementation(() => Promise.resolve(mockDatabase)),
 
   getDatabaseSchemas: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockSchemaData })),
+    .mockImplementation(() => Promise.resolve(mockSchemaData)),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('rest/feedsAPI', () => ({
+  getAllFeeds: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockAllFeeds)),
+  getFeedCount: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockFeedCount)),
+
+  postFeedById: jest.fn().mockImplementation(() => Promise.resolve({})),
+
+  postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -158,7 +249,7 @@ jest.mock('../../components/containers/PageContainer', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/serviceAPI', () => ({
+jest.mock('rest/serviceAPI', () => ({
   getServiceById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockServiceData })),
@@ -173,14 +264,6 @@ jest.mock('../../utils/TableUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
 }));
 
-jest.mock('../../components/common/popover/PopOver', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="popover">{children}</div>
-    ));
-});
-
 jest.mock('../../utils/CommonUtils', () => ({
   getCurrentUserId: jest
     .fn()
@@ -189,26 +272,26 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
-jest.mock('../../components/tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<span>Tag</span>);
 });
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  'components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
   }
 );
 
-jest.mock('../../components/common/TabsPane/TabsPane', () => {
+jest.mock('components/common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<div>TabsPane</div>);
 });
 
-jest.mock('../../components/FeedEditor/FeedEditor', () => {
+jest.mock('components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
@@ -223,7 +306,7 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -231,10 +314,25 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
+jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
+});
+
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="delete-entity">DeleteWidgetModal component</p>
+    );
+});
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
 
@@ -274,23 +372,19 @@ describe('Test DatabaseDetails page', () => {
       container,
       'database-databaseSchemas'
     );
-    const tableHeader = await findByTestId(container, 'table-header');
-    const headerName = await findByTestId(container, 'header-name');
-    const headerDescription = await findByTestId(
-      container,
-      'header-description'
+    const headerName = await findByText(container, 'label.schema-name');
+    const headerDescription = await findByText(
+      databaseTable,
+      'label.description'
     );
-    const headerOwner = await findByTestId(container, 'header-owner');
-    const headerUsage = await findByTestId(container, 'header-usage');
-    const tableColumn = await findByTestId(container, 'table-column');
+    const headerOwner = await findByText(container, 'label.owner');
+    const headerUsage = await findByText(container, 'label.usage');
 
     expect(databaseTable).toBeInTheDocument();
-    expect(tableHeader).toBeInTheDocument();
     expect(headerName).toBeInTheDocument();
     expect(headerDescription).toBeInTheDocument();
     expect(headerOwner).toBeInTheDocument();
     expect(headerUsage).toBeInTheDocument();
-    expect(tableColumn).toBeInTheDocument();
   });
 
   it('Should render error placeholder if getDatabase Details Api fails', async () => {

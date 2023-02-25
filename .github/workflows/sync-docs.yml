@@ -1,0 +1,55 @@
+
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Sync publish docs
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - openmetadata-docs/**
+  workflow_dispatch:
+
+jobs:
+  sync-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Push content
+      id: push_content
+      uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
+      with:
+        source-directory: openmetadata-docs/content/
+        target-directory: content/
+        destination-github-username: 'open-metadata'
+        destination-repository-name: 'docs'
+        user-email: openmetadata@getcollate.io
+        commit-message: See ORIGIN_COMMIT from $GITHUB_REF
+        target-branch: publish
+
+    - name: Push images
+      id: push_images
+      uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
+      with:
+        source-directory: openmetadata-docs/images/
+        target-directory: public/images/
+        destination-github-username: 'open-metadata'
+        destination-repository-name: 'docs'
+        user-email: openmetadata@getcollate.io
+        commit-message: See ORIGIN_COMMIT from $GITHUB_REF
+        target-branch: publish

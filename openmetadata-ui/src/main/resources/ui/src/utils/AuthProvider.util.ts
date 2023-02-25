@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,18 +18,19 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import { isNil } from 'lodash';
+import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
+import jwtDecode, { JwtPayload } from 'jwt-decode';
+import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import { ROUTES } from '../constants/constants';
+import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
-export const getOidcExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 24 * 1000);
-};
+export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -39,6 +40,12 @@ export const getRedirectUri = (callbackUrl: string) => {
     : `${window.location.origin}/callback`;
 };
 
+export const getSilentRedirectUri = () => {
+  return isDev()
+    ? 'http://localhost:3000/silent-callback'
+    : `${window.location.origin}/silent-callback`;
+};
+
 export const getUserManagerConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | boolean | WebStorageStateStore> => {
@@ -46,23 +53,26 @@ export const getUserManagerConfig = (
 
   return {
     authority,
-    automaticSilentRenew: true,
-    // eslint-disable-next-line @typescript-eslint/camelcase
     client_id: clientId,
-    // eslint-disable-next-line @typescript-eslint/camelcase
     response_type: responseType,
-    // eslint-disable-next-line @typescript-eslint/camelcase
     redirect_uri: getRedirectUri(callbackUrl),
+    silent_redirect_uri: getSilentRedirectUri(),
     scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
 
 export const getAuthConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfiguration
 ): Record<string, string | boolean> => {
-  const { authority, clientId, callbackUrl, provider, providerName } =
-    authClient;
+  const {
+    authority,
+    clientId,
+    callbackUrl,
+    provider,
+    providerName,
+    enableSelfSignup,
+  } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
@@ -129,6 +139,24 @@ export const getAuthConfig = (
 
       break;
     }
+    case AuthTypes.LDAP:
+    case AuthTypes.BASIC: {
+      config = {
+        auth: {
+          authority,
+          clientId,
+          callbackUrl,
+          postLogoutRedirectUri: '/',
+        },
+        cache: {
+          cacheLocation: BrowserCacheLocation.LocalStorage,
+        },
+        provider,
+        enableSelfSignUp: enableSelfSignup,
+      } as Configuration;
+
+      break;
+    }
     case AuthTypes.AZURE:
       {
         config = {
@@ -173,14 +201,104 @@ export const getNameFromEmail = (email: string) => {
   }
 };
 
+export const getNameFromUserData = (
+  user: UserProfile,
+  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
+  principleDomain = ''
+) => {
+  // filter and extract the present claims in user profile
+  const jwtClaims = jwtPrincipalClaims.reduce(
+    (prev: string[], curr: string) => {
+      const currentClaim = user[curr as keyof UserProfile];
+      if (currentClaim) {
+        return [...prev, currentClaim];
+      } else {
+        return prev;
+      }
+    },
+    []
+  );
+
+  // get the first claim from claims list
+  const firstClaim = first(jwtClaims);
+
+  let userName = '';
+  let domain = principleDomain;
+
+  // if claims contains the "@" then split it out otherwise assign it to username as it is
+  if (firstClaim?.includes('@')) {
+    userName = firstClaim.split('@')[0];
+    domain = firstClaim.split('@')[1];
+  } else {
+    userName = firstClaim ?? '';
+  }
+
+  return { name: userName, email: userName + '@' + domain };
+};
+
 export const isProtectedRoute = (pathname: string) => {
   return (
-    pathname !== ROUTES.SIGNUP &&
-    pathname !== ROUTES.SIGNIN &&
-    pathname !== ROUTES.CALLBACK
+    [
+      ROUTES.SIGNUP,
+      ROUTES.SIGNIN,
+      ROUTES.FORGOT_PASSWORD,
+      ROUTES.CALLBACK,
+      ROUTES.SILENT_CALLBACK,
+      ROUTES.REGISTER,
+      ROUTES.RESET_PASSWORD,
+      ROUTES.ACCOUNT_ACTIVATION,
+    ].indexOf(pathname) === -1
   );
 };
 
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
+};
+
+export const getUrlPathnameExpiry = () => {
+  return new Date(Date.now() + 60 * 60 * 1000);
+};
+
+export const getUrlPathnameExpiryAfterRoute = () => {
+  return new Date(Date.now() + 1000);
+};
+
+/**
+ * @exp expiry of token
+ * @isExpired wether token is already expired or not
+ * @diff Difference between token expiry & current time in ms
+ * @timeoutExpiry time in ms for try to silent sign-in
+ * @returns exp, isExpired, diff, timeoutExpiry
+ */
+export const extractDetailsFromToken = () => {
+  const token = localStorage.getItem(oidcTokenKey) || '';
+  if (token) {
+    try {
+      const { exp } = jwtDecode<JwtPayload>(token);
+      const dateNow = Date.now();
+
+      const diff = exp && exp * 1000 - dateNow;
+      const timeoutExpiry =
+        diff && diff > EXPIRY_THRESHOLD_MILLES
+          ? diff - EXPIRY_THRESHOLD_MILLES
+          : 0;
+
+      return {
+        exp,
+        isExpired: exp && dateNow >= exp * 1000,
+        diff,
+        timeoutExpiry,
+      };
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error parsing id token.', error);
+    }
+  }
+
+  return {
+    exp: 0,
+    isExpired: true,
+    diff: 0,
+    timeoutExpiry: 0,
+  };
 };

@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/policies/accessControl/resourceDescriptor.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ResourceDescriptor",
+  "description": "Resource descriptor",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.ResourceDescriptor",
+  "definitions": {
+    "operation": {
+      "javaType": "org.openmetadata.schema.type.MetadataOperation",
+      "description": "This schema defines all possible operations on metadata of entities in OpenMetadata.",
+      "type": "string",
+      "enum": [
+        "All",
+        "Create",
+        "Delete",
+        "ViewAll",
+        "ViewBasic",
+        "ViewUsage",
+        "ViewTests",
+        "ViewQueries",
+        "ViewDataProfile",
+        "ViewSampleData",
+        "EditAll",
+        "EditDescription",
+        "EditDisplayName",
+        "EditTags",
+        "EditOwner",
+        "EditTier",
+        "EditCustomFields",
+        "EditLineage",
+        "EditStatus",
+        "EditReviewers",
+        "EditTests",
+        "EditQueries",
+        "EditDataProfile",
+        "EditSampleData",
+        "EditUsers"
+      ]
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the resource. For entity related resources, resource name is same as the entity name. Some resources such as lineage are not entities but are resources.",
+      "type": "string"
+    },
+    "operations": {
+      "description": "List of operations supported by the resource.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/operation"
+      }
+    }
+  },
+  "additionalProperties": false
+}

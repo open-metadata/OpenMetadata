@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,21 +12,24 @@
  */
 
 import { Button, Card, Typography } from 'antd';
-import { FormatedTableData } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import './entity.less';
 interface Prop {
-  entityList: Array<FormatedTableData>;
+  entityList: Array<EntityReference>;
   headerText: string | JSX.Element;
   noDataPlaceholder: JSX.Element;
   testIDText: string;
 }
 
 interface AntdEntityListProp {
-  entityList: Array<FormatedTableData>;
+  loading?: boolean;
+  entityList: Array<EntityReference>;
   headerText?: string | JSX.Element;
   headerTextLabel: string;
   noDataPlaceholder: JSX.Element;
@@ -43,28 +46,28 @@ const EntityList: FunctionComponent<Prop> = ({
 }: Prop) => {
   return (
     <Fragment>
-      <Text className="tw-font-semibold" type="secondary">
+      <Text className="font-semibold" type="secondary">
         {headerText}
       </Text>
       {entityList.length
         ? entityList.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                className="flex items-center justify-between m-b-xs"
                 data-testid={`${testIDText}-${getEntityName(
                   item as unknown as EntityReference
                 )}`}
                 key={index}>
-                <div className="tw-flex">
-                  {getEntityIcon(item.index || item.type || '')}
+                <div className="flex">
+                  {getEntityIcon(item.type || '')}
                   <Link
-                    className="tw-font-medium"
+                    className="font-medium"
                     to={getEntityLink(
-                      item.index || item.type || '',
-                      item.fullyQualifiedName
+                      item.type || '',
+                      item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      className="entity-button"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       {getEntityName(item as unknown as EntityReference)}
@@ -85,47 +88,54 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
   headerTextLabel,
   noDataPlaceholder,
   testIDText,
+  loading,
 }: AntdEntityListProp) => {
   return (
     <Card
       extra={headerText}
-      style={{
-        border: '1px rgb(221, 227, 234) solid',
-        borderRadius: '8px',
-        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-        marginRight: '4px',
-        marginLeft: '4px',
-      }}
+      style={leftPanelAntCardStyle}
       title={headerTextLabel}>
-      {entityList.length
-        ? entityList.map((item, index) => {
-            return (
-              <div
-                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
-                data-testid={`${testIDText}-${getEntityName(
-                  item as unknown as EntityReference
-                )}`}
-                key={index}>
-                <div className="tw-flex">
-                  {getEntityIcon(item.index || item.type || '')}
-                  <Link
-                    className="tw-font-medium"
-                    to={getEntityLink(
-                      item.index || item.type || '',
-                      item.fullyQualifiedName
-                    )}>
-                    <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                      title={getEntityName(item as unknown as EntityReference)}
-                      type="text">
-                      {getEntityName(item as unknown as EntityReference)}
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            );
-          })
-        : noDataPlaceholder}
+      <EntityListSkeleton
+        dataLength={entityList.length !== 0 ? entityList.length : 5}
+        loading={Boolean(loading)}>
+        <>
+          {entityList.length
+            ? entityList.map((item, index) => {
+                return (
+                  <div
+                    className="flex items-center justify-between"
+                    data-testid={`${testIDText}-${getEntityName(
+                      item as unknown as EntityReference
+                    )}`}
+                    key={index}>
+                    <div className="flex items-center">
+                      {getEntityIcon(item.type || '')}
+                      <Link
+                        className="font-medium"
+                        to={getEntityLink(
+                          item.type || '',
+                          item.fullyQualifiedName as string
+                        )}>
+                        <Button
+                          className="entity-button"
+                          title={getEntityName(
+                            item as unknown as EntityReference
+                          )}
+                          type="text">
+                          <Typography.Text
+                            className="w-48 text-left"
+                            ellipsis={{ tooltip: true }}>
+                            {getEntityName(item as unknown as EntityReference)}
+                          </Typography.Text>
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })
+            : noDataPlaceholder}
+        </>
+      </EntityListSkeleton>
     </Card>
   );
 };

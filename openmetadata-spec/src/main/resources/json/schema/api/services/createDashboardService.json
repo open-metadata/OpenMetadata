@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createDashboardService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDashboardServiceRequest",
+  "description": "Create Dashboard service entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.services.CreateDashboardService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this dashboard service.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of dashboard service entity.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardConnection"
+    },
+    "tags": {
+      "description": "Tags for this Dashboard Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this dashboard service.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "serviceType", "connection"],
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,9 @@
  */
 
 import { findByTestId, fireEvent, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { addPropertyToEntity } from '../../../axiosAPIs/metadataTypeAPI';
+import { addPropertyToEntity } from 'rest/metadataTypeAPI';
 import AddCustomProperty from './AddCustomProperty';
 
 const mockPropertyTypes = [
@@ -184,18 +184,16 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
+jest.mock('rest/metadataTypeAPI', () => ({
   addPropertyToEntity: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes[0] })),
+    .mockImplementation(() => Promise.resolve(mockPropertyTypes[0])),
   getTypeByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes[0] })),
+    .mockImplementation(() => Promise.resolve(mockPropertyTypes[0])),
   getTypeListByCategory: jest
     .fn()
-    .mockImplementation(() =>
-      Promise.resolve({ data: { data: mockPropertyTypes } })
-    ),
+    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({
@@ -208,9 +206,19 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="richtext-editor">RichTextEditor</div>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          data-testid="richtext-editor"
+          ref={(input) => {
+            input;
+          }}>
+          {initialValue}MarkdownWithPreview component
+        </div>
+      );
+    })
+  );
 });
 
 jest.mock('../../containers/PageContainer', () => {
@@ -304,6 +312,6 @@ describe('Test Add Custom Property Component', () => {
 
     fireEvent.click(createButton);
 
-    expect(addPropertyToEntity).toBeCalled();
+    expect(addPropertyToEntity).toHaveBeenCalled();
   });
 });

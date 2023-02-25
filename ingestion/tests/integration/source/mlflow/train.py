@@ -18,6 +18,8 @@ from sklearn.linear_model import ElasticNet
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
+from metadata.utils.logger import log_ansi_encoded_string
+
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
@@ -73,10 +75,12 @@ if __name__ == "__main__":
 
         (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
 
-        print("Elasticnet model (alpha=%f, l1_ratio=%f):" % (alpha, l1_ratio))
-        print("  RMSE: %s" % rmse)
-        print("  MAE: %s" % mae)
-        print("  R2: %s" % r2)
+        log_ansi_encoded_string(
+            message="Elasticnet model (alpha=%f, l1_ratio=%f):" % (alpha, l1_ratio)
+        )
+        log_ansi_encoded_string(message="  RMSE: %s" % rmse)
+        log_ansi_encoded_string(message="  MAE: %s" % mae)
+        log_ansi_encoded_string(message="  R2: %s" % r2)
 
         mlflow.log_param("alpha", alpha)
         mlflow.log_param("l1_ratio", l1_ratio)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,18 +12,24 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { FormErrorData } from 'Models';
+import { AssetsDataType, FormErrorData } from 'Models';
+import { EntityType } from '../enums/entity.enum';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
 import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 
 export type TeamDeleteType = {
   team: Team | undefined;
   state: boolean;
+};
+
+export type ModifiedTeam = Omit<Team, 'children'> & {
+  children: Team[];
 };
 
 export interface TeamsAndUsersProps {
@@ -57,7 +63,7 @@ export interface TeamsAndUsersProps {
     [key: string]: string;
   };
   updateTeamHandler: (data: Team) => Promise<void>;
-  handleDeleteUser: (id: string) => void;
+  handleDeleteUser: () => void;
   handleTeamUsersSearchAction: (text: string) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
@@ -85,28 +91,21 @@ export interface TeamsAndUsersProps {
 
 export interface TeamDetailsProp {
   currentTeam: Team;
-  teams: Team[];
+  teams?: Team[];
+  assets: AssetsDataType;
   currentTeamUsers: User[];
   teamUserPagin: Paging;
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
-  isTeamMemberLoading: boolean;
+  isTeamMemberLoading: number;
   hasAccess: boolean;
-  errorNewTeamData: FormErrorData | undefined;
-  isAddingTeam: boolean;
   handleAddTeam: (value: boolean) => void;
-  onNewTeamDataChange: (
-    data: Team,
-    forceSet?: boolean
-  ) => {
-    [key: string]: string;
-  };
   descriptionHandler: (value: boolean) => void;
-  onDescriptionUpdate: (value: string) => void;
+  onDescriptionUpdate: (value: string) => Promise<void>;
   handleTeamUsersSearchAction: (text: string) => void;
-  updateTeamHandler: (data: Team) => Promise<void>;
-  createNewTeam: (data: Team) => void;
+  updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
+  handleCurrentUserPage: (value?: number) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
     activePage?: number
@@ -116,4 +115,31 @@ export interface TeamDetailsProp {
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
+  childTeams: Team[];
+  showDeletedTeam: boolean;
+  onAssetsPaginate: (page: string | number) => void;
+  onShowDeletedTeamChange: (checked: boolean) => void;
+  parentTeams: Team[];
+  onTeamExpand: (
+    loading?: boolean,
+    parentTeam?: string,
+    updateChildNode?: boolean
+  ) => void;
+}
+
+export interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
+
+export interface PlaceholderProps {
+  title?: string;
+  disabled?: boolean;
+  label?: string;
+  onClick?: () => void;
+  heading?: string;
+  description?: React.ReactNode;
+  button?: React.ReactNode;
+  datatestid?: string;
+  doc?: string;
 }

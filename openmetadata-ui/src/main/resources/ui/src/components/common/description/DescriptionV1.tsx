@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
-import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { Table } from '../../../generated/entity/data/table';
-import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
+import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import Card from '../Card/Card';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
-import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+const { Text } = Typography;
 
 interface Props {
   entityName?: string;
@@ -40,13 +40,11 @@ interface Props {
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
-  onDescriptionUpdate?: (value: string) => void;
+  onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
 }
-
 const DescriptionV1 = ({
-  owner,
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -66,71 +64,66 @@ const DescriptionV1 = ({
 
   const editButton = () => {
     return !isReadOnly ? (
-      <NonAdminAction
-        html={getHtmlForNonAdminAction(Boolean(owner))}
-        isOwner={hasEditAccess}
-        permission={Operation.UpdateDescription}
-        position="right">
+      <Tooltip
+        title={
+          hasEditAccess
+            ? t('label.edit-entity', { entity: t('label.description') })
+            : NO_PERMISSION_FOR_ACTION
+        }>
         <button
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
+          disabled={!hasEditAccess}
           onClick={onDescriptionEdit}>
-          <span className="tw-mr-2">
-            <SVGIcons
-              alt="edit"
-              icon={Icons.EDIT_OUTLINE_PRIMARY}
-              title="Edit"
-              width="12px"
-            />
-          </span>
-          <span>Edit</span>
+          <SVGIcons
+            alt={t('label.edit')}
+            icon={Icons.IC_EDIT_PRIMARY}
+            title="Edit"
+            width="16px"
+          />
         </button>
-      </NonAdminAction>
+      </Tooltip>
     ) : (
       <></>
     );
   };
 
   return (
-    <div className="schema-description tw-relative">
+    <Space className="schema-description tw-flex" direction="vertical">
+      <Space
+        style={{
+          display: 'flex',
+          width: '100%',
+          justifyContent: 'space-between',
+        }}>
+        <Text type="secondary">{t('label.description')}</Text>
+        <div>{editButton()}</div>
+      </Space>
       <div>
-        <Card
-          action={editButton()}
-          className="tw-relative"
-          heading="Description">
-          <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative"
-            data-testid="description"
-            id="center">
-            {description?.trim() ? (
-              <RichTextEditorPreviewer
-                blurClasses="see-more-blur-white"
-                enableSeeMoreVariant={!removeBlur}
-                markdown={description}
-                maxHtClass="tw-max-h-36"
-                maxLen={800}
-              />
-            ) : (
-              <span className="tw-no-description tw-p-2">No description </span>
-            )}
-          </div>
-        </Card>
-
-        {isEdit && (
-          <ModalWithMarkdownEditor
-            header={`Edit description for ${entityName}`}
-            placeholder="Enter Description"
-            value={description}
-            onCancel={onCancel}
-            onSave={onDescriptionUpdate}
+        {description?.trim() ? (
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={!removeBlur}
+            markdown={description}
           />
+        ) : (
+          <span>{t('label.no-description')}</span>
         )}
+        <ModalWithMarkdownEditor
+          header={t('label.edit-description-for', { entityName })}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
+          value={description}
+          visible={Boolean(isEdit)}
+          onCancel={onCancel}
+          onSave={onDescriptionUpdate}
+        />
       </div>
       {!isReadOnly ? (
         <div
           className={classNames(
             'tw-w-5 tw-min-w-max tw-flex',
-            description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
+            description?.trim() ? 'tw-pl-1' : ''
           )}>
           {isUndefined(descriptionThread) &&
           onEntityFieldSelect &&
@@ -138,17 +131,17 @@ const DescriptionV1 = ({
             <button
               className="focus:tw-outline-none tw-ml-2 tw--mt-6"
               data-testid="request-description"
-              onClick={() => onEntityFieldSelect?.('description')}>
-              <PopOver
-                position="top"
-                title="Request description"
-                trigger="mouseenter">
+              onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
+              <Tooltip
+                placement="top"
+                title={t('message.request-description')}
+                trigger="hover">
                 <SVGIcons
-                  alt="request-description"
+                  alt={t('message.request-description')}
                   className="tw-mt-2"
                   icon={Icons.REQUEST}
                 />
-              </PopOver>
+              </Tooltip>
             </button>
           ) : null}
           {!isUndefined(descriptionThread) ? (
@@ -176,7 +169,11 @@ const DescriptionV1 = ({
                   data-testid="start-description-thread"
                   onClick={() =>
                     onThreadLinkSelect?.(
-                      getEntityFeedLink(entityType, entityFqn, 'description')
+                      getEntityFeedLink(
+                        entityType,
+                        entityFqn,
+                        EntityField.DESCRIPTION
+                      )
                     )
                   }>
                   <SVGIcons
@@ -190,7 +187,7 @@ const DescriptionV1 = ({
           )}
         </div>
       ) : null}
-    </div>
+    </Space>
   );
 };
 

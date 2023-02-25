@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,8 +18,11 @@ import React, { useMemo } from 'react';
 import AppState from '../../../AppState';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { userPermissions } from '../../../utils/PermissionsUtils';
 import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import Loader from '../../Loader/Loader';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import Avatar from '../avatar/Avatar';
 
 type UserData = Pick<User, 'id' | 'name' | 'displayName'>;
@@ -29,6 +32,8 @@ interface Props extends UserData {
   type?: ImageShape;
   textClass?: string;
   className?: string;
+  height?: string;
+  profileImgClasses?: string;
 }
 
 const ProfilePicture = ({
@@ -39,9 +44,17 @@ const ProfilePicture = ({
   textClass = '',
   type = 'square',
   width = '36',
+  height,
+  profileImgClasses,
 }: Props) => {
+  const { permissions } = usePermissionProvider();
+
+  const viewUserPermission = useMemo(() => {
+    return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
+  }, [permissions]);
+
   const profilePic = useMemo(() => {
-    return getUserProfilePic(id, name);
+    return getUserProfilePic(viewUserPermission, id, name);
   }, [id, name, AppState.userProfilePics]);
 
   const isPicLoading = useMemo(() => {
@@ -52,6 +65,7 @@ const ProfilePicture = ({
     return (
       <Avatar
         className={className}
+        height={height}
         name={getEntityName({ name, displayName } as EntityReference)}
         textClass={textClass}
         type={type}
@@ -64,7 +78,10 @@ const ProfilePicture = ({
     return isPicLoading ? (
       <div
         className="tw-inline-block tw-relative"
-        style={{ height: `${width}px`, width: `${width}px` }}>
+        style={{
+          height: `${height || width}px`,
+          width: `${width}px`,
+        }}>
         {getAvatarByName()}
         <div
           className="tw-absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
@@ -84,10 +101,11 @@ const ProfilePicture = ({
 
   return profilePic ? (
     <div
-      className={classNames('profile-image', type)}
-      style={{ height: `${width}px`, width: `${width}px` }}>
+      className={classNames('profile-image', type, className)}
+      style={{ height: `${height || width}px`, width: `${width}px` }}>
       <img
         alt="user"
+        className={profileImgClasses}
         data-testid="profile-image"
         referrerPolicy="no-referrer"
         src={profilePic}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,49 +11,57 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize, startCase } from 'lodash';
+import { Space } from 'antd';
+import { AxiosError } from 'axios';
+import AddIngestion from 'components/AddIngestion/AddIngestion.component';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import Loader from 'components/Loader/Loader';
+import { startCase } from 'lodash';
+import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
-  checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
-import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
-import Loader from '../../components/Loader/Loader';
+} from 'rest/ingestionPipelineAPI';
+import { getServiceByFQN } from 'rest/serviceAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import { getIngestionHeadingName } from '../../utils/IngestionUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceIngestionStepGuide,
+  getServiceRouteFromServiceType,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
+  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
+  const { t } = useTranslation();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
@@ -70,13 +78,12 @@ const AddIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
-      .then((resService: AxiosResponse) => {
-        if (resService.data) {
-          setServiceData(resService.data);
+      .then((resService) => {
+        if (resService) {
+          setServiceData(resService as DataObj);
         } else {
           showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
         }
@@ -123,10 +130,10 @@ const AddIngestionPage = () => {
 
     return new Promise<void>((resolve, reject) => {
       return addIngestionPipeline(data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setIngestionId(res.data.id);
-            onIngestionDeploy(res.data.id).finally(() => resolve());
+        .then((res) => {
+          if (res) {
+            setIngestionId(res.id ?? '');
+            onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
               jsonData['api-error-messages']['create-ingestion-error']
@@ -138,13 +145,15 @@ const AddIngestionPage = () => {
           if (err.response?.status === 409) {
             showErrorToast(
               err,
-              jsonData['api-error-messages']['entity-already-exist-error']
+              t('message.entity-already-exists', {
+                entity: t('label.data-asset'),
+              })
             );
             reject();
           } else {
             getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
-              .then((res: AxiosResponse) => {
-                if (res.data) {
+              .then((res) => {
+                if (res) {
                   resolve();
                   showErrorToast(
                     err,
@@ -168,33 +177,6 @@ const AddIngestionPage = () => {
     });
   };
 
-  const onAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
-  };
-
-  const fetchAirflowStatusCheck = () => {
-    return new Promise<void>((resolve) => {
-      onAirflowStatusCheck()
-        .then(() => {
-          setIsAirflowRunning(true);
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        })
-        .finally(() => resolve());
-    });
-  };
-
   const goToService = () => {
     history.push(
       getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
@@ -214,7 +196,10 @@ const AddIngestionPage = () => {
     setSlashedBreadcrumb([
       {
         name: startCase(serviceCategory),
-        url: getServicesWithTabPath(serviceCategory),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.SERVICES,
+          getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+        ),
       },
       {
         name: serviceData?.name || '',
@@ -223,12 +208,18 @@ const AddIngestionPage = () => {
         activeTitle: true,
       },
       {
-        name: `Add ${capitalize(ingestionType)} Ingestion`,
+        name: getIngestionHeadingName(ingestionType, INGESTION_ACTION_TYPE.ADD),
         url: '',
         activeTitle: true,
       },
     ]);
   }, [serviceCategory, ingestionType, serviceData]);
+
+  useEffect(() => {
+    if (ingestionType === PipelineType.Dbt) {
+      setActiveIngestionStep(2);
+    }
+  }, [ingestionType]);
 
   const renderAddIngestionPage = () => {
     if (isLoading) {
@@ -241,49 +232,56 @@ const AddIngestionPage = () => {
       );
     } else {
       return (
-        <PageLayout
-          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-          layout={PageLayoutType['2ColRTL']}
-          rightPanel={getServiceIngestionStepGuide(
-            activeIngestionStep,
-            true,
-            `${serviceData?.name || ''}_${ingestionType}`,
-            '',
-            ingestionType as PipelineType,
-            isDeployed(),
-            false,
-            isAirflowRunning
-          )}>
-          <div className="tw-form-container">
-            <AddIngestion
-              activeIngestionStep={activeIngestionStep}
-              handleCancelClick={goToService}
-              handleViewServiceClick={goToService}
-              heading={`Add ${capitalize(ingestionType)} Ingestion`}
-              ingestionAction={ingestionAction}
-              ingestionProgress={ingestionProgress}
-              isAirflowSetup={isAirflowRunning}
-              isIngestionCreated={isIngestionCreated}
-              isIngestionDeployed={isIngestionDeployed}
-              pipelineType={ingestionType as PipelineType}
-              serviceCategory={serviceCategory as ServiceCategory}
-              serviceData={serviceData as DataObj}
-              setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-              showDeployButton={showIngestionButton}
-              status={FormSubmitType.ADD}
-              onAddIngestionSave={onAddIngestionSave}
-              onAirflowStatusCheck={onAirflowStatusCheck}
-              onIngestionDeploy={onIngestionDeploy}
-            />
-          </div>
-        </PageLayout>
+        <div className="self-center">
+          <PageLayoutV1 center>
+            <Space direction="vertical" size="middle">
+              <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+              <div className="form-container">
+                <AddIngestion
+                  activeIngestionStep={activeIngestionStep}
+                  handleCancelClick={goToService}
+                  handleViewServiceClick={goToService}
+                  heading={getIngestionHeadingName(
+                    ingestionType,
+                    INGESTION_ACTION_TYPE.ADD
+                  )}
+                  ingestionAction={ingestionAction}
+                  ingestionProgress={ingestionProgress}
+                  isIngestionCreated={isIngestionCreated}
+                  isIngestionDeployed={isIngestionDeployed}
+                  pipelineType={ingestionType as PipelineType}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceData={serviceData as DataObj}
+                  setActiveIngestionStep={(step) =>
+                    setActiveIngestionStep(step)
+                  }
+                  showDeployButton={showIngestionButton}
+                  status={FormSubmitType.ADD}
+                  onAddIngestionSave={onAddIngestionSave}
+                  onIngestionDeploy={onIngestionDeploy}
+                />
+              </div>
+            </Space>
+            <div className="m-t-xlg p-x-lg w-800" data-testid="right-panel">
+              {getServiceIngestionStepGuide(
+                activeIngestionStep,
+                true,
+                `${serviceData?.name || ''}_${ingestionType}`,
+                '',
+                ingestionType as PipelineType,
+                isDeployed(),
+                false,
+                isAirflowAvailable
+              )}
+            </div>
+          </PageLayoutV1>
+        </div>
       );
     }
   };
 
   useEffect(() => {
-    fetchAirflowStatusCheck().finally(() => {
+    fetchAirflowStatus().finally(() => {
       fetchServiceDetails();
     });
   }, [serviceCategory, serviceFQN]);

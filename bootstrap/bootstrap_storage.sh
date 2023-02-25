@@ -12,6 +12,7 @@
 
 # Resolve links - $0 may be a softlink
 PRG="${0}"
+debug="$2"
 
 while [ -h "${PRG}" ]; do
   ls=`ls -ld "${PRG}"`
@@ -34,26 +35,30 @@ else
   JAVA="${JAVA_HOME}/bin/java"
 fi
 
-TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
+TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.service.util.TablesInitializer
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
-echo $LIBS_DIR
+if  [ ${debug} ] ; then
+  echo $LIBS_DIR
+fi
 if [ -d "${LIBS_DIR}" ]; then
   for file in "${LIBS_DIR}"*.jar;
   do
       CLASSPATH="$CLASSPATH":"$file"
   done
 else
-  CLASSPATH=`mvn -pl catalog-rest-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
+  CLASSPATH=`mvn -pl openmetadata-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
 fi
 
 execute() {
+  if  [ ${debug} ] ; then
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
-    ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1}
+  fi
+  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1} -${debug}
 }
 
 printUsage() {
     cat <<-EOF
-USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate]
+USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate] [debug]
    create           : Creates the tables. The target database should be empty
    migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
    info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
@@ -68,10 +73,11 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target database
    check-connection : Checks if a connection can be successfully obtained for the target database
    rotate           : Rotate the Fernet Key defined in $FERNET_KEY
+   debug            : Enable Debugging Mode to get more info
 EOF
 }
 
-if [ $# -gt 1 ]
+if [ $# -gt 2 ]
 then
     echo "More than one argument specified, please use only one of the below options"
     printUsage

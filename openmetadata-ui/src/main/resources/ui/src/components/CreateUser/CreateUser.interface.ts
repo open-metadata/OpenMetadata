@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,9 +16,9 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 
 export interface CreateUserProps {
-  allowAccess: boolean;
   saveState?: LoadingState;
   roles: Array<Role>;
   onSave: (data: CreateUser) => void;
   onCancel: () => void;
+  forceBot: boolean;
 }

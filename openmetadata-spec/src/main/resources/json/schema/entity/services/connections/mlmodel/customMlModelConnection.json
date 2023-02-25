@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/mlmodel/customMlModelConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomMlModelConnection",
+  "description": "Custom MlModel Service connection to build a source that is not supported by OpenMetadata yet.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.mlmodel.CustomMlModelConnection",
+  "definitions": {
+    "customMlModelType": {
+      "title": "Service Type",
+      "description": "Custom Ml model service type",
+      "type": "string",
+      "enum": ["CustomMlModel"],
+      "default": "CustomMlModel"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Custom Ml model service type",
+      "$ref": "#/definitions/customMlModelType",
+      "default": "CustomMlModel"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["sourcePythonClass", "type"]
+}

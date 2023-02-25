@@ -12,8 +12,11 @@
 """
 Population Standard deviation Metric definition
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
+from typing import cast
+
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
@@ -51,6 +54,15 @@ def _(element, compiler, **kw):
     return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
 
 
+@compiles(StdDevFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Returns stdv for clickhouse database and handle empty tables.
+    If table is empty, clickhouse returns NaN.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return "if(isNaN(stddevPop(%s)), null, stddevPop(%s))" % ((proc,) * 2)
+
+
 class StdDev(StaticMetric):
     """
     STD Metric
@@ -68,6 +80,7 @@ class StdDev(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return StdDevFn(column(self.col.name))
 
@@ -76,3 +89,18 @@ class StdDev(StaticMetric):
             + " We won't compute STDDEV for it."
         )
         return None
+
+    @_label
+    def df_fn(self, df=None):
+        """pandas function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
+        if is_quantifiable(self.col.type):
+            return df[self.col.name].std()
+        logger.debug(
+            f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
+            + " We won't compute STDDEV for it."
+        )
+        return 0

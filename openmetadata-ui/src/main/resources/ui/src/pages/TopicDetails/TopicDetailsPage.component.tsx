@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,51 +11,67 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'components/EntityLineage/EntityLineage.interface';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import TopicDetails from 'components/TopicDetails/TopicDetails.component';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
+import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
   getTopicByFqn,
   patchTopicDetails,
   removeFollower,
-} from '../../axiosAPIs/topicsAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
-import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
+} from 'rest/topicsAPI';
+import AppState from '../../AppState';
 import {
   getServiceDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -67,6 +83,7 @@ import {
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
@@ -76,7 +93,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
-  const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [partitions, setPartitions] = useState<number>(0);
@@ -87,17 +103,18 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [name, setName] = useState<string>('');
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
-
-  const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [currentVersion, setCurrentVersion] = useState<string>();
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -105,6 +122,113 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [sampleData, setSampleData] = useState<TopicSampleData>();
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+
+  const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const getLineageData = () => {
+    setIsLineageLoading(true);
+    getLineageByFQN(topicFQN, EntityType.TOPIC)
+      .then((res) => {
+        if (res) {
+          setEntityLineage(res);
+        } else {
+          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
+    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
+      .then((res) => {
+        if (res) {
+          setLeafNode(res, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res, pos));
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-lineage-node-error']
+          );
+        }
+        setTimeout(() => {
+          setNodeLoading((prev) => ({ ...prev, state: false }));
+        }, 500);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-node-error']
+        );
+      });
+  };
+
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
+          reject();
+        });
+    });
+  };
+
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
+    });
+  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -120,30 +244,31 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-count-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-      });
+    getFeedCounts(
+      EntityType.TOPIC,
+      topicFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
-  const fetchActivityFeed = (after?: string) => {
+  const fetchActivityFeed = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN), after)
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+    getAllFeeds(
+      getEntityFeedLink(EntityType.TOPIC, topicFQN),
+      after,
+      threadType,
+      feedType,
+      undefined,
+      USERId
+    )
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         if (data) {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
@@ -162,6 +287,15 @@ const TopicDetailsPage: FunctionComponent = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    filterType?: FeedFilter,
+    type?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    fetchActivityFeed(after, filterType, type);
+  };
+
   const fetchTabSpecificData = (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.ACTIVITY_FEED: {
@@ -176,9 +310,9 @@ const TopicDetailsPage: FunctionComponent = () => {
         } else {
           setIsSampleDataLoading(true);
           getTopicByFqn(topicFQN, tabField)
-            .then((res: AxiosResponse) => {
-              if (res.data) {
-                const { sampleData } = res.data;
+            .then((res) => {
+              if (res) {
+                const { sampleData } = res;
                 setSampleData(sampleData);
               } else {
                 showErrorToast(
@@ -198,25 +332,56 @@ const TopicDetailsPage: FunctionComponent = () => {
         }
       }
 
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
+      }
+
       default:
         break;
     }
   };
 
-  const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
-    const jsonPatch = compare(topicDetails, updatedData);
+  const saveUpdatedTopicData = (updatedData: Topic) => {
+    const jsonPatch = compare(omitBy(topicDetails, isUndefined), updatedData);
 
-    return patchTopicDetails(
-      topicId,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchTopicDetails(topicId, jsonPatch);
+  };
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setLoading(true);
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.TOPIC,
+        entityFqn
+      );
+      setTopicPermissions(permissions);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchTopicDetail = (topicFQN: string) => {
     setLoading(true);
-    getTopicByFqn(topicFQN, ['owner', 'followers', 'tags'])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+    getTopicByFqn(topicFQN, [
+      TabSpecificField.OWNER,
+      TabSpecificField.FOLLOWERS,
+      TabSpecificField.TAGS,
+      TabSpecificField.EXTENSION,
+    ])
+      .then((res) => {
+        if (res) {
           const {
             id,
             deleted,
@@ -224,8 +389,6 @@ const TopicDetailsPage: FunctionComponent = () => {
             followers,
             fullyQualifiedName,
             name,
-            schemaType,
-            schemaText,
             service,
             tags,
             owner,
@@ -236,27 +399,25 @@ const TopicDetailsPage: FunctionComponent = () => {
             retentionSize,
             serviceType,
             version,
-          } = res.data;
+          } = res;
           setName(name);
-          setTopicDetails(res.data);
+          setTopicDetails(res);
           setTopicId(id);
-          setCurrentVersion(version);
+          setCurrentVersion(version?.toString());
           setDescription(description ?? '');
-          setSchemaType(schemaType);
-          setFollowers(followers);
+          setFollowers(followers ?? []);
           setOwner(owner);
-          setTier(getTierTags(tags));
-          setTags(getTagsWithoutTier(tags));
-          setSchemaText(schemaText);
+          setTier(getTierTags(tags ?? []));
+          setTags(getTagsWithoutTier(tags ?? []));
           setPartitions(partitions);
-          setCleanupPolicies(cleanupPolicies);
-          setMaximumMessageSize(maximumMessageSize);
-          setReplicationFactor(replicationFactor);
-          setRetentionSize(retentionSize);
-          setDeleted(deleted);
+          setCleanupPolicies(cleanupPolicies ?? []);
+          setMaximumMessageSize(maximumMessageSize ?? 0);
+          setReplicationFactor(replicationFactor ?? 0);
+          setRetentionSize(retentionSize ?? 0);
+          setDeleted(deleted ?? false);
           setSlashedTopicName([
             {
-              name: service.name,
+              name: service.name ?? '',
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
@@ -266,18 +427,19 @@ const TopicDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getEntityName(res.data),
+              name: getEntityName(res),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName: getEntityName(res.data),
+            displayName: getEntityName(res),
             entityType: EntityType.TOPIC,
-            fqn: fullyQualifiedName,
+            fqn: fullyQualifiedName ?? '',
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
         } else {
           showErrorToast(
@@ -303,9 +465,9 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const followTopic = () => {
     addFollower(topicId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { newValue } = res.data.changeDescription.fieldsAdded[0];
+      .then((res) => {
+        if (res) {
+          const { newValue } = res.changeDescription.fieldsAdded[0];
 
           setFollowers([...followers, ...newValue]);
         } else {
@@ -324,9 +486,9 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const unfollowTopic = () => {
     removeFollower(topicId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+      .then((res) => {
+        if (res) {
+          const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
           setFollowers(
             followers.filter((follower) => follower.id !== oldValue[0].id)
@@ -345,38 +507,32 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const descriptionUpdateHandler = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { description, version } = res.data;
-          setCurrentVersion(version);
-          setTopicDetails(res.data);
-          setDescription(description);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-description-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-description-error']
-        );
-      });
+  const descriptionUpdateHandler = async (updatedTopic: Topic) => {
+    try {
+      const response = await saveUpdatedTopicData(updatedTopic);
+      if (response) {
+        const { description = '', version } = response;
+        setCurrentVersion(version + '');
+        setTopicDetails(response);
+        setDescription(description);
+        getEntityFeedCount();
+      } else {
+        throw jsonData['api-error-messages']['update-description-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const settingsUpdateHandler = (updatedTopic: Topic): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
-          if (res.data) {
-            setTopicDetails(res.data);
-            setCurrentVersion(res.data.version);
-            setOwner(res.data.owner);
-            setTier(getTierTags(res.data.tags));
+          if (res) {
+            setTopicDetails({ ...res, tags: res.tags ?? [] });
+            setCurrentVersion(res.version?.toString());
+            setOwner(res.owner);
+            setTier(getTierTags((res.tags ?? []) as EntityTags[]));
             getEntityFeedCount();
             resolve();
           } else {
@@ -397,12 +553,12 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const onTagUpdate = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setTopicDetails(res.data);
-          setTier(getTierTags(res.data.tags));
-          setCurrentVersion(res.data.version);
-          setTags(getTagsWithoutTier(res.data.tags));
+      .then((res) => {
+        if (res) {
+          setTopicDetails(res);
+          setTier(getTierTags(res.tags as TagLabel[]));
+          setCurrentVersion(res.version?.toString());
+          setTags(getTagsWithoutTier(res.tags as EntityTags[]));
           getEntityFeedCount();
         } else {
           showErrorToast(jsonData['api-error-messages']['update-tags-error']);
@@ -428,15 +584,15 @@ const TopicDetailsPage: FunctionComponent = () => {
     const data = {
       message: value,
       from: currentUser,
-    };
+    } as Post;
     postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, posts } = res.data;
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -454,9 +610,9 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const createThread = (data: CreateThread) => {
     postThread(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityThread((pre) => [...pre, res.data]);
+      .then((res) => {
+        if (res) {
+          setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
           showErrorToast(
@@ -472,46 +628,42 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const deletePostHandler = (threadId: string, postId: string) => {
-    deletePost(threadId, postId)
-      .then(() => {
-        getUpdatedThread(threadId)
-          .then((data) => {
-            if (data) {
-              setEntityThread((pre) => {
-                return pre.map((thread) => {
-                  if (thread.id === data.id) {
-                    return {
-                      ...thread,
-                      posts: data.posts.slice(-3),
-                      postsCount: data.postsCount,
-                    };
-                  } else {
-                    return thread;
-                  }
-                });
-              });
-            } else {
-              showErrorToast(
-                jsonData['api-error-messages'][
-                  'fetch-updated-conversation-error'
-                ]
-              );
-            }
-          })
-          .catch((error: AxiosError) => {
-            showErrorToast(
-              error,
-              jsonData['api-error-messages']['fetch-updated-conversation-error']
-            );
-          });
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['delete-message-error']
-        );
-      });
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThread);
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
+  const handleExtentionUpdate = async (updatedTopic: Topic) => {
+    try {
+      const data = await saveUpdatedTopicData(updatedTopic);
+
+      if (data) {
+        const { version, owner: ownerValue, tags } = data;
+        setCurrentVersion(version?.toString());
+        setTopicDetails(data);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags ?? []));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
   };
 
   useEffect(() => {
@@ -526,9 +678,15 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    fetchTopicDetail(topicFQN);
-    getEntityFeedCount();
+    fetchResourcePermission(topicFQN);
   }, [topicFQN]);
+
+  useEffect(() => {
+    if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
+      fetchTopicDetail(topicFQN);
+      getEntityFeedCount();
+    }
+  }, [topicPermissions, topicFQN]);
 
   return (
     <>
@@ -539,45 +697,62 @@ const TopicDetailsPage: FunctionComponent = () => {
           {getEntityMissingError('topic', topicFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <TopicDetails
-          activeTab={activeTab}
-          cleanupPolicies={cleanupPolicies}
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          deleted={deleted}
-          description={description}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityName={name}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={fetchActivityFeed}
-          followTopicHandler={followTopic}
-          followers={followers}
-          isSampleDataLoading={isSampleDataLoading}
-          isentityThreadLoading={isentityThreadLoading}
-          maximumMessageSize={maximumMessageSize}
-          owner={owner as EntityReference}
-          paging={paging}
-          partitions={partitions}
-          postFeedHandler={postFeedHandler}
-          replicationFactor={replicationFactor}
-          retentionSize={retentionSize}
-          sampleData={sampleData}
-          schemaText={schemaText}
-          schemaType={schemaType}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          slashedTopicName={slashedTopicName}
-          tagUpdateHandler={onTagUpdate}
-          tier={tier as TagLabel}
-          topicDetails={topicDetails}
-          topicFQN={topicFQN}
-          topicTags={tags}
-          unfollowTopicHandler={unfollowTopic}
-          version={currentVersion}
-          versionHandler={versionHandler}
-        />
+        <>
+          {topicPermissions.ViewAll || topicPermissions.ViewBasic ? (
+            <TopicDetails
+              activeTab={activeTab}
+              cleanupPolicies={cleanupPolicies}
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              deleted={deleted}
+              description={description}
+              descriptionUpdateHandler={descriptionUpdateHandler}
+              entityFieldTaskCount={entityFieldTaskCount}
+              entityFieldThreadCount={entityFieldThreadCount}
+              entityName={name}
+              entityThread={entityThread}
+              feedCount={feedCount}
+              fetchFeedHandler={handleFeedFetchFromFeedList}
+              followTopicHandler={followTopic}
+              followers={followers}
+              isSampleDataLoading={isSampleDataLoading}
+              isentityThreadLoading={isentityThreadLoading}
+              lineageTabData={{
+                loadNodeHandler,
+                addLineageHandler,
+                removeLineageHandler,
+                entityLineageHandler,
+                isLineageLoading,
+                entityLineage,
+                lineageLeafNodes: leafNodes,
+                isNodeLoading,
+              }}
+              maximumMessageSize={maximumMessageSize}
+              owner={owner as EntityReference}
+              paging={paging}
+              partitions={partitions}
+              postFeedHandler={postFeedHandler}
+              replicationFactor={replicationFactor}
+              retentionSize={retentionSize}
+              sampleData={sampleData}
+              setActiveTabHandler={activeTabHandler}
+              settingsUpdateHandler={settingsUpdateHandler}
+              slashedTopicName={slashedTopicName}
+              tagUpdateHandler={onTagUpdate}
+              tier={tier as TagLabel}
+              topicDetails={topicDetails}
+              topicFQN={topicFQN}
+              topicTags={tags}
+              unfollowTopicHandler={unfollowTopic}
+              updateThreadHandler={updateThreadHandler}
+              version={currentVersion}
+              versionHandler={versionHandler}
+              onExtensionUpdate={handleExtentionUpdate}
+            />
+          ) : (
+            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+          )}
+        </>
       )}
     </>
   );

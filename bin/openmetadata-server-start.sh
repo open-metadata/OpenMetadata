@@ -71,12 +71,11 @@ else
   JAVA="$JAVA_HOME/bin/java"
 fi
 
-
 # Set Debug options if enabled
 if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 
     # Use default ports
-    DEFAULT_JAVA_DEBUG_PORT="5005"
+    DEFAULT_JAVA_DEBUG_PORT="0.0.0.0:5005"
 
     if [ -z "$JAVA_DEBUG_PORT" ]; then
         JAVA_DEBUG_PORT="$DEFAULT_JAVA_DEBUG_PORT"
@@ -110,7 +109,7 @@ if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
 fi
 
 #Application classname
-APP_CLASS="org.openmetadata.catalog.CatalogApplication"
+APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then

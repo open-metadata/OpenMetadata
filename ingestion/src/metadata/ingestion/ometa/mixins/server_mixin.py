@@ -13,28 +13,22 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
-import re
-
-try:
-    from importlib.metadata import version
-except ImportError:
-    from importlib_metadata import version
-
+from metadata.__version__ import get_client_version, get_version_from_string
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 
-class VersionParsingException(Exception):
-    """
-    Used when we cannot parse version information from a string
-    """
-
-
 class VersionMismatchException(Exception):
     """
     Used when server and client versions do not match
+    """
+
+
+class VersionNotFoundException(Exception):
+    """
+    Used when server doesn't return a version
     """
 
 
@@ -47,36 +41,18 @@ class OMetaServerMixin:
 
     client: REST
 
-    @staticmethod
-    def get_version_from_string(raw_version: str) -> str:
-        """
-        Given a raw version string, such as `0.10.1.dev0` or
-        `0.11.0-SNAPSHOT`, we should extract the major.minor.patch
-        :param raw_version: raw string with version info
-        :return: Clean version string
-        """
-        try:
-            return re.match(r"\d+.\d+.\d+", raw_version).group(0)
-        except AttributeError as err:
-            raise VersionParsingException(
-                f"Can't extract version from {raw_version} - {err}"
-            )
-
     def get_server_version(self) -> str:
         """
-        Run endpoint /version to check server version
+        Run endpoint /system/version to check server version
         :return: Server version
         """
-        raw_version = self.client.get("/version")["version"]
-        return self.get_version_from_string(raw_version)
-
-    def get_client_version(self) -> str:
-        """
-        Get openmetadata-ingestion module version
-        :return: client version
-        """
-        raw_version = version("openmetadata-ingestion")
-        return self.get_version_from_string(raw_version)
+        try:
+            raw_version = self.client.get("/system/version")["version"]
+        except KeyError:
+            raise VersionNotFoundException(
+                "Cannot Find Version at api/v1/system/version"
+            )
+        return get_version_from_string(raw_version)
 
     def validate_versions(self) -> None:
         """
@@ -86,7 +62,7 @@ class OMetaServerMixin:
         logger.debug("Validating client and server versions")
 
         server_version = self.get_server_version()
-        client_version = self.get_client_version()
+        client_version = get_client_version()
 
         if server_version != client_version:
             raise VersionMismatchException(

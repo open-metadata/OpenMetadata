@@ -14,14 +14,18 @@
 package org.openmetadata.client.security;
 
 import feign.RequestTemplate;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
+@Slf4j
 public class NoOpAuthenticationProvider implements AuthenticationProvider {
-  public NoOpAuthenticationProvider() {}
+  public NoOpAuthenticationProvider() {
+    /* Nothing to do */
+  }
 
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
     return new NoOpAuthenticationProvider();
   }
 
@@ -37,7 +41,6 @@ public class NoOpAuthenticationProvider implements AuthenticationProvider {
 
   @Override
   public void apply(RequestTemplate requestTemplate) {
-    // no-auth we dont apply anything
-    return;
+    // no-auth we don't apply anything
   }
 }

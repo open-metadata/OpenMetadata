@@ -9,10 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Metadata source module"""
-
-from dataclasses import dataclass, field
+import traceback
 from typing import Iterable, List
 
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
@@ -27,7 +29,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -35,31 +36,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-@dataclass
 class MetadataSourceStatus(SourceStatus):
-    """Metadata Source class -- extends SourceStatus class
 
-    Attributes:
-        success:
-        failures:
-        warnings:
-    """
-
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
 
     def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
-        """scanned entity method
-
-        Args:
-            entity_name (str):
-        """
         self.success.append(entity_name)
         logger.info("%s Scanned: %s", entity_class_name, entity_name)
 
@@ -67,32 +56,13 @@ class MetadataSourceStatus(SourceStatus):
     def filtered(
         self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
     ) -> None:
-        """filtered methods
-
-        Args:
-            table_name (str):
-            err (str):
-        """
         self.warnings.append(table_name)
         logger.warning("Dropped Entity %s due to %s", table_name, err)
 
 
 class MetadataSource(Source[Entity]):
-    """Metadata source class
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        report:
-        metadata_config:
-        status:
-        wrote_something:
-        metadata:
-        tables:
-        topics:
+    """
+    Metadata Source to Fetch All Entities from backend
     """
 
     config: WorkflowSource
@@ -106,10 +76,10 @@ class MetadataSource(Source[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
         self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        self.metadata = None
         self.tables = None
         self.topics = None
 
@@ -120,7 +90,7 @@ class MetadataSource(Source[Entity]):
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         raise NotImplementedError("Create Method not implemented")
 
-    def next_record(self) -> Iterable[Entity]:
+    def next_record(self) -> Iterable[Entity]:  # pylint: disable=too-many-branches
         if self.service_connection.includeTables:
             yield from self.fetch_entities(
                 entity_class=Table,
@@ -169,7 +139,7 @@ class MetadataSource(Source[Entity]):
         if self.service_connection.includeTeams:
             yield from self.fetch_entities(
                 entity_class=Team,
-                fields=["users", "owns"],
+                fields=["users", "owns", "parents"],
             )
 
         if self.service_connection.includeGlossaryTerms:
@@ -189,7 +159,7 @@ class MetadataSource(Source[Entity]):
             )
         if self.service_connection.includeTags:
             yield from self.fetch_entities(
-                entity_class=TagCategory,
+                entity_class=Classification,
                 fields=[],
             )
 
@@ -228,9 +198,11 @@ class MetadataSource(Source[Entity]):
                     break
                 after = entities_list.after
 
-        except Exception as err:
-            logger.debug(err)
-            logger.error(f"Fetching entities failed for {entity_class.__name__}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Fetching entities failed for [{entity_class.__name__}]: {exc}"
+            )
 
     def get_status(self) -> SourceStatus:
         return self.status

@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# .husky/pre-commit
+# ...
+cd openmetadata-ui/src/main/resources/ui
+yarn pre-commit

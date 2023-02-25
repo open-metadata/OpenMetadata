@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 import CustomNode from './CustomNode.component';
 
 const mockTableColumns = [
@@ -89,13 +90,14 @@ const mockTableColumns = [
 
 const mockCustomNodeProp = {
   id: 'node-1',
-  type: 'default',
+  type: EntityLineageNodeType.DEFAULT,
   selected: false,
   isConnectable: false,
   data: {
     label: <p>label</p>,
     columns: mockTableColumns,
     isNewNode: undefined,
+    isExpanded: true,
   },
 };
 
@@ -103,7 +105,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getConstraintIcon: jest.fn(),
 }));
 
-jest.mock('react-flow-renderer', () => ({
+jest.mock('reactflow', () => ({
   Handle: jest.fn().mockReturnValue(<span>Handle</span>),
   Position: {
     Left: 'left',
@@ -111,26 +113,38 @@ jest.mock('react-flow-renderer', () => ({
     Right: 'right',
     Bottom: 'bottom',
   },
+  useUpdateNodeInternals: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 describe('Test CustomNode Component', () => {
   it('Check if CustomNode has all child elements', async () => {
-    const { container } = render(<CustomNode {...mockCustomNodeProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <CustomNode
+        dragging={false}
+        xPos={0}
+        yPos={0}
+        zIndex={0}
+        {...mockCustomNodeProp}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const nodeLabel = await findByTestId(container, 'node-label');
-    const labelSeparator = await findByTestId(container, 'label-separator');
     const tableColumns = await findAllByTestId(container, 'column');
 
     expect(nodeLabel).toBeInTheDocument();
-    expect(labelSeparator).toBeInTheDocument();
     expect(tableColumns).toHaveLength(mockTableColumns.length);
   });
 
   it('Check if CustomNode has data columns as undefined', async () => {
     const { container } = render(
       <CustomNode
+        dragging={false}
+        xPos={0}
+        yPos={0}
+        zIndex={0}
         {...mockCustomNodeProp}
         data={{ ...mockCustomNodeProp.data, columns: undefined }}
       />,

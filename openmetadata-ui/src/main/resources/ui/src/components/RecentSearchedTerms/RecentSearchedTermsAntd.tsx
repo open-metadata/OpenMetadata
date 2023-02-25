@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,19 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
+import { Button, Card, Popover } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getExplorePathWithSearch } from '../../constants/constants';
+import { getExplorePath } from '../../constants/constants';
 import {
   getRecentlySearchedData,
   removeRecentSearchTerm,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import PopOver from '../common/popover/PopOver';
+
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import { DEFAULT_SKELETON_DATA_LENGTH } from '../Skeleton/SkeletonUtils/Skeleton.utils';
 
 const RecentSearchedTermsAntd: FunctionComponent = () => {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
   const [recentlySearchedTerms, setRecentlySearchTerms] = useState<
     RecentlySearchedData[]
   >([]);
@@ -34,76 +40,81 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     setRecentlySearchTerms(getRecentlySearchedData());
+    setLoading(false);
   }, []);
 
   return (
     <>
       <Card
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-        }}
-        title="Recent Search Terms">
-        {recentlySearchedTerms.length ? (
-          recentlySearchedTerms.map((item, index) => {
-            return (
-              <div
-                className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-group"
-                data-testid={`Recently-Search-${item.term}`}
-                key={index}>
-                <div className="tw-flex">
-                  <SVGIcons
-                    alt="search"
-                    className="tw-h-4 tw-w-4 tw-self-center"
-                    icon={Icons.SEARCHV1}
-                  />
-                  <div className="tw-flex tw-justify-between">
-                    <Link
-                      className="tw-font-medium"
-                      to={getExplorePathWithSearch(item.term)}>
-                      <Button
-                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                        data-testid={`search-term-${item.term}`}
-                        type="text">
-                        {item.term.length > 20 ? (
-                          <PopOver
-                            html={
-                              <div className="tw-flex tw-flex-nowrap">
-                                {item.term}
-                              </div>
-                            }
-                            position="top"
-                            size="regular"
-                            trigger="mouseenter">
-                            <span>{item.term.slice(0, 20)}...</span>
-                          </PopOver>
-                        ) : (
-                          item.term
-                        )}
-                      </Button>
-                    </Link>
-                    <Button
-                      className="tw-opacity-0 group-hover:tw-opacity-100 tw-ml-2"
-                      type="text"
-                      onClick={() => onRemove(item.term)}>
+        style={leftPanelAntCardStyle}
+        title={t('label.recent-search-term-plural')}>
+        <EntityListSkeleton
+          dataLength={
+            recentlySearchedTerms.length !== 0
+              ? recentlySearchedTerms.length
+              : DEFAULT_SKELETON_DATA_LENGTH
+          }
+          loading={loading}>
+          <>
+            {recentlySearchedTerms.length ? (
+              recentlySearchedTerms.map((item, index) => {
+                return (
+                  <div
+                    className="tw-flex tw-items-center tw-justify-between tw-group"
+                    data-testid={`Recently-Search-${item.term}`}
+                    key={index}>
+                    <div className="tw-flex">
                       <SVGIcons
-                        alt="delete"
-                        icon="icon-times-circle"
-                        width="12"
+                        alt="search"
+                        className="tw-h-4 tw-w-4 tw-self-center"
+                        icon={Icons.SEARCHV1}
                       />
-                    </Button>
+                      <div className="tw-flex tw-justify-between">
+                        <Link
+                          className="tw-font-medium"
+                          to={getExplorePath({ search: item.term })}>
+                          <Button
+                            className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                            data-testid={`search-term-${item.term}`}
+                            type="text">
+                            {item.term.length > 20 ? (
+                              <Popover
+                                content={
+                                  <div className="tw-flex tw-flex-nowrap">
+                                    {item.term}
+                                  </div>
+                                }
+                                placement="top"
+                                trigger="hover">
+                                <span>{item.term.slice(0, 20)}...</span>
+                              </Popover>
+                            ) : (
+                              item.term
+                            )}
+                          </Button>
+                        </Link>
+                        <Button
+                          className="tw-opacity-0 group-hover:tw-opacity-100 tw-ml-2"
+                          type="text"
+                          onClick={() => onRemove(item.term)}>
+                          <SVGIcons
+                            alt="delete"
+                            icon="icon-times-circle"
+                            width="12"
+                          />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <>No searched terms.</>
-        )}
+                );
+              })
+            ) : (
+              <>{t('message.no-searched-terms')}.</>
+            )}
+          </>
+        </EntityListSkeleton>
       </Card>
     </>
   );

@@ -1,0 +1,139 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/metadataService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metadata Service",
+  "description": "This schema defines the Metadata Service entity, such as Amundsen, Atlas etc.",
+  "javaType": "org.openmetadata.schema.entity.services.MetadataService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "type": "object",
+  "definitions": {
+    "metadataServiceType": {
+      "description": "Type of database service such as Amundsen, Atlas...",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "type": "string",
+      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas"],
+      "javaEnums": [
+        {
+          "name": "Amundsen"
+        },
+        {
+          "name": "MetadataES"
+        },
+        {
+          "name": "OpenMetadataServer"
+        },
+        {
+          "name": "Atlas"
+        }
+      ]
+    },
+    "metadataConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.MetadataConnection",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "description": "Metadata Service Connection.",
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "./connections/metadata/amundsenConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/metadataESConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/openMetadataConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/atlasConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this database service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this database service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this database service.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "$ref": "#/definitions/metadataServiceType"
+    },
+    "description": {
+      "description": "Description of a database service instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "connection": {
+      "$ref": "#/definitions/metadataConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Tags for this Metadata Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this database service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "allowServiceCreation": {
+      "description": "When `true` indicates the metadata service can be created",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["id", "name", "serviceType"],
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
+import { AssetsDataType } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface Option {
   label: string;
@@ -32,14 +35,34 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
-  feedData: EntityThread[];
+  followingEntities: AssetsDataType;
+  ownedEntities: AssetsDataType;
+  username: string;
+  tab: string;
+  feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
+  isUserEntitiesLoading: boolean;
   isAdminUser: boolean;
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
-  updateUserDetails: (data: UserDetails) => void;
-  fetchFeedHandler: (after?: string) => void;
+  updateUserDetails: (data: UserDetails) => Promise<void>;
+  fetchFeedHandler: (
+    threadType: ThreadType,
+    after?: string,
+    feedFilter?: FeedFilter
+  ) => void;
   postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
+  deletePostHandler?: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
+  feedFilter: FeedFilter;
+  setFeedFilter: (value: FeedFilter) => void;
+  threadType: ThreadType.Task | ThreadType.Conversation;
+  onFollowingEntityPaginate: (page: string | number) => void;
+  onOwnedEntityPaginate: (page: string | number) => void;
+  onSwitchChange: (checked: boolean) => void;
 }

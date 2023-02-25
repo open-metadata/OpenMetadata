@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
 import { ModalWithMarkdownEditor } from './ModalWithMarkdownEditor';
 
@@ -21,7 +21,11 @@ const mockOnCancel = jest.fn();
 const mockValue = 'Test value';
 
 jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return () => jest.fn().mockImplementation(() => mockValue);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }, ref) => {
+      return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;
+    })
+  );
 });
 
 describe('Test ModalWithMarkdownEditor Component', () => {
@@ -35,6 +39,7 @@ describe('Test ModalWithMarkdownEditor Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <ModalWithMarkdownEditor
+        visible
         header="Test"
         placeholder="Test placeholder"
         value={mockValue}
@@ -50,6 +55,7 @@ describe('Test ModalWithMarkdownEditor Component', () => {
   it('Component should have same header as provided', () => {
     const { container } = render(
       <ModalWithMarkdownEditor
+        visible
         header="Test"
         placeholder="Test placeholder"
         value={mockValue}
@@ -65,6 +71,7 @@ describe('Test ModalWithMarkdownEditor Component', () => {
   it('on click of cancel button, onCancel callback should call', () => {
     const { container } = render(
       <ModalWithMarkdownEditor
+        visible
         header="Test"
         placeholder="Test placeholder"
         value={mockValue}
@@ -76,6 +83,6 @@ describe('Test ModalWithMarkdownEditor Component', () => {
 
     fireEvent.click(cancel);
 
-    expect(mockOnCancel).toBeCalledTimes(1);
+    expect(mockOnCancel).toHaveBeenCalledTimes(1);
   });
 });

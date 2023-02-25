@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/api/createBot.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "createBot",
+  "description": "Create bot API request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.CreateBot",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name of the bot.",
+      "$ref": "../entity/teams/user.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'FirstName LastName'.",
+      "type": "string"
+    },
+    "botUser" : {
+      "description": "Bot user name created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
+      "type" : "string"
+    },
+    "description": {
+      "description": "Description of the bot.",
+      "type": "string"
+    },
+    "provider" : {
+      "$ref": "../type/basic.json#/definitions/providerType"
+    }
+  },
+  "required": ["name", "botUser"],
+  "additionalProperties": false
+}

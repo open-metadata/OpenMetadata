@@ -1,0 +1,24 @@
+{
+    "name": "columnValueMaxToBeBetween",
+    "fullyQualifiedName": "columnValueMaxToBeBetween",
+    "displayName": "Column Value Max. to be Between",
+    "description": "This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.",
+    "entityType": "COLUMN",
+    "testPlatforms": ["OpenMetadata", "DBT"],
+    "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT"],
+    "parameterDefinition": [
+    {
+      "name": "minValueForMaxInCol",
+      "displayName": "Min",
+      "description": "Expected minimum value in the column to be greater or equal than",
+      "dataType": "INT"
+    },
+    {
+      "name": "maxValueForMaxInCol",
+      "displayName": "Max",
+      "description": "Expected maximum value in the column to be lower or equal than",
+      "dataType": "INT"
+    }
+  ]
+}
+  

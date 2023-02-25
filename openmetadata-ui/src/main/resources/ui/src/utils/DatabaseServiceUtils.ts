@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,15 +12,18 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import athenaConnection from '../jsons/connectionSchemas/connections/database/athenaConnection.json';
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
+import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
+import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import db2Connection from '../jsons/connectionSchemas/connections/database/db2Connection.json';
 import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
+import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
@@ -33,7 +36,6 @@ import postgresConnection from '../jsons/connectionSchemas/connections/database/
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
-import sampleDataConnection from '../jsons/connectionSchemas/connections/database/sampleDataConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
@@ -66,6 +68,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Databricks: {
       schema = databricksConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Datalake: {
+      schema = DatalakeConnection;
 
       break;
     }
@@ -164,8 +171,18 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.CustomDatabase: {
+      schema = customDatabaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.DomoDatabase: {
+      schema = domoDatabaseConnection;
+
+      break;
+    }
     default: {
-      schema = sampleDataConnection;
+      schema = mysqlConnection;
 
       break;
     }

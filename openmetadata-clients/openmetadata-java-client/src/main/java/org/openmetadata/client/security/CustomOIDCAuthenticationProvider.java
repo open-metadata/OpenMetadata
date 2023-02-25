@@ -13,26 +13,89 @@
 
 package org.openmetadata.client.security;
 
+import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.client.ApiClient;
+import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.client.security.interfaces.CustomOIDCAccessTokenApi;
+import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
+@Slf4j
 public class CustomOIDCAuthenticationProvider implements AuthenticationProvider {
+  private final CustomOIDCSSOClientConfig securityConfig;
+  private String generatedAuthToken;
+  private Long expirationTimeMillis;
+  private final CustomOIDCAccessTokenApi customSSOClient;
+
+  public CustomOIDCAuthenticationProvider(OpenMetadataConnection iConfig) {
+    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.CUSTOM_OIDC)) {
+      LOG.error("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
+      throw new RuntimeException("Required type to invoke is CustomOIDC for CustomOIDCAuthentication Provider");
+    }
+
+    securityConfig = (CustomOIDCSSOClientConfig) iConfig.getSecurityConfig();
+    if (securityConfig == null) {
+      LOG.error("Security Config is missing, it is required");
+      throw new RuntimeException("Security Config is missing, it is required");
+    }
+    generatedAuthToken = "";
+
+    ApiClient customOIDCSSO = new ApiClient();
+    customOIDCSSO.setBasePath(securityConfig.getTokenEndpoint());
+    RequestInterceptor requestInterceptor =
+        requestTemplate -> {
+          String requestBody =
+              "grant_type="
+                  + AccessTokenResponse.GrantType.CLIENT_CREDENTIALS
+                  + "&client_id="
+                  + securityConfig.getClientId()
+                  + "&client_secret="
+                  + securityConfig.getSecretKey();
+          requestTemplate.body(requestBody);
+        };
+    customOIDCSSO.addAuthorization("OAuthToken", requestInterceptor);
+    customSSOClient = customOIDCSSO.buildClient(CustomOIDCAccessTokenApi.class);
+  }
+
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
-    return null;
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
+    return new CustomOIDCAuthenticationProvider(iConfig);
   }
 
   @Override
   public String authToken() {
-    return null;
+    AccessTokenResponse resp = customSSOClient.getAccessToken();
+    generatedAuthToken = resp.getAccessToken();
+    expirationTimeMillis = Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
+    return generatedAuthToken;
   }
 
   @Override
   public String getAccessToken() {
-    return null;
+    return generatedAuthToken;
   }
 
   @Override
-  public void apply(RequestTemplate requestTemplate) {}
+  public void apply(RequestTemplate requestTemplate) {
+    if (requestTemplate.url().contains("version")) {
+      return;
+    }
+    if (requestTemplate.headers().containsKey("Authorization")) {
+      return;
+    }
+    // If first time, get the token
+    if (expirationTimeMillis == null || System.currentTimeMillis() >= expirationTimeMillis) {
+      this.authToken();
+    }
+
+    if (getAccessToken() != null) {
+      requestTemplate.header("Authorization", "Bearer " + getAccessToken());
+    }
+  }
 }

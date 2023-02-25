@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,36 +12,32 @@
  */
 
 import { findAllByTestId, findByTestId, render } from '@testing-library/react';
-import { SearchResponse } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import {
+  INITIAL_SORT_FIELD,
+  INITIAL_SORT_ORDER,
+} from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { mockResponse } from './exlore.mock';
 import Explore from './Explore.component';
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useLocation: jest
     .fn()
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
+  useParams: jest.fn().mockReturnValue({
+    tab: 'tab',
+  }),
 }));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 jest.mock('../../utils/FilterUtils', () => ({
   getFilterString: jest.fn().mockImplementation(() => 'user.address'),
   getFilterCount: jest.fn().mockImplementation(() => 10),
 }));
 
-jest.mock('../../components/searched-data/SearchedData', () => {
+jest.mock('components/searched-data/SearchedData', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -51,84 +47,44 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
-jest.mock(
-  '../containers/PageLayout',
-  () =>
-    ({
-      children,
-      leftPanel,
-      rightPanel,
-    }: {
-      children: React.ReactNode;
-      rightPanel: React.ReactNode;
-      leftPanel: React.ReactNode;
-    }) =>
-      (
-        <div data-testid="PageLayout">
-          <div data-testid="left-panel-content">{leftPanel}</div>
-          <div data-testid="right-panel-content">{rightPanel}</div>
-          {children}
-        </div>
-      )
-);
-
 const mockFunction = jest.fn();
-
-const mockSearchResult = {
-  resSearchResults: mockResponse as unknown as SearchResponse,
-  resAggServiceType: mockResponse as unknown as SearchResponse,
-  resAggTier: mockResponse as unknown as SearchResponse,
-  resAggTag: mockResponse as unknown as SearchResponse,
-  resAggDatabase: mockResponse as unknown as SearchResponse,
-  resAggDatabaseSchema: mockResponse as unknown as SearchResponse,
-  resAggServiceName: mockResponse as unknown as SearchResponse,
-};
 
 describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <Explore
-        isFilterSelected
-        error=""
-        fetchCount={mockFunction}
-        fetchData={mockFunction}
-        handleFilterChange={mockFunction}
-        handlePathChange={mockFunction}
-        handleSearchText={mockFunction}
-        searchQuery=""
-        searchResult={mockSearchResult}
-        searchText=""
-        showDeleted={false}
-        sortValue=""
-        tab=""
+        showDeleted
+        searchIndex={SearchIndex.TABLE}
+        searchResults={mockResponse}
+        sortOrder={INITIAL_SORT_ORDER}
+        sortValue={INITIAL_SORT_FIELD}
         tabCounts={{
-          table: 15,
-          topic: 2,
-          dashboard: 8,
-          pipeline: 5,
-          dbtModel: 7,
-          mlModel: 2,
+          [SearchIndex.TABLE]: 15,
+          [SearchIndex.TOPIC]: 2,
+          [SearchIndex.DASHBOARD]: 8,
+          [SearchIndex.PIPELINE]: 5,
+          [SearchIndex.MLMODEL]: 2,
         }}
-        updateDashboardCount={mockFunction}
-        updateDbtModelCount={mockFunction}
-        updateMlModelCount={mockFunction}
-        updatePipelineCount={mockFunction}
-        updateTableCount={mockFunction}
-        updateTopicCount={mockFunction}
-        onShowDeleted={mockFunction}
+        onChangeAdvancedSearchJsonTree={mockFunction}
+        onChangeAdvancedSearchQueryFilter={mockFunction}
+        onChangePostFilter={mockFunction}
+        onChangeSearchIndex={mockFunction}
+        onChangeShowDeleted={mockFunction}
+        onChangeSortOder={mockFunction}
+        onChangeSortValue={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const pageContainer = await findByTestId(container, 'PageLayout');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, /tab/i);
+    // Here regular expression '/-tab/i' is used to match all the tabs
+    // Example, Tab for Table assets will have data-testid='tables-tab'
+    const tabs = await findAllByTestId(container, /-tab/i);
 
-    expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs.length).toBe(5);
+    expect(tabs).toHaveLength(5);
   });
 });

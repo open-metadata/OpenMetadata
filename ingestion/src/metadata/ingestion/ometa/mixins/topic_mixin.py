@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 

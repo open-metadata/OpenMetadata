@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,11 +23,22 @@ export enum EntityType {
   GLOSSARY_TERM = 'glossaryTerm',
   DATABASE_SERVICE = 'databaseService',
   MESSAGING_SERVICE = 'messagingService',
+  METADATA_SERVICE = 'metadataService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
+  MLMODEL_SERVICE = 'mlmodelService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
+  TEAM = 'team',
+  USER = 'user',
+  BOT = 'bot',
+  ROLE = 'role',
+  POLICY = 'policy',
+  TEST_SUITE = 'testSuite',
+  DATA_INSIGHT_CHART = 'dataInsightChart',
+  KPI = 'kpi',
+  ALERT = 'alert',
 }
 
 export enum AssetsType {
@@ -49,10 +60,17 @@ export enum EntityLineageDirection {
   LEFT_RIGHT = 'LR',
 }
 
+export enum EntityLineageNodeType {
+  INPUT = 'input',
+  OUTPUT = 'output',
+  DEFAULT = 'default',
+  NOT_CONNECTED = 'not-connected',
+}
+
 export enum TabSpecificField {
   SAMPLE_DATA = 'sampleData',
   ACTIVITY_FEED = 'activity_feed',
-  TABLE_PROFILE = 'tableProfile',
+  TABLE_PROFILE = 'profile',
   LINEAGE = 'lineage',
   COLUMNS = 'columns',
   USAGE_SUMMARY = 'usageSummary',
@@ -69,6 +87,7 @@ export enum TabSpecificField {
   DASHBOARD = 'dashboard',
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
+  EXECUTIONS = 'executions',
 }
 
 export enum FqnPart {
@@ -78,4 +97,22 @@ export enum FqnPart {
   Table,
   Column,
   NestedColumn,
+}
+
+export enum EntityInfo {
+  OWNER = 'Owner',
+  TIER = 'Tier',
+  TYPE = 'Type',
+  COLUMNS = 'Columns',
+  ROWS = 'row-plural',
+  URL = 'Url',
+  ALGORITHM = 'Algorithm',
+  TARGET = 'Target',
+  SERVER = 'Server',
+  DASHBOARD = 'Dashboard',
+  PARTITIONS = 'Partitions',
+  REPLICATION_FACTOR = 'Replication Factor',
+  RETENTION_SIZE = 'Retention Size',
+  CLEAN_UP_POLICIES = 'Clean-up Policies',
+  MAX_MESSAGE_SIZE = 'Max Message Size',
 }

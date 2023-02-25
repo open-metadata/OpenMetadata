@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/api/policies/createPolicy.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreatePolicyRequest",
+  "description": "Create Policy Entity Request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.policies.CreatePolicy",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Policy.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Title for this Policy.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A short description of the Policy, comprehensible to regular users.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this Policy.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "rules": {
+      "$ref": "../../entity/policies/policy.json#/definitions/rules"
+    },
+    "enabled": {
+      "description": "Is the policy enabled.",
+      "type": "boolean",
+      "default": true
+    },
+    "location": {
+      "description": "UUID of Location where this policy is applied",
+      "$ref": "../../type/basic.json#/definitions/uuid",
+      "default": null
+    }
+  },
+  "required": ["name", "rules"],
+  "additionalProperties": false
+}

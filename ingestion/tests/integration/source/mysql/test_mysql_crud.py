@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import log_ansi_encoded_string
 
 
 def is_responsive(url):
@@ -71,11 +72,11 @@ def create_delete_database(client: OpenMetadata):
     create_mysql_service = CreateDatabaseServiceRequest(**data)
     mysql_service = client.create_or_update(create_mysql_service)
     create_database_request = CreateDatabaseRequest(
-        name="dwh", service=EntityReference(id=mysql_service.id, type="databaseService")
+        name="dwh", service=mysql_service.fullyQualifiedName
     )
     created_database = client.create_or_update(create_database_request)
     resp = create_delete_table(client)
-    print(resp)
+    log_ansi_encoded_string(message=resp)
     client.delete(entity=Database, entity_id=str(created_database.id.__root__))
     client.delete(entity=DatabaseService, entity_id=str(mysql_service.id.__root__))
     return resp
@@ -85,7 +86,7 @@ def create_delete_database(client: OpenMetadata):
 def catalog_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("db", 3306)
-    print("Mysql is running on port {}".format(port))
+    log_ansi_encoded_string(message="Mysql is running on port {}".format(port))
     url = "http://localhost:8585"
     time.sleep(30)
     docker_services.wait_until_responsive(

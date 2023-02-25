@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,46 +11,27 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { lowerCase } from 'lodash';
-import { EntityFieldThreads } from 'Models';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import {
-  ColumnJoins,
-  Table,
-  TableData,
-} from '../../generated/entity/data/table';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTable from '../EntityTable/EntityTable.component';
-
-type Props = {
-  owner?: Table['owner'];
-  columns: Table['columns'];
-  joins: Array<ColumnJoins>;
-  columnName: string;
-  tableConstraints: Table['tableConstraints'];
-  sampleData?: TableData;
-  hasEditAccess?: boolean;
-  isReadOnly?: boolean;
-  entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string) => void;
-  onEntityFieldSelect?: (value: string) => void;
-  onUpdate?: (columns: Table['columns']) => void;
-};
+import EntityTableV1 from '../EntityTable/EntityTable.component';
+import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
   columns,
   joins,
   onUpdate,
   columnName,
-  hasEditAccess,
-  owner,
+  hasDescriptionEditAccess,
+  hasTagEditAccess,
   entityFieldThreads,
   onThreadLinkSelect,
   onEntityFieldSelect,
   isReadOnly = false,
   entityFqn,
   tableConstraints,
+  entityFieldTasks,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -63,7 +44,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
         <div>
           <Searchbar
-            placeholder="Find in table..."
+            placeholder={`${t('message.find-in-table')}..`}
             searchValue={searchText}
             typingInterval={500}
             onSearch={handleSearchAction}
@@ -71,25 +52,24 @@ const SchemaTab: FunctionComponent<Props> = ({
         </div>
       </div>
       <div className="row">
-        {columns?.length > 0 ? (
-          <div className="col-sm-12">
-            <EntityTable
-              columnName={columnName}
-              entityFieldThreads={entityFieldThreads}
-              entityFqn={entityFqn}
-              hasEditAccess={Boolean(hasEditAccess)}
-              isReadOnly={isReadOnly}
-              joins={joins}
-              owner={owner}
-              searchText={lowerCase(searchText)}
-              tableColumns={columns}
-              tableConstraints={tableConstraints}
-              onEntityFieldSelect={onEntityFieldSelect}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={onUpdate}
-            />
-          </div>
-        ) : null}
+        <div className="col-sm-12">
+          <EntityTableV1
+            columnName={columnName}
+            entityFieldTasks={entityFieldTasks}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            hasDescriptionEditAccess={hasDescriptionEditAccess}
+            hasTagEditAccess={hasTagEditAccess}
+            isReadOnly={isReadOnly}
+            joins={joins}
+            searchText={lowerCase(searchText)}
+            tableColumns={columns}
+            tableConstraints={tableConstraints}
+            onEntityFieldSelect={onEntityFieldSelect}
+            onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={onUpdate}
+          />
+        </div>
       </div>
     </Fragment>
   );

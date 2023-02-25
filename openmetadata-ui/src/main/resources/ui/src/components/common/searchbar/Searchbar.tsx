@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-// import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { Input } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import PropTypes from 'prop-types';
 import React, { useCallback, useEffect, useState } from 'react';
-import SVGIcons from '../../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Loader from '../../Loader/Loader';
 
 type Props = {
@@ -40,14 +40,11 @@ const Searchbar = ({
   showLoadingStatus = false,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
-  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [searchIcon, setSearchIcon] = useState<string>(Icons.SEARCHV1);
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
-  // const typingTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    // if (searchValue !== '') {
     setUserSearch(searchValue);
-    // }
   }, [searchValue]);
 
   const debouncedOnSearch = useCallback(
@@ -67,8 +64,6 @@ const Searchbar = ({
     const searchText = e.target.value;
     setUserSearch(searchText);
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
-    // clearTimeout(typingTimer.current);
-    // typingTimer.current = setTimeout(() => {
     debounceOnSearch(searchText);
   };
 
@@ -79,21 +74,22 @@ const Searchbar = ({
       })}
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
-      <div className="tw-flex tw-bg-body-main tw-h-8 tw-relative">
-        <SVGIcons
-          alt="icon-search"
-          className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-top-2 tw-left-2 tw-text-center tw-pointer-events-none"
-          icon={searchIcon}
-        />
-        <input
-          className="tw-form-inputs tw-relative tw-form-inputs-padding tw-pl-8"
+      <div className="flex relative">
+        <Input
           data-testid="searchbar"
           placeholder={placeholder}
+          prefix={
+            <SVGIcons
+              alt="icon-search"
+              className="tw-w-4 tw-h-4 tw-mr-0.5"
+              icon={searchIcon}
+            />
+          }
           type="text"
           value={userSearch}
-          onBlur={() => setSearchIcon('icon-searchv1')}
+          onBlur={() => setSearchIcon(Icons.SEARCHV1)}
           onChange={handleChange}
-          onFocus={() => setSearchIcon('icon-searchv1color')}
+          onFocus={() => setSearchIcon(Icons.SEARCHV1COLOR)}
         />
         {showLoadingStatus && loadingState === 'waiting' && (
           <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">

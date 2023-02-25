@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,11 +12,13 @@
  */
 
 import {
-  findAllByTestId,
+  act,
   findByTestId,
   fireEvent,
   render,
+  screen,
 } from '@testing-library/react';
+import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -60,13 +62,15 @@ const mockProperties = [
 ];
 
 const mockProp = {
+  hasAccess: true,
   customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
+  loadingState: LOADING_STATE.INITIAL,
 };
 
 describe('Test CustomField Table Component', () => {
   it('Should render table component', async () => {
-    const { findByTestId, findAllByTestId } = render(
+    const { findByTestId, findByText, findAllByRole } = render(
       <CustomPropertyTable {...mockProp} />
     );
 
@@ -74,42 +78,44 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableHeader = await findByTestId('table-header');
+    const tableCellName = await findByText('label.name');
+    const tableCellType = await findByText('label.type');
+    const tableCellDescription = await findByText('label.description');
+    const tableCellActions = await findByText('label.action-plural');
 
-    const tableBody = await findByTestId('table-body');
+    expect(tableCellName).toBeInTheDocument();
+    expect(tableCellType).toBeInTheDocument();
+    expect(tableCellDescription).toBeInTheDocument();
+    expect(tableCellActions).toBeInTheDocument();
 
-    expect(tableHeader).toBeInTheDocument();
+    const tableRow = await findAllByRole('row');
 
-    expect(tableBody).toBeInTheDocument();
-
-    const dataRows = await findAllByTestId('data-row');
-
-    expect(dataRows).toHaveLength(mockProperties.length);
+    expect(tableRow).toHaveLength(mockProperties.length + 1);
   });
 
   it('Test delete property flow', async () => {
-    const { container } = render(<CustomPropertyTable {...mockProp} />);
-
-    const table = await findByTestId(
-      container,
-      'entity-custom-properties-table'
-    );
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} />);
+    });
+    const table = await screen.findByTestId('entity-custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
-    const tableHeader = await findByTestId(container, 'table-header');
+    const tableCellName = await screen.findByText('label.name');
+    const tableCellType = await screen.findByText('label.type');
+    const tableCellDescription = await screen.findByText('label.description');
+    const tableCellActions = await screen.findByText('label.action-plural');
 
-    const tableBody = await findByTestId(container, 'table-body');
+    expect(tableCellName).toBeInTheDocument();
+    expect(tableCellType).toBeInTheDocument();
+    expect(tableCellDescription).toBeInTheDocument();
+    expect(tableCellActions).toBeInTheDocument();
 
-    expect(tableHeader).toBeInTheDocument();
+    const tableRow = await screen.findAllByRole('row');
 
-    expect(tableBody).toBeInTheDocument();
+    expect(tableRow).toHaveLength(mockProperties.length + 1);
 
-    const dataRows = await findAllByTestId(container, 'data-row');
-
-    expect(dataRows).toHaveLength(mockProperties.length);
-
-    const dataRow = dataRows[0];
+    const dataRow = tableRow[1];
 
     const deleteButton = await findByTestId(dataRow, 'delete-button');
 
@@ -118,10 +124,7 @@ describe('Test CustomField Table Component', () => {
     fireEvent.click(deleteButton);
 
     // confirmation modal should be visible on click of delete button
-    const confirmationModal = await findByTestId(
-      container,
-      'confirmation-modal'
-    );
+    const confirmationModal = await screen.findByTestId('confirmation-modal');
 
     expect(confirmationModal).toBeInTheDocument();
 
@@ -134,7 +137,7 @@ describe('Test CustomField Table Component', () => {
   });
 
   it('Should render no data row if there is no custom properties', async () => {
-    const { findByTestId, queryAllByTestId } = render(
+    const { findByTestId, findAllByRole } = render(
       <CustomPropertyTable {...mockProp} customProperties={[]} />
     );
 
@@ -142,20 +145,18 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableHeader = await findByTestId('table-header');
+    const tableCellName = await screen.findByText('label.name');
+    const tableCellType = await screen.findByText('label.type');
+    const tableCellDescription = await screen.findByText('label.description');
+    const tableCellActions = await screen.findByText('label.action-plural');
 
-    const tableBody = await findByTestId('table-body');
+    expect(tableCellName).toBeInTheDocument();
+    expect(tableCellType).toBeInTheDocument();
+    expect(tableCellDescription).toBeInTheDocument();
+    expect(tableCellActions).toBeInTheDocument();
 
-    expect(tableHeader).toBeInTheDocument();
+    const tableRow = await findAllByRole('row');
 
-    expect(tableBody).toBeInTheDocument();
-
-    const dataRows = queryAllByTestId('data-row');
-
-    expect(dataRows).toHaveLength(0);
-
-    const noDataRow = await findByTestId('no-data-row');
-
-    expect(noDataRow).toBeInTheDocument();
+    expect(tableRow).toHaveLength(2);
   });
 });

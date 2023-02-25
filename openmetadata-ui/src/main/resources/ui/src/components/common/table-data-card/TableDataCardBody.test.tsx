@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,6 +17,13 @@ import TableDataCardBody from './TableDataCardBody';
 
 jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
 });
 
 describe('Test TableDataCardBody Component', () => {

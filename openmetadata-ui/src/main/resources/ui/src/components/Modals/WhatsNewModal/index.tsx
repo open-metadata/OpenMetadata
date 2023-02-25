@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,31 +11,28 @@
  *  limitations under the License.
  */
 
+import { Modal, Typography } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import React, { FunctionComponent, useState } from 'react';
+import { t } from 'i18next';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
+import CloseIcon from '../CloseIcon.component';
+import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
+import { ToggleType, WhatsNewModalProps } from './WhatsNewModal.interface';
+import './WhatsNewModal.styles.less';
 import { getReleaseVersionExpiry } from './WhatsNewModal.util';
-// import { Button } from '../../buttons/Button/Button';
-
-type Props = {
-  header: string;
-  onCancel: () => void;
-};
-
-type ToggleType = 'features' | 'change-log';
-
-const iconString = `M7.878 3.002a1.876 1.876 0 11-3.751 0 1.876 1.876 0 013.751 0zm1.073.562a3.003
- 3.003 0 01-5.897 0H.563a.563.563 0 010-1.125h2.49a3.002 3.002 0 015.898 0h2.491a.563.563 0 010 1.125H8.951z`;
 
 const cookieStorage = new CookieStorage();
 
-export const WhatsNewModal: FunctionComponent<Props> = ({
+export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   header,
   onCancel,
-}: Props) => {
+  visible,
+}: WhatsNewModalProps) => {
   const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
   const [checkedValue, setCheckedValue] = useState<ToggleType>('features');
 
@@ -59,120 +56,110 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
     onCancel();
   };
 
-  return (
-    <dialog className="tw-modal">
-      <div className="tw-modal-backdrop" />
-      <div
-        className="tw-modal-container tw-pb-0"
-        style={{ maxWidth: '1050px' }}>
-        <div className="tw-modal-header">
-          <p className="tw-modal-title">{header}</p>
+  useEffect(() => {
+    const hasFeatures = activeData.features.length > 0;
+    if (hasFeatures) {
+      setCheckedValue('features');
+    } else {
+      setCheckedValue('change-log');
+    }
+  }, [activeData]);
 
-          <div className="tw-flex">
-            <svg
-              className="tw-w-6 tw-h-6 tw-ml-1 tw-cursor-pointer"
-              data-testid="closeWhatsNew"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              onClick={handleCancel}>
-              <path
-                d="M6 18L18 6M6 6l12 12"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </svg>
+  return (
+    <Modal
+      centered
+      destroyOnClose
+      className="whats-new-modal"
+      closeIcon={
+        <CloseIcon dataTestId="closeWhatsNew" handleCancel={handleCancel} />
+      }
+      data-testid="whats-new-dialog"
+      footer={null}
+      open={visible}
+      title={
+        <Typography.Text strong data-testid="whats-new-header">
+          {header}
+        </Typography.Text>
+      }
+      width={1200}>
+      <div className="flex w-auto h-full h-min-75">
+        <div
+          className="border-r-2 p-x-md p-y-md border-separate"
+          style={{ width: '14%' }}>
+          <div className="d-flex flex-col-reverse">
+            {WHATS_NEW.map((d) => (
+              <div className="flex items-center justify-end mb-2.5" key={d.id}>
+                <VersionIndicatorIcon
+                  fill={
+                    activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
+                  }
+                />
+                <button
+                  className={classNames(
+                    'm-l-xss',
+                    activeData.id === d.id ? 'text-primary' : null
+                  )}
+                  onClick={() => setActiveData(d)}>
+                  {d.version}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
-        <div
-          className="tw-modal-body tw-p-0 tw-overflow-hidden"
-          style={{ height: '720px' }}>
-          {/* body */}
-          <div className="tw-flex tw-w-auto tw-h-full">
-            <div
-              className="tw-border-r-2 tw-px-4 tw-py-4 tw-border-separate"
-              style={{ width: '14%' }}>
-              <div className="tw-flex tw-flex-col-reverse">
-                {WHATS_NEW.map((d) => (
+        <div className="overflow-y-auto" style={{ width: '86%' }}>
+          <div className="p-t-md px-10 ">
+            <div className="flex justify-between items-center p-b-sm">
+              <div>
+                <p className="text-base font-medium">{activeData.version}</p>
+                <p className="text-grey-muted text-xs">
+                  {activeData.description}
+                </p>
+              </div>
+              <div>
+                {activeData.features.length > 0 && (
                   <div
-                    className="tw-flex tw-items-center tw-justify-end tw-mb-2.5"
-                    key={d.id}>
-                    <svg
-                      fill="none"
-                      height="1em"
-                      viewBox="0 0 13 6"
-                      width="1em"
-                      xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        clipRule="evenodd"
-                        d={iconString}
-                        fill={activeData.id === d.id ? '#7147E8' : '#6B7280'}
-                        fillRule="evenodd"
-                      />
-                    </svg>
+                    className={classNames('whats-new-modal-button-container', {
+                      'w-60': activeData.features.length > 0,
+                    })}>
                     <button
-                      className={classNames(
-                        'tw-ml-1',
-                        activeData.id === d.id ? 'tw-text-primary' : null
-                      )}
-                      onClick={() => setActiveData(d)}>
-                      {d.version}
+                      className={getToggleButtonClasses('features')}
+                      data-testid="WhatsNewModalFeatures"
+                      onClick={() => handleToggleChange('features')}>
+                      {t('label.feature-plural')}
+                    </button>
+
+                    <button
+                      className={getToggleButtonClasses('change-log')}
+                      data-testid="WhatsNewModalChangeLogs"
+                      onClick={() => {
+                        handleToggleChange('change-log');
+                      }}>
+                      {t('label.change-entity', {
+                        entity: t('label.log-plural'),
+                      })}
                     </button>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-            <div className="tw-overflow-y-auto" style={{ width: '86%' }}>
-              <div className="tw-pt-4 tw-px-10 ">
-                <div className="tw-flex tw-justify-between tw-items-center tw-pb-3">
-                  <div>
-                    <p className="tw-text-base tw-font-medium">
-                      {activeData.version}
-                    </p>
-                    <p className="tw-text-grey-muted tw-text-xs">
-                      {activeData.description}
-                    </p>
-                  </div>
-                  <div>
-                    <div className="tw-w-60 tw-inline-flex tw-border tw-border-primary tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
-                      <button
-                        className={getToggleButtonClasses('features')}
-                        data-testid="WhatsNewModalFeatures"
-                        onClick={() => handleToggleChange('features')}>
-                        Features
-                      </button>
-                      <button
-                        className={getToggleButtonClasses('change-log')}
-                        data-testid="WhatsNewModalChangeLogs"
-                        onClick={() => {
-                          handleToggleChange('change-log');
-                        }}>
-                        Change Logs
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  {checkedValue === 'features' && (
-                    <FeaturesCarousel data={activeData.features} />
-                  )}
-                  {checkedValue === 'change-log' && (
-                    <ChangeLogs
-                      data={
-                        activeData.changeLogs as unknown as {
-                          [name: string]: string;
-                        }
-                      }
-                    />
-                  )}
-                </div>
-              </div>
+            <div>
+              {checkedValue === 'features' &&
+                activeData.features.length > 0 && (
+                  <FeaturesCarousel data={activeData.features} />
+                )}
+              {checkedValue === 'change-log' && (
+                <ChangeLogs
+                  data={
+                    activeData.changeLogs as unknown as {
+                      [name: string]: string;
+                    }
+                  }
+                />
+              )}
             </div>
           </div>
         </div>
       </div>
-    </dialog>
+    </Modal>
   );
 };

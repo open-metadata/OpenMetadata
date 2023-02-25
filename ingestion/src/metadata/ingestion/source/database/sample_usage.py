@@ -8,14 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Sample Usage source ingestion
+"""
 import csv
 import json
 from datetime import datetime
 from typing import Dict, Iterable, Optional
 
-from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
-    SampleDataConnection,
+from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
+    CustomDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -27,7 +29,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
@@ -36,10 +38,20 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 
 
 class SampleUsageSource(UsageSource):
+    """
+    Loads JSON data and prepares the required
+    python objects to be sent to the Sink.
+    """
 
     service_type = DatabaseServiceType.BigQuery.value
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    database_field = ""  # filtering not required
+
+    schema_field = ""  # filtering not required
+
+    def __init__(
+        self, config: WorkflowSource, metadata_config: OpenMetadataConnection
+    ):  # pylint: disable=super-init-not-called
         self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -47,17 +59,23 @@ class SampleUsageSource(UsageSource):
         self.metadata_config = metadata_config
         self.report = SQLSourceStatus()
         self.metadata = OpenMetadata(metadata_config)
-        self.analysis_date = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        self.analysis_date = datetime.utcnow()
+
+        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+            "sampleDataFolder"
+        )
+        if not sample_data_folder:
+            raise ValueError("Cannot get sampleDataFolder from connection options")
 
         self.service_json = json.load(
-            open(
-                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/datasets/service.json",
+                "r",
+                encoding="utf-8",
             )
         )
-        self.query_log_csv = (
-            self.service_connection.sampleDataFolder + "/datasets/query_log"
-        )
-        with open(self.query_log_csv, "r") as fin:
+        self.query_log_csv = sample_data_folder + "/datasets/query_log"
+        with open(self.query_log_csv, "r", encoding="utf-8") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
         self.service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=config
@@ -67,23 +85,27 @@ class SampleUsageSource(UsageSource):
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SampleDataConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, SampleDataConnection):
+        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
-                f"Expected MssqlConnection, but got {connection}"
+                f"Expected SampleDataConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
-    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, str]]]:
-        for row in self.query_logs:
-            yield TableQuery(
-                query=row["query"],
-                userName="",
-                startTime="",
-                endTime="",
-                analysisDate=self.analysis_date,
-                aborted=False,
-                database="ecommerce_db",
-                serviceName=self.config.serviceName,
-                databaseSchema="shopify",
-            )
+    def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:
+        yield TableQueries(
+            queries=[
+                TableQuery(
+                    query=row["query"],
+                    userName="",
+                    startTime="",
+                    endTime="",
+                    analysisDate=self.analysis_date,
+                    aborted=False,
+                    databaseName="ecommerce_db",
+                    serviceName=self.config.serviceName,
+                    databaseSchema="shopify",
+                )
+                for row in self.query_logs
+            ]
+        )

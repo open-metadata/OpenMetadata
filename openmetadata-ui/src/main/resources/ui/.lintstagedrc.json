@@ -1,4 +1,0 @@
-{
-  "*.{js,jsx,ts,tsx}": ["eslint 'src/**/*.{js,jsx,ts,tsx}", "organize-imports-cli"],
-  "./src/**/*.+(js|jsx|ts|tsx|json|css)": ["prettier . --config './.prettierrc' --write"]
-}

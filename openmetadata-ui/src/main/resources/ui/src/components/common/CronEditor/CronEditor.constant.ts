@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,26 +11,34 @@
  *  limitations under the License.
  */
 
+import i18n from 'utils/i18next/LocalUtil';
+import { Combination, ToDisplay } from './CronEditor.interface';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const getPeriodOptions = () => {
   return [
     {
-      label: 'minutes',
+      label: i18n.t('label.none-lowercase'),
+      value: '',
+      prep: '',
+    },
+    {
+      label: i18n.t('label.minute-plural-lowercase'),
       value: 'minute',
       prep: '',
     },
     {
-      label: 'hour',
+      label: i18n.t('label.hour-lowercase'),
       value: 'hour',
       prep: 'at',
     },
     {
-      label: 'day',
+      label: i18n.t('label.day-lowercase'),
       value: 'day',
       prep: 'at',
     },
     {
-      label: 'week',
+      label: i18n.t('label.week-lowercase'),
       value: 'week',
       prep: 'on',
     } /* ,
@@ -47,7 +55,7 @@ export const getPeriodOptions = () => {
   ];
 };
 
-export const toDisplay = {
+export const toDisplay: ToDisplay = {
   minute: [],
   hour: ['min'],
   day: ['time'],
@@ -56,7 +64,7 @@ export const toDisplay = {
   year: ['dom', 'mon', 'time'],
 };
 
-export const combinations = {
+export const combinations: Combination = {
   minute: /^(\*\/\d{1,2})\s(\*\s){3}\*$/, // "*/? * * * *"
   hour: /^\d{1,2}\s(\*\s){3}\*$/, // "? * * * *"
   day: /^(\d{1,2}\s){2}(\*\s){2}\*$/, // "? ? * * *"
@@ -100,31 +108,31 @@ const ordinalSuffix = (n: number) => {
 export const getDayOptions = () => {
   return [
     {
-      label: 'Sunday',
+      label: i18n.t('label.sunday'),
       value: 0,
     },
     {
-      label: 'Monday',
+      label: i18n.t('label.monday'),
       value: 1,
     },
     {
-      label: 'Tuesday',
+      label: i18n.t('label.tuesday'),
       value: 2,
     },
     {
-      label: 'Wednesday',
+      label: i18n.t('label.wednesday'),
       value: 3,
     },
     {
-      label: 'Thursday',
+      label: i18n.t('label.thursday'),
       value: 4,
     },
     {
-      label: 'Friday',
+      label: i18n.t('label.friday'),
       value: 5,
     },
     {
-      label: 'Saturday',
+      label: i18n.t('label.saturday'),
       value: 6,
     },
   ];
@@ -141,18 +149,18 @@ export const getMonthDaysOptions = () => {
 
 export const monthsList = () => {
   return [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
+    i18n.t('label.january'),
+    i18n.t('label.february'),
+    i18n.t('label.march'),
+    i18n.t('label.april'),
+    i18n.t('label.may'),
+    i18n.t('label.june'),
+    i18n.t('label.july'),
+    i18n.t('label.august'),
+    i18n.t('label.september'),
+    i18n.t('label.october'),
+    i18n.t('label.november'),
+    i18n.t('label.december'),
   ];
 };
 

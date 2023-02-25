@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,33 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import { t } from 'i18next';
+import React, { FC, ReactNode } from 'react';
 import { Area, AreaChart, Tooltip } from 'recharts';
+
+const CustomTooltip = ({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  // eslint-disable-next-line
+  payload?: any;
+}): ReactNode => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-medium">
+        <div>
+          {t('label.value')} {payload[0].value}
+        </div>
+        <div>
+          {t('label.date')} {payload[0].payload.date.toString()}
+        </div>
+      </div>
+    );
+  }
+
+  return <></>;
+};
 
 type Props = {
   data: Array<{ date: Date | undefined; value: number | undefined }>;
@@ -22,7 +47,8 @@ type Props = {
   className?: string;
   width?: number;
 };
-const TableProfilerGraph = ({
+
+const TableProfilerGraph: FC<Props> = ({
   data,
   margin,
   toolTipPos,
@@ -30,26 +56,6 @@ const TableProfilerGraph = ({
   className = '',
   width = 150,
 }: Props) => {
-  const CustomTooltip = ({
-    active,
-    payload,
-  }: {
-    active: boolean;
-    // eslint-disable-next-line
-    payload: any;
-  }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-medium">
-          <div>Value {payload[0].value}</div>
-          <div>Date {payload[0].payload.date}</div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
   return (
     <div className={className}>
       <AreaChart

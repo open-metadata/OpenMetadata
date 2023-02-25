@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/customPipelineConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomPipelineConnection",
+  "description": "Custom Pipeline Service connection to build a source that is not supported by OpenMetadata yet.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.CustomPipelineConnection",
+  "definitions": {
+    "customPipelineType": {
+      "title": "Service Type",
+      "description": "Custom pipeline service type",
+      "type": "string",
+      "enum": ["CustomPipeline"],
+      "default": "CustomPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Custom pipeline service type",
+      "$ref": "#/definitions/customPipelineType",
+      "default": "CustomPipeline"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["sourcePythonClass", "type"]
+}

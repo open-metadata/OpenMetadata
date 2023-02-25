@@ -17,11 +17,13 @@ from unittest import TestCase
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
-from sqlalchemy.orm import DeclarativeMeta, declarative_base
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import declarative_base
 
+from metadata.ingestion.connections.session import create_and_bind_session
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.utils.connections import create_and_bind_session
 from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()
@@ -42,13 +44,11 @@ class Timer:
     Helper to test timeouts
     """
 
-    @staticmethod
-    def slow():
+    def slow(self):
         time.sleep(10)
         return 1
 
-    @staticmethod
-    def fast():
+    def fast(self):
         return 1
 
 
@@ -60,11 +60,14 @@ class RunnerTest(TestCase):
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
-    sampler = Sampler(session=session, table=User, profile_sample=50.0)
+    sampler = Sampler(
+        session=session,
+        table=User,
+        profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+    )
     sample = sampler.random_sample()
 
     raw_runner = QueryRunner(session=session, table=User, sample=sample)
-
     timeout_runner: Timer = cls_timeout(1)(Timer())
 
     @classmethod
@@ -152,3 +155,24 @@ class RunnerTest(TestCase):
 
         with pytest.raises(TimeoutError):
             self.timeout_runner.slow()
+
+    def test_select_from_statement(self):
+        """
+        Test querying using `from_statement` returns expected values
+        """
+        stmt = "SELECT name FROM users"
+        self.raw_runner._profile_sample_query = stmt
+
+        res = self.raw_runner.select_all_from_table(Column(User.name.name))
+        assert len(res) == 30
+
+        res = self.raw_runner.select_first_from_table(Column(User.name.name))
+        assert len(res) == 1
+
+        stmt = "SELECT id FROM users"
+        self.raw_runner._profile_sample_query = stmt
+
+        with pytest.raises(OperationalError):
+            self.raw_runner.select_first_from_table(Column(User.name.name))
+
+        self.raw_runner._profile_sample_query = None

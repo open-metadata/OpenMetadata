@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 export const cardStyle = {
   base: 'tw-flex tw-flex-col tw-border tw-bg-white',
-  default: 'tw-border-main tw-border-b-0',
+  default: 'tw-border-main',
   active: 'tw-border-primary',
   selected: 'tw-border-primary',
   header: {
@@ -21,8 +21,8 @@ export const cardStyle = {
     default: '',
     active: 'tw-bg-primary-lite tw-border-b tw-border-primary',
     selected: 'tw-bg-primary tw-text-white',
-    title: 'tw-text-base tw-mb-0',
-    description: 'tw-font-medium tw-pr-2',
+    title: 'tw-text-base tw-mb-0 tw-font-semibold',
+    description: 'tw-font-medium tw-pr-2 tw-font-normal',
   },
   body: {
     base: 'tw-py-5 tw-px-10',

@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/tableQuery.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Table Queries",
+  "description": "This schema defines structure of table query",
+  "type": "object",
+  "definitions": {
+    "tableQuery": {
+      "properties": {
+        "query": {
+          "description": "SQL query",
+          "type": "string"
+        },
+        "userName": {
+          "description": "Name of the user that executed the SQL query",
+          "type": "string"
+        },
+        "startTime": {
+          "description": "Start time of execution of SQL query",
+          "type": "string"
+        },
+        "endTime": {
+          "description": "End time of execution of SQL query",
+          "type": "string"
+        },
+        "analysisDate": {
+          "description": "Date of execution of SQL query",
+          "$ref": "./basic.json#/definitions/dateTime"
+        },
+        "aborted": {
+          "description": "Flag to check if query was aborted during execution",
+          "type": "boolean"
+        },
+        "serviceName": {
+          "description": "Name that identifies this database service.",
+          "type": "string"
+        },
+        "databaseName": {
+          "description": "Database associated with the table in the query",
+          "type": "string"
+        },
+        "databaseSchema": {
+          "description": "Database schema of the associated with query",
+          "type": "string"
+        },
+        "duration": {
+          "description": "How long did the query took to run in seconds.",
+          "type": "number"
+        }
+      },
+      "required": ["query", "serviceName"]
+    }
+  },
+  "properties": {
+    "queries": {
+      "description": "Date of execution of SQL query",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableQuery"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,6 +17,9 @@ import React, { FunctionComponent } from 'react';
 import { ButtonProps, Ref } from './Button.interface';
 import { button } from './Button.styles';
 
+/**
+ * @deprecated use AntD button instead
+ */
 export const Button: FunctionComponent<ButtonProps> = React.forwardRef<
   Ref,
   ButtonProps

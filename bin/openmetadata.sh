@@ -30,7 +30,7 @@ function catalogStart {
    if [[ $? -eq 0 ]]; then
        rm -f ${PID_FILE}
        echo "Starting OpenMetadata"
-       APP_CLASS="org.openmetadata.catalog.CatalogApplication"
+       APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
        cd ${CATALOG_HOME}
        nohup ${JAVA} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
        cd - &> /dev/null

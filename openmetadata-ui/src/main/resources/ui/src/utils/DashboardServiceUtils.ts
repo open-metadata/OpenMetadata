@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,14 +12,18 @@
  */
 
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import {
   DashboardConnection,
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
+import customDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json';
+import domoDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
+import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
+import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
@@ -44,6 +48,11 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
       break;
     }
+    case DashboardServiceType.Mode: {
+      schema = modeConnection;
+
+      break;
+    }
     case DashboardServiceType.PowerBI: {
       schema = powerBIConnection;
 
@@ -61,6 +70,22 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
     }
     case DashboardServiceType.Tableau: {
       schema = tableauConnection;
+
+      break;
+    }
+    case DashboardServiceType.DomoDashboard: {
+      schema = domoDashboardConnection;
+
+      break;
+    }
+    case DashboardServiceType.CustomDashboard: {
+      schema = customDashboardConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.QuickSight: {
+      schema = quicksightConnection;
 
       break;
     }

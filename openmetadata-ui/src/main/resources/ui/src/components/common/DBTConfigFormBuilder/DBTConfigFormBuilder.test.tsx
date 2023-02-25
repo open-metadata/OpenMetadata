@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,11 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
+import i18n from 'i18next';
 import React from 'react';
+import { FormSubmitType } from '../../../enums/form.enum';
+import { AddIngestionState } from '../../AddIngestion/addIngestion.interface';
+import { DBTConfigFormProps } from './DBTConfigForm.interface';
 import DBTConfigFormBuilder from './DBTConfigFormBuilder';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
@@ -25,7 +29,27 @@ const mockSecurityConfigS3 = {
 };
 
 const mockSecurityConfigGCSValue = {
-  gcsConfig: {},
+  gcsConfig: {
+    authProviderX509CertUrl: 'url',
+
+    authUri: 'uri',
+
+    clientEmail: 'email',
+
+    clientId: 'id',
+
+    clientX509CertUrl: 'certUrl',
+
+    privateKey: 'privateKey',
+
+    privateKeyId: 'keyId',
+
+    projectId: 'projectId',
+
+    tokenUri: 'tokenUri',
+
+    type: 'type',
+  },
 };
 
 const mockPrefixConfig = {
@@ -126,19 +150,26 @@ jest.mock('./DBTGCSConfig', () => ({
 
 const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
-const mockCatalogChange = jest.fn();
-const mockManifestChange = jest.fn();
+const mockIngestionName = jest.fn();
+const mockOnChange = jest.fn();
+
+const mockState = {
+  dbtConfigSource: '',
+  dbtConfigSourceType: DBT_SOURCES.local,
+  ingestionName: i18n.t('label.dbt-uppercase'),
+  gcsConfigType: GCS_CONFIG.GCSValues,
+} as unknown as AddIngestionState;
 
 const mockProps = {
-  data: mockData,
-  okText: 'Next',
-  cancelText: 'Back',
-  gcsType: GCS_CONFIG.GCSValues,
-  handleGcsTypeChange: mockCatalogChange,
-  handleSourceChange: mockManifestChange,
+  data: mockState,
+  okText: i18n.t('label.next'),
+  cancelText: i18n.t('label.cancel'),
   onCancel: mockCancel,
   onSubmit: mockSubmit,
-};
+  formType: FormSubmitType.ADD,
+  handleIngestionName: mockIngestionName,
+  onChange: mockOnChange,
+} as DBTConfigFormProps;
 
 describe('Test DBT Config Form Builder', () => {
   it('Form should render with default dbt source', async () => {
@@ -152,7 +183,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('Form should render with local dbt source', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.local} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.local,
+          } as AddIngestionState
+        }
+      />
     );
     const selectSource = getByTestId(container, 'dbt-source');
     const dbtLocal = getByTestId(container, 'dbt-local');
@@ -163,7 +201,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('Form should render with http dbt source', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.http} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.http,
+          } as AddIngestionState
+        }
+      />
     );
     const selectSource = getByTestId(container, 'dbt-source');
     const dbtHttp = getByTestId(container, 'dbt-http');
@@ -174,7 +219,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('Form should render with s3 dbt source', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.s3} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.s3,
+          } as AddIngestionState
+        }
+      />
     );
     const selectSource = getByTestId(container, 'dbt-source');
     const dbtS3 = getByTestId(container, 'dbt-s3');
@@ -185,7 +237,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('Form should render with gcs dbt source', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.gcs} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.gcs,
+          } as AddIngestionState
+        }
+      />
     );
     const selectSource = getByTestId(container, 'dbt-source');
     const dbtGCS = getByTestId(container, 'dbt-gcs');
@@ -196,7 +255,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('Form should render with no dbt source', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={'' as DBT_SOURCES} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: '' as DBT_SOURCES,
+          } as AddIngestionState
+        }
+      />
     );
     const selectSource = getByTestId(container, 'dbt-source');
     const dbtNone = getByTestId(container, 'dbt-source-none');
@@ -207,7 +273,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('should change dbt local fields', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.local} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.local,
+          } as AddIngestionState
+        }
+      />
     );
     const dbtLocal = getByTestId(container, 'dbt-local');
 
@@ -218,7 +291,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('should change dbt http fields', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.http} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.http,
+          } as AddIngestionState
+        }
+      />
     );
     const dbtHttp = getByTestId(container, 'dbt-http');
 
@@ -229,7 +309,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('should change dbt s3 fields', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.s3} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.s3,
+          } as AddIngestionState
+        }
+      />
     );
     const dbtS3 = getByTestId(container, 'dbt-s3');
 
@@ -240,7 +327,14 @@ describe('Test DBT Config Form Builder', () => {
 
   it('should change dbt gcs fields', async () => {
     const { container } = render(
-      <DBTConfigFormBuilder {...mockProps} source={DBT_SOURCES.gcs} />
+      <DBTConfigFormBuilder
+        {...mockProps}
+        data={
+          {
+            dbtConfigSourceType: DBT_SOURCES.gcs,
+          } as AddIngestionState
+        }
+      />
     );
     const dbtGCS = getByTestId(container, 'dbt-gcs');
 

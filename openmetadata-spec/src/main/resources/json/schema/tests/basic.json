@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/basic.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Basic",
+  "description": "This schema defines basic types that are used by other test schemas.",
+  "definitions": {
+    "testResultValue": {
+      "description": "Schema to capture test case result values.",
+      "javaType": "org.openmetadata.schema.tests.type.TestResultValue",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "name of the value",
+          "type": "string"
+        },
+        "value": {
+          "description": "test result value",
+          "type": "string"
+        }
+      }
+    },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
+      "type": "string",
+      "enum": ["Success", "Failed", "Aborted"],
+      "javaEnums": [
+        {
+          "name": "Success"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Aborted"
+        }
+      ]
+    },
+    "testCaseResult": {
+      "description": "Schema to capture test case result.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "description": "Data one which test case result is taken.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "testCaseStatus": {
+          "description": "Status of Test Case run.",
+          "$ref": "#/definitions/testCaseStatus"
+        },
+        "result": {
+          "description": "Details of test case results.",
+          "type": "string"
+        },
+        "sampleData": {
+          "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
+          "type": "string"
+        },
+        "testResultValue": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testResultValue"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "testSuiteExecutionFrequency": {
+      "description": "How often the test case should run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestSuiteExecutionFrequency",
+      "type": "string",
+      "enum": ["Hourly", "Daily", "Weekly"],
+      "javaEnums": [
+        {
+          "name": "Hourly"
+        },
+        {
+          "name": "Daily"
+        },
+        {
+          "name": "Weekly"
+        }
+      ]
+    }
+  }
+}

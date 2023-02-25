@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.services.messagingService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -43,7 +46,13 @@ class OMetaServiceTest(TestCase):
 
     service_entity_id = None
 
-    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        authProvider="openmetadata",
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
+    )
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -179,8 +188,8 @@ class OMetaServiceTest(TestCase):
             "serviceConnection": {
                 "config": {
                     "type": "Looker",
-                    "username": "looker_user",
-                    "password": "looker_pwd",
+                    "clientId": "id",
+                    "clientSecret": "secret",
                     "hostPort": "http://random:1234",
                 }
             },
@@ -195,7 +204,7 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Looker
-        assert service.connection.config.password.get_secret_value() == "looker_pwd"
+        assert service.connection.config.clientSecret.get_secret_value() == "secret"
 
         # Check get
         assert service == self.metadata.get_service_or_create(

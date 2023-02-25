@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,22 +14,26 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { ConfigData } from '../../interface/service.interface';
+import { getPathByServiceFQN } from '../../utils/RouterUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
+  serviceFQN: string;
   serviceType: string;
   data?: ServicesData;
   handleUpdate: (
     data: ConfigData,
     serviceCategory: ServiceCategory
   ) => Promise<void>;
+  disableTestConnection: boolean;
 }
 
 export const Field = ({ children }: { children: React.ReactNode }) => {
@@ -38,10 +42,13 @@ export const Field = ({ children }: { children: React.ReactNode }) => {
 
 const ServiceConfig = ({
   serviceCategory,
+  serviceFQN,
   serviceType,
   data,
   handleUpdate,
+  disableTestConnection,
 }: ServiceConfigProps) => {
+  const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const handleOnSaveClick = (e: ISubmitEvent<ConfigData>) => {
@@ -51,6 +58,7 @@ const ServiceConfig = ({
       .then(() => {
         setTimeout(() => {
           setStatus('success');
+          history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
         }, 200);
       })
       .finally(() => {
@@ -58,6 +66,10 @@ const ServiceConfig = ({
           setStatus('initial');
         }, 500);
       });
+  };
+
+  const onCancel = () => {
+    history.goBack();
   };
 
   const getDynamicFields = () => {
@@ -70,21 +82,23 @@ const ServiceConfig = ({
             | DashboardService
             | PipelineService
         }
+        disableTestConnection={disableTestConnection}
         serviceCategory={serviceCategory}
         serviceType={serviceType}
         status={status}
+        onCancel={onCancel}
         onSave={handleOnSaveClick}
       />
     );
   };
 
   return (
-    <div className="tw-bg-white tw-h-full">
+    <div className="bg-white h-full">
       <div
-        className="tw-max-w-xl tw-mx-auto tw-pb-6"
+        className="w-full p-b-lg"
         data-testid="service-config"
         id="serviceConfig">
-        <div className="tw-px-4 tw-pt-3 tw-mx-auto">{getDynamicFields()}</div>
+        <div className="tw-mx-auto">{getDynamicFields()}</div>
       </div>
     </div>
   );

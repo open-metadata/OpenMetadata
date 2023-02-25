@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,28 +11,31 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState } from 'Models';
+import {
+  findByTestId,
+  findByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 import TopicDetails from './TopicDetails.component';
+import { TOPIC_DETAILS } from './TopicDetails.mock';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
+jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
 });
-
 const mockUserTeam = [
   {
     description: 'description',
@@ -56,11 +59,9 @@ const TopicDetailsProps = {
   maximumMessageSize: 0,
   replicationFactor: 0,
   retentionSize: 0,
-  schemaText: 'schema text',
-  schemaType: 'Avro',
   serviceType: '',
   users: [],
-  topicDetails: {} as Topic,
+  topicDetails: TOPIC_DETAILS,
   entityName: '',
   activeTab: 1,
   owner: {} as EntityReference,
@@ -88,11 +89,24 @@ const TopicDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   topicFQN: '',
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
+  lineageTabData: {
+    loadNodeHandler: jest.fn(),
+    addLineageHandler: jest.fn(),
+    removeLineageHandler: jest.fn(),
+    entityLineageHandler: jest.fn(),
+    isLineageLoading: false,
+    entityLineage: { entity: { id: 'test', type: 'topic' } },
+    lineageLeafNodes: {} as LeafNodes,
+    isNodeLoading: { id: undefined, state: false },
+  },
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -103,8 +117,8 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   unobserve: mockunObserve,
 }));
 
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
+jest.mock('../EntityLineage/EntityLineage.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
 jest.mock('../common/description/Description', () => {
@@ -114,11 +128,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<p>Tag Container</p>);
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 
@@ -130,12 +144,24 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
+jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<p>CustomPropertyTable.component</p>),
+}));
+
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
 });
 
 jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
+});
+
+jest.mock('./TopicSchema/TopicSchema', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -147,6 +173,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn(),
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
+  getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
 describe('Test TopicDetails component', () => {
@@ -157,10 +184,12 @@ describe('Test TopicDetails component', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
-    const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
-    const configTab = await findByTestId(tabs, 'Config');
-    const manageTab = await findByTestId(tabs, 'Manage');
+    const schemaTab = await findByTestId(tabs, 'label.schema');
+    const activityFeedTab = await findByTestId(
+      tabs,
+      'label.activity-feed-and-task-plural'
+    );
+    const configTab = await findByTestId(tabs, 'label.config');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -168,16 +197,17 @@ describe('Test TopicDetails component', () => {
     expect(schemaTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(configTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is schema', async () => {
     const { container } = render(<TopicDetails {...TopicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const schema = await findByTestId(container, 'schema');
+    const schema = await findByTestId(container, 'label.schema');
+    const schemaFields = await screen.findByTestId('schema-fields');
 
     expect(schema).toBeInTheDocument();
+    expect(schemaFields).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {
@@ -216,16 +246,32 @@ describe('Test TopicDetails component', () => {
     expect(config).toBeInTheDocument();
   });
 
-  it('Check if active tab is manage', async () => {
+  it('Should render lineage tab', async () => {
     const { container } = render(
       <TopicDetails {...TopicDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const manage = await findByTestId(container, 'manage');
 
-    expect(manage).toBeInTheDocument();
+    const detailContainer = await findByTestId(container, 'lineage-details');
+
+    expect(detailContainer).toBeInTheDocument();
+  });
+
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByText(
+      container,
+      'CustomPropertyTable.component'
+    );
+
+    expect(customProperties).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

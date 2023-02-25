@@ -1,0 +1,78 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/athenaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AthenaConnection",
+  "description": "AWS Athena Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.AthenaConnection",
+  "definitions": {
+    "athenaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Athena"],
+      "default": "Athena"
+    },
+    "athenaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["awsathena+rest"],
+      "default": "awsathena+rest"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/athenaType",
+      "default": "Athena"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/athenaScheme",
+      "default": "awsathena+rest"
+    },
+    
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "s3StagingDir": {
+      "title": "S3 Staging Directory",
+      "description": "S3 Staging Directory. Example: s3://postgres/input/",
+      "type": "string",
+      "format": "uri"
+    },
+    "workgroup": {
+      "title": "Athena Workgroup",
+      "description": "Athena workgroup.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["s3StagingDir", "awsConfig", "workgroup"]
+}

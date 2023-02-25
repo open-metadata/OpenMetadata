@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,113 +11,70 @@
  *  limitations under the License.
  */
 
+import { Viewer } from '@toast-ui/react-editor';
+import { Button } from 'antd';
 import classNames from 'classnames';
+import { uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
-// Markdown Parser and plugin imports
-import MarkdownParser from 'react-markdown';
-import { Link } from 'react-router-dom';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
-import { isExternalUrl } from '../../../utils/StringsUtils';
-import { BlurLayout } from './BlurLayout';
+import { useTranslation } from 'react-i18next';
+import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
+import { getTrimmedContent } from '../../../utils/CommonUtils';
 import { PreviewerProp } from './RichTextEditor.interface';
-
-export const MAX_LENGTH = 300;
+import './RichTextEditorPreviewer.less';
 
 const RichTextEditorPreviewer = ({
   markdown = '',
   className = '',
-  blurClasses = 'see-more-blur',
-  maxHtClass = 'tw-h-24',
-  maxLen = MAX_LENGTH,
   enableSeeMoreVariant = true,
+  textVariant = 'black',
+  maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
 }: PreviewerProp) => {
+  const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
-  const [displayMoreText, setDisplayMoreText] = useState(false);
-
-  const setModifiedContent = (markdownValue: string) => {
-    const modifiedContent = markdownValue
-      .replace(/&lt;/g, '<')
-      .replace(/&gt/g, '>');
-    setContent(modifiedContent);
-  };
+  const [hideReadMoreText, setHideReadMoreText] = useState<boolean>(
+    markdown.length <= maxLength
+  );
 
   const displayMoreHandler = () => {
-    setDisplayMoreText((pre) => !pre);
+    setHideReadMoreText((pre) => !pre);
   };
 
   useEffect(() => {
-    setModifiedContent(markdown);
+    setContent(markdown);
   }, [markdown]);
 
   return (
     <div
-      className={classNames(
-        'content-container tw-relative',
-        className,
-        enableSeeMoreVariant && markdown.length > maxLen && !displayMoreText
-          ? `${maxHtClass} tw-overflow-hidden`
-          : null,
-        {
-          'tw-mb-5': displayMoreText,
-        }
-      )}
+      className={classNames('rich-text-editor-container', className)}
       data-testid="viewer-container">
-      <MarkdownParser
-        sourcePos
-        components={{
-          h1: 'p',
-          h2: 'p',
-          ul: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { ordered, ...rest } = props;
-
-            return (
-              <ul className="tw-ml-3" {...rest}>
-                {children}
-              </ul>
-            );
-          },
-          ol: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { ordered, ...rest } = props;
-
-            return (
-              <ol className="tw-ml-3" {...rest} style={{ listStyle: 'auto' }}>
-                {children}
-              </ol>
-            );
-          },
-          code: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { inline, ...rest } = props;
-
-            return (
-              <code {...rest} className="tw-my">
-                {children}
-              </code>
-            );
-          },
-          a: ({ children, ...props }) => {
-            const href = props.href;
-            if (isExternalUrl(href)) {
-              return <a {...props}>{children}</a>;
-            } else {
-              return <Link to={props.href || ''}>{children}</Link>;
-            }
-          },
-        }}
-        rehypePlugins={[rehypeRaw]}
-        remarkPlugins={[remarkGfm]}>
-        {content}
-      </MarkdownParser>
-      <BlurLayout
-        blurClasses={blurClasses}
-        displayMoreHandler={displayMoreHandler}
-        displayMoreText={displayMoreText}
-        enableSeeMoreVariant={enableSeeMoreVariant}
-        markdown={content}
-      />
+      <div
+        className={classNames('markdown-parser', textVariant)}
+        data-testid="markdown-parser">
+        <Viewer
+          extendedAutolinks
+          initialValue={
+            hideReadMoreText
+              ? content
+              : `${getTrimmedContent(content, maxLength)}...`
+          }
+          key={uniqueId()}
+        />
+      </div>
+      {enableSeeMoreVariant && markdown.length > maxLength && (
+        <Button
+          className="leading-0"
+          data-testid="read-more-button"
+          type="link"
+          onClick={displayMoreHandler}>
+          {hideReadMoreText
+            ? t('label.read-type-lowercase', {
+                type: t('label.less-lowercase'),
+              })
+            : t('label.read-type-lowercase', {
+                type: t('label.more-lowercase'),
+              })}
+        </Button>
+      )}
     </div>
   );
 };

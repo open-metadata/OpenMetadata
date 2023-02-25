@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/glossary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Glossary",
+  "description": "This schema defines the Glossary entity. A Glossary is collection of hierarchical GlossaryTerms.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Glossary",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of a glossary instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the glossary",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as name.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this glossary.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "owner": {
+      "description": "Owner of this glossary.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "usageCount": {
+      "description": "Count of how many times terms from this glossary are used.",
+      "type": "integer"
+    },
+    "tags": {
+      "description": "Tags for this glossary.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "termCount" : {
+      "description": "Total number of terms in the glossary. This includes all the children in the hierarchy.",
+      "type" : "integer",
+      "minimum": 0
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "disabled" : {
+      "description": "System glossary can't be deleted. Use this flag to disable them.",
+      "type": "boolean"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type" : "boolean",
+      "default" : "false"
+    }
+  },
+  "required": ["id", "name", "description"],
+  "additionalProperties": false
+}

@@ -13,6 +13,8 @@
 
 package org.openmetadata.common.utils;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +24,7 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collection;
@@ -29,6 +32,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
@@ -39,6 +43,7 @@ import java.util.zip.ZipFile;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 
 @Slf4j
 public final class CommonUtil {
@@ -101,14 +106,6 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffsetSeconds(Date date, int seconds) {
-    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    calendar.setTime(date);
-    calendar.add(Calendar.SECOND, seconds);
-    return calendar.getTime();
-  }
-
-  /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
   public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) {
     Date date;
     try {
@@ -138,15 +135,6 @@ public final class CommonUtil {
     return givenDate.after(startDate) && givenDate.before(endDate);
   }
 
-  /** Parse a date using given DataFormat */
-  public static Date parseDate(String date, DateFormat dateFormat) {
-    try {
-      return dateFormat.parse(date);
-    } catch (ParseException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   public static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
 
   /** Get SHA256 Hash-based Message Authentication Code */
@@ -173,5 +161,22 @@ public final class CommonUtil {
 
   public static boolean nullOrEmpty(List<?> list) {
     return list == null || list.isEmpty();
+  }
+
+  public static boolean nullOrEmpty(Object object) {
+    return object == null || nullOrEmpty(object.toString());
+  }
+
+  public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {
+    return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
+  }
+
+  /** Return list of entries that are modifiable for performing sort and other operations */
+  @SafeVarargs
+  public static <T> List<T> listOf(T... entries) {
+    if (entries == null) {
+      return Collections.emptyList();
+    }
+    return new ArrayList<>(Arrays.asList(entries));
   }
 }

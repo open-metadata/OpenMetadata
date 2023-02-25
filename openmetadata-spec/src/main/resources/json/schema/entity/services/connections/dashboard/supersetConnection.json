@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SupersetConnection",
+  "description": "Superset Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.SupersetConnection",
+  "definitions": {
+    "supersetType": {
+      "description": "Superset service type",
+      "type": "string",
+      "enum": ["Superset"],
+      "default": "Superset"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/supersetType",
+      "default": "Superset"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL for the superset instance.",
+      "type": "string",
+      "format": "uri",
+      "default": "http://localhost:8088"
+    },
+    "connection":{
+      "title": "Superset Connection",
+      "description": "Choose between API or database connection fetch metadata from superset.",
+      "oneOf": [
+        {
+          "$ref": "../../../utils/supersetApiConnection.json"
+        },
+        {
+          "$ref": "../database/postgresConnection.json"
+        },
+        {
+          "$ref": "../database/mysqlConnection.json"
+        }
+      ]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort","connection"]
+}

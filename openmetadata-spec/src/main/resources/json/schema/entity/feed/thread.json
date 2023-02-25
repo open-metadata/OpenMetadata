@@ -1,0 +1,240 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/thread.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Thread",
+  "description": "This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.",
+  "type": "object",
+
+  "definitions": {
+    "taskType": {
+      "javaType": "org.openmetadata.schema.type.TaskType",
+      "description": "Type of a task.",
+      "type": "string",
+      "enum": [
+        "RequestDescription",
+        "UpdateDescription",
+        "RequestTag",
+        "UpdateTag",
+        "Generic"
+      ],
+      "javaEnums": [
+        {
+          "name": "RequestDescription"
+        },
+        {
+          "name": "UpdateDescription"
+        },
+        {
+          "name": "RequestTag"
+        },
+        {
+          "name": "UpdateTag"
+        },
+        {
+          "name": "Generic"
+        }
+      ]
+    },
+    "taskDetails": {
+      "javaType": "org.openmetadata.schema.type.TaskDetails",
+      "description": "Details about the task. This is only applicable if thread is of type task.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier that identifies the task.",
+          "type": "integer"
+        },
+        "type": {
+          "$ref": "#/definitions/taskType"
+        },
+        "assignees": {
+          "description": "List of users or teams the task is assigned to",
+          "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+        },
+        "status": {
+          "$ref": "#/definitions/threadTaskStatus"
+        },
+        "closedBy": {
+          "description": "The user that closed the task.",
+          "type": "string"
+        },
+        "closedAt": {
+          "description": "Timestamp when the task was closed in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "oldValue": {
+          "description": "The value of old object for which the task is created.",
+          "type": "string"
+        },
+        "suggestion": {
+          "description": "The suggestion object to replace the old value for which the task is created.",
+          "type": "string"
+        },
+        "newValue": {
+          "description": "The new value object that was accepted to complete the task.",
+          "type": "string"
+        }
+      },
+      "required": ["id", "assignees", "type"],
+      "additionalProperties": false
+    },
+    "threadTaskStatus": {
+      "javaType": "org.openmetadata.schema.type.TaskStatus",
+      "type": "string",
+      "description": "Status of a task.",
+      "enum": ["Open", "Closed"],
+      "javaEnums": [
+        {
+          "name": "Open"
+        },
+        {
+          "name": "Closed"
+        }
+      ],
+      "default": "Open"
+    },
+    "threadType": {
+      "javaType": "org.openmetadata.schema.type.ThreadType",
+      "type": "string",
+      "description": "Type of thread.",
+      "enum": ["Conversation", "Task", "Announcement"],
+      "javaEnums": [
+        {
+          "name": "Conversation"
+        },
+        {
+          "name": "Task"
+        },
+        {
+          "name": "Announcement"
+        }
+      ],
+      "default": "Conversation"
+    },
+    "announcementDetails": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementDetails",
+      "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Announcement description in markdown format. See markdown support for more details.",
+          "type": "string"
+        },
+        "startTime": {
+          "description": "Timestamp of the start time from when the announcement should be shown.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "endTime": {
+          "description": "Timestamp of when the announcement should end",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["startTime", "endTime"],
+      "additionalProperties": false
+    },
+    "post": {
+      "javaType": "org.openmetadata.schema.type.Post",
+      "type": "object",
+      "description": "Post within a feed.",
+      "properties": {
+        "id": {
+          "description": "Unique identifier that identifies the post.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "message": {
+          "description": "Message in markdown format. See markdown support for more details.",
+          "type": "string"
+        },
+        "postTs": {
+          "description": "Timestamp of the post in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "from": {
+          "description": "Name of the User posting the message.",
+          "type": "string"
+        },
+        "reactions": {
+          "description": "Reactions for the post.",
+          "$ref": "../../type/reaction.json#/definitions/reactionList"
+        }
+      },
+      "required": ["id", "message", "from"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "type": {
+      "$ref": "#/definitions/threadType"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "threadTs": {
+      "description": "Timestamp of the when the first post created the thread in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "about": {
+      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "entityId": {
+      "description": "Entity Id of the entity that the thread belongs to.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "addressedTo": {
+      "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "createdBy": {
+      "description": "User who created the thread.",
+      "type": "string"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "resolved": {
+      "description": "When `true` indicates the thread has been resolved.",
+      "type": "boolean",
+      "default": false
+    },
+    "message": {
+      "description": "The main message of the thread in markdown format.",
+      "type": "string"
+    },
+    "postsCount": {
+      "description": "The total count of posts in the thread.",
+      "type": "integer",
+      "default": 0
+    },
+    "posts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/post"
+      }
+    },
+    "reactions": {
+      "description": "Reactions for the thread.",
+      "$ref": "../../type/reaction.json#/definitions/reactionList"
+    },
+    "task": {
+      "description": "Details about the task. This is only applicable if thread is of type task.",
+      "$ref": "#/definitions/taskDetails"
+    },
+    "announcement": {
+      "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
+      "$ref": "#/definitions/announcementDetails"
+    }
+  },
+  "required": ["id", "about", "message"],
+  "additionalProperties": false
+}

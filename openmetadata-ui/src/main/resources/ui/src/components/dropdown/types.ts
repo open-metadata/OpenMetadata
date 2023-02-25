@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 export enum DropDownType {
   LINK = 'link',
@@ -20,7 +20,8 @@ export enum DropDownType {
 }
 
 export type DropDownListItem = {
-  name: string | React.ReactElement;
+  label?: string;
+  name?: string | React.ReactElement;
   value?: string;
   group?: string;
   to?: string;
@@ -30,10 +31,7 @@ export type DropDownListItem = {
   isOpenNewTab?: boolean;
   isText?: boolean;
   isAdminOnly?: boolean;
-} & Record<
-  string,
-  string | number | boolean | undefined | Function | React.ReactElement
->;
+} & Record<string, ReactNode>;
 
 export type GroupType = 'label' | 'tab';
 export type DropDownListProp = {
@@ -59,6 +57,8 @@ export type DropDownListProp = {
   domPosition?: DOMRect;
   isLoading?: boolean;
   widthClass?: string;
+  getTotalCountForGroup?: (groupName: string) => number;
+  removeOwner?: () => void;
 };
 
 export type DropDownProp = {

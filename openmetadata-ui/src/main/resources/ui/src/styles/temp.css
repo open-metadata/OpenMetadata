@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -672,15 +672,7 @@
   color: red;
   padding-left: 0.2rem;
 }
-.description-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  line-height: 18px;
-  max-height: 54px;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
+
 .asset-card-text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -728,20 +720,6 @@ body .list-option.rdw-option-active {
 }
 .diff-description {
   color: #008376;
-}
-
-/* status style */
-.tw-bg-status-success {
-  background-color: #07a35a;
-}
-.tw-bg-status-failed {
-  background-color: #e54937;
-}
-.tw-bg-status-running {
-  background-color: #276ef1;
-}
-.tw-bg-status-queued {
-  background-color: #777777;
 }
 
 /* react-slick */

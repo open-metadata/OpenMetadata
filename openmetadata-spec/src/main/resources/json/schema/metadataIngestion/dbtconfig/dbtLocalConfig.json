@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/dbtconfig/dbtLocalConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DBT Local Config",
+  "description": "DBT Catalog, Manifest and Run Results file path config.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig",
+  "type": "object",
+  "properties": {
+    "dbtCatalogFilePath": {
+      "title": "DBT Catalog File Path",
+      "description": "DBT catalog file path to extract dbt models with their column schemas.",
+      "type": "string"
+    },
+    "dbtManifestFilePath": {
+      "title": "DBT Manifest File Path",
+      "description": "DBT manifest file path to extract dbt models and associate with tables.",
+      "type": "string"
+    },
+    "dbtRunResultsFilePath": {
+      "title": "DBT Run Results File Path",
+      "description": "DBT run results file path to extract the test results information.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["dbtManifestFilePath"]
+}

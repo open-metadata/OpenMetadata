@@ -1,0 +1,21 @@
+source:
+  type: presto
+  serviceName: local_presto
+  serviceConnection:
+    config:
+      type: Presto
+      hostPort: localhost:8080
+      catalog: catalog_name
+      username: admin
+      password: password
+      databaseSchema: schema_name
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

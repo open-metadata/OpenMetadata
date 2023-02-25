@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { IngestionType, ServiceCategory } from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { ServiceDataObj } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -29,28 +29,10 @@ export interface ConnectorConfig {
   excludeDataProfiler?: boolean;
   enableDataProfiler?: boolean;
 }
-export interface IngestionData {
-  id?: string;
-  name: string;
-  displayName: string;
-  ingestionType: IngestionType;
-  service: EntityReference;
-  scheduleInterval: string;
-  ingestionStatuses?: Array<{
-    state: string;
-    startDate: string;
-    endDate: string;
-  }>;
-  nextExecutionDate?: string;
-  connectorConfig?: ConnectorConfig;
-  owner?: { id: string; name?: string; type: string };
-  startDate?: string;
-  endDate?: string;
-}
 
 export interface IngestionProps {
   airflowEndpoint: string;
-  serviceDetails: ServiceDataObj;
+  serviceDetails: ServicesType;
   serviceName: string;
   serviceCategory: ServiceCategory;
   isRequiredDetailsAvailable: boolean;
@@ -58,8 +40,11 @@ export interface IngestionProps {
   ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
   currrentPage: number;
+  permissions: OperationPermission;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string) => Promise<void>;
+  handleEnableDisableIngestion: (id: string) => void;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
+  onIngestionWorkflowsUpdate: () => void;
 }

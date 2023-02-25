@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -63,7 +63,7 @@ describe('Test QueryDetails Component', () => {
     );
     const tableData = getAllByTestId(container, 'related-tables-data');
 
-    expect(tableData.length).toBe(4);
+    expect(tableData).toHaveLength(4);
     expect(tableData.map((tableName) => tableName.textContent)).toStrictEqual([
       'shopify/fact_order150',
       'shopify/fact_sale55',

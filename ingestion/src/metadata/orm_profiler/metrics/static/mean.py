@@ -14,14 +14,35 @@ AVG Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column, func
 
-from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from typing import cast
+
+from sqlalchemy import column, func
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import GenericFunction
+
+from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
-from metadata.orm_profiler.orm.registry import is_concatenable, is_quantifiable
+from metadata.orm_profiler.orm.registry import (
+    Dialects,
+    is_concatenable,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
+
+# pylint: disable=invalid-name
+class avg(GenericFunction):
+    name = "avg"
+    inherit_cache = CACHE
+
+
+@compiles(avg, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handle case for empty table. If empty, clickhouse returns NaN"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"if(isNaN(avg({proc})), null, avg({proc}))"
 
 
 class Mean(StaticMetric):
@@ -44,6 +65,7 @@ class Mean(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return func.avg(column(self.col.name))
 
@@ -54,3 +76,24 @@ class Mean(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
+
+    # pylint: disable=import-outside-toplevel
+    @_label
+    def df_fn(self, df=None):
+        """dataframe function"""
+        from numpy import vectorize
+        from pandas import DataFrame
+
+        df = cast(DataFrame, df)  # satisfy mypy
+
+        if is_quantifiable(self.col.type):
+            return df[self.col.name].mean()
+
+        if is_concatenable(self.col.type):
+            length_vector_fn = vectorize(len)
+            return length_vector_fn(df[self.col.name]).mean()
+
+        logger.warning(
+            f"Don't know how to process type {self.col.type} when computing MEAN"
+        )
+        return 0

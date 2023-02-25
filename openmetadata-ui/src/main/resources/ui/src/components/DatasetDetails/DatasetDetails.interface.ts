@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,44 +11,43 @@
  *  limitations under the License.
  */
 
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  EntityThread,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+import { EntityTags } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
-import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
-  ColumnTestType,
+  Column,
   Table,
   TableData,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
-import { TableTest, TableTestType } from '../../generated/tests/tableTest';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  DatasetTestModeType,
-  ModifiedTableColumn,
-} from '../../interface/dataQuality.interface';
+  EntityFieldThreadCount,
+  ThreadUpdatedFunc,
+} from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 
 export interface DatasetDetailsProps {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   version?: string;
+  entityId?: string;
   joins: TableJoins;
   tableType: TableType;
-  usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
+  usageSummary: UsageDetails;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
@@ -56,58 +55,50 @@ export interface DatasetDetailsProps {
   activeTab: number;
   owner: EntityReference;
   description: string;
-  tableProfile: Table['tableProfile'];
+  tableProfile: Table['profile'];
   tableQueries: Table['tableQueries'];
-  columns: ModifiedTableColumn[];
+  columns: Column[];
   tier: TagLabel;
   sampleData: TableData;
   entityLineage: EntityLineage;
   followers: Array<EntityReference>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   deleted?: boolean;
+  isTableProfileLoading?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
-  testMode: DatasetTestModeType;
-  tableTestCase: TableTest[];
-  showTestForm: boolean;
-  selectedColumn: string;
+  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
-  qualityTestFormHandler: (
-    tabValue: number,
-    testMode?: DatasetTestModeType,
-    columnName?: string
-  ) => void;
-  handleShowTestForm: (value: boolean) => void;
-  handleTestModeChange: (mode: DatasetTestModeType) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
   settingsUpdateHandler: (updatedTable: Table) => Promise<void>;
-  columnsUpdateHandler: (updatedTable: Table) => void;
-  descriptionUpdateHandler: (updatedTable: Table) => void;
+  columnsUpdateHandler: (updatedTable: Table) => Promise<void>;
+  descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
   tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
-  handleSelectedColumn: (value: string | undefined) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
-  handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: CreateColumnTest) => void;
-  handleRemoveTableTest: (testType: TableTestType) => void;
-  handleRemoveColumnTest: (
-    columnName: string,
-    testType: ColumnTestType
+  deletePostHandler: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
   ) => void;
-  deletePostHandler: (threadId: string, postId: string) => void;
-  fetchFeedHandler: (after?: string) => void;
-  handleExtentionUpdate: (updatedTable: Table) => void;
+  fetchFeedHandler: (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => void;
+  handleExtensionUpdate: (updatedTable: Table) => Promise<void>;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

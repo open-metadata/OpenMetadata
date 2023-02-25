@@ -1,0 +1,24 @@
+{
+    "name": "tableColumnToMatchSet",
+    "fullyQualifiedName": "tableColumnToMatchSet",
+    "displayName": "Table Column Names To Match Set",
+    "description": "This test defines the test TableColumnToMatchSet. Test the table columns match a set of values. Unordered by default.",
+    "entityType": "TABLE",
+    "testPlatforms": ["OpenMetadata"],
+    "parameterDefinition": [
+      {
+        "name": "columnNames",
+        "displayName": "Column Names",
+        "description": "Expected columns names of the table to match the ones in {Column Names} -- should be a coma seperated string",
+        "dataType": "STRING",
+        "required": "true"
+      },
+      {
+        "name": "ordered",
+        "displayName": "Ordered",
+        "description": "Whether or not to considered the order of the list when performing the match check",
+        "dataType": "BOOLEAN"
+      }
+    ]
+  }
+  

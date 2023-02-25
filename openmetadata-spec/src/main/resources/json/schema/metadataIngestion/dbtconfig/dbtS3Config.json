@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/dbtconfig/dbtS3Config.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DBT S3 Config",
+  "description": "DBT Catalog, Manifest and Run Results files in S3 bucket. We will search for catalog.json, manifest.json and run_results.json.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config",
+  "properties": {
+    "dbtSecurityConfig": {
+      "title": "DBT S3 Security Config",
+      "$ref": "../../security/credentials/awsCredentials.json"
+    },
+    "dbtPrefixConfig": {
+      "title": "DBT Prefix Config",
+      "$ref": "./dbtBucketDetails.json"
+    }
+  }
+}

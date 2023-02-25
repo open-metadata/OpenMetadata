@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,10 +12,14 @@
  */
 
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
+
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
@@ -32,13 +36,13 @@ import {
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
-import SchemaTab from '../SchemaTab/SchemaTab.component';
+import VersionTable from '../VersionTable/VersionTable.component';
 import { DatasetVersionProp } from './DatasetVersion.interface';
 
 const DatasetVersion: React.FC<DatasetVersionProp> = ({
@@ -54,6 +58,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   backHandler,
   versionHandler,
 }: DatasetVersionProp) => {
+  const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -138,7 +143,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const getTableDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -158,8 +163,11 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   };
 
   const updatedColumns = (): Table['columns'] => {
-    const colList = cloneDeep(currentVersionData.columns);
-    const columnsDiff = getDiffByFieldName('columns', changeDescription);
+    const colList = cloneDeep((currentVersionData as Table).columns);
+    const columnsDiff = getDiffByFieldName(
+      EntityField.COLUMNS,
+      changeDescription
+    );
     const changedColName = getChangeColName(
       columnsDiff?.added?.name ??
         columnsDiff?.deleted?.name ??
@@ -171,7 +179,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
           columnsDiff?.updated?.name,
-        'description'
+        EntityField.DESCRIPTION
       )
     ) {
       const oldDescription =
@@ -225,12 +233,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, changedColName)) {
             const flag: { [x: string]: boolean } = {};
-            const uniqueTags: Array<
-              TagLabel & { added: boolean; removed: boolean }
-            > = [];
+            const uniqueTags: Array<TagLabelWithStatus> = [];
             const tagsDiff = getTagsDiff(oldTags, newTags);
-            [...tagsDiff, ...(i.tags as Array<TagLabel>)].forEach(
-              (elem: TagLabel & { added: boolean; removed: boolean }) => {
+            [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+              (elem: TagLabelWithStatus) => {
                 if (!flag[elem.tagFQN as string]) {
                   flag[elem.tagFQN as string] = true;
                   uniqueTags.push(elem);
@@ -249,7 +255,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       return colList ?? [];
     } else {
       const columnsDiff = getDiffByFieldName(
-        'columns',
+        EntityField.COLUMNS,
         changeDescription,
         true
       );
@@ -328,16 +334,15 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem: TagLabel) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem);
+        uniqueTags.push(elem as TagLabelWithStatus);
       }
     });
 
@@ -352,7 +357,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -404,16 +409,16 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                   </div>
 
                   <div className="tw-col-span-full">
-                    <SchemaTab
-                      isReadOnly
+                    <VersionTable
                       columnName={getPartialNameFromTableFQN(
                         datasetFQN,
                         [FqnPart.Column],
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={updatedColumns()}
-                      joins={currentVersionData.joins as ColumnJoins[]}
-                      tableConstraints={[]}
+                      joins={
+                        (currentVersionData as Table).joins as ColumnJoins[]
+                      }
                     />
                   </div>
                 </div>

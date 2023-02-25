@@ -41,7 +41,10 @@ def _(*_, **__):
     return "ABS(RANDOM()) * 100"
 
 
+@compiles(RandomNumFn, Dialects.Hive)
 @compiles(RandomNumFn, Dialects.MySQL)
+@compiles(RandomNumFn, Dialects.IbmDbSa)
+@compiles(RandomNumFn, Dialects.Db2)
 def _(*_, **__):
     return "ABS(RAND()) * 100"
 
@@ -68,3 +71,42 @@ def _(*_, **__):
     use it for a random sample.
     """
     return "ABS(CHECKSUM(NewId()))"
+
+
+@compiles(RandomNumFn, Dialects.ClickHouse)
+def _(*_, **__):
+    """
+    ClickHouse random returns a number between 0 and 4,294,967,295.
+    We need to divide it by 4294967295 to get a number between 0 and 1.
+    """
+    return "toInt8(RAND(10)/4294967295*100)"
+
+
+@compiles(RandomNumFn, Dialects.Postgres)
+def _(*_, **__):
+    """Postgres random logic"""
+    return "ABS((RANDOM() * 100)::INTEGER)"
+
+
+@compiles(RandomNumFn, Dialects.Oracle)
+def _(*_, **__):
+    """Oracle random logic"""
+    return "ABS(DBMS_RANDOM.VALUE) * 100"
+
+
+@compiles(RandomNumFn, Dialects.Snowflake)
+def _(*_, **__):
+    """We use FROM <table> SAMPLE BERNOULLI (n) for sampling
+    in snowflake. We'll return 0 to make sure we get all the rows
+    from the already sampled results when executing row::MOD(0, 100) < profile_sample.
+    """
+    return "0"
+
+
+@compiles(RandomNumFn, Dialects.Vertica)
+def _(*_, **__):
+    """
+    Vertica RANDOM() returns a number 0 < n < 1 as a float.
+    We need to cast it to integer to perform the modulo
+    """
+    return "(RANDOM() * 100)::INTEGER"

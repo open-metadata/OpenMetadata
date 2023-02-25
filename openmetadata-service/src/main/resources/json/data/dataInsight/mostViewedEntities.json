@@ -1,0 +1,16 @@
+{
+  "name": "mostViewedEntities",
+  "fullyQualifiedName": "mostActiveUsers",
+  "displayName": "Most Viewed entites",
+  "description": "Displays the most viewed entities.",
+  "dataIndexType": "web_analytic_entity_view_report_data_index",
+  "dimensions": [
+    {"name": "entityFqn","chartDataType":"STRING"},
+    {"name": "entityType", "chartDataType":  "STRING"},
+    {"name": "entityHref", "chartDataType":  "STRING"},
+    {"name": "owner","chartDataType":"STRING"}
+  ],
+  "metrics": [
+    {"name": "pageViews", "displayName": "Total number of page view", "chartDataType": "INT"}
+  ]
+}

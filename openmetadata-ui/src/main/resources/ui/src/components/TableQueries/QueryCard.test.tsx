@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,8 +12,9 @@
  */
 
 import {
+  findByTestId,
   findByText,
-  getByTestId,
+  // getByTestId,
   queryByTestId,
   render,
 } from '@testing-library/react';
@@ -24,13 +25,15 @@ import QueryCard from './QueryCard';
 const mockQueryData = {
   query: 'select products from raw_product_catalog',
   duration: 0.309,
-  user: {
-    id: 'd4785e53-bbdb-4dbd-b368-009fdb50c2c6',
-    type: 'user',
-    name: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    href: 'http://localhost:8585/api/v1/users/d4785e53-bbdb-4dbd-b368-009fdb50c2c6',
-  },
+  users: [
+    {
+      id: 'd4785e53-bbdb-4dbd-b368-009fdb50c2c6',
+      type: 'user',
+      name: 'aaron_johnson0',
+      displayName: 'Aaron Johnson',
+      href: 'http://localhost:8585/api/v1/users/d4785e53-bbdb-4dbd-b368-009fdb50c2c6',
+    },
+  ],
   vote: 1,
   checksum: '0232b0368458aadb29230ccc531462c9',
 };
@@ -48,21 +51,27 @@ describe('Test QueryCard Component', () => {
     const { container } = render(<QueryCard query={mockQueryData} />, {
       wrapper: MemoryRouter,
     });
-    const queryHeader = getByTestId(container, 'query-header');
+    // const queryHeader = getByTestId(container, 'query-header');
     const query = await findByText(container, /SchemaEditor/i);
     const copyQueryButton = await findByText(
       container,
       /CopyToClipboardButton/i
     );
 
-    expect(queryHeader).toBeInTheDocument();
+    const expandButton = await findByTestId(
+      container,
+      'expand-collapse-button'
+    );
+
+    // expect(queryHeader).toBeInTheDocument();
     expect(query).toBeInTheDocument();
     expect(copyQueryButton).toBeInTheDocument();
+    expect(expandButton).toBeInTheDocument();
   });
 
   it('Should not render header if user is undefined', async () => {
     const { container } = render(
-      <QueryCard query={{ ...mockQueryData, user: undefined }} />,
+      <QueryCard query={{ ...mockQueryData, users: undefined }} />,
       {
         wrapper: MemoryRouter,
       }

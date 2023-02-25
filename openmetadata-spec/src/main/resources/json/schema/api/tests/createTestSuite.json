@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createTestSuite.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestSuiteRequest",
+  "description": "Schema corresponding to a Test Suite",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestSuite",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this test suite.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test suite.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the test suite.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this test suite",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

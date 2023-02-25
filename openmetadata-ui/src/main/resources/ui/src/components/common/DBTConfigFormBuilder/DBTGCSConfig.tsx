@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Button, Input, Select } from 'antd';
+import { t } from 'i18next';
 import { isEmpty, isObject, isString } from 'lodash';
 import React, {
   Fragment,
@@ -21,22 +23,14 @@ import React, {
 } from 'react';
 import {
   DBTBucketDetails,
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../../../generated/metadataIngestion/dbtPipeline';
 import jsonData from '../../../jsons/en';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import {
-  checkDbtGCSCredsConfigRules,
-  validateDbtGCSCredsConfig,
-} from '../../../utils/DBTConfigFormUtil';
-import { Button } from '../../buttons/Button/Button';
+import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
+import DBTCommonFields from './DBTCommonFields.component';
 import {
   DbtConfigS3GCS,
   DBTFormCommonProps,
@@ -50,11 +44,14 @@ interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
   handleSecurityConfigChange: (value?: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
+  handleUpdateDBTClassification: (value: string) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
+  dbtUpdateDescriptions = false,
   gcsType = GCS_CONFIG.GCSValues,
   okText,
   cancelText,
@@ -63,6 +60,9 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleGcsTypeChange,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
+  handleUpdateDescriptions,
+  dbtClassificationName,
+  handleUpdateDBTClassification,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
@@ -97,23 +97,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const [errors, setErrors] = useState<ErrorDbtGCS>();
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     let valid = true;
     const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
-    if (gcsType === GCS_CONFIG.GCSValues) {
-      const { isValid: reqValid, errors: reqErr } = validateDbtGCSCredsConfig(
-        (gcsConfig || {}) as GCSCredentialsValues
-      );
-      const { isValid: fieldValid, errors: fieldErr } =
-        checkDbtGCSCredsConfigRules((gcsConfig || {}) as GCSCredentialsValues);
-
-      setErrors({
-        ...fieldErr,
-        ...reqErr,
-      });
-
-      valid = reqValid && fieldValid;
-    } else {
+    if (gcsType !== GCS_CONFIG.GCSValues) {
       if (isEmpty(gcsConfig)) {
         setErrors({
           gcsConfig: `GCS Config ${jsonData['form-error-messages']['is-required']}`,
@@ -128,7 +115,12 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
+    const submitData = {
+      dbtSecurityConfig,
+      dbtPrefixConfig,
+      dbtUpdateDescriptions,
+      dbtClassificationName,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -141,10 +133,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="credential-type">
-            {requiredField('Credentials Type')}
+            {t('label.credentials-type')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud service account type.
+            {t('label.google-account-service-type')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -161,10 +153,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="project-id">
-            {requiredField('Project ID')}
+            {t('label.project-id')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud project id.
+            {t('label.google-cloud-project-id')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -181,17 +173,16 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="private-key-id">
-            {requiredField('Private Key ID')}
+            {t('label.private-key-id')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud Private key id.
+            {t('label.google-cloud-private-key-id')}
           </p>
-          <input
+          <Input.Password
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key-id"
             id="private-key-id"
             name="private-key-id"
-            type="text"
             value={gcsConfig?.privateKeyId}
             onChange={(e) =>
               updateGCSCredsConfig('privateKeyId', e.target.value)
@@ -203,12 +194,12 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="private-key">
-            {requiredField('Private Key')}
+            {t('label.private-key')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud private key.
+            {t('label.google-cloud-private-key')}
           </p>
-          <input
+          <Input.Password
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key"
             id="private-key"
@@ -223,10 +214,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="client-email">
-            {requiredField('Client Email')}
+            {t('label.client-email')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud email.
+            {t('label.google-cloud-email')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -243,10 +234,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="client-id">
-            {requiredField('Client ID')}
+            {t('label.client-id')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud Client ID.
+            {t('label.google-client-id')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -261,10 +252,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="auth-uri">
-            {requiredField('Authentication URI')}
+            {t('label.authentication-uri')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud auth uri.
+            {t('label.google-cloud-auth-uri')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -279,10 +270,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="token-uri">
-            {requiredField('Token URI')}
+            {t('label.token-uri')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud token uri.
+            {t('label.google-cloud-token-uri')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -299,10 +290,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="auth-x509-certificate-uri">
-            {requiredField('Authentication Provider x509 Certificate URL')}
+            {t('label.auth-x509-certificate-url')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud auth provider certificate.
+            {t('label.google-cloud-auth-provider')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -322,10 +313,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="client-x509-certificate-uri">
-            {requiredField('Client x509 Certificate URL')}
+            {t('label.client-x509-certificate-url')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            Google Cloud client certificate uri.
+            {t('label.google-cloud-client-certificate-uri')}
           </p>
           <input
             className="tw-form-inputs tw-form-inputs-padding"
@@ -350,10 +341,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="gcs-cred-path">
-          {requiredField('GCS Credentials Path')}
+          {t('label.gcs-credential-path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          GCS Credentials Path.
+          {`${t('label.gcs-credential-path')}.`}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -383,28 +374,22 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="gcs-config">
-          DBT Configuration Source
+          {t('label.dbt-configuration-source')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Available sources to fetch DBT catalog and manifest files.
+          {t('message.fetch-dbt-files')}
         </p>
-        <select
-          className="tw-form-inputs tw-form-inputs-padding"
+        <Select
+          className="tw-form-inputs"
           data-testid="gcs-config"
           id="gcs-config"
-          name="gcs-config"
-          placeholder="Select GCS Config Type"
+          options={GCSCreds}
+          placeholder={t('message.select-gcs-config-type')}
           value={gcsType}
-          onChange={(e) => {
-            handleGcsTypeChange &&
-              handleGcsTypeChange(e.target.value as GCS_CONFIG);
-          }}>
-          {GCSCreds.map((option, i) => (
-            <option key={i} value={option.value}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => {
+            handleGcsTypeChange && handleGcsTypeChange(value as GCS_CONFIG);
+          }}
+        />
       </Field>
       {gcsType === GCS_CONFIG.GCSValues
         ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
@@ -413,10 +398,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbt-bucket-name">
-          DBT Bucket Name
+          {t('label.dbt-bucket-name')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          Name of the bucket where the dbt files are stored.
+          {t('message.name-of-the-bucket-dbt-files-stored')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -432,10 +417,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbt-object-prefix">
-          DBT Object Prefix
+          {t('label.dbt-object-prefix')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          Path of the folder where the dbt files are stored.
+          {t('message.path-of-the-dbt-files-stored')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -447,26 +432,34 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
         />
       </Field>
+
       {getSeparator('')}
 
-      <Field className="tw-flex tw-justify-end">
+      <DBTCommonFields
+        dbtClassificationName={dbtClassificationName}
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        descriptionId="gcs-update-description"
+        handleUpdateDBTClassification={handleUpdateDBTClassification}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+      />
+
+      {getSeparator('')}
+
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>{cancelText}</span>
+          {cancelText}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleSubmit}>
-          <span>{okText}</span>
+          {okText}
         </Button>
       </Field>
     </Fragment>

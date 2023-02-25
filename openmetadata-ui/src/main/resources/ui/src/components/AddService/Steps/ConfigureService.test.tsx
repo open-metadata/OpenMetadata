@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import {
   fireEvent,
   render,
 } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import ConfigureService from './ConfigureService';
 import { ConfigureServiceProps } from './Steps.interface';
 
@@ -27,6 +27,11 @@ const mockConfigureServiceProps: ConfigureServiceProps = {
   showError: {
     name: false,
     duplicateName: false,
+    nameWithSpace: false,
+    delimit: false,
+    specialChar: false,
+    nameLength: false,
+    allowChar: false,
   },
   handleValidation: jest.fn(),
   onBack: jest.fn(),
@@ -34,9 +39,20 @@ const mockConfigureServiceProps: ConfigureServiceProps = {
 };
 
 jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>RichTextEditor.component</div>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          ref={(input) => {
+            return {
+              getEditorContent: input,
+            };
+          }}>
+          {initialValue}RichTextEditor.component
+        </div>
+      );
+    })
+  );
 });
 
 describe('Test ConfigureService component', () => {
@@ -70,8 +86,8 @@ describe('Test ConfigureService component', () => {
     expect(serviceName).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(mockConfigureServiceProps.handleValidation).toBeCalled();
-    expect(mockConfigureServiceProps.onBack).toBeCalled();
-    expect(mockConfigureServiceProps.onNext).toBeCalled();
+    expect(mockConfigureServiceProps.handleValidation).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onBack).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
   });
 });

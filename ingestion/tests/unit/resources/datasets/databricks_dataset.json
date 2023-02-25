@@ -1,0 +1,102 @@
+[
+  {
+    "query_id": "01ed4a0e-69b6-1269-a3b1-481b64aef08d",
+    "status": "FINISHED",
+    "query_text": " /* {\"app\": \"OpenMetadata\", \"version\": \"0.13.0.dev0\"} */\nSHOW TABLES IN `test`",
+    "query_start_time_ms": 1665566128192,
+    "execution_end_time_ms": 1665566128329,
+    "query_end_time_ms": 1665566129144,
+    "user_id": 5746918435309904,
+    "user_name": "vijay@getcollate.io",
+    "endpoint_id": "0bed48a81027e786",
+    "rows_produced": 0,
+    "lookup_key": "CiQwMWVkNGEwZS02OWI2LTEyNjktYTNiMS00ODFiNjRhZWYwOGQQwPDo27wwGhAwYmVkNDhhODEwMjdlNzg2INCSj7+r2ZoK",
+    "executed_as_user_id": 5746918435309904,
+    "executed_as_user_name": "vijay@getcollate.io",
+    "is_final": true,
+    "channel_used": {
+      "name": "CHANNEL_NAME_CURRENT",
+      "dbsql_version": "2022.35"
+    },
+    "plans_state": "EMPTY",
+    "statement_type": "SHOW",
+    "warehouse_id": "0bed48a81027e786",
+    "duration": 906,
+    "canSubscribeToLiveQuery": false
+  },
+  {
+    "query_id": "01ed4a0e-693f-1f45-a5aa-8a685216b3a7",
+    "status": "FINISHED",
+    "query_text": " /* {\"app\": \"OpenMetadata\", \"version\": \"0.13.0.dev0\"} */\nSHOW TABLES IN `test`",
+    "query_start_time_ms": 1665566127416,
+    "execution_end_time_ms": 1665566127568,
+    "query_end_time_ms": 1665566128084,
+    "user_id": 5746918435309904,
+    "user_name": "vijay@getcollate.io",
+    "endpoint_id": "0bed48a81027e786",
+    "rows_produced": 0,
+    "lookup_key": "CiQwMWVkNGEwZS02OTNmLTFmNDUtYTVhYS04YTY4NTIxNmIzYTcQuOro27wwGhAwYmVkNDhhODEwMjdlNzg2INCSj7+r2ZoK",
+    "executed_as_user_id": 5746918435309904,
+    "executed_as_user_name": "vijay@getcollate.io",
+    "is_final": true,
+    "channel_used": {
+      "name": "CHANNEL_NAME_CURRENT",
+      "dbsql_version": "2022.35"
+    },
+    "plans_state": "EMPTY",
+    "statement_type": "SHOW",
+    "warehouse_id": "0bed48a81027e786",
+    "duration": 610,
+    "canSubscribeToLiveQuery": false
+  },
+  {
+    "query_id": "01ed4a0e-680e-1481-b1bf-38db979227de",
+    "status": "FINISHED",
+    "query_text": " /* {\"app\": \"OpenMetadata\", \"version\": \"0.13.0.dev0\"} */\nSHOW TABLES IN `default`",
+    "query_start_time_ms": 1665566125414,
+    "execution_end_time_ms": 1665566125579,
+    "query_end_time_ms": 1665566126326,
+    "user_id": 5746918435309904,
+    "user_name": "vijay@getcollate.io",
+    "endpoint_id": "0bed48a81027e786",
+    "rows_produced": 5,
+    "lookup_key": "CiQwMWVkNGEwZS02ODBlLTE0ODEtYjFiZi0zOGRiOTc5MjI3ZGUQ5tro27wwGhAwYmVkNDhhODEwMjdlNzg2INCSj7+r2ZoK",
+    "executed_as_user_id": 5746918435309904,
+    "executed_as_user_name": "vijay@getcollate.io",
+    "is_final": true,
+    "channel_used": {
+      "name": "CHANNEL_NAME_CURRENT",
+      "dbsql_version": "2022.35"
+    },
+    "plans_state": "EMPTY",
+    "statement_type": "SHOW",
+    "warehouse_id": "0bed48a81027e786",
+    "duration": 856,
+    "canSubscribeToLiveQuery": false
+  },
+  {
+    "query_id": "01ed4a0e-6778-104c-b402-a39e3e6a8cfe",
+    "status": "FINISHED",
+    "query_text": " /* {\"app\": \"OpenMetadata\", \"version\": \"0.13.0.dev0\"} */\nDESCRIBE default.view3",
+    "query_start_time_ms": 1665566124428,
+    "execution_end_time_ms": 1665566124730,
+    "query_end_time_ms": 1665566125285,
+    "user_id": 5746918435309904,
+    "user_name": "vijay@getcollate.io",
+    "endpoint_id": "0bed48a81027e786",
+    "rows_produced": 3,
+    "lookup_key": "CiQwMWVkNGEwZS02Nzc4LTEwNGMtYjQwMi1hMzllM2U2YThjZmUQjNPo27wwGhAwYmVkNDhhODEwMjdlNzg2INCSj7+r2ZoK",
+    "executed_as_user_id": 5746918435309904,
+    "executed_as_user_name": "vijay@getcollate.io",
+    "is_final": true,
+    "channel_used": {
+      "name": "CHANNEL_NAME_CURRENT",
+      "dbsql_version": "2022.35"
+    },
+    "plans_state": "EMPTY",
+    "statement_type": "DESCRIBE",
+    "warehouse_id": "0bed48a81027e786",
+    "duration": 809,
+    "canSubscribeToLiveQuery": false
+  }
+]

@@ -12,7 +12,6 @@
 Helper functions to handle OpenMetadata Entities' properties
 """
 
-import logging
 import re
 import string
 from functools import singledispatch
@@ -22,11 +21,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
-
-
-def ometa_logger():
-    return logging.getLogger("OMetaAPI")
+T = TypeVar("T", bound=BaseModel)
 
 
 def format_name(name: str) -> str:
@@ -56,6 +51,12 @@ def get_entity_type(
     if "service" in class_name:
         # Capitalize service, e.g., pipelineService
         return class_name.replace("service", "Service")
+    if "testdefinition" in class_name:
+        return class_name.replace("testdefinition", "testDefinition")
+    if "testsuite" in class_name:
+        return class_name.replace("testsuite", "testSuite")
+    if "databaseschema" in class_name:
+        return class_name.replace("databaseschema", "databaseSchema")
 
     return class_name
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,14 +13,18 @@
 
 import { useEffect, useState } from 'react';
 
-export const useAfterMount = (fnCallback: () => void) => {
+export const useAfterMount = (
+  fnCallback: () => void,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  deps?: ReadonlyArray<any>
+) => {
   const [isMounting, setIsMounting] = useState(true);
 
   useEffect(() => {
     if (!isMounting) {
       fnCallback();
     }
-  }, [isMounting]);
+  }, [isMounting, ...(deps || [])]);
 
   useEffect(() => {
     setIsMounting(false);

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 
 SQLTYPES = {
     "ARRAY",

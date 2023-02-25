@@ -13,7 +13,7 @@ central JSON Schemas that define our APIs and Entities.
 
 ### Docs
 
-Please refer to the documentation here https://docs.open-metadata.org/connectors
+Please refer to the documentation here https://docs.open-metadata.org/openmetadata/connectors
 
 ### Contribution
 

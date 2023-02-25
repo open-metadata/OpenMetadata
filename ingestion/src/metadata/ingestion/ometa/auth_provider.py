@@ -47,7 +47,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 # Only load security providers on call
 # pylint: disable=import-outside-toplevel
@@ -154,7 +154,7 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         from google.oauth2 import service_account
 
         credentials = service_account.IDTokenCredentials.from_service_account_file(
-            self.security_config.secretKey,
+            self.security_config.secretKey.get_secret_value(),
             target_audience=self.security_config.audience,
         )
         request = google.auth.transport.requests.Request()
@@ -195,7 +195,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         from okta.request_executor import RequestExecutor
 
         try:
-            _, my_jwk = JWT.get_PEM_JWK(self.security_config.privateKey)
+            _, my_jwk = JWT.get_PEM_JWK(
+                self.security_config.privateKey.get_secret_value()
+            )
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
             generated_jwt_id = str(uuid.uuid4())
@@ -224,10 +226,11 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             parameters = {
                 "grant_type": "client_credentials",
-                "scope": " ".join(config["client"]["scopes"]),
                 "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
                 "client_assertion": jwt_token,
             }
+            if config["client"].get("scopes"):
+                parameters["scope"] = " ".join(config["client"]["scopes"])
             encoded_parameters = urlencode(parameters, quote_via=quote)
             url = f"{self.security_config.orgURL}?" + encoded_parameters
             token_request_object = await request_exec.create_request(
@@ -245,7 +248,13 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             if err:
                 raise APIError(f"{err}")
-            response_dict = json.loads(res_json)
+
+            try:
+                response_dict = json.loads(res_json)
+            except ValueError:
+                raise AuthenticationException(
+                    "Could not fetch the access token please validate the orgURL & clientId in configuration"
+                )
 
             token = response_dict.get(ACCESS_TOKEN)
             if not token:
@@ -256,9 +265,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             self.generated_auth_token = token
             self.expiry = response_dict.get(EXPIRY)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Unexpected error fetching Okta auth token: {exc}")
             sys.exit()
 
     def get_access_token(self):
@@ -292,7 +301,8 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         conn = http.client.HTTPSConnection(self.security_config.domain)
         payload = (
             f"grant_type=client_credentials&client_id={self.security_config.clientId}"
-            f"&client_secret={self.security_config.secretKey}&audience=https://{self.security_config.domain}/api/v2/"
+            f"&client_secret={self.security_config.secretKey.get_secret_value()}"
+            f"&audience=https://{self.security_config.domain}/api/v2/"
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
         conn.request(
@@ -330,13 +340,11 @@ class AzureAuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> None:
-        from msal import (
-            ConfidentialClientApplication,  # pylint: disable=import-outside-toplevel
-        )
+        from msal import ConfidentialClientApplication
 
         app = ConfidentialClientApplication(
             client_id=self.security_config.clientId,
-            client_credential=self.security_config.clientSecret,
+            client_credential=self.security_config.clientSecret.get_secret_value(),
             authority=self.security_config.authority,
         )
         data = app.acquire_token_for_client(scopes=self.security_config.scopes)
@@ -381,11 +389,12 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         data = {
             "grant_type": "client_credentials",
             "client_id": self.security_config.clientId,
-            "client_secret": self.security_config.secretKey,
+            "client_secret": self.security_config.secretKey.get_secret_value(),
         }
         response = requests.post(
             url=self.security_config.tokenEndpoint,
             data=data,
+            timeout=60 * 5,
         )
         if response.ok:
             response_json = response.json()
@@ -431,11 +440,15 @@ class OpenMetadataAuthenticationProvider(AuthenticationProvider):
 
     def auth_token(self) -> None:
         if not self.jwt_token:
-            if os.path.isfile(self.security_config.jwtToken):
-                with open(self.security_config.jwtToken, "r", encoding="utf-8") as file:
+            if os.path.isfile(self.security_config.jwtToken.get_secret_value()):
+                with open(
+                    self.security_config.jwtToken.get_secret_value(),
+                    "r",
+                    encoding="utf-8",
+                ) as file:
                     self.jwt_token = file.read().rstrip()
             else:
-                self.jwt_token = self.security_config.jwtToken
+                self.jwt_token = self.security_config.jwtToken.get_secret_value()
 
     def get_access_token(self):
         self.auth_token()

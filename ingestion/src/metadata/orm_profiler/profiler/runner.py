@@ -16,10 +16,17 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-from typing import Union
+from typing import Dict, Optional, Union
 
+from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
+
+from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
+from metadata.utils.logger import query_runner_logger
+from metadata.utils.sqa_utils import get_query_filter_for_runner
+
+logger = query_runner_logger()
 
 
 class QueryRunner:
@@ -39,28 +46,87 @@ class QueryRunner:
         session: Session,
         table: DeclarativeMeta,
         sample: Union[DeclarativeMeta, AliasedClass],
+        partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
     ):
         self._session = session
-        self._table = table
+        self.table = table
         self._sample = sample
+        self._partition_details = partition_details
+        self._profile_sample_query = profile_sample_query
 
     def _build_query(self, *entities, **kwargs) -> Query:
         return self._session.query(*entities, **kwargs)
 
     def _select_from_sample(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._sample)
+        """Run select statement against sample data"""
+        filter_ = get_query_filter_for_runner(kwargs)
 
+        query = self._build_query(*entities, **kwargs).select_from(self._sample)
+
+        if filter_ is not None:
+            return query.filter(filter_)
+
+        return query
+
+    def _select_from_user_query(self, *entities, **kwargs):
+        """Run select statement against user defined query"""
+        filter_ = get_query_filter_for_runner(kwargs)
+
+        user_query = self._session.query(self.table).from_statement(
+            text(f"{self._profile_sample_query}")
+        )
+
+        query = self._build_query(*entities, **kwargs).select_from(user_query)
+
+        if filter_ is not None:
+            return query.filter(filter_)
+
+        return query
+
+    @partition_filter_handler()
     def select_first_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).first()
+        """Select first row from the table"""
+        filter_ = get_query_filter_for_runner(kwargs)
 
+        if self._profile_sample_query:
+            return self._select_from_user_query(*entities, **kwargs).first()
+
+        query = self._build_query(*entities, **kwargs).select_from(self.table)
+
+        if filter_ is not None:
+            return query.filter(filter_).first()
+
+        return query.first()
+
+    @partition_filter_handler(first=False)
     def select_all_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).all()
+        """Select all rows from the table"""
+        filter_ = get_query_filter_for_runner(kwargs)
 
+        if self._profile_sample_query:
+            return self._select_from_user_query(*entities, **kwargs).all()
+
+        query = self._build_query(*entities, **kwargs).select_from(self.table)
+
+        if filter_ is not None:
+            return query.filter(filter_).all()
+
+        return query.all()
+
+    @partition_filter_handler(sampled=True)
     def select_first_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).first()
 
+    @partition_filter_handler(first=False, sampled=True)
     def select_all_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).all()
+
+    def dispatch_query_select_first(self, *entities, **kwargs):
+        """dispatch query to sample or all table"""
+        if isinstance(self._sample, AliasedClass):
+            return self.select_first_from_sample(*entities, **kwargs)
+        return self.select_first_from_table(*entities, **kwargs)
 
     @staticmethod
     def select_first_from_query(query: Query):

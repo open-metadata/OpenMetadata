@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/tableUsageCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Table Usage Count",
+  "description": "This model is the linking between the usage stage and bulk sink steps",
+  "type": "object",
+  "definitions": {
+    "tableColumn": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "description": "Name of the table",
+          "type": "string"
+        },
+        "column": {
+          "description": "Name of the column",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableColumnJoin": {
+      "type": "object",
+      "properties": {
+        "tableColumn": {
+          "description": "Source table column",
+          "$ref": "#/definitions/tableColumn"
+        },
+        "joinedWith": {
+          "description": "List of table columns with which the table is joined with",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tableColumn"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "table": {
+      "description": "Name of the table",
+      "type": "string"
+    },
+    "date": {
+      "description": "Date of execution of SQL query",
+      "type": "string"
+    },
+    "databaseName": {
+      "description": "Database associated with the table in the query",
+      "type": "string"
+    },
+    "count": {
+      "description": "Usage count of table",
+      "type": "integer",
+      "default": 1
+    },
+    "databaseSchema": {
+      "description": "Database schema of the associated with table",
+      "type": "string"
+    },
+    "sqlQueries": {
+      "description": "List of SQL Queries associated with table",
+      "type": "array",
+      "items": {
+        "$ref": "../entity/data/table.json#/definitions/sqlQuery"
+      }
+    },
+    "joins": {
+      "description": "List of joins associated with table",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableColumnJoin"
+      }
+    },
+    "serviceName": {
+      "description": "Name that identifies this database service.",
+      "type": "string"
+    }
+  },
+  "required": ["table", "date", "serviceName"],
+  "additionalProperties": false
+}

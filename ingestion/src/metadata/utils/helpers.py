@@ -8,39 +8,66 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+"""
+Helpers module for ingestion related methods
+"""
+
+from __future__ import annotations
+
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, List, Optional
+from functools import wraps
+from time import perf_counter
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceRequest,
-)
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
-from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceRequest,
-)
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceRequest,
-)
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
+from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+class BackupRestoreArgs:
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        host: str,
+        user: str,
+        password: str,
+        database: str,
+        port: str,
+        options: List[str],
+        arguments: List[str],
+        schema: Optional[str] = None,
+    ):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
+        self.options = options
+        self.arguments = arguments
+        self.schema = schema
+
+
+class DockerActions:
+    def __init__(
+        self,
+        start: bool,
+        stop: bool,
+        pause: bool,
+        resume: bool,
+        clean: bool,
+        reset_db: bool,
+    ):
+        self.start = start
+        self.stop = stop
+        self.pause = pause
+        self.resume = resume
+        self.clean = clean
+        self.reset_db = reset_db
+
 
 om_chart_type_dict = {
     "line": ChartType.Line,
@@ -62,163 +89,99 @@ om_chart_type_dict = {
 }
 
 
+def calculate_execution_time(func):
+    """
+    Method to calculate workflow execution time
+    """
+
+    @wraps(func)
+    def calculate_debug_time(*args, **kwargs):
+        start = perf_counter()
+        func(*args, **kwargs)
+        end = perf_counter()
+        logger.debug(
+            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+        )
+
+    return calculate_debug_time
+
+
+def calculate_execution_time_generator(func):
+    """
+    Generator method to calculate workflow execution time
+    """
+
+    def calculate_debug_time(*args, **kwargs):
+        start = perf_counter()
+        yield from func(*args, **kwargs)
+        end = perf_counter()
+        logger.debug(
+            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+        )
+
+    return calculate_debug_time
+
+
+def pretty_print_time_duration(duration: Union[int, float]) -> str:
+    """
+    Method to format and display the time
+    """
+
+    days = divmod(duration, 86400)[0]
+    hours = divmod(duration, 3600)[0]
+    minutes = divmod(duration, 60)[0]
+    seconds = round(divmod(duration, 60)[1], 2)
+    if days:
+        return f"{days}day(s) {hours}h {minutes}m {seconds}s"
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
+
+
 def get_start_and_end(duration):
+    """
+    Method to return start and end time based on duration
+    """
+
     today = datetime.utcnow()
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = today.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Add one day to make sure we are handling today's queries
+    end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
-def snake_to_camel(s):
-    a = s.split("_")
-    a[0] = a[0].capitalize()
-    if len(a) > 1:
-        a[1:] = [u.title() for u in a[1:]]
-    return "".join(a)
+def snake_to_camel(snake_str):
+    """
+    Method to convert snake case text to camel case
+    """
+    split_str = snake_str.split("_")
+    split_str[0] = split_str[0].capitalize()
+    if len(split_str) > 1:
+        split_str[1:] = [u.title() for u in split_str[1:]]
+    return "".join(split_str)
 
 
-def get_database_service_or_create(
-    config: WorkflowSource, metadata_config, service_name=None
-) -> DatabaseService:
-    metadata = OpenMetadata(metadata_config)
-    if not service_name:
-        service_name = config.serviceName
-    service: DatabaseService = metadata.get_by_name(
-        entity=DatabaseService, fqn=service_name
-    )
-    if not service:
-        config_dict = config.dict()
-        service_connection_config = config_dict.get("serviceConnection").get("config")
-        password = (
-            service_connection_config.get("password").get_secret_value()
-            if service_connection_config and service_connection_config.get("password")
-            else None
-        )
-
-        # Use a JSON to dynamically parse the pydantic model
-        # based on the serviceType
-        # TODO revisit me
-        service_json = {
-            "connection": {
-                "config": {
-                    "hostPort": service_connection_config.get("hostPort")
-                    if service_connection_config
-                    else None,
-                    "username": service_connection_config.get("username")
-                    if service_connection_config
-                    else None,
-                    "password": password,
-                    "database": service_connection_config.get("database")
-                    if service_connection_config
-                    else None,
-                    "connectionOptions": service_connection_config.get(
-                        "connectionOptions"
-                    )
-                    if service_connection_config
-                    else None,
-                    "connectionArguments": service_connection_config.get(
-                        "connectionArguments"
-                    )
-                    if service_connection_config
-                    else None,
-                }
-            },
-            "name": service_name,
-            "description": "",
-            "serviceType": service_connection_config.get("type").value
-            if service_connection_config
-            else None,
-        }
-
-        created_service: DatabaseService = metadata.create_or_update(
-            CreateDatabaseServiceRequest(**service_json)
-        )
-        logger.info(f"Creating DatabaseService instance for {service_name}")
-        return created_service
-    return service
-
-
-def get_messaging_service_or_create(
-    service_name: str,
-    message_service_type: str,
-    config: dict,
-    metadata_config,
-) -> MessagingService:
-    metadata = OpenMetadata(metadata_config)
-    service: MessagingService = metadata.get_by_name(
-        entity=MessagingService, fqn=service_name
-    )
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateMessagingServiceRequest(
-                name=service_name, serviceType=message_service_type, connection=config
-            )
-        )
-        return created_service
-
-
-def get_dashboard_service_or_create(
-    service_name: str,
-    dashboard_service_type: str,
-    config: dict,
-    metadata_config,
-) -> DashboardService:
-    metadata = OpenMetadata(metadata_config)
-    service: DashboardService = metadata.get_by_name(
-        entity=DashboardService, fqn=service_name
-    )
-    if service is not None:
-        return service
-    else:
-        dashboard_config = {"config": config}
-        created_service = metadata.create_or_update(
-            CreateDashboardServiceRequest(
-                name=service_name,
-                serviceType=dashboard_service_type,
-                connection=dashboard_config,
-            )
-        )
-        return created_service
-
-
-def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
-    metadata = OpenMetadata(metadata_config)
-    service: StorageService = metadata.get_by_name(
-        entity=StorageService, fqn=service_json["name"]
-    )
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateStorageServiceRequest(**service_json)
-        )
-        return created_service
-
-
-def datetime_to_ts(date: datetime) -> int:
+def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:
     """
     Convert a given date to a timestamp as an Int in milliseconds
     """
-    return int(date.timestamp() * 1_000)
+    return int(date.timestamp() * 1_000) if date else None
 
 
 def get_formatted_entity_name(name: str) -> Optional[str]:
-    if name:
-        return name.replace("[", "").replace("]", "")
-
-
-def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     """
-    Provides iterator of result row from SQLAlchemy helper
-    :return:
+    Method to get formatted entity name
     """
-    rows = alchemy_helper.execute_query()
-    for row in rows:
-        yield row
+
+    return (
+        name.replace("[", "").replace("]", "").replace("<default>.", "")
+        if name
+        else None
+    )
 
 
 def replace_special_with(raw: str, replacement: str) -> str:
@@ -240,18 +203,127 @@ def get_standard_chart_type(raw_chart_type: str) -> str:
     return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
 
 
-def get_chart_entities_from_id(
-    chart_ids: List[str], metadata: OpenMetadata, service_name: str
-) -> List[EntityReferenceList]:
-    entities = []
-    for id in chart_ids:
-        chart: Chart = metadata.get_by_name(
-            entity=Chart,
-            fqn=fqn.build(
-                metadata, Chart, chart_name=str(id), service_name=service_name
-            ),
-        )
-        if chart:
-            entity = EntityReference(id=chart.id, type="chart")
-            entities.append(entity)
-    return entities
+def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
+    """
+    If the element is in the container, return it.
+    Otherwise, return None
+    :param element: to find
+    :param container: container with element
+    :return: element or None
+    """
+    return next((elem for elem in container if elem == element), None)
+
+
+def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
+    """
+    If the column exists in the table, return it
+    """
+    return next(
+        (col for col in table.columns if col.name.__root__ == column_name), None
+    )
+
+
+def find_column_in_table_with_index(
+    column_name: str, table: Table
+) -> Optional[Tuple[int, Column]]:
+    """Return a column and its index in a Table Entity
+
+    Args:
+         column_name (str): column to find
+         table (Table): Table Entity
+
+    Return:
+          A tuple of Index, Column if the column is found
+    """
+    col_index, col = next(
+        (
+            (col_index, col)
+            for col_index, col in enumerate(table.columns)
+            if str(col.name.__root__).lower() == column_name.lower()
+        ),
+        (None, None),
+    )
+
+    return col_index, col
+
+
+def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str]:
+    """
+    Given a list with strings that have a separator,
+    convert that to a dictionary of key-value pairs
+    """
+    if not original:
+        return {}
+
+    split_original = [
+        (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
+    ]
+    return dict(split_original)
+
+
+def clean_up_starting_ending_double_quotes_in_string(string: str) -> str:
+    """Remove start and ending double quotes in a string
+
+    Args:
+        string (str): a string
+
+    Raises:
+        TypeError: An error occure checking the type of `string`
+
+    Returns:
+        str: a string with no double quotes
+    """
+    if not isinstance(string, str):
+        raise TypeError(f"{string}, must be of type str, instead got `{type(string)}`")
+
+    return string.strip('"')
+
+
+def insensitive_replace(raw_str: str, to_replace: str, replace_by: str) -> str:
+    """Replace `to_replace` by `replace_by` in `raw_str` ignoring the raw_str case.
+
+    Args:
+        raw_str:str: Define the string that will be searched
+        to_replace:str: Specify the string to be replaced
+        replace_by:str: Replace the to_replace:str parameter in the raw_str:str string
+
+    Returns:
+        A string where the given to_replace is replaced by replace_by in raw_str, ignoring case
+    """
+
+    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE)
+
+
+def insensitive_match(raw_str: str, to_match: str) -> bool:
+    """Match `to_match` in `raw_str` ignoring the raw_str case.
+
+    Args:
+        raw_str:str: Define the string that will be searched
+        to_match:str: Specify the string to be matched
+
+    Returns:
+        True if `to_match` matches in `raw_str`, ignoring case. Otherwise, false.
+    """
+
+    return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+
+
+def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
+    """_summary_
+
+    Args:
+        tags (list[TagLabel]): list of tags
+
+    Returns:
+        Optional[str]
+    """
+    if not tags:
+        return None
+    return next(
+        (
+            tag.tagFQN.__root__
+            for tag in tags
+            if tag.tagFQN.__root__.lower().startswith("tier")
+        ),
+        None,
+    )

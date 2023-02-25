@@ -1,0 +1,24 @@
+{
+  "name": "columnValuesMissingCount",
+  "fullyQualifiedName": "columnValuesMissingCount",
+  "displayName": "Column Values Missing Count",
+  "description": "This schema defines the test ColumnValuesMissingCount. Test the column values missing count to be equal to given number. ",
+  "entityType": "COLUMN",
+  "testPlatforms": ["OpenMetadata"],
+  "supportedDataTypes": ["NUMBER","TINYINT","SMALLINT","INT","BIGINT","BYTEINT","BYTES","FLOAT","DOUBLE","DECIMAL","NUMERIC","TIMESTAMP","TIMESTAMPZ","TIME","DATE","DATETIME","INTERVAL","STRING","MEDIUMTEXT","TEXT","CHAR","VARCHAR","BOOLEAN","BINARY","VARBINARY","ARRAY","BLOB","LONGBLOB","MEDIUMBLOB","MAP","STRUCT","UNION","SET","GEOGRAPHY","ENUM","JSON","UUID","VARIANT","GEOMETRY","POINT","POLYGON"],
+  "parameterDefinition": [
+    {
+      "name": "missingCountValue",
+      "displayName": "Missing Count",
+      "description": "No.of missing values to be equal to.",
+      "dataType": "INT",
+      "required": true
+    },
+    {
+      "name": "missingValueMatch",
+      "displayName": "Missing Value to Match",
+      "description": "By default match all null and empty values to be missing. This field allows us to configure additional strings such as N/A, NULL as missing strings as well.",
+      "dataType": "STRING"
+    }
+  ]
+}

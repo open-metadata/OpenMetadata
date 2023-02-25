@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,178 +12,84 @@
  */
 
 import classNames from 'classnames';
-import React, { CSSProperties, Fragment } from 'react';
-import { Handle, HandleProps, NodeProps, Position } from 'react-flow-renderer';
+import { isEmpty } from 'lodash';
+import React, { CSSProperties, Fragment, useEffect } from 'react';
+import {
+  Handle,
+  HandleProps,
+  NodeProps,
+  Position,
+  useUpdateNodeInternals,
+} from 'reactflow';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
+import { ModifiedColumn } from './EntityLineage.interface';
 
-const handleStyles = {
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
+const handleStyles: CSSProperties = {
+  width: '20%',
+  height: '100%',
+  borderRadius: '3px',
   position: 'absolute',
-  top: 10,
+  background: 'transparent',
+  border: 'none',
+};
+
+const leftHandleStyle: CSSProperties = {
+  ...handleStyles,
+  borderLeft: '5px solid #d9ceee',
+  left: -1,
+};
+
+const rightHandleStyle: CSSProperties = {
+  ...handleStyles,
+  borderRight: '5px solid #d9ceee',
+  right: -1,
 };
 
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
-  isNewNode = false
+  id?: string
 ) => {
-  const getLeftRightHandleStyles = () => {
-    return {
-      opacity: 0,
-      borderRadius: '0px',
-      height: '162%',
-    };
-  };
-
-  const getTopBottomHandleStyles = () => {
-    return {
-      opacity: 0,
-      borderRadius: '0px',
-      width: '110%',
-    };
-  };
-
-  if (nodeType === 'output') {
+  if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
-      <Fragment>
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={{ ...handleStyles, left: '-14px' } as CSSProperties}
-          type="target"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={{
-            ...getLeftRightHandleStyles(),
-            marginLeft: '-10px',
-          }}
-          type="target"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-            marginBottom: '-6px',
-          }}
-          type="target"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-            marginTop: '-6px',
-          }}
-          type="target"
-        />
-      </Fragment>
+      <Handle
+        id={id}
+        isConnectable={isConnectable}
+        position={Position.Left}
+        style={leftHandleStyle}
+        type="target"
+      />
     );
-  } else if (nodeType === 'input') {
+  } else if (nodeType === EntityLineageNodeType.INPUT) {
     return (
-      <Fragment>
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={{ ...handleStyles, right: '-14px' } as CSSProperties}
-          type="source"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={{
-            ...getLeftRightHandleStyles(),
-            marginRight: '-10px',
-          }}
-          type="source"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-            marginBottom: '-6px',
-          }}
-          type="target"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-            marginTop: '-6px',
-          }}
-          type="target"
-        />
-      </Fragment>
+      <Handle
+        id={id}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        style={rightHandleStyle}
+        type="source"
+      />
     );
+  } else if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
+    return null;
   } else {
     return (
       <Fragment>
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={
-            {
-              ...handleStyles,
-              left: '-14px',
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
+          style={leftHandleStyle}
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={
-            {
-              ...handleStyles,
-              right: '-14px',
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
+          style={rightHandleStyle}
           type="source"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={{
-            ...getLeftRightHandleStyles(),
-            marginLeft: '-10px',
-          }}
-          type="target"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={{
-            ...getLeftRightHandleStyles(),
-            marginRight: '-10px',
-          }}
-          type="source"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-            marginBottom: '-6px',
-          }}
-          type="target"
-        />
-        <Handle
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-            marginTop: '-6px',
-          }}
-          type="target"
         />
       </Fragment>
     );
@@ -191,15 +97,37 @@ const getHandle = (
 };
 
 const CustomNode = (props: NodeProps) => {
-  const { data, type, isConnectable, selected } = props;
+  const updateNodeInternals = useUpdateNodeInternals();
+  const { data, type, isConnectable, selected, id } = props;
   /* eslint-disable-next-line */
-  const { label, columns, isNewNode, removeNodeHandler, isEditMode } = data;
+  const {
+    label,
+    columns,
+    removeNodeHandler,
+    handleColumnClick,
+    isEditMode,
+    isExpanded,
+    isTraced,
+    selectedColumns = [],
+  } = data;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [isEditMode, isExpanded]);
 
   return (
-    <div className="tw-relative nowheel ">
-      {getHandle(type, isConnectable, isNewNode)}
+    <div className="nowheel custom-node">
       {/* Node label could be simple text or reactNode */}
-      <div className={classNames('tw-px-2')} data-testid="node-label">
+      <div
+        className={classNames(
+          'custom-node-header',
+          selected || data.selected
+            ? 'custom-node-header-active'
+            : 'custom-node-header-normal',
+          { 'custom-node-header-tracing': isTraced }
+        )}
+        data-testid="node-label">
+        {getHandle(type, isConnectable)}
         {label}{' '}
         {selected && isEditMode
           ? getNodeRemoveButton(() => {
@@ -208,30 +136,54 @@ const CustomNode = (props: NodeProps) => {
           : null}
       </div>
 
-      {columns?.length ? (
-        <hr className="tw-my-2 tw--mx-3" data-testid="label-separator" />
-      ) : null}
-      <section
-        className={classNames('tw--mx-3 tw-px-3', {
-          'tw-h-36 tw-overflow-y-auto': columns?.length,
-        })}
-        id="table-columns">
-        <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
-          {columns?.map(
-            (c: { name: string; constraint: string }, i: number) => (
-              <Fragment key={i}>
-                <div
-                  className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
-                  data-testid="column"
-                  key={c.name}>
-                  {getConstraintIcon(c.constraint, 'tw-')}
-                  {c.name}
-                </div>
-              </Fragment>
-            )
-          )}
+      {isExpanded && (
+        <div
+          className={classNames(
+            'custom-node-column-lineage',
+            selected || isTraced
+              ? 'custom-node-column-lineage-active'
+              : 'custom-node-column-lineage-normal',
+            {
+              'p-y-sm': !isEmpty(columns),
+            }
+          )}>
+          <section className="p-x-sm" id="table-columns">
+            <div className="custom-node-column-lineage-body">
+              {(Object.values(columns || {}) as ModifiedColumn[])?.map(
+                (column, index) => {
+                  const isColumnTraced = selectedColumns.includes(
+                    column.fullyQualifiedName
+                  );
+
+                  return (
+                    <div
+                      className={classNames(
+                        'custom-node-column-container',
+                        isColumnTraced
+                          ? 'custom-node-header-tracing'
+                          : 'custom-node-column-lineage-normal tw-bg-white'
+                      )}
+                      data-testid="column"
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleColumnClick(column.fullyQualifiedName);
+                      }}>
+                      {getHandle(
+                        column.type,
+                        isConnectable,
+                        column.fullyQualifiedName
+                      )}
+                      {getConstraintIcon(column.constraint, 'tw-')}
+                      <p className="m-0">{column.name}</p>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </section>
         </div>
-      </section>
+      )}
     </div>
   );
 };

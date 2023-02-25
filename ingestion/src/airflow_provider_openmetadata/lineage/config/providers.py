@@ -12,8 +12,9 @@
 """
 OpenMetadata Airflow Lineage Backend security providers config
 """
+import json
 
-from airflow.configuration import conf
+from airflow.configuration import AirflowConfigParser
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -24,6 +25,9 @@ from metadata.generated.schema.security.client.auth0SSOClientConfig import (
 )
 from metadata.generated.schema.security.client.azureSSOClientConfig import (
     AzureSSOClientConfig,
+)
+from metadata.generated.schema.security.client.customOidcSSOClientConfig import (
+    CustomOIDCSSOClientConfig,
 )
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
@@ -47,7 +51,7 @@ class InvalidAirflowProviderException(Exception):
 
 
 @provider_config_registry.add(AuthProvider.google.value)
-def load_google_auth() -> GoogleSSOClientConfig:
+def load_google_auth(conf: AirflowConfigParser) -> GoogleSSOClientConfig:
     """
     Load config for Google Auth
     """
@@ -60,7 +64,7 @@ def load_google_auth() -> GoogleSSOClientConfig:
 
 
 @provider_config_registry.add(AuthProvider.okta.value)
-def load_okta_auth() -> OktaSSOClientConfig:
+def load_okta_auth(conf: AirflowConfigParser) -> OktaSSOClientConfig:
     """
     Load config for Google Auth
     """
@@ -69,12 +73,13 @@ def load_okta_auth() -> OktaSSOClientConfig:
         orgURL=conf.get(LINEAGE, "org_url"),
         privateKey=conf.get(LINEAGE, "private_key"),
         email=conf.get(LINEAGE, "email"),
-        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
+        # conf.getjson only available for airflow +2.3. Manually casting for lower versions
+        scopes=json.loads(conf.get(LINEAGE, "scopes", fallback="[]")),
     )
 
 
 @provider_config_registry.add(AuthProvider.auth0.value)
-def load_auth0_auth() -> Auth0SSOClientConfig:
+def load_auth0_auth(conf: AirflowConfigParser) -> Auth0SSOClientConfig:
     """
     Load config for Google Auth
     """
@@ -86,7 +91,7 @@ def load_auth0_auth() -> Auth0SSOClientConfig:
 
 
 @provider_config_registry.add(AuthProvider.azure.value)
-def load_azure_auth() -> AzureSSOClientConfig:
+def load_azure_auth(conf: AirflowConfigParser) -> AzureSSOClientConfig:
     """
     Load config for Azure Auth
     """
@@ -94,13 +99,25 @@ def load_azure_auth() -> AzureSSOClientConfig:
         clientSecret=conf.get(LINEAGE, "client_secret"),
         authority=conf.get(LINEAGE, "authority"),
         clientId=conf.get(LINEAGE, "client_id"),
-        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
+        scopes=json.loads(conf.get(LINEAGE, "scopes", fallback="[]")),
     )
 
 
 @provider_config_registry.add(AuthProvider.openmetadata.value)
-def load_om_auth() -> OpenMetadataJWTClientConfig:
+def load_om_auth(conf: AirflowConfigParser) -> OpenMetadataJWTClientConfig:
     """
     Load config for Azure Auth
     """
     return OpenMetadataJWTClientConfig(jwtToken=conf.get(LINEAGE, "jwt_token"))
+
+
+@provider_config_registry.add(AuthProvider.custom_oidc.value)
+def load_custom_oidc_auth(conf: AirflowConfigParser) -> CustomOIDCSSOClientConfig:
+    """
+    Load config for Custom OIDC Auth
+    """
+    return CustomOIDCSSOClientConfig(
+        clientId=conf.get(LINEAGE, "client_id"),
+        secretKey=conf.get(LINEAGE, "secret_key"),
+        tokenEndpoint=conf.get(LINEAGE, "token_endpoint"),
+    )

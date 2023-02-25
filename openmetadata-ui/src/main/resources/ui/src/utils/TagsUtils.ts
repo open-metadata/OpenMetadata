@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,64 +11,119 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
-import { flatten } from 'lodash';
-import { EntityTags, TableColumn, TagOption } from 'Models';
-import { getCategory, getTags } from '../axiosAPIs/tagAPI';
-import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import { Bucket, EntityTags, TagOption } from 'Models';
+import {
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
+} from 'rest/tagAPI';
+import { TAG_VIEW_CAP } from '../constants/constants';
+import { SettledStatus } from '../enums/axios.enum';
+import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
+import { Column } from '../generated/entity/data/table';
+import { Paging } from '../generated/type/paging';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
-export const getTagCategories = async (fields?: Array<string> | string) => {
+export const getClassifications = async (
+  fields?: Array<string> | string,
+  callGetClassificationByName = true
+) => {
   try {
-    let listOfCategories: Array<TagCategory> = [];
-    const categories = await getTags(fields);
-    const categoryList = categories.data.data.map((category: TagCategory) => {
-      return {
-        name: category.name,
-        description: category.description,
-      };
-    });
-    if (categoryList.length) {
-      let promiseArr: Array<AxiosPromise> = [];
-      promiseArr = categoryList.map((category: TagCategory) => {
-        return getCategory(category.name, fields);
-      });
-
-      await Promise.allSettled(promiseArr).then(
-        (res: PromiseSettledResult<AxiosResponse>[]) => {
-          if (res.length) {
-            listOfCategories = res
-              .filter((category) => category.status === 'fulfilled')
-              .map((category) => {
-                return (category as PromiseFulfilledResult<AxiosResponse>).value
-                  ?.data;
-              });
-          }
-        }
+    const listOfClassifications: Array<Classification> = [];
+    const classifications = await getAllClassifications(fields, 1000);
+    const classificationList = classifications.data.map(
+      (category: Classification) => {
+        return {
+          name: category.name,
+          description: category.description,
+        } as Classification;
+      }
+    );
+    if (classificationList.length && callGetClassificationByName) {
+      const promiseArr = classificationList.map((category: Classification) =>
+        getClassificationByName(category.name, fields)
       );
+
+      const categories = await Promise.allSettled(promiseArr);
+
+      categories.forEach((category) => {
+        if (category.status === SettledStatus.FULFILLED) {
+          listOfClassifications.push(category.value);
+        }
+      });
     }
 
-    return Promise.resolve({ data: listOfCategories });
+    return Promise.resolve({ data: listOfClassifications });
   } catch (error) {
     return Promise.reject({ data: (error as AxiosError).response });
   }
 };
 
-export const getTaglist = (
-  categories: Array<TagCategory> = []
-): Array<string> => {
-  const children = categories.map((category: TagCategory) => {
-    return category.children || [];
-  });
-  const allChildren = flatten(children);
-  const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-    return tag?.fullyQualifiedName || '';
-  });
+/**
+ * This method returns all the tags present in the system
+ * @returns tags: Tag[]
+ */
+export const getAllTagsForOptions = async () => {
+  let tags: Tag[] = [];
+  try {
+    const { data } = await getTags({ limit: 1000 });
 
-  return tagList;
+    tags = data;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+  }
+
+  return tags;
+};
+
+/**
+ * Return tags based on classifications
+ * @param classifications -- Parent for tags
+ * @param paging
+ * @returns Tag[]
+ */
+export const getTaglist = async (
+  classifications: Array<Classification> = [],
+  paging?: Paging
+) => {
+  try {
+    const tags: Tag[] = [];
+
+    const tagsListPromise = classifications.map((classification) =>
+      getTags({
+        arrQueryFields: '',
+        parent: classification.name,
+        after: paging?.after,
+        before: paging?.before,
+        limit: 1000,
+      })
+    );
+
+    return await Promise.allSettled(tagsListPromise)
+      .then((tagList) => {
+        tagList.forEach((tag) => {
+          if (tag.status === SettledStatus.FULFILLED) {
+            tags.push(...tag.value.data);
+          }
+        });
+
+        return tags.map((tag) => tag.fullyQualifiedName || tag.name);
+      })
+      .catch((error) => {
+        return Promise.reject({ data: (error as AxiosError).response });
+      });
+  } catch (error) {
+    return Promise.reject({ data: (error as AxiosError).response });
+  }
 };
 
 export const getTableTags = (
-  columns: Array<Partial<TableColumn>>
+  columns: Array<Partial<Column>>
 ): Array<EntityTags> => {
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<EntityTags> = [];
@@ -93,4 +148,60 @@ export const getTagOptionsFromFQN = (
   return tagFQNs.map((tag) => {
     return { fqn: tag, source: 'Tag' };
   });
+};
+
+export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
+  return tags.map((tag) => {
+    return {
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      tagFQN: tag,
+      source: TagSource.Tag,
+    };
+  });
+};
+
+// Will add a label of value in the data object without it's FQN
+export const getTagsWithLabel = (tags: Array<Bucket>) => {
+  return tags.map((tag) => {
+    const containQuotes = tag.key.split('"')[1];
+
+    return {
+      ...tag,
+      label: isEmpty(containQuotes) ? tag.key.split('.').pop() : containQuotes,
+    };
+  });
+};
+
+//  Will return tag with ellipses if it exceeds the limit
+export const getTagDisplay = (tag: string) => {
+  return tag.length > TAG_VIEW_CAP ? `${tag.slice(0, TAG_VIEW_CAP)}...` : tag;
+};
+
+export const fetchTagsAndGlossaryTerms = async () => {
+  const responses = await Promise.allSettled([
+    getAllTagsForOptions(),
+    fetchGlossaryTerms(),
+  ]);
+
+  let tagsAndTerms: TagOption[] = [];
+  if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
+    tagsAndTerms = responses[0].value.map((tag) => {
+      return { fqn: tag.fullyQualifiedName ?? tag.name, source: 'Tag' };
+    });
+  }
+  if (
+    responses[1].status === SettledStatus.FULFILLED &&
+    responses[1].value &&
+    responses[1].value.length > 0
+  ) {
+    const glossaryTerms: TagOption[] = getGlossaryTermlist(
+      responses[1].value
+    ).map((tag) => {
+      return { fqn: tag, source: 'Glossary' };
+    });
+    tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+  }
+
+  return tagsAndTerms;
 };

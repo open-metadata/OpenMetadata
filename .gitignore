@@ -23,10 +23,16 @@ buildNumber.properties
 .mvn/timing.properties
 
 catalog-services/catalog-services.iml
+
+# local docker volume
+docker/local-metadata/docker-volume
+docker-volume
+
 # Java template
 *.class
 venv
 env
+.java-version
 # logs
 logs
 *.log
@@ -58,15 +64,16 @@ build
 dist
 
 # Registry Kerberos SASL secrets directory
-secrets
 
 # ts build info and report
 openmetadata-ui/src/main/resources/ui/webpack
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #tests
-.coverage
+.coverage*
+!ingestion/.coveragerc
 /ingestion/coverage.xml
+/ingestion/ci-coverage.xml
 /ingestion/junit/*
 openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 openmetadata-ui/src/main/resources/ui/test-report.xml
@@ -92,6 +99,7 @@ ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
+.python-version
 
 # MLFlow
 mlruns/
@@ -102,3 +110,15 @@ mlruns/
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens
+.antlr
+
+# SQLAlchemy tests
+file:cachedb
+
+# Snyk report
+security-report
+.dccache
+scan-requirements.txt
+
+# CLI e2e tests
+ingestion/tests/cli_e2e/**/*test.yaml

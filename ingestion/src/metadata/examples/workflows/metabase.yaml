@@ -1,0 +1,21 @@
+source:
+  type: metabase
+  serviceName: test
+  serviceConnection:
+    config:
+      type: Metabase
+      username: username
+      password: password
+      hostPort: http://hostPort
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

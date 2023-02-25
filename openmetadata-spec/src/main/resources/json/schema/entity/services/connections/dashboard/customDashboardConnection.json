@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/customDashboardConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomDashboardConnection",
+  "description": "Custom Dashboard Service connection to build a source that is not supported by OpenMetadata yet.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.CustomDashboardConnection",
+  "definitions": {
+    "customDashboardType": {
+      "title": "Service Type",
+      "description": "Custom dashboard service type",
+      "type": "string",
+      "enum": ["CustomDashboard"],
+      "default": "CustomDashboard"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Custom dashboard service type",
+      "$ref": "#/definitions/customDashboardType",
+      "default": "CustomDashboard"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["sourcePythonClass", "type"]
+}

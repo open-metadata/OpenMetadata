@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { isNil, isString } from 'lodash';
+import { isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getInfoElements } from '../../../utils/EntityUtils';
+import { getTagValue } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import TagsViewer from '../../tags-viewer/tags-viewer';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
+import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -32,20 +33,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   extraInfo,
   tags,
 }: Props) => {
-  const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-    if (isString(tag)) {
-      return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-        ? tag.split(FQN_SEPARATOR_CHAR)[1]
-        : tag;
-    } else {
-      return {
-        ...tag,
-        tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-          ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-          : tag.tagFQN,
-      };
-    }
-  };
+  const { t } = useTranslation();
 
   return (
     <div data-testid="table-body">
@@ -56,10 +44,10 @@ const TableDataCardBody: FunctionComponent<Props> = ({
               className="tw-flex tw-items-center"
               data-testid={info.key}
               key={i}>
-              {getInfoElements(info)}
+              <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                  |
+                  {t('label.pipe-symbol')}
                 </span>
               )}
             </span>
@@ -71,9 +59,10 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           <RichTextEditorPreviewer
             enableSeeMoreVariant={false}
             markdown={description}
+            maxLength={500}
           />
         ) : (
-          <span className="tw-no-description">No description</span>
+          <span className="tw-no-description">{t('label.no-description')}</span>
         )}
       </div>
       {Boolean(tags?.length) && (

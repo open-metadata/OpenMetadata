@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { RightOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
   FunctionComponent,
@@ -22,6 +22,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import TitleBreadcrumbSkeleton from '../../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
@@ -58,27 +59,42 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   }, []);
 
   return (
-    <nav className={className} data-testid="breadcrumb">
-      <ol className="list-reset tw-py-2 tw-rounded tw-flex">
-        {titleLinks.map((link, index) => {
-          const classes =
-            'link-title tw-truncate' +
-            (link.activeTitle ? ' tw-font-medium' : '');
+    <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
+      <nav className={className} data-testid="breadcrumb">
+        <ol className="list-reset tw-rounded tw-flex">
+          {titleLinks.map((link, index) => {
+            const classes =
+              'link-title tw-truncate' +
+              (link.activeTitle ? ' tw-font-medium' : '');
 
-          return (
-            <li
-              className="tw-flex tw-items-center"
-              data-testid="breadcrumb-link"
-              key={index}>
-              {link.imgSrc ? (
-                <img
-                  alt=""
-                  className="tw-inline tw-h-5 tw-mr-2"
-                  src={link.imgSrc}
-                />
-              ) : null}
-              {index < titleLinks.length - 1 && !noLink ? (
-                <>
+            return (
+              <li
+                className="tw-flex tw-items-center"
+                data-testid="breadcrumb-link"
+                key={index}>
+                {link.imgSrc ? (
+                  <img
+                    alt=""
+                    className="tw-inline tw-h-5 tw-mr-2"
+                    src={link.imgSrc}
+                  />
+                ) : null}
+                {index < titleLinks.length - 1 && !noLink ? (
+                  <>
+                    <Link
+                      className={classes}
+                      style={{
+                        maxWidth,
+                        fontSize: '16px',
+                      }}
+                      to={link.url}>
+                      {link.name}
+                    </Link>
+                    <span className="tw-px-2">
+                      <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                    </span>
+                  </>
+                ) : link.url ? (
                   <Link
                     className={classes}
                     style={{
@@ -87,50 +103,34 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     to={link.url}>
                     {link.name}
                   </Link>
-                  <span className="tw-px-2">
-                    <FontAwesomeIcon
-                      className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-                      icon={faAngleRight}
-                    />
-                  </span>
-                </>
-              ) : link.url ? (
-                <Link
-                  className={classes}
-                  style={{
-                    maxWidth,
-                  }}
-                  to={link.url}>
-                  {link.name}
-                </Link>
-              ) : (
-                <>
-                  <span
-                    className={classNames(
-                      classes,
-                      'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                ) : (
+                  <>
+                    <Tooltip align={{ offset: [0, 10] }} title={link.name}>
+                      <span
+                        className={classNames(
+                          classes,
+                          'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                        )}
+                        data-testid="inactive-link"
+                        style={{
+                          maxWidth,
+                        }}>
+                        {link.name}
+                      </span>
+                    </Tooltip>
+                    {noLink && index < titleLinks.length - 1 && (
+                      <span className="tw-px-2">
+                        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                      </span>
                     )}
-                    data-testid="inactive-link"
-                    style={{
-                      maxWidth,
-                    }}>
-                    {link.name}
-                  </span>
-                  {noLink && index < titleLinks.length - 1 && (
-                    <span className="tw-px-2">
-                      <FontAwesomeIcon
-                        className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-                        icon={faAngleRight}
-                      />
-                    </span>
-                  )}
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    </TitleBreadcrumbSkeleton>
   );
 };
 

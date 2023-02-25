@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,26 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { SIZE } from '../../enums/common.enum';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getTopPosition } from '../../utils/DropDownUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
+/**
+ * @deprecated -- Use AntD components instead
+ * @param param0
+ * @returns Dropdown list
+ */
 const DropDownList: FunctionComponent<DropDownListProp> = ({
   dropDownList,
   isLoading = false,
@@ -36,14 +47,16 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   domPosition,
   className = '',
   widthClass = 'tw-w-52',
+  removeOwner,
+  getTotalCountForGroup,
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
+  const { t } = useTranslation();
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
-  const [dropDownPosition, setDropDownPosition] = useState<
-    { bottom: string } | {}
-  >({});
+  const [dropDownPosition, setDropDownPosition] =
+    useState<{ bottom: string }>();
 
   const setCurrentTabOnMount = () => {
     const selectedItem = dropDownList.find((l) => l.value === value);
@@ -74,9 +87,13 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <div
         className="tw-text-grey-muted tw-px-4 tw-py-2"
         data-testid="empty-list">
-        <p className={widthClass}>
-          {searchText ? 'No match found' : 'No data available'}
-        </p>
+        <div className={widthClass}>
+          <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.SMALL}>
+            {searchText
+              ? t('message.no-match-found')
+              : t('message.no-data-available')}
+          </ErrorPlaceHolder>
+        </div>
       </div>
     );
   };
@@ -89,27 +106,87 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     });
   };
 
+  const getGroupCount = (groupName?: string): number => {
+    let count = 0;
+    if (controlledSearchStr === '' && getTotalCountForGroup && groupName) {
+      count = getTotalCountForGroup(groupName);
+    } else {
+      count = getSearchedListByGroup(groupName)?.length;
+    }
+
+    return count;
+  };
+
+  const removeOwnerButton = (item: DropDownListItem) => {
+    return !isNil(value) && item.value === value && removeOwner ? (
+      <Tooltip
+        title={t('label.remove-entity', {
+          entity: t('label.owner-lowercase'),
+        })}>
+        <button
+          className="cursor-pointer"
+          data-testid="remove-owner"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeOwner && removeOwner();
+          }}>
+          <SVGIcons
+            alt={t('label.remove-entity', {
+              entity: t('label.owner-lowercase'),
+            })}
+            icon={Icons.ICON_REMOVE}
+            title={t('label.remove-entity', {
+              entity: t('label.owner-lowercase'),
+            })}
+            width="16px"
+          />
+        </button>
+      </Tooltip>
+    ) : (
+      ''
+    );
+  };
+
   const getDropDownElement = (item: DropDownListItem, index: number) => {
     return (
       <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
+          'text-body d-flex items-center px-4 py-2 text-sm hover:tw-bg-body-hover',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
           {
-            'tw-cursor-not-allowed': item.disabled,
+            'opacity-60 cursor-not-allowed': item.disabled,
+            'cursor-pointer': !item.disabled,
           }
         )}
         data-testid="list-item"
         id={`menu-item-${index}`}
         key={index}
         role="menuitem"
-        onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
-        <p
-          className={classNames('tw-truncate', widthClass)}
-          title={item.name as string}>
-          {item.name}
-        </p>
+        onClick={(e) =>
+          !item.disabled && item.value !== value && onSelect?.(e, item.value)
+        }>
+        {item.type === 'user' ? (
+          <div className="w-full d-flex justify-between items-center">
+            <UserTag id={item.value as string} name={item.name as string} />
+
+            {removeOwnerButton(item)}
+          </div>
+        ) : (
+          <>
+            {item.icon}
+            <div
+              className={classNames(
+                'tw-truncate d-flex items-center justify-between',
+                widthClass
+              )}
+              title={item.name as string}>
+              {item.name}
+
+              {removeOwnerButton(item)}
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -166,9 +243,27 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       return getEmptyTextElement();
     }
 
+    // Filter select owner to top of list
+    const filteredResult = results.reduce(
+      (acc: DropDownListItem[], cv: DropDownListItem) => {
+        if (cv.value === value) {
+          if (acc.length) {
+            acc.unshift(cv);
+
+            return acc;
+          } else {
+            return [...acc, cv];
+          }
+        } else {
+          return [...acc, cv];
+        }
+      },
+      []
+    );
+
     return (
       <>
-        {results.map((item: DropDownListItem, index: number) =>
+        {filteredResult.map((item: DropDownListItem, index: number) =>
           getDropDownElement(item, index)
         )}
       </>
@@ -255,7 +350,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                   <input
                     className="tw-form-inputs tw-form-inputs-padding"
                     data-testid="searchInputText"
-                    placeholder="Search..."
+                    placeholder={`${t('label.search')}...`}
                     type="text"
                     value={controlledSearchStr}
                     onChange={(e) => {
@@ -275,7 +370,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                         onClick={() => setActiveTab(index + 1)}>
                         {grp}
                         {getCountBadge(
-                          getSearchedListByGroup(grp).length,
+                          getGroupCount(grp),
                           '',
                           activeTab === index + 1
                         )}

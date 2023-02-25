@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/dagsterConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DagsterConnection",
+  "description": "Dagster Metadata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.DagsterConnection",
+  "definitions": {
+    "DagsterType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Dagster"],
+      "default": "Dagster"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/DagsterType",
+      "default": "Dagster"
+    },
+    "host": {
+      "title": "Host",
+      "description": "URL to the Dagster instance",
+      "type": "string",
+      "format": "uri"
+    },
+    "token": {
+      "title": "Token",
+      "description": "To Connect to Dagster Cloud",
+      "type": "string",
+      "format": "password"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["host"]
+}

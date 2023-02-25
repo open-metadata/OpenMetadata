@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,72 +11,58 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
-import classNames from 'classnames';
-import { UserProfile } from 'Models';
-import React, { useEffect, useState } from 'react';
+import { AxiosError } from 'axios';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { Button } from 'components/buttons/Button/Button';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
+import { CookieStorage } from 'cookie-storage';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { createUser } from 'rest/userAPI';
+import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
-import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { createUser } from '../../axiosAPIs/userAPI';
-import { Button } from '../../components/buttons/Button/Button';
-import PageContainer from '../../components/containers/PageContainer';
-import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
-import { ROUTES } from '../../constants/constants';
+import { ELLIPSES, REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
+import { CreateUser } from '../../generated/api/teams/createUser';
+import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { fetchAllUsers } from '../../utils/UserDataUtils';
 
-const Signup = () => {
-  const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
-    []
-  );
+const cookieStorage = new CookieStorage();
+
+const SignUp = () => {
+  const { t } = useTranslation();
+  const {
+    setIsSigningIn,
+    jwtPrincipalClaims = [],
+    authorizerConfig,
+  } = useAuthContext();
+
+  const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
     displayName: appState.newUser.name || '',
-    name: getNameFromEmail(appState.newUser.email),
-    email: appState.newUser.email || '',
+    ...getNameFromUserData(
+      appState.newUser as UserProfile,
+      jwtPrincipalClaims,
+      authorizerConfig?.principalDomain
+    ),
   });
-  const [countTeams, setCountTeams] = useState<number>(0);
-  const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
 
-  const setTeamCount = (count = 0) => {
-    setCountTeams(count);
-  };
-
-  const getUserPermissions = () => {
-    getLoggedInUserPermissions()
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          appState.updateUserPermissions(res.data.metadataOperations);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-user-permission-error']
-        );
-      });
-  };
-
-  const createNewUser = (details: {
-    [name: string]: string | Array<string> | UserProfile;
-  }) => {
+  const createNewUser = (details: User | CreateUser) => {
     setLoading(true);
-    createUser(details)
+    createUser(details as CreateUser)
       .then((res) => {
-        if (res.data) {
-          appState.updateUserDetails(res.data);
-          fetchAllUsers();
-          getUserPermissions();
+        if (res) {
+          appState.updateUserDetails(res);
+          cookieStorage.removeItem(REDIRECT_PATHNAME);
+          setIsSigningIn(false);
           history.push(ROUTES.HOME);
         } else {
           setLoading(false);
@@ -93,7 +79,7 @@ const Signup = () => {
       });
   };
 
-  const onChangeHadler = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.persist();
     setDetails((prevState) => {
       return {
@@ -105,91 +91,51 @@ const Signup = () => {
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (countTeams) {
-      setTeamError(!selectedTeams.length);
-      if (details.name && details.displayName && selectedTeams.length > 0) {
-        createNewUser({
-          ...details,
-          teams: selectedTeams as Array<string>,
-          profile: {
-            images: getImages(appState.newUser.picture ?? ''),
-          },
-        });
-      }
-    } else {
-      if (details.name && details.displayName) {
-        createNewUser({
-          ...details,
-          teams: selectedTeams as Array<string>,
-          profile: {
-            images: getImages(appState.newUser.picture ?? ''),
-          },
-        });
-      }
-    }
-  };
-
-  const errorMsg = (value: string) => {
-    return (
-      <div
-        className="tw-notification tw-bg-error tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-        data-testid="toast">
-        <div className="tw-font-semibold tw-flex-shrink-0">
-          <SVGIcons alt="info" icon="error" title="Info" width="16px" />
-        </div>
-        <div className="tw-font-semibold tw-px-1">{value}</div>
-      </div>
-    );
-  };
-
-  useEffect(() => {
-    getTeams('', 0)
-      .then((res) => {
-        if (res.data) {
-          setTeamCount(res.data.paging?.total || 0);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setTeamCount(0);
+    if (details.name && details.displayName) {
+      createNewUser({
+        ...details,
+        teams: selectedTeams as Array<string>,
+        profile: {
+          images: getImages(appState.newUser.picture ?? ''),
+        },
       });
-  }, []);
-  useEffect(() => {
-    if (selectedTeams.length) {
-      setTeamError(false);
     }
-  }, [selectedTeams]);
+  };
 
   return (
     <>
       {!loading && (
-        <PageContainer>
+        <PageContainerV1>
           <div className="tw-h-screen tw-flex tw-justify-center">
             <div className="tw-flex tw-flex-col tw-items-center signup-box">
               <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
                 <SVGIcons
                   alt="OpenMetadata Logo"
+                  data-testid="om-logo"
                   icon={Icons.LOGO_SMALL}
                   width="50"
                 />
               </div>
               <div className="tw-mb-7">
-                <h4 className="tw-font-semibold">
-                  Join <span className="tw-text-primary">OpenMetadata</span>
+                <h4 className="tw-font-semibold" data-testid="om-heading">
+                  {t('label.join')}
+                  <span className="tw-text-primary">
+                    {t('label.open-metadata')}
+                  </span>
                 </h4>
               </div>
               <div className="tw-px-8 tw-w-full">
-                <form action="." method="POST" onSubmit={onSubmitHandler}>
+                <form
+                  action="."
+                  data-testid="create-user-form"
+                  method="POST"
+                  onSubmit={onSubmitHandler}>
                   <div className="tw-mb-4">
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                      data-testid="full-name-label"
                       htmlFor="displayName">
-                      Full name
+                      {t('label.full-name')}
                     </label>
                     <input
                       required
@@ -197,19 +143,23 @@ const Signup = () => {
                       className="tw-appearance-none tw-border tw-border-main  
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                      data-testid="full-name-input"
                       id="displayName"
                       name="displayName"
-                      placeholder="Your Full name"
+                      placeholder={t('label.your-entity', {
+                        entity: t('label.full-name'),
+                      })}
                       type="text"
                       value={details.displayName}
-                      onChange={onChangeHadler}
+                      onChange={onChangeHandler}
                     />
                   </div>
                   <div className="tw-mb-4">
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                      data-testid="username-label"
                       htmlFor="name">
-                      Username
+                      {t('label.username')}
                     </label>
                     <input
                       readOnly
@@ -217,19 +167,21 @@ const Signup = () => {
                       autoComplete="off"
                       className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                     tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                      data-testid="username-input"
                       id="name"
                       name="name"
-                      placeholder="Username"
+                      placeholder={t('label.username')}
                       type="text"
                       value={details.name}
-                      onChange={onChangeHadler}
+                      onChange={onChangeHandler}
                     />
                   </div>
                   <div className="tw-mb-4">
                     <label
                       className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                      data-testid="email-label"
                       htmlFor="email">
-                      Email
+                      {t('label.email')}
                     </label>
                     <input
                       readOnly
@@ -237,68 +189,59 @@ const Signup = () => {
                       autoComplete="off"
                       className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                     tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                      data-testid="email-input"
                       id="email"
                       name="email"
-                      placeholder="Your email address"
+                      placeholder={t('label.your-entity', {
+                        entity: `${t('label.email')} ${t('label.address')}`,
+                      })}
                       type="email"
                       value={details.email}
-                      onChange={onChangeHadler}
+                      onChange={onChangeHandler}
                     />
                   </div>
                   <div className="tw-mb-4">
                     <label
-                      className={classNames(
-                        'tw-block tw-text-body tw-text-grey-body tw-mb-2',
-                        {
-                          'required-field': countTeams,
-                        }
-                      )}>
-                      Select teams
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      data-testid="select-team-label">
+                      {t('label.select-field', {
+                        field: t('label.team-plural-lowercase'),
+                      })}
                     </label>
-                    <TeamsSelectable onSelectionChange={setSelectedTeams} />
-                    {teamError && errorMsg('Atleast one team is required')}
-                    {countTeams === 0 ? (
-                      <div
-                        className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-                        data-testid="toast">
-                        <div className="tw-font-semibold tw-flex-shrink-0">
-                          <SVGIcons
-                            alt="info"
-                            icon="info"
-                            title="Info"
-                            width="16px"
-                          />
-                        </div>
-                        <div className="tw-font-semibold tw-px-1">
-                          There is no team available.
-                        </div>
-                      </div>
-                    ) : null}
+                    <TeamsSelectable
+                      filterJoinable
+                      showTeamsAlert
+                      onSelectionChange={setSelectedTeams}
+                    />
                   </div>
                   <div className="tw-flex tw-my-7 tw-justify-end">
                     <Button
                       className="tw-text-white 
                        tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
+                      data-testid="create-button"
                       size="regular"
                       theme="primary"
                       type="submit"
                       variant="contained">
-                      Create
+                      {t('label.create')}
                     </Button>
                   </div>
                 </form>
               </div>
             </div>
           </div>
-        </PageContainer>
+        </PageContainerV1>
       )}
       {loading && (
-        <p className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center">
-          Creating Account ....
+        <p
+          className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center"
+          data-testid="loading-content">
+          {t('label.creating-account')}
+          {ELLIPSES}
         </p>
       )}
     </>
   );
 };
 
-export default Signup;
+export default SignUp;

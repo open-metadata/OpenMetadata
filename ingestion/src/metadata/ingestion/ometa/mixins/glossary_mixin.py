@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 T = TypeVar("T", bound=BaseModel)
 logger = ometa_logger()
@@ -33,7 +33,7 @@ class GlossaryMixin:
     """
 
     def create_glossary(self, glossaries_body):
-        """Method to create new Glossary category
+        """Method to create new Glossary
         Args:
             entity: Type to create
             glossaries_body (Glossary): body of the request

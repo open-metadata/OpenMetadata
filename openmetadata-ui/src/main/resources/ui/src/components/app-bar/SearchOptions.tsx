@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import Tags from 'components/Tag/Tags/tags';
 import React, { FunctionComponent, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { getExplorePathWithSearch } from '../../constants/constants';
-import Tags from '../tags/tags';
+import { getExplorePath } from '../../constants/constants';
 
 type SearchOptionsProp = {
   searchText: string;
@@ -63,7 +63,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
                 className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
                 data-testid="InOpenMetadata"
-                to={getExplorePathWithSearch(searchText)}
+                to={getExplorePath({ search: searchText })}
                 onClick={() => setIsOpen(false)}>
                 {searchText}
                 <Tags

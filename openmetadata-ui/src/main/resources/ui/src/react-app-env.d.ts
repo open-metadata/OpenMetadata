@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,19 +13,4 @@
 
 /* eslint-disable */
 /// <reference types="react-scripts" />
-declare module 'classnames';
-declare module 'draft-js';
-declare module 'react-draft-wysiwyg';
-declare module 'markdown-draft-js';
-declare module 'react-codemirror2';
-declare module 'react-slick';
-declare module 'slick-carousel';
 declare module 'react-table';
-declare module 'recharts';
-declare module 'diff';
-declare module '@deuex-solutions/react-tour';
-declare module 'dagre';
-declare module 'turndown';
-declare module 'quilljs-markdown';
-declare module 'quill-mention';
-declare module 'quill-emoji';

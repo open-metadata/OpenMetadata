@@ -271,8 +271,39 @@ def test_deltalake():
         "serviceName": "local_deltalake",
         "serviceConnection": {
             "config": {
-                "metastoreHostPort": "localhost:9083",
-                "metastoreFilePath": "<path_to_metastore>/metastore_db",
+                "metastoreConnection": {
+                    "metastoreDb": "jdbc:mysql://localhost:3306/demo_hive"
+                },
+                "appName": "MyApp",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+
+    config: WorkflowSource = WorkflowSource.parse_obj(source)
+    assert isinstance(config.serviceConnection.__root__.config, DeltaLakeConnection)
+
+    source = {
+        "type": "deltalake",
+        "serviceName": "local_deltalake",
+        "serviceConnection": {
+            "config": {
+                "metastoreConnection": {"metastoreHostPort": "localhost:9083"},
+                "appName": "MyApp",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+
+    config: WorkflowSource = WorkflowSource.parse_obj(source)
+    assert isinstance(config.serviceConnection.__root__.config, DeltaLakeConnection)
+
+    source = {
+        "type": "deltalake",
+        "serviceName": "local_deltalake",
+        "serviceConnection": {
+            "config": {
+                "metastoreConnection": {"metastoreFilePath": "/tmp/metastore.db"},
                 "appName": "MyApp",
             }
         },
@@ -372,10 +403,9 @@ def test_looker():
         "serviceConnection": {
             "config": {
                 "type": "Looker",
-                "username": "username",
-                "password": "password",
+                "clientId": "username",
+                "clientSecret": "password",
                 "hostPort": "http://hostPort",
-                "env": "env",
             }
         },
         "sourceConfig": {"config": {}},

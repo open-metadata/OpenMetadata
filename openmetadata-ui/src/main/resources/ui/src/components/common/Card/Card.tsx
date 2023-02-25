@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React from 'react';
@@ -26,15 +27,20 @@ const Card = ({ children, heading, action, className }: CardProps) => {
   return (
     <div
       className={classNames(
-        'tw-bg-white tw-border tw-border-border-gray tw-rounded-md tw-shadow-box tw-w-full',
+        'tw-bg-white tw-border tw-border-border-gray tw-rounded-md tw-w-full',
         className
       )}
       data-testid={`${lowerCase(heading)}-card-container`}>
-      <div className="tw-border-b tw-px-5 tw-py-3 tw-flex tw-justify-between">
-        <span className="tw-font-semibold">{heading}</span>
-        {action}
-      </div>
-      <div className="tw-px-5 tw-py-3">{children}</div>
+      <Row
+        align="middle"
+        className="tw-border-b tw-px-4 tw-py-2 tw-w-full"
+        justify="space-between">
+        <Col>
+          <span className="tw-font-medium">{heading}</span>
+        </Col>
+        <Col>{action}</Col>
+      </Row>
+      <div className="tw-px-4 tw-py-2">{children}</div>
     </div>
   );
 };

@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 // ***********************************************
 // This example commands.js shows you how to
 // create various custom commands and overwrite
@@ -23,6 +35,9 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+
+import { interceptURL, verifyResponseStatusCode } from '../common/common';
+import { BASE_URL, LOGIN } from '../constants/constants';
 
 Cypress.Commands.add('loginByGoogleApi', () => {
   cy.log('Logging in to Google');
@@ -62,13 +77,57 @@ Cypress.Commands.add('loginByGoogleApi', () => {
   });
 });
 
-Cypress.Commands.add('goToHomePage', () => {
-  cy.visit('/');
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
+  interceptURL('GET', '/api/v1/system/entities/count', 'entitiesCount');
+  interceptURL('GET', '/api/v1/feed*', 'feed');
+  interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
+  !doNotNavigate && cy.visit('/');
+  cy.get('[data-testid="whats-new-dialog"]')
+    .should('exist')
+    .then(() => {
+      cy.get('[role="dialog"]').should('be.visible');
+    });
   cy.get('[data-testid="closeWhatsNew"]').click();
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+  cy.get('[data-testid="whats-new-dialog"]').should('not.exist');
+  verifyResponseStatusCode('@entitiesCount', 200);
+  verifyResponseStatusCode('@feed', 200);
+  verifyResponseStatusCode('@userProfile', 200);
 });
 
 Cypress.Commands.add('clickOnLogo', () => {
   cy.get('#openmetadata_logo > [data-testid="image"]').click();
+});
+
+const resizeObserverLoopErrRe = /^[^(ResizeObserver loop limit exceeded)]/;
+Cypress.on('uncaught:exception', (err) => {
+  /* returning false here prevents Cypress from failing the test */
+  if (resizeObserverLoopErrRe.test(err.message)) {
+    return false;
+  }
+});
+
+Cypress.Commands.add('storeSession', (username, password) => {
+  /* 
+  Reference docs for session https://docs.cypress.io/api/commands/session
+  Its currently Experimental feature, but cypress is encouraging to use this feature
+  as Cypress.Cookies.preserveOnce() and Cypress.Cookies.defaults() has been deprecated
+  */
+
+  cy.session([username, password], () => {
+    cy.visit('/');
+    cy.get('[id="email"]').should('be.visible').clear().type(username);
+    cy.get('[id="password"]').should('be.visible').clear().type(password);
+    interceptURL('POST', '/api/v1/users/login', 'login');
+    cy.get('[data-testid="login"]')
+      .contains('Login')
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@login', 200);
+    cy.url().should('not.eq', `${BASE_URL}/signin`);
+  });
+});
+
+Cypress.Commands.add('login', () => {
+  cy.storeSession(LOGIN.username, LOGIN.password);
+  cy.goToHomePage();
 });

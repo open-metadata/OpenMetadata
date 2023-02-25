@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,27 +11,32 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import CronEditor from './CronEditor';
+import { CronEditorProp } from './CronEditor.interface';
+
+const mockProps: CronEditorProp = {
+  onChange: jest.fn,
+};
 
 describe('Test CronEditor component', () => {
   it('CronEditor component should render', async () => {
-    render(<CronEditor />);
+    render(<CronEditor {...mockProps} />);
 
     expect(await screen.findByTestId('cron-container')).toBeInTheDocument();
     expect(
       await screen.findByTestId('time-dropdown-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('ingestion-type')).toBeInTheDocument();
+    expect(await screen.findByTestId('cron-type')).toBeInTheDocument();
   });
 
-  it('Hour option should render corrosponding component', async () => {
+  it('Hour option should render corresponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
-    const ingestionType = await screen.findByTestId('ingestion-type');
-    userEvent.selectOptions(ingestionType, 'hour');
+    const cronType = await screen.findByTestId('cron-type');
+    userEvent.selectOptions(cronType, 'hour');
 
     expect(
       await screen.findByTestId('hour-segment-container')
@@ -49,8 +54,8 @@ describe('Test CronEditor component', () => {
   it('Minute option should render corrosponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
-    const ingestionType = await screen.findByTestId('ingestion-type');
-    userEvent.selectOptions(ingestionType, 'minute');
+    const cronType = await screen.findByTestId('cron-type');
+    userEvent.selectOptions(cronType, 'minute');
 
     expect(
       await screen.findByTestId('minute-segment-container')
@@ -65,11 +70,11 @@ describe('Test CronEditor component', () => {
     expect(await screen.findByText('10')).toBeInTheDocument();
   });
 
-  it('Day option should render corrosponding component', async () => {
+  it('Day option should render corresponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
-    const ingestionType = await screen.findByTestId('ingestion-type');
-    userEvent.selectOptions(ingestionType, 'day');
+    const cronType = await screen.findByTestId('cron-type');
+    userEvent.selectOptions(cronType, 'day');
 
     expect(
       await screen.findByTestId('day-segment-container')
@@ -87,15 +92,15 @@ describe('Test CronEditor component', () => {
     userEvent.selectOptions(minutOptions, '10');
     userEvent.selectOptions(hourOptions, '2');
 
-    expect((await screen.findAllByText('10')).length).toBe(2);
-    expect((await screen.findAllByText('02')).length).toBe(2);
+    expect(await screen.findAllByText('10')).toHaveLength(2);
+    expect(await screen.findAllByText('02')).toHaveLength(2);
   });
 
-  it('week option should render corrosponding component', async () => {
+  it('week option should render corresponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
-    const ingestionType = await screen.findByTestId('ingestion-type');
-    userEvent.selectOptions(ingestionType, 'week');
+    const cronType = await screen.findByTestId('cron-type');
+    userEvent.selectOptions(cronType, 'week');
 
     expect(
       await screen.findByTestId('week-segment-time-container')
@@ -116,7 +121,20 @@ describe('Test CronEditor component', () => {
     userEvent.selectOptions(minutOptions, '10');
     userEvent.selectOptions(hourOptions, '2');
 
-    expect((await screen.findAllByText('10')).length).toBe(2);
-    expect((await screen.findAllByText('02')).length).toBe(2);
+    expect(await screen.findAllByText('10')).toHaveLength(2);
+    expect(await screen.findAllByText('02')).toHaveLength(2);
+  });
+
+  it('None option should render corresponding component', async () => {
+    render(<CronEditor {...mockProps} />);
+
+    const cronType = await screen.findByTestId('cron-type');
+    await act(async () => {
+      userEvent.selectOptions(cronType, '');
+    });
+
+    expect(
+      await screen.findByTestId('manual-segment-container')
+    ).toBeInTheDocument();
   });
 });

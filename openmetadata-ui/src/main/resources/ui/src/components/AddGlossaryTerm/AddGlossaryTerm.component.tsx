@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,33 +11,33 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
+import { Space, Switch } from 'antd';
 import classNames from 'classnames';
+import Tags from 'components/Tag/Tags/tags';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import {
-  EditorContentRef,
-  FormattedGlossaryTermData,
-  FormattedUsersData,
-} from 'Models';
+import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
-import { TermReference } from '../../generated/entity/data/glossaryTerm';
 import {
-  errorMsg,
-  isUrlFriendlyName,
-  isValidUrl,
-  requiredField,
-} from '../../utils/CommonUtils';
+  GlossaryTerm,
+  TermReference,
+} from '../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../generated/type/entityReference';
+import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
-import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const Field = ({
@@ -70,18 +70,18 @@ const AddGlossaryTerm = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
+  const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
-  const [relatedTerms, setRelatedTerms] = useState<
-    Array<FormattedGlossaryTermData>
-  >([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
+  const [tags, setTags] = useState<EntityTags[]>([]);
+  const [relatedTerms, setRelatedTerms] = useState<GlossaryTerm[]>([]);
   const [synonyms, setSynonyms] = useState('');
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
-      setReviewer(glossaryData?.reviewers as FormattedUsersData[]);
+      setReviewer(glossaryData?.reviewers);
     }
   }, [glossaryData]);
 
@@ -93,16 +93,16 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
+  const handleRelatedTermsSave = (terms: GlossaryTerm[]) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
 
   const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
+    setShowReviewerModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -192,7 +192,7 @@ const AddGlossaryTerm = ({
   const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: !isUrlFriendlyName(name.trim()),
+      invalidName: allowedNameRegEx.test(name),
       invalidReferences: !isValidReferences(refs),
       description: !getDescription()?.trim(),
     };
@@ -209,33 +209,29 @@ const AddGlossaryTerm = ({
       }))
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
-    const updatedTerms = relatedTerms.map((term) => ({
-      id: term.id,
-      type: term.type,
-    }));
+    const updatedTerms = relatedTerms.map(function (term) {
+      return term.fullyQualifiedName || '';
+    });
+    const updatedReviewers = reviewer.map(function (r) {
+      return r.fullyQualifiedName || '';
+    });
 
     if (validateForm(updatedReference)) {
+      const updatedName = name.trim();
       const data: CreateGlossaryTerm = {
-        name,
-        displayName: name,
+        name: updatedName,
+        displayName: updatedName,
         description: getDescription(),
-        reviewers: reviewer.map((r) => ({
-          id: r.id,
-          type: r.type,
-        })),
+        reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
         references: updatedReference.length > 0 ? updatedReference : undefined,
         parent: !isUndefined(parentGlossaryData)
-          ? {
-              type: 'glossaryTerm',
-              id: parentGlossaryData.id,
-            }
+          ? parentGlossaryData.fullyQualifiedName
           : undefined,
         synonyms: synonyms ? synonyms.split(',') : undefined,
-        glossary: {
-          id: glossaryData.id,
-          type: 'glossary',
-        },
+        mutuallyExclusive,
+        glossary: glossaryData.name,
+        tags: tags,
       };
 
       onSave(data);
@@ -261,7 +257,7 @@ const AddGlossaryTerm = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <FontAwesomeIcon icon="check" />
+            <CheckOutlined />
           </Button>
         ) : (
           <Button
@@ -273,7 +269,7 @@ const AddGlossaryTerm = ({
             theme="primary"
             variant="contained"
             onClick={handleSave}>
-            Save
+            {t('label.save')}
           </Button>
         )}
       </>
@@ -283,16 +279,14 @@ const AddGlossaryTerm = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.configure-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </h6>
         <div className="tw-mb-5">
-          Every term in the glossary has a unique definition. Along with
-          defining the standard term for a concept, the synonyms as well as
-          related terms (for e.g., parent and child terms) can be specified.
-          References can be added to the assets related to the terms. New terms
-          can be added or updated to the Glossary. The glossary terms can be
-          reviewed by certain users, who can accept or reject the terms.
+          {t('message.configure-glossary-term-description')}
         </div>
-        {/* {getDocButton('Read Glossary Term Doc', '', 'glossary-term-doc')} */}
       </>
     );
   };
@@ -304,11 +298,15 @@ const AddGlossaryTerm = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.add-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </h6>
         <div className="tw-pb-3" data-testid="add-glossary-term">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
-              {requiredField('Name:')}
+              {requiredField(`${t('label.name')}:`)}
             </label>
 
             <input
@@ -316,16 +314,24 @@ const AddGlossaryTerm = ({
               data-testid="name"
               id="name"
               name="name"
-              placeholder="Name"
+              placeholder={t('label.name')}
               type="text"
               value={name}
               onChange={handleValidation}
             />
 
             {showErrorMsg.name
-              ? errorMsg('Glossary term name is required.')
+              ? errorMsg(
+                  t('message.field-text-is-required', {
+                    fieldText: `${t('label.glossary-term')} ${t('label.name')}`,
+                  })
+                )
               : showErrorMsg.invalidName
-              ? errorMsg('Glossary term name is invalid.')
+              ? errorMsg(
+                  t('message.field-text-is-invalid', {
+                    fieldText: `${t('label.glossary-term')} ${t('label.name')}`,
+                  })
+                )
               : null}
           </Field>
 
@@ -333,7 +339,7 @@ const AddGlossaryTerm = ({
             <label
               className="tw-block tw-form-label tw-mb-0"
               htmlFor="description">
-              {requiredField('Description:')}
+              {requiredField(`${t('label.description')}:`)}
             </label>
             <RichTextEditor
               data-testid="description"
@@ -341,12 +347,30 @@ const AddGlossaryTerm = ({
               readonly={!allowAccess}
               ref={markdownRef}
             />
-            {showErrorMsg.description && errorMsg('Description is required.')}
+            {showErrorMsg.description &&
+              errorMsg(
+                t('label.field-required', {
+                  field: t('label.description'),
+                })
+              )}
+          </Field>
+
+          <Field>
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
+              <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
+              <AddTags
+                data-testid="tags"
+                setTags={(tag: EntityTags[]) => setTags(tag)}
+              />
+            </Space>
           </Field>
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              Synonyms:
+              {`${t('label.synonyms')}:`}
             </label>
 
             <input
@@ -354,25 +378,47 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder="Enter comma seprated keywords"
+              placeholder={t('message.enter-comma-separated-keywords')}
               type="text"
               value={synonyms}
               onChange={handleValidation}
             />
           </Field>
 
-          <div data-testid="references">
-            <div className="tw-flex tw-items-center tw-mt-6">
-              <p className="w-form-label tw-mr-3">References</p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={addReferenceFields}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </div>
+          <div className="m-t-lg">
+            <Field>
+              <Space align="end">
+                <label
+                  className="tw-form-label m-b-0"
+                  data-testid="mutually-exclusive-label"
+                  htmlFor="mutuallyExclusive">
+                  {t('label.mutually-exclusive')}
+                </label>
+                <Switch
+                  checked={mutuallyExclusive}
+                  data-testid="mutually-exclusive-button"
+                  id="mutuallyExclusive"
+                  onChange={(value) => setMutuallyExclusive(value)}
+                />
+              </Space>
+            </Field>
+
+            <Field>
+              <Space align="end" data-testid="references">
+                <label className="tw-form-label m-b-0">
+                  {t('label.reference-plural')}
+                </label>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-reference"
+                  size="x-small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={addReferenceFields}>
+                  <PlusOutlined />
+                </Button>
+              </Space>
+            </Field>
 
             {references.map((value, i) => (
               <div className="tw-flex tw-items-center" key={i}>
@@ -382,7 +428,7 @@ const AddGlossaryTerm = ({
                       className="tw-form-inputs tw-form-inputs-padding"
                       id={`name-${i}`}
                       name="key"
-                      placeholder="Name"
+                      placeholder={t('label.name')}
                       type="text"
                       value={value.name}
                       onChange={(e) =>
@@ -395,7 +441,7 @@ const AddGlossaryTerm = ({
                       className="tw-form-inputs tw-form-inputs-padding"
                       id={`url-${i}`}
                       name="endpoint"
-                      placeholder="url"
+                      placeholder={t('label.url-lowercase')}
                       type="text"
                       value={value.endpoint}
                       onChange={(e) =>
@@ -415,29 +461,32 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt="delete"
+                    alt={t('message.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
-                    width="12px"
+                    width="16px"
                   />
                 </button>
               </div>
             ))}
             {showErrorMsg.invalidReferences
-              ? errorMsg('Endpoints should be valid URL.')
+              ? errorMsg(t('message.valid-url-endpoint'))
               : null}
           </div>
 
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Related terms </p>
+              <p className="w-form-label tw-mr-3">
+                {t('label.related-term-plural')}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
+                data-testid="add-related-terms"
                 size="x-small"
                 theme="primary"
                 variant="contained"
                 onClick={() => setShowRelatedTermsModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined />
               </Button>
             </div>
             <div className="tw-my-4">
@@ -450,7 +499,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleTermRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );
@@ -459,15 +508,17 @@ const AddGlossaryTerm = ({
           </Field>
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Reviewers </p>
+              <p className="w-form-label tw-mr-3">
+                {t('label.reviewer-plural')}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-reviewers"
                 size="x-small"
                 theme="primary"
                 variant="contained"
-                onClick={() => setShowRevieweModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                onClick={() => setShowReviewerModal(true)}>
+                <PlusOutlined />
               </Button>
             </div>
             <div className="tw-my-4">
@@ -480,7 +531,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleReviewerRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );
@@ -495,29 +546,31 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="text"
               onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
             {getSaveButton()}
           </Field>
         </div>
 
-        {showRelatedTermsModal && (
-          <RelatedTermsModal
-            header="Add Related Terms"
-            relatedTerms={relatedTerms}
-            onCancel={onRelatedTermsModalCancel}
-            onSave={handleRelatedTermsSave}
-          />
-        )}
+        <RelatedTermsModal
+          header={t('label.add-entity', {
+            entity: t('label.related-term-plural'),
+          })}
+          relatedTerms={relatedTerms}
+          visible={showRelatedTermsModal}
+          onCancel={onRelatedTermsModalCancel}
+          onSave={handleRelatedTermsSave}
+        />
 
-        {showRevieweModal && (
-          <ReviewerModal
-            header="Add Reviewers"
-            reviewer={reviewer}
-            onCancel={onReviewerModalCancel}
-            onSave={handleReviewerSave}
-          />
-        )}
+        <ReviewerModal
+          header={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
+          reviewer={reviewer}
+          visible={showReviewerModal}
+          onCancel={onReviewerModalCancel}
+          onSave={handleReviewerSave}
+        />
       </div>
     </PageLayout>
   );

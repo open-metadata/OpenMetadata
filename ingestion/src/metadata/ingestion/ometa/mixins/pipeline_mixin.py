@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -36,17 +36,16 @@ class OMetaPipelineMixin:
 
     client: REST
 
-    def add_pipeline_status(
-        self, pipeline: Pipeline, status: PipelineStatus
-    ) -> Pipeline:
+    def add_pipeline_status(self, fqn: str, status: PipelineStatus) -> Pipeline:
         """
         Given a pipeline and a PipelineStatus, send it
         to the Pipeline Entity
         """
         resp = self.client.put(
-            f"{self.get_suffix(Pipeline)}/{pipeline.id.__root__}/status",
+            f"{self.get_suffix(Pipeline)}/{fqn}/status",
             data=status.json(),
         )
+
         return Pipeline(**resp)
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
@@ -85,7 +84,7 @@ class OMetaPipelineMixin:
             concurrency=pipeline.concurrency,
             pipelineLocation=pipeline.pipelineLocation,
             startDate=pipeline.startDate,
-            service=pipeline.service,
+            service=pipeline.service.fullyQualifiedName,
             tasks=all_tasks,
             owner=pipeline.owner,
             tags=pipeline.tags,
@@ -112,7 +111,7 @@ class OMetaPipelineMixin:
             concurrency=pipeline.concurrency,
             pipelineLocation=pipeline.pipelineLocation,
             startDate=pipeline.startDate,
-            service=pipeline.service,
+            service=pipeline.service.fullyQualifiedName,
             tasks=[task for task in pipeline.tasks if task.name in task_ids],
             owner=pipeline.owner,
             tags=pipeline.tags,

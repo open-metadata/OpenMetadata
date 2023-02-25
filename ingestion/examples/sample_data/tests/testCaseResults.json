@@ -1,0 +1,581 @@
+{
+    "testCaseResults": [
+        {
+            "name": "table_column_count_equals",
+            "results": [
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 8 columns vs. the expected 10",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "8"
+                       }
+                ]
+                },
+                {
+                    "result": "Found 8 columns vs. the expected 10",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "8"
+                       }
+                    ]
+                },
+                {
+                    "result": "columnCount should not be None for tableColumnCountToEqual",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "None"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "10"
+                       }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "table_column_count_between",
+            "results": [
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "9"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "9"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "9"
+                       }
+                    ]
+                },
+                {
+                    "result": "columnCount should not be None for TableColumnCountToBeBetween",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "9"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "9"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "8"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "8"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 14 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "14"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "8"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "columnCount",
+                        "value": "8"
+                       }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "shop_id.column_value_max_to_be_between",
+            "results": [
+                {
+                    "result": "Found max=65 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "65"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=25 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "25"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=56 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "56"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=99 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "99"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=190 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "190"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=66 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "66"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=76 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "76"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=46 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "46"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found max=100 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "100"
+                       }
+                    ]
+                },
+                {
+                    "result": "We expect `max` to be informed on the profiler for ColumnValueMaxToBeBetween max=None.",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                        "name": "max",
+                        "value": "None"
+                       }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "last_name.column_values_to_match_regex",
+            "results": [
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "65"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 0 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "0"
+                       }
+                    ]
+                },
+                {
+                    "result": "Cannot find the configured column last_name for ColumnValuesToBeNotInSet",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "None"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "99"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 5 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "5"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 2 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "2"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "99"
+                       }
+                    ]
+                },
+                {
+                    "result": "Error computing ColumnValuesToMatchRegex for last_name - database error",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "None"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "99"
+                       }
+                    ]
+                },
+
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "likeCount",
+                        "value": "99"
+                       }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "zip.column_values_to_be_between",
+            "results": [
+                {
+                    "result": "We expect `min` & `max` to be informed on the profiler for ColumnValuesToBeBetween but got min=None, max=None.",
+                    "testCaseStatus": "Aborted",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "None"
+                       },
+                        {
+                        "name": "max",
+                        "value": "None"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found min=35005, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "35005"
+                       },
+                        {
+                        "name": "max",
+                        "value": "92808"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found min=90006, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "90006"
+                       },
+                        {
+                        "name": "max",
+                        "value": "92808"
+                       }
+                    ]
+                },
+                {
+                    "result": "Found min=90002, max=95640 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "90002"
+                       },
+                        {
+                        "name": "max",
+                        "value": "95640"
+                       }
+                    ]                
+                },
+                {
+                    "result": "Found min=90004, max=99001 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "90004"
+                       },
+                        {
+                        "name": "max",
+                        "value": "99001"
+                       }
+                    ]     
+                },
+                {
+                    "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "1001"
+                       },
+                        {
+                        "name": "max",
+                        "value": "2789"
+                       }
+                    ]  
+                },
+                {
+                    "result": "Found min=91009, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "91009"
+                       },
+                        {
+                        "name": "max",
+                        "value": "92808"
+                       }
+                    ]  
+                },
+                {
+                    "result": "Found min=90008, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "90008"
+                       },
+                        {
+                        "name": "max",
+                        "value": "92808"
+                       }
+                    ]  
+                },
+                {
+                    "result": "Found min=92000, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "92000"
+                       },
+                        {
+                        "name": "max",
+                        "value": "92808"
+                       }
+                    ]  
+                },
+
+                {
+                    "result": "Found min=90001, max=96612 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success",
+                    "testResultValues": [
+                        {
+                        "name": "min",
+                        "value": "90001"
+                       },
+                        {
+                        "name": "max",
+                        "value": "96612"
+                       }
+                    ] 
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createGlossaryTerm.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateGlossaryTermRequest",
+  "description": "Create Glossary term entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateGlossaryTerm",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "glossary": {
+      "description": "Name of the glossary that this term is part of.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "parent": {
+      "description": "Fully qualified name of  the parent glossary term.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "name": {
+      "description": "Preferred name for the glossary term.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary term.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary term.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "synonyms": {
+      "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      }
+    },
+    "relatedTerms": {
+      "description": "Other array of glossary term fully qualified names that are related to this glossary term.",
+      "type" : "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "references": {
+      "description": "Link to a reference from an external glossary.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
+      }
+    },
+    "reviewers": {
+      "description": "User names of the reviewers for this glossary.",
+      "type" : "array",
+      "items" : {
+        "$ref" : "../../entity/teams/user.json#/definitions/entityName"
+      }
+    },
+    "owner": {
+      "description": "Owner of this glossary term.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type" : "boolean",
+      "default" : "false"
+    }
+  },
+  "required": ["glossary", "name", "description"],
+  "additionalProperties": false
+}

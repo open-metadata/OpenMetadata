@@ -19,28 +19,25 @@ import com.google.auth.oauth2.ServiceAccountCredentials;
 import feign.RequestTemplate;
 import java.io.FileInputStream;
 import java.util.Arrays;
-import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
+@Slf4j
 public class GoogleAuthenticationProvider implements AuthenticationProvider {
-  private static final Logger LOG = LoggerFactory.getLogger(GoogleAuthenticationProvider.class);
-  private OpenMetadataServerConnection serverConfig;
-  private GoogleSSOClientConfig securityConfig;
+  private final GoogleSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
-  private final String OPENID_SCOPE = "https://www.googleapis.com/auth/plus.me";
-  private final String PROFILE_SCOPE = "https://www.googleapis.com/auth/userinfo.profile";
-  private final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
+  private static final String OPENID_SCOPE = "https://www.googleapis.com/auth/plus.me";
+  private static final String PROFILE_SCOPE = "https://www.googleapis.com/auth/userinfo.profile";
+  private static final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
 
-  public GoogleAuthenticationProvider(OpenMetadataServerConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.GOOGLE)) {
+  public GoogleAuthenticationProvider(OpenMetadataConnection iConfig) {
+    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.GOOGLE)) {
       LOG.error("Required type to invoke is Google for GoogleAuthentication Provider");
       throw new RuntimeException("Required type to invoke is Google for GoogleAuthentication Provider");
     }
-    serverConfig = iConfig;
 
     securityConfig = (GoogleSSOClientConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {
@@ -52,7 +49,7 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
   }
 
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
     return new GoogleAuthenticationProvider(iConfig);
   }
 
@@ -75,7 +72,7 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
         LOG.error("Credentials Path or Target Audience is null");
       }
     } catch (Exception ex) {
-      LOG.error("Google Authentication Provider error in getting access token" + ex.getMessage());
+      LOG.error("Google Authentication Provider error in getting access token: {}", ex.getMessage());
     }
     return generatedAuthToken;
   }

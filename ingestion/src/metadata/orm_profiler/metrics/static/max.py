@@ -14,15 +14,17 @@ Max Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
+
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_quantifiable
+from metadata.orm_profiler.orm.registry import is_date_time, is_quantifiable
 
 
 class Max(StaticMetric):
     """
-    MIN Metric
+    MAX Metric
 
     Given a column, return the max value.
     """
@@ -33,6 +35,23 @@ class Max(StaticMetric):
 
     @_label
     def fn(self):
-        if not is_quantifiable(self.col.type):
+        """sqlalchemy function"""
+        if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
         return func.max(column(self.col.name))
+
+    # pylint: disable=import-outside-toplevel
+    @_label
+    def df_fn(self, df=None):
+        """pandas function"""
+        from pandas import DataFrame
+
+        df = cast(DataFrame, df)
+
+        if is_quantifiable(self.col.type) or is_date_time(self.col.type):
+            return (
+                df[self.col.name].max()
+                if not isinstance(df[self.col.name].max(), list)
+                else df[self.col.name].apply(max).max()
+            )
+        return 0

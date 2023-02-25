@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,52 +11,10 @@
  *  limitations under the License.
  */
 
-import { FilterObject } from 'Models';
-import { getCurrentUserId } from '../utils/CommonUtils';
-import { getFilterString } from '../utils/FilterUtils';
+import { SearchIndex } from '../enums/search.enum';
 
 export const myDataSearchIndex =
-  'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index';
-
-export const myDataEntityCounts = {
-  tableCount: 0,
-  topicCount: 0,
-  dashboardCount: 0,
-  pipelineCount: 0,
-};
-
-export const myDataFilterType = [
-  { key: 'Owned', value: 'owner' },
-  { key: 'Following', value: 'followers' },
-];
-
-export const getFilters = (
-  myDataFilters: Array<string>,
-  filters: FilterObject
-) => {
-  const facetFilterString = getFilterString(filters);
-  let myDataFilterString = '';
-  myDataFilters.map((filter, index) => {
-    myDataFilterString += `${filter}:${getCurrentUserId()}${
-      index !== myDataFilters.length - 1 ? ' OR ' : ''
-    }`;
-  });
-
-  return `${
-    facetFilterString && myDataFilterString
-      ? `${facetFilterString} AND (${myDataFilterString})`
-      : myDataFilterString
-      ? `(${myDataFilterString})`
-      : `${facetFilterString}`
-  }`;
-};
-
-export const filterList = [
-  { name: 'All Activity Feeds', value: 'ALL' },
-  { name: 'My Data', value: 'OWNER' },
-  { name: 'Mentions', value: 'MENTIONS' },
-  { name: 'Following', value: 'FOLLOWS' },
-];
+  `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}` as SearchIndex;
 
 export const observerOptions = {
   root: null,

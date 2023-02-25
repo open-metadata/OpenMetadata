@@ -35,8 +35,9 @@ def validate_regex(regex_list: List[str]) -> None:
     for regex in regex_list:
         try:
             re.compile(regex)
-        except re.error:
-            raise InvalidPatternException(f"Invalid regex {regex}.")
+        except re.error as err:
+            msg = f"Invalid regex [{regex}]: {err}"
+            raise InvalidPatternException(msg) from err
 
 
 def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
@@ -55,7 +56,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
 
     if filter_pattern.includes:
         validate_regex(filter_pattern.includes)
-        return not any(
+        return not any(  # pylint: disable=use-a-generator
             [
                 name
                 for regex in filter_pattern.includes
@@ -65,7 +66,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
 
     if filter_pattern.excludes:
         validate_regex(filter_pattern.excludes)
-        return any(
+        return any(  # pylint: disable=use-a-generator
             [
                 name
                 for regex in filter_pattern.excludes
@@ -85,7 +86,7 @@ def filter_by_schema(
     Include takes precedence over exclude
 
     :param schema_filter_pattern: Model defining schema filtering logic
-    :param schema_name: table schema name
+    :param schema fqn: table schema fqn
     :return: True for filtering, False otherwise
     """
     return _filter(schema_filter_pattern, schema_name)
@@ -100,7 +101,7 @@ def filter_by_table(
     Include takes precedence over exclude
 
     :param table_filter_pattern: Model defining schema filtering logic
-    :param table_name: table name
+    :param table_fqn: table fqn
     :return: True for filtering, False otherwise
     """
     return _filter(table_filter_pattern, table_name)
@@ -115,13 +116,15 @@ def filter_by_chart(
     Include takes precedence over exclude
 
     :param chart_filter_pattern: Model defining chart filtering logic
-    :param chart_name: table chart name
+    :param chart_name: chart name
     :return: True for filtering, False otherwise
     """
     return _filter(chart_filter_pattern, chart_name)
 
 
-def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic: str) -> bool:
+def filter_by_topic(
+    topic_filter_pattern: Optional[FilterPattern], topic_name: str
+) -> bool:
     """
     Return True if the topic needs to be filtered, False otherwise
 
@@ -131,7 +134,7 @@ def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic: str) -
     :param topic_name: topic name
     :return: True for filtering, False otherwise
     """
-    return _filter(topic_filter_pattern, topic)
+    return _filter(topic_filter_pattern, topic_name)
 
 
 def filter_by_dashboard(
@@ -143,7 +146,7 @@ def filter_by_dashboard(
     Include takes precedence over exclude
 
     :param dashboard_filter_pattern: Model defining dashboard filtering logic
-    :param dashboard_name: table dashboard name
+    :param dashboard_name: dashboard name
     :return: True for filtering, False otherwise
     """
     return _filter(dashboard_filter_pattern, dashboard_name)
@@ -171,7 +174,7 @@ def filter_by_database(
     Include takes precedence over exclude
 
     :param database_filter_pattern: Model defining database filtering logic
-    :param database_name: table database name
+    :param database_name: database name
     :return: True for filtering, False otherwise
     """
     return _filter(database_filter_pattern, database_name)
@@ -190,3 +193,18 @@ def filter_by_pipeline(
     :return: True for filtering, False otherwise
     """
     return _filter(pipeline_filter_pattern, pipeline_name)
+
+
+def filter_by_mlmodel(
+    mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_name: str
+) -> bool:
+    """
+    Return True if the mlmodel needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param mlmodel_filter_pattern: Model defining the mlmodel filtering logic
+    :param mlmodel_name: mlmodel name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(mlmodel_filter_pattern, mlmodel_name)

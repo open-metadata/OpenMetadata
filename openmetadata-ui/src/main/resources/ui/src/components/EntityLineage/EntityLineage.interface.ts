@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
-import {
-  EntityLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
+import { LoadingState } from 'Models';
+import { HTMLAttributes } from 'react';
+import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
+import { EntityType } from '../../enums/entity.enum';
+import { Column } from '../../generated/entity/data/table';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 
 export interface SelectedNode {
   name: string;
@@ -30,12 +32,16 @@ export interface EntityLineageProp {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
+  entityType: EntityType;
   deleted?: boolean;
-  isOwner?: boolean;
+  hasEditAccess?: boolean;
+  isLoading?: boolean;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  onFullScreenClick?: () => void;
+  onExitFullScreenViewClick?: () => void;
 }
 
 export interface Edge {
@@ -60,16 +66,83 @@ export interface EdgeData {
 
 export interface CustomEdgeData {
   id: string;
+  label?: string;
+  pipeline?: EntityReference;
   source: string;
   target: string;
   sourceType: string;
   targetType: string;
+  isColumnLineage: boolean;
+  sourceHandle: string;
+  targetHandle: string;
+  selectedColumns?: string[];
+  isTraced?: boolean;
+  selected?: boolean;
+  columnFunctionValue?: string;
+  edge?: Edge;
+  isExpanded?: false;
 }
 
 export interface SelectedEdge {
   id: string;
   source: EntityReference;
   target: EntityReference;
+  data?: CustomEdgeData;
 }
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
+
+export type CustomElement = { node: Node[]; edge: FlowEdge[] };
+export type CustomFlow = Node | FlowEdge;
+export type ModifiedColumn = Column & {
+  type: string;
+};
+
+export interface CustomControlElementsProps {
+  deleted: boolean | undefined;
+  isEditMode: boolean;
+  hasEditAccess: boolean | undefined;
+  onClick: () => void;
+  onExpandColumnClick: () => void;
+  loading: boolean;
+  status: LoadingState;
+}
+
+export enum EdgeTypeEnum {
+  UP_STREAM = 'upstream',
+  DOWN_STREAM = 'downstream',
+  NO_STREAM = '',
+}
+
+export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
+  showZoom?: boolean;
+  showFitView?: boolean;
+  fitViewParams?: FitViewOptions;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onFitView?: () => void;
+  handleFullScreenViewClick?: () => void;
+  onExitFullScreenViewClick?: () => void;
+  deleted: boolean | undefined;
+  isEditMode: boolean;
+  hasEditAccess: boolean | undefined;
+  isColumnsExpanded: boolean;
+  onEditLinageClick: () => void;
+  onExpandColumnClick: () => void;
+  loading: boolean;
+  status: LoadingState;
+  zoomValue: number;
+  lineageData: EntityLineage;
+  onOptionSelect: (value?: string) => void;
+}
+
+export type LineagePos = 'from' | 'to';
+
+export interface LeafNodes {
+  upStreamNode: Array<string>;
+  downStreamNode: Array<string>;
+}
+export interface LoadingNodeState {
+  id: string | undefined;
+  state: boolean;
+}

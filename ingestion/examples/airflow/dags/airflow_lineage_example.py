@@ -13,7 +13,7 @@
 OpenMetadata Airflow Lineage Backend example. Airflow provides a pluggable lineage backend that can
 read a DAG's configured inlets and outlets to compose a lineage. With OpenMetadata we have a airflow lineage backend
 to get all of the workflows in Airflow and also any lineage user's configured.
-Please refer to https://docs.open-metadata.org/lineage/configure-airflow-lineage on how to configure the lineage backend
+Please refer to https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend on how to configure the lineage backend
 with Airflow Scheduler
 This is an example to demonstrate on how to configure a Airflow DAG's inlets and outlets
 """

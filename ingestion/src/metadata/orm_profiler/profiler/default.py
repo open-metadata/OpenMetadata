@@ -12,16 +12,15 @@
 """
 Default simple profiler to use
 """
-from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
+from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.metrics.core import Metric, add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
-from metadata.utils.constants import TEN_MIN
 
 
 def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
@@ -29,7 +28,10 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         # Table Metrics
         Metrics.ROW_COUNT.value,
         add_props(table=table)(Metrics.COLUMN_COUNT.value),
+        add_props(table=table)(Metrics.COLUMN_NAMES.value),
+        add_props(table=table)(Metrics.SYSTEM.value),
         # Column Metrics
+        Metrics.MEDIAN.value,
         Metrics.MEAN.value,
         Metrics.COUNT.value,
         Metrics.DISTINCT_COUNT.value,
@@ -57,22 +59,16 @@ class DefaultProfiler(Profiler):
 
     def __init__(
         self,
-        session: Session,
-        table: DeclarativeMeta,
-        ignore_cols: Optional[List[str]] = None,
-        profile_date: datetime = datetime.now(),
-        profile_sample: Optional[float] = None,
-        timeout_seconds: Optional[int] = TEN_MIN,
+        profiler_interface: ProfilerProtocol,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,
+        exclude_columns: Optional[List[str]] = None,
     ):
 
-        _metrics = get_default_metrics(table)
+        _metrics = get_default_metrics(profiler_interface.table)
 
         super().__init__(
             *_metrics,
-            session=session,
-            table=table,
-            ignore_cols=ignore_cols,
-            profile_date=profile_date,
-            profile_sample=profile_sample,
-            timeout_seconds=timeout_seconds,
+            profiler_interface=profiler_interface,
+            include_columns=include_columns,
+            exclude_columns=exclude_columns,
         )

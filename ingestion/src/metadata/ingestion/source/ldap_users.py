@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Source to ingest LDAP users
+"""
 from typing import Iterable
 
 from ldap3 import ALL, LEVEL, Connection, Server
@@ -32,6 +34,10 @@ class LDAPUserConfig(ConfigModel):
 
 
 class LdapUsersSource(Source[OMetaUserProfile]):
+    """
+    LDAP connector implementation
+    """
+
     config: LDAPUserConfig
     status: SourceStatus
 
@@ -65,14 +71,18 @@ class LdapUsersSource(Source[OMetaUserProfile]):
                 arr.append(entry)
             return arr
 
+        return None
+
     def ldap_connection(self):
-        s = Server(self.config.server, get_info=ALL)
-        c = Connection(s, user=self.config.username, password=self.config.password)
-        c.open()
-        if not c.bind():
+        server = Server(self.config.server, get_info=ALL)
+        connection = Connection(
+            server, user=self.config.username, password=self.config.password
+        )
+        connection.open()
+        if not connection.bind():
             logger.info("LDAP Connection Unsuccessful")
             return False
-        return c
+        return connection
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):

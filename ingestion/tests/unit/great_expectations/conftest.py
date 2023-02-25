@@ -18,12 +18,6 @@ from unittest import mock
 from pytest import fixture
 
 from metadata.great_expectations.action import OpenMetadataValidationAction
-from metadata.great_expectations.builders.column.base_column_test_builder import (
-    BaseColumnTestBuilder,
-)
-from metadata.great_expectations.builders.table.base_table_test_builders import (
-    BaseTableTestBuilder,
-)
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
 )
@@ -72,16 +66,6 @@ def mocked_ge_data_context():
 
 
 @fixture(scope="module")
-def mocked_base_column_builder():
-    class MockedBaseColumnBuilder(BaseColumnTestBuilder):
-        def _build_test(self):
-            ...
-
-    instance = MockedBaseColumnBuilder()
-    return instance
-
-
-@fixture(scope="module")
 def mocked_ge_column_result():
     return {
         "success": True,
@@ -96,16 +80,6 @@ def mocked_ge_column_result():
         },
         "result": {"unexpected_percent": 0.0},
     }
-
-
-@fixture(scope="module")
-def mocked_base_table_builder():
-    class MockedBaseTableBuilder(BaseTableTestBuilder):
-        def _build_test(self):
-            ...
-
-    instance = MockedBaseTableBuilder()
-    return instance
 
 
 @fixture(scope="module")

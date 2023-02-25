@@ -14,38 +14,31 @@
 package org.openmetadata.client.security;
 
 import feign.RequestTemplate;
-import io.swagger.client.ApiClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.interceptors.OktaAccessTokenRequestInterceptor;
-import org.openmetadata.client.model.OktaAccessTokenResponse;
+import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.model.OktaSSOConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.OktaAccessTokenApi;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
+@Slf4j
 public class OktaAuthenticationProvider implements AuthenticationProvider {
-
-  private static final Logger LOG = LoggerFactory.getLogger(GoogleAuthenticationProvider.class);
-
-  public static final String clientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
-  private OpenMetadataServerConnection serverConfig;
-  private OktaSSOConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
-  private OktaAccessTokenApi oktaSSOClient;
+  private final OktaAccessTokenApi oktaSSOClient;
 
-  public OktaAuthenticationProvider(OpenMetadataServerConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.OKTA)) {
+  public OktaAuthenticationProvider(OpenMetadataConnection iConfig) {
+    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.OKTA)) {
       LOG.error("Required type to invoke is OKTA for OKTA Authentication Provider");
       throw new RuntimeException("Required type to invoke is OKTA for OKTA Authentication Provider");
     }
-    serverConfig = iConfig;
 
-    securityConfig = (OktaSSOConfig) iConfig.getSecurityConfig();
+    OktaSSOConfig securityConfig = (OktaSSOConfig) iConfig.getSecurityConfig();
     if (securityConfig == null) {
       LOG.error("Security Config is missing, it is required");
       throw new RuntimeException("Security Config is missing, it is required");
@@ -61,13 +54,13 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
   }
 
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
     return new OktaAuthenticationProvider(iConfig);
   }
 
   @Override
   public String authToken() {
-    OktaAccessTokenResponse resp = oktaSSOClient.getAccessToken("client_credentials", "test");
+    AccessTokenResponse resp = oktaSSOClient.getAccessToken("client_credentials", "test");
     generatedAuthToken = resp.getAccessToken();
     expirationTimeMillis = Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
     return generatedAuthToken;

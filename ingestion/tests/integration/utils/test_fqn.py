@@ -34,7 +34,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.fqn import FQNBuildingException
@@ -46,7 +48,13 @@ class FQNBuildTest(TestCase):
     Install the ingestion package before running the tests
     """
 
-    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        authProvider="openmetadata",
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
+    )
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -74,28 +82,21 @@ class FQNBuildTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
 
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db", type="database"
-        )
-
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema", database=cls.db_reference
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
         )
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-        )
-
         create = CreateTableRequest(
             name="test",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -172,4 +173,28 @@ class FQNBuildTest(TestCase):
         self.assertEqual(
             str(context.exception),
             "Service Name and Table Name should be informed, but got service=`None`, table=`None`",
+        )
+
+    def test_split_table_name(self):
+        """Different tables are properly partitioned"""
+
+        self.assertEqual(
+            {"database": "database", "database_schema": "schema", "table": "table"},
+            fqn.split_table_name(table_name="database.schema.table"),
+        )
+
+        self.assertEqual(
+            {"database": None, "database_schema": "schema", "table": "table"},
+            fqn.split_table_name(table_name="schema.table"),
+        )
+
+        self.assertEqual(
+            {"database": None, "database_schema": None, "table": "table"},
+            fqn.split_table_name(table_name="table"),
+        )
+
+        # We also clean quotes
+        self.assertEqual(
+            {"database": "database", "database_schema": "schema", "table": "table"},
+            fqn.split_table_name(table_name='database."schema".table'),
         )

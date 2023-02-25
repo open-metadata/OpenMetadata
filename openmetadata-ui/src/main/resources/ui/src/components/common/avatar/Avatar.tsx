@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,12 +22,14 @@ const Avatar = ({
   textClass = '',
   className = '',
   type = 'square',
+  height,
 }: {
   name: string;
   width?: string;
   textClass?: string;
   className?: string;
   type?: ImageShape;
+  height?: string;
 }) => {
   const { color, character } = getRandomColor(name);
 
@@ -37,8 +39,9 @@ const Avatar = ({
         'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
         className
       )}
+      data-testid="avatar"
       style={{
-        height: `${width}px`,
+        height: `${height || width}px`,
         width: `${width}px`,
         borderRadius: type === 'circle' ? '50%' : '4px',
         background: color,

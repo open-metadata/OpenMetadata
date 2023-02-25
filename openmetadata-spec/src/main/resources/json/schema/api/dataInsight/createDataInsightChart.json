@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/dataInsight/createDataInsightChart.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDataInsightChart",
+  "description": "Payload to create a data insight chart",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.dataInsight.CreateDataInsightChart",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this data insight chart.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name the data insight chart.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the data insight chart.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "dataIndexType": {
+      "description": "Elasticsearch index name",
+      "$ref": "../../dataInsight/dataInsightChart.json#/definitions/dataReportIndex"
+    },
+    "dimensions": {
+      "description": "Dimensions of the chart",
+      "type": "array",
+      "items": {
+        "$ref": "../../dataInsight/dataInsightChart.json#/definitions/chartParameterValues"
+      }
+    },
+    "metrics": {
+      "description": "Metrics of the chart",
+      "type": "array",
+      "items": {
+        "$ref": "../../dataInsight/dataInsightChart.json#/definitions/chartParameterValues"
+      }
+    },
+    "owner": {
+      "description": "Owner of this chart",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

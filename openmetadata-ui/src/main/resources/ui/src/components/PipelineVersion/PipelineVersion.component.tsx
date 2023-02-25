@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,28 +11,36 @@
  *  limitations under the License.
  */
 
+import { Space, Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
-import { ChangeDescription } from '../../generated/entity/data/pipeline';
+import {
+  ChangeDescription,
+  Pipeline,
+  Task,
+} from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { isEven } from '../../utils/CommonUtils';
 import {
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { PipelineVersionProp } from './PipelineVersion.interface';
@@ -54,7 +62,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   );
   const tabs = [
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -68,7 +76,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const getPipelineDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -125,7 +133,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
     const extraInfo: Array<ExtraInfo> = [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           !isUndefined(ownerDiff.added) ||
           !isUndefined(ownerDiff.deleted) ||
@@ -141,7 +149,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
-        key: 'Tier',
+        key: t('label.tier'),
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
@@ -154,7 +162,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: currentVersionData.pipelineUrl,
+        value: (currentVersionData as Pipeline).pipelineUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
@@ -180,16 +188,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem);
+        uniqueTags.push(elem as TagLabelWithStatus);
       }
     });
 
@@ -207,6 +214,48 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       currentVersionData.changeDescription as ChangeDescription
     );
   }, [currentVersionData]);
+
+  const tableColumn: ColumnsType<Task> = useMemo(
+    () => [
+      {
+        title: t('label.task-name'),
+        dataIndex: 'displayName',
+        key: 'displayName',
+        render: (text, record) => (
+          <Link target="_blank" to={{ pathname: record.taskUrl }}>
+            <Space>
+              <span>{text}</span>
+              <SVGIcons
+                alt="external-link"
+                className="tw-align-middle"
+                icon="external-link"
+                width="16px"
+              />
+            </Space>
+          </Link>
+        ),
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        render: (text) =>
+          text ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
+          ),
+      },
+      {
+        title: t('label.task-type'),
+        dataIndex: 'taskType',
+        key: 'taskType',
+      },
+    ],
+    []
+  );
 
   return (
     <PageContainer>
@@ -242,70 +291,16 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                       description={getPipelineDescription()}
                     />
                   </div>
-                  <div className="tw-table-responsive tw-my-6 tw-col-span-full">
-                    <table className="tw-w-full" data-testid="schema-table">
-                      <thead>
-                        <tr className="tableHead-row">
-                          <th className="tableHead-cell">Task Name</th>
-                          <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell">Task Type</th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {currentVersionData?.tasks?.map((task, index) => (
-                          <tr
-                            className={classNames(
-                              'tableBody-row',
-                              !isEven(index + 1) ? 'odd-row' : null
-                            )}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <Link
-                                target="_blank"
-                                to={{ pathname: task.taskUrl }}>
-                                <span className="tw-flex">
-                                  <span className="tw-mr-1">
-                                    {task.displayName}
-                                  </span>
-                                  <SVGIcons
-                                    alt="external-link"
-                                    className="tw-align-middle"
-                                    icon="external-link"
-                                    width="12px"
-                                  />
-                                </span>
-                              </Link>
-                            </td>
-                            <td className="tw-group tableBody-cell tw-relative">
-                              <div
-                                className="tw-cursor-pointer hover:tw-underline tw-flex"
-                                data-testid="description">
-                                <div>
-                                  {task.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={task.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
-                                  )}
-                                </div>
-                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="10px"
-                                  />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="tableBody-cell">{task.taskType}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="m-y-md tw-col-span-full">
+                    <Table
+                      bordered
+                      columns={tableColumn}
+                      data-testid="schema-table"
+                      dataSource={(currentVersionData as Pipeline)?.tasks}
+                      pagination={false}
+                      rowKey="name"
+                      size="small"
+                    />
                   </div>
                 </div>
               </div>

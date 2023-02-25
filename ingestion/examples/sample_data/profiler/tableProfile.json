@@ -1,0 +1,1040 @@
+{
+    "profiles": [
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+            "profile": [
+                {
+                    "columnCount": 12.0,
+                    "rowCount": 14567.0,
+                    "columnProfile": [
+                        {
+                            "name": "shop_id",
+                            "valuesCount": 14567.0,
+                            "median": 7654.0,
+                            "max": 587.0,
+                            "mean": 45.0,
+                            "min": 1.0,
+                            "stddev": 35.0,
+                            "sum": 1367.0,
+                            "uniqueCount": 14567.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "address_id",
+                            "valuesCount": 14567.0,
+                            "median": 7654.0,
+                            "max": 14509.0,
+                            "mean": 567.0,
+                            "min": 1.0,
+                            "stddev": 190.0,
+                            "sum": 34526.0,
+                            "uniqueCount": 14567.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "first_name",
+                            "valuesCount": 14509.0,
+                            "nullCount": 25.0,
+                            "nullProportion": 0.001,
+                            "uniqueCount": 0.0,
+                            "uniqueProportion": 0.0,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 14.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "last_name",
+                            "valuesCount": 14509.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address1",
+                            "valuesCount": 14509.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address2",
+                            "valuesCount": 10.0,
+                            "nullCount": 14499.0,
+                            "nullProportion": 0.9987,
+                            "uniqueCount": 10.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 10.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "company",
+                            "valuesCount": 560.0,
+                            "nullCount": 14457.0,
+                            "nullProportion": 0.9876,
+                            "uniqueCount": 560.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "city",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "region",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "zip",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "country",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "phone",
+                            "valuesCount": 14509.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 14509.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0,
+                            "minLength": 6.0,
+                            "maxLength": 10.0,
+                            "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 109543
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 10435
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 34
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 55
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 55973
+                        }
+                    ]
+                },
+                {
+                    "columnCount": 12.0,
+                    "rowCount": 13256.0,
+                    "columnProfile": [
+                        {
+                            "name": "shop_id",
+                            "valuesCount": 13256.0,
+                            "median": 7344.0,
+                            "max": 542.0,
+                            "mean": 45.0,
+                            "min": 1.0,
+                            "stddev": 35.0,
+                            "sum": 1367.0,
+                            "uniqueCount": 13256.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 13256.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "address_id",
+                            "valuesCount": 13256.0,
+                            "median": 7654.0,
+                            "max": 14509.0,
+                            "mean": 510.0,
+                            "min": 1.0,
+                            "stddev": 190.0,
+                            "sum": 29526.0,
+                            "uniqueCount": 13256.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "first_name",
+                            "valuesCount": 13256.0,
+                            "nullCount": 25.0,
+                            "nullProportion": 0.001,
+                            "uniqueCount": 0.0,
+                            "uniqueProportion": 0.0,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 14.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "last_name",
+                            "valuesCount": 13256.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 79.76,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address1",
+                            "valuesCount": 13256.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 79.76,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address2",
+                            "valuesCount": 10.0,
+                            "nullCount": 14499.0,
+                            "nullProportion": 0.9987,
+                            "uniqueCount": 10.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 10.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "company",
+                            "valuesCount": 560.0,
+                            "nullCount": 14457.0,
+                            "nullProportion": 0.9876,
+                            "uniqueCount": 560.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "city",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "region",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "zip",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "country",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "phone",
+                            "valuesCount": 13256.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 14509.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0,
+                            "minLength": 6.0,
+                            "maxLength": 10.0,
+                            "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 197352
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 1083524
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 37251
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 1243
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 5597329
+                        }
+                    ]
+                },
+                {
+                    "columnCount": 12.0,
+                    "rowCount": 10256.0,
+                    "columnProfile": [
+                        {
+                            "name": "shop_id",
+                            "valuesCount": 10256.0,
+                            "median": 7344.0,
+                            "max": 542.0,
+                            "mean": 45.0,
+                            "min": 1.0,
+                            "stddev": 35.0,
+                            "sum": 1367.0,
+                            "uniqueCount": 10098.0,
+                            "uniqueProportion": 0.91,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 10256.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "address_id",
+                            "valuesCount": 10256.0,
+                            "median": 7654.0,
+                            "max": 14509.0,
+                            "mean": 510.0,
+                            "min": 1.0,
+                            "stddev": 190.0,
+                            "sum": 29526.0,
+                            "uniqueCount": 10256.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "first_name",
+                            "valuesCount": 10256.0,
+                            "nullCount": 25.0,
+                            "nullProportion": 0.001,
+                            "uniqueCount": 0.0,
+                            "uniqueProportion": 0.0,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 14.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "last_name",
+                            "valuesCount": 10256.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address1",
+                            "valuesCount": 10256.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address2",
+                            "valuesCount": 28.0,
+                            "nullCount": 10242.0,
+                            "nullProportion": 0.9896,
+                            "uniqueCount": 10.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 10.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "company",
+                            "valuesCount": 560.0,
+                            "nullCount": 14457.0,
+                            "nullProportion": 0.9876,
+                            "uniqueCount": 560.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "city",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.5734,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "region",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "zip",
+                            "valuesCount": 11567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "country",
+                            "valuesCount": 11567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.100,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "phone",
+                            "valuesCount": 10256.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 14509.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0,
+                            "minLength": 6.0,
+                            "maxLength": 10.0,
+                            "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 35
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 198
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 34831
+                        }
+                    ]
+                },
+                {
+                    "columnCount": 12.0,
+                    "rowCount": 8945.0,
+                    "columnProfile": [
+                        {
+                            "name": "shop_id",
+                            "valuesCount": 8945.0,
+                            "median": 7344.0,
+                            "max": 542.0,
+                            "mean": 45.0,
+                            "min": 1.0,
+                            "stddev": 35.0,
+                            "sum": 1367.0,
+                            "uniqueCount": 10098.0,
+                            "uniqueProportion": 0.91,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 8945.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "address_id",
+                            "valuesCount": 8945.0,
+                            "median": 7654.0,
+                            "max": 14509.0,
+                            "mean": 510.0,
+                            "min": 1.0,
+                            "stddev": 190.0,
+                            "sum": 29526.0,
+                            "uniqueCount": 8945.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "first_name",
+                            "valuesCount": 8945.0,
+                            "nullCount": 25.0,
+                            "nullProportion": 0.001,
+                            "uniqueCount": 0.0,
+                            "uniqueProportion": 0.0,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 14.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "last_name",
+                            "valuesCount": 8945.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address1",
+                            "valuesCount": 8945.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address2",
+                            "valuesCount": 28.0,
+                            "nullCount": 10242.0,
+                            "nullProportion": 0.9896,
+                            "uniqueCount": 10.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 10.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "company",
+                            "valuesCount": 560.0,
+                            "nullCount": 14457.0,
+                            "nullProportion": 0.9876,
+                            "uniqueCount": 560.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "city",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.5734,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "region",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "zip",
+                            "valuesCount": 9876.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "country",
+                            "valuesCount": 6789.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.100,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "phone",
+                            "valuesCount": 8945.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 14509.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0,
+                            "minLength": 6.0,
+                            "maxLength": 10.0,
+                            "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 19373
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 27621
+                        }
+                    ]
+                },
+                {
+                    "columnCount": 12.0,
+                    "rowCount": 5461.0,
+                    "columnProfile": [
+                        {
+                            "name": "shop_id",
+                            "valuesCount": 5461.0,
+                            "median": 7344.0,
+                            "max": 542.0,
+                            "mean": 45.0,
+                            "min": 1.0,
+                            "stddev": 35.0,
+                            "sum": 1367.0,
+                            "uniqueCount": 10098.0,
+                            "uniqueProportion": 0.91,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 5461.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "address_id",
+                            "valuesCount": 5461.0,
+                            "median": 7654.0,
+                            "max": 14509.0,
+                            "mean": 510.0,
+                            "min": 1.0,
+                            "stddev": 190.0,
+                            "sum": 29526.0,
+                            "uniqueCount": 5461.0,
+                            "uniqueProportion": 1.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0
+                        },
+                        {
+                            "name": "first_name",
+                            "valuesCount": 5461.0,
+                            "nullCount": 25.0,
+                            "nullProportion": 0.001,
+                            "uniqueCount": 0.0,
+                            "uniqueProportion": 0.0,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 14.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "last_name",
+                            "valuesCount": 5461.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address1",
+                            "valuesCount": 5461.0,
+                            "nullCount": 167.0,
+                            "nullProportion": 0.01,
+                            "uniqueCount": 1398.0,
+                            "uniqueProportion": 0.7976,
+                            "distinctCount": 5.0,
+                            "distinctProportion": 0.050505050505050504,
+                            "minLength": 6.0,
+                            "maxLength": 15.0,
+                            "mean": 8.0
+                        },
+                        {
+                            "name": "address2",
+                            "valuesCount": 28.0,
+                            "nullCount": 10242.0,
+                            "nullProportion": 0.9896,
+                            "uniqueCount": 10.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 10.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "company",
+                            "valuesCount": 560.0,
+                            "nullCount": 14457.0,
+                            "nullProportion": 0.9876,
+                            "uniqueCount": 560.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "city",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.5734,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "region",
+                            "valuesCount": 12567.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "zip",
+                            "valuesCount": 3987.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.10,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "country",
+                            "valuesCount": 4561.0,
+                            "nullCount": 234.0,
+                            "nullProportion": 0.8976,
+                            "uniqueCount": 789.0,
+                            "uniqueProportion": 0.6134,
+                            "distinctCount": 560.0,
+                            "distinctProportion": 0.100,
+                            "minLength": 6.0,
+                            "maxLength": 156.0,
+                            "mean": 98.0
+                        },
+                        {
+                            "name": "phone",
+                            "valuesCount": 5461.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 14509.0,
+                            "uniqueProportion": 1.0,
+                            "distinctCount": 14509.0,
+                            "distinctProportion": 1.0,
+                            "minLength": 6.0,
+                            "maxLength": 10.0,
+                            "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 193864
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 10384
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 2945
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 231
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 2947
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.fact_session",
+            "profile": [
+                {
+                    "columnCount": 16.0,
+                    "rowCount": 10076543.0,
+                    "columnProfile": [
+                        {
+                            "name": "completed_first_order_at",
+                            "valuesCount": 8076533.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 7076543.0,
+                            "uniqueProportion": 0.765432,
+                            "distinctCount": 7076543.0,
+                            "distinctProportion": 0.765432,
+                            "min": "2018-01-01T23:45:21Z",
+                            "max": "2018-04-09T01:01:54Z"
+                        },
+                        {
+                            "name": "count_of_distinct_products_added_to_cart",
+                            "valuesCount": 10076543.0,
+                            "median": 3.0,
+                            "max": 143.0,
+                            "mean": 2.3,
+                            "min": 1.0,
+                            "stddev": 1.67,
+                            "sum": 1007987.0,
+                            "uniqueCount": 153.0,
+                            "uniqueProportion": 0.0865,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "distinctCount": 152.0,
+                            "distinctProportion": 0.0864
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 109543
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 10435
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 34
+                        }
+                    ]
+                },
+                {
+                    "columnCount": 16.0,
+                    "rowCount": 10016563.0,
+                    "columnProfile": [
+                        {
+                            "name": "completed_first_order_at",
+                            "valuesCount": 7976533.0,
+                            "nullCount": 0.0,
+                            "nullProportion": 0.0,
+                            "uniqueCount": 7976533.0,
+                            "uniqueProportion": 0.795432,
+                            "distinctCount": 7976533.0,
+                            "distinctProportion": 0.795432,
+                            "min": "2017-01-01T23:45:21Z",
+                            "max": "2018-04-08T23:32:54Z"
+                        },
+                        {
+                            "name": "count_of_distinct_products_added_to_cart",
+                            "valuesCount": 7976533.0,
+                            "median": 3.0,
+                            "max": 143.0,
+                            "mean": 2.3,
+                            "min": 1.0,
+                            "stddev": 1.67,
+                            "sum": 7976533.0,
+                            "uniqueCount": 153.0,
+                            "uniqueProportion": 0.0865,
+                            "nullCount": 156.0,
+                            "nullProportion": 0.01986,
+                            "distinctCount": 152.0,
+                            "distinctProportion": 0.0864
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 726
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 219
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 3437
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

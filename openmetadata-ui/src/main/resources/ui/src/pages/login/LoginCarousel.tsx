@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,38 +11,39 @@
  *  limitations under the License.
  */
 
+import { Carousel } from 'antd';
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import Slider from 'react-slick';
 import {
+  LOGIN_CAROUSEL_SETTINGS,
   LOGIN_SLIDE,
-  LOGIN_SLIDER_SETTINGS,
-} from '../../constants/login.const';
+} from '../../constants/Login.constants';
 
 const LoginCarousel = () => {
   return (
     <div data-testid="carousel-container" style={{ width: '85%' }}>
-      <Slider {...LOGIN_SLIDER_SETTINGS}>
+      <Carousel {...LOGIN_CAROUSEL_SETTINGS}>
         {LOGIN_SLIDE.map((data) => (
           <div data-testid="slider-container" key={uniqueId()}>
             <div>
               <img
                 alt="slider"
-                className="tw-w-full"
+                className="w-full"
                 loading="lazy"
                 src={data.image}
               />
             </div>
-            <div className="tw-mt-24 tw-mb-11">
+            <div className="mt-24 mb-11">
               <p
-                className="tw-text-center tw-w-5/6 tw-mx-auto tw-font-medium tw-text-white tw-text-xl"
+                className="text-center carousal-description font-medium text-white text-xl"
                 data-testid="carousel-slide-description">
-                {data.description}
+                {t(`message.${data.descriptionKey}`)}
               </p>
             </div>
           </div>
         ))}
-      </Slider>
+      </Carousel>
     </div>
   );
 };

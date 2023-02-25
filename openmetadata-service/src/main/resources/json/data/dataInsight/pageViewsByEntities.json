@@ -1,0 +1,14 @@
+{
+  "name": "pageViewsByEntities",
+  "fullyQualifiedName": "pageViewsByEntities",
+  "displayName": "Page views by entities",
+  "description": "Displays the number of time an entity type was viewed.",
+  "dataIndexType": "web_analytic_entity_view_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","chartDataType":"INT"},
+    {"name": "entityType","chartDataType":"INT"}
+  ],
+  "metrics": [
+    {"name": "pageViews", "displayName": "Total number of page view", "chartDataType": "INT"}
+  ]
+}

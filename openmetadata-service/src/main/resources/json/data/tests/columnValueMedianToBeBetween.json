@@ -1,0 +1,24 @@
+{
+    "name": "columnValueMedianToBeBetween",
+    "fullyQualifiedName": "columnValueMedianToBeBetween",
+    "displayName": "Column Value Median To Be Between",
+    "description": "This schema defines the test ColumnValueMedianToBeBetween. Test the median value in a col is within a range.",
+    "entityType": "COLUMN",
+    "testPlatforms": ["OpenMetadata"],
+    "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT"],
+    "parameterDefinition": [
+      {
+        "name": "minValueForMedianInCol",
+        "displayName": "Min",
+        "description": "Expected median value for the column to be greater or equal than",
+        "dataType": "INT"
+      },
+      {
+        "name": "maxColValue",
+        "displayName": "Max",
+        "description": "Expected median value for the column to be greater or equal than",
+        "dataType": "INT"
+      }
+  ]
+}
+  

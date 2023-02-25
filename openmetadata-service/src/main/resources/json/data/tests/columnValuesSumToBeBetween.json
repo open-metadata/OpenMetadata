@@ -1,0 +1,24 @@
+{
+    "name": "columnValuesSumToBeBetween",
+    "fullyQualifiedName": "columnValuesSumToBeBetween",
+    "displayName": "Column Values Sum To Be Between",
+    "description": "This schema defines the test ColumnValuesSumToBeBetween. Test the sum of the values of a col is within a range.",
+    "entityType": "COLUMN",
+    "testPlatforms": ["OpenMetadata"],
+    "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT"],
+    "parameterDefinition": [
+      {
+        "name": "minValueForColSum",
+        "displayName": "Min",
+        "description": "Expected sum of values in the column to be greater or equal than",
+        "dataType": "INT"
+      },
+      {
+        "name": "maxValueForColSum",
+        "displayName": "Max",
+        "description": "Expected sum values in the column to be lower or equal than",
+        "dataType": "INT"
+      }
+    ]
+  }
+  

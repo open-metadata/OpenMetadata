@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  queryByTestId,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import Description from './Description';
 
 const mockEntityFieldThreads = [
@@ -41,8 +48,18 @@ const mockDescriptionProp = {
   onEntityFieldSelect: jest.fn(),
 };
 
+jest.mock('../../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
+
 jest.mock('../../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn(),
+  isTaskSupported: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -54,8 +71,8 @@ jest.mock(
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
-      .mockReturnValue(
-        <p data-testid="editor-modal">ModalWithMarkdownEditor</p>
+      .mockImplementation(({ visible }) =>
+        visible ? <p data-testid="markdown-editor">RichTextPreviewer</p> : null
       ),
   })
 );
@@ -67,17 +84,14 @@ jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
     );
 });
 
-jest.mock('../non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="edit-description">NonAdminAction</p>);
-});
-
 describe('Test Description Component', () => {
   it('Check if it has all child elements', async () => {
-    const { container } = render(<Description {...mockDescriptionProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <Description {...mockDescriptionProp} hasEditAccess />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const descriptionContainer = await findByTestId(container, 'description');
     const editDescriptionButton = await findByTestId(
@@ -105,30 +119,26 @@ describe('Test Description Component', () => {
   });
 
   it('Check if it has isEdit as true', async () => {
-    const { container } = render(
-      <Description {...mockDescriptionProp} isEdit />,
-      {
+    await act(async () => {
+      render(<Description {...mockDescriptionProp} isEdit />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const descriptionContainer = await findByTestId(container, 'description');
-    const editorModal = await findByTestId(container, 'editor-modal');
+    const descriptionContainer = await screen.findByTestId('description');
+    const editorModal = await screen.findByTestId('markdown-editor');
 
     expect(descriptionContainer).toBeInTheDocument();
     expect(editorModal).toBeInTheDocument();
   });
 
   it('Check if it has isEdit as false', async () => {
-    const { container } = render(
-      <Description {...mockDescriptionProp} isEdit={false} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<Description {...mockDescriptionProp} isEdit={false} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const descriptionContainer = await findByTestId(container, 'description');
-    const editorModal = queryByTestId(container, 'editor-modal');
+    const descriptionContainer = await screen.findByTestId('description');
+    const editorModal = screen.queryByTestId('markdown-editor');
 
     expect(descriptionContainer).toBeInTheDocument();
     expect(editorModal).not.toBeInTheDocument();
@@ -192,6 +202,7 @@ describe('Test Description Component', () => {
         {...mockDescriptionProp}
         description=""
         entityFieldThreads={[]}
+        entityType={EntityType.TABLE}
       />,
       {
         wrapper: MemoryRouter,
@@ -207,7 +218,7 @@ describe('Test Description Component', () => {
 
     const requestDescription = await findByTestId(
       container,
-      'request-description'
+      'request-entity-description'
     );
 
     expect(descriptionContainer).toBeInTheDocument();
@@ -216,5 +227,20 @@ describe('Test Description Component', () => {
 
     // should render requestDescription, as description thread and description are empty value
     expect(requestDescription).toBeInTheDocument();
+  });
+
+  it('Should not show edit button if hasEditAccess is false', async () => {
+    const { container } = render(
+      <Description {...mockDescriptionProp} hasEditAccess={false} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const descriptionContainer = await findByTestId(container, 'description');
+    const editDescriptionButton = queryByTestId(container, 'edit-description');
+
+    expect(descriptionContainer).toBeInTheDocument();
+    expect(editDescriptionButton).toBeNull();
   });
 });

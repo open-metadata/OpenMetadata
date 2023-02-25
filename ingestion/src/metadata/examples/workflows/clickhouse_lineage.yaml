@@ -1,0 +1,15 @@
+source:
+  type: clickhouse-lineage
+  serviceName: local_clickhouse
+  sourceConfig:
+    config:
+      type: DatabaseLineage
+      queryLogDuration: 1
+      resultLimit: 10000
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

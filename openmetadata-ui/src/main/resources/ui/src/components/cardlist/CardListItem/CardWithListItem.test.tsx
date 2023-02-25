@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -33,6 +33,7 @@ describe('Test CardWithListing Component', () => {
     const { getByTestId } = render(
       <CardListItem
         card={mockCard}
+        index={1}
         isActive={false}
         isSelected={false}
         tierStatus="initial"
@@ -45,13 +46,14 @@ describe('Test CardWithListing Component', () => {
 
     expect(card).toBeInTheDocument();
 
-    expect(getByTestId('icon')).toBeEmptyDOMElement();
+    expect(getByTestId('select-tier-buuton')).toBeInTheDocument();
   });
 
   it('OnClick onSelect function should call', () => {
     const { getByTestId } = render(
       <CardListItem
         card={mockCard}
+        index={1}
         isActive={false}
         isSelected={false}
         tierStatus="initial"
@@ -77,6 +79,7 @@ describe('Test CardWithListing Component', () => {
       <CardListItem
         isActive
         card={mockCard}
+        index={1}
         isSelected={false}
         tierStatus="initial"
         onCardSelect={mockSelectFunction}
@@ -105,6 +108,7 @@ describe('Test CardWithListing Component', () => {
       <CardListItem
         isActive
         card={mockCard}
+        index={1}
         isSelected={false}
         tierStatus="initial"
         onCardSelect={mockSelectFunction}

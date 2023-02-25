@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,9 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import SigninPage from './index';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;
@@ -23,12 +23,12 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
+jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
 
 jest.mock(
-  '../../components/containers/PageContainer',
+  'components/containers/PageContainer',
   () =>
     ({ children }: { children: React.ReactNode }) =>
       <div data-testid="PageContainer">{children}</div>
@@ -76,26 +76,27 @@ describe('Test SigninPage Component', () => {
     ['custom-oidc', 'Sign in with sso'],
     ['aws-cognito', 'Sign in with aws cognito'],
     ['unknown-provider', 'SSO Provider unknown-provider is not supported'],
-  ])(
-    'Sign in button should render correctly for %s',
-    async (provider, buttonText) => {
-      mockUseAuthContext.mockReturnValue({
-        isAuthDisabled: false,
-        authConfig: { provider },
-        onLoginHandler: jest.fn(),
-        onLogoutHandler: jest.fn(),
-      });
-      const { container } = render(<SigninPage />, {
-        wrapper: MemoryRouter,
-      });
-      const signinButton = await findByText(
-        container,
-        new RegExp(buttonText, 'i')
-      );
+  ])('Sign in button should render correctly for %s', async (provider) => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider },
+      onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
+    });
+    const { container } = render(<SigninPage />, {
+      wrapper: MemoryRouter,
+    });
+    const isUnknow = provider === 'unknown-provider';
 
-      expect(signinButton).toBeInTheDocument();
-    }
-  );
+    const signinButton = await findByText(
+      container,
+      isUnknow
+        ? /message.sso-provider-not-supported/i
+        : /label.sign-in-with-sso/i
+    );
+
+    expect(signinButton).toBeInTheDocument();
+  });
 
   it('Sign in button should render correctly with custom provider name', async () => {
     mockUseAuthContext.mockReturnValue({
@@ -107,10 +108,7 @@ describe('Test SigninPage Component', () => {
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
     });
-    const signinButton = await findByText(
-      container,
-      /sign in with custom oidc/i
-    );
+    const signinButton = await findByText(container, /label.sign-in-with-sso/i);
 
     expect(signinButton).toBeInTheDocument();
   });

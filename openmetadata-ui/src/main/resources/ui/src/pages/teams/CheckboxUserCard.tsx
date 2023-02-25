@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,17 +12,15 @@
  */
 
 import classNames from 'classnames';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { capitalize } from 'lodash';
-import { FormattedUsersData } from 'Models';
 import React, { useState } from 'react';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
+import { useTranslation } from 'react-i18next';
+import { EntityReference } from '../../generated/type/entityReference';
 import SVGIcons from '../../utils/SvgUtils';
 
-type Props = {
-  item: Pick<FormattedUsersData, 'displayName' | 'id' | 'name' | 'type'> & {
-    email?: string;
-    isChecked: boolean;
-  };
+type Props<T> = {
+  item: T;
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isCheckBoxes?: boolean;
@@ -30,14 +28,17 @@ type Props = {
   onRemove?: (value: string) => void;
 };
 
-const CheckboxUserCard = ({
+const CheckboxUserCard = <
+  T extends EntityReference & { isChecked: boolean; type: string }
+>({
   item,
   isActionVisible = false,
   isIconVisible = false,
   isCheckBoxes = false,
   onSelect,
   onRemove,
-}: Props) => {
+}: Props<T>) => {
+  const { t } = useTranslation();
   const [isChecked, setIsChecked] = useState(item.isChecked);
 
   return (
@@ -78,34 +79,32 @@ const CheckboxUserCard = ({
           )}
         </>
       </div>
-      {isActionVisible && (
-        <div className="tw-flex-none">
-          {isCheckBoxes ? (
-            <input
-              checked={isChecked}
-              className="tw-p-1 custom-checkbox"
-              data-testid="checkboxAddUser"
-              type="checkbox"
-              onChange={(e) => {
-                setIsChecked(e.target.checked);
-                onSelect?.(item.id as string, e.target.checked);
-              }}
+      {isActionVisible &&
+        (isCheckBoxes ? (
+          <input
+            checked={isChecked}
+            className="tw-p-1 custom-checkbox tw-self-center"
+            data-testid="checkboxAddUser"
+            type="checkbox"
+            onChange={(e) => {
+              setIsChecked(e.target.checked);
+              onSelect?.(item.id as string, e.target.checked);
+            }}
+          />
+        ) : (
+          <span
+            className="tw-flex-none"
+            data-testid="remove"
+            onClick={() => onRemove?.(item.id as string)}>
+            <SVGIcons
+              alt={t('label.delete')}
+              className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
+              icon="icon-delete"
+              title="Remove"
+              width="16px"
             />
-          ) : (
-            <span
-              data-testid="remove"
-              onClick={() => onRemove?.(item.id as string)}>
-              <SVGIcons
-                alt="delete"
-                className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                icon="icon-delete"
-                title="Remove"
-                width="12px"
-              />
-            </span>
-          )}
-        </div>
-      )}
+          </span>
+        ))}
     </div>
   );
 };

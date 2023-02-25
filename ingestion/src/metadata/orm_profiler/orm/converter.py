@@ -14,17 +14,18 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
+from typing import Optional
+
 import sqlalchemy
+from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.database import Database, databaseService
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.registry import CustomTypes
-from metadata.utils import fqn
 
 Base = declarative_base()
 
@@ -51,10 +52,10 @@ _TYPE_MAP = {
     DataType.CHAR: sqlalchemy.CHAR,
     DataType.VARCHAR: sqlalchemy.VARCHAR,
     DataType.BOOLEAN: sqlalchemy.BOOLEAN,
-    DataType.BINARY: sqlalchemy.BINARY,
+    DataType.BINARY: CustomTypes.BYTES.value,
     DataType.VARBINARY: sqlalchemy.VARBINARY,
     DataType.ARRAY: sqlalchemy.ARRAY,
-    DataType.BLOB: sqlalchemy.BLOB,
+    DataType.BLOB: CustomTypes.BYTES.value,
     DataType.LONGBLOB: sqlalchemy.LargeBinary,
     DataType.MEDIUMBLOB: sqlalchemy.LargeBinary,
     DataType.MAP: sqa_types.SQAMap,
@@ -65,10 +66,46 @@ _TYPE_MAP = {
     DataType.ENUM: sqlalchemy.Enum,
     DataType.JSON: sqlalchemy.JSON,
     DataType.UUID: CustomTypes.UUID.value,
+    DataType.BYTEA: CustomTypes.BYTEA.value,
 }
 
+SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
-def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
+
+def map_types(col: Column, table_service_type):
+    """returns an ORM type"""
+
+    if col.arrayDataType:
+        return _TYPE_MAP.get(col.dataType)(item_type=col.arrayDataType)
+
+    if (
+        table_service_type == databaseService.DatabaseServiceType.Snowflake
+        and col.dataType == DataType.JSON
+    ):
+        # pylint: disable=import-outside-toplevel
+        from snowflake.sqlalchemy import VARIANT
+
+        return VARIANT
+
+    return _TYPE_MAP.get(col.dataType)
+
+
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
+    """Check whether column or table name are not uppercase for snowflake table.
+    If so, then force quoting, If not return None to let engine backend handle the logic.
+
+    Args:
+        table_or_col: a table or a column name
+    Return:
+        None or True
+    """
+    if table_service_type == databaseService.DatabaseServiceType.Snowflake:
+        return True if not str(table_or_col).isupper() else None
+
+    return None
+
+
+def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -80,14 +117,21 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
+
     return sqlalchemy.Column(
         name=str(col.name.__root__),
-        type_=_TYPE_MAP.get(col.dataType),
+        type_=map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
+        quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        key=str(
+            col.name.__root__
+        ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
     )
 
 
-def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
+def ometa_to_sqa_orm(
+    table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
+) -> DeclarativeMeta:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy DeclarativeMeta class
@@ -99,12 +143,19 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
     """
 
     cols = {
-        str(col.name.__root__): build_orm_col(idx, col)
+        (
+            col.name.__root__ + "_"
+            if col.name.__root__ in SQA_RESERVED_ATTRIBUTES
+            else col.name.__root__
+        ): build_orm_col(idx, col, table.serviceType)
         for idx, col in enumerate(table.columns)
     }
 
+    orm_database_name = get_orm_database(table, metadata)
     orm_schema_name = get_orm_schema(table, metadata)
-    orm_name = f"{orm_schema_name}_{table.name.__root__}".replace(".", "_")
+    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.__root__}".replace(
+        ".", "_"
+    )
 
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
@@ -115,8 +166,12 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
             "__table_args__": {
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
+                "quote": check_snowflake_case_sensitive(
+                    table.serviceType, table.name.__root__
+                ),
             },
             **cols,
+            "metadata": sqa_metadata_obj or Base.metadata,
         },
     )
 
@@ -145,16 +200,22 @@ def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
         entity=DatabaseSchema, entity_id=table.databaseSchema.id
     )
 
-    service: DatabaseService = metadata.get_by_id(
-        entity=DatabaseService, entity_id=table.service.id
+    return str(schema.name.__root__)
+
+
+def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
+    """get database name from database service
+
+    Args:
+        table (Table): table entity
+        metadata (OpenMetadata): metadata connection to OM server instance
+
+    Returns:
+        str
+    """
+
+    database: Database = metadata.get_by_id(
+        entity=Database, entity_id=table.database.id
     )
 
-    connection = service.connection.config
-
-    if hasattr(connection, "supportsDatabase"):
-        database: Database = metadata.get_by_id(
-            entity=Database, entity_id=table.database.id
-        )
-        return fqn._build(str(database.name.__root__), str(schema.name.__root__))
-
-    return str(schema.name.__root__)
+    return str(database.name.__root__)

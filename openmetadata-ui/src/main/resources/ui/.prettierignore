@@ -29,21 +29,28 @@ src/test/unit/coverage
 .gitignore
 .prettierignore
 .eslintignore
+.licenseheaderignore
 
 # rc, json and html files
 .prettierrc
 .lintstagedrc.json
+.licenseheaderrc.json
 swagger.html
 
 # macOS
 .DS_Store
 
 # antlr
-src/antlr/generated/
+src/generated/antlr
+src/antlr/generated
+
 
 # Generated TS
 src/generated/
 
-# cypress
-**/*.spec.js
-cypress/
+
+# Assets
+*.svg
+*.png
+*.ico
+*.ttf

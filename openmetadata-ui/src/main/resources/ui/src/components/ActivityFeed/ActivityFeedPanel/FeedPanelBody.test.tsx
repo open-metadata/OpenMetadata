@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -55,6 +55,7 @@ const mockFeedPanelBodyProp = {
   threadData: mockThreadData,
   isLoading: false,
   onConfirmation: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../ActivityFeedCard/ActivityFeedCard', () => {
@@ -89,7 +90,7 @@ describe('Test FeedPanelBody Component', () => {
 
     expect(repliesContainer).toBeInTheDocument();
     expect(replies).toHaveLength(2);
-    expect(repliesCount).toHaveTextContent('2 replies');
+    expect(repliesCount).toHaveTextContent('2 label.reply-lowercase-plural');
   });
 
   it('Check if FeedPanelBody has isLoading as true', async () => {

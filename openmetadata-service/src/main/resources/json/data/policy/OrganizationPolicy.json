@@ -1,0 +1,27 @@
+{
+  "name": "OrganizationPolicy",
+  "displayName": "Organization Policy",
+  "fullyQualifiedName": "OrganizationPolicy",
+  "description": "Policy for all the users of an organization.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "OrganizationPolicy-Owner-Rule",
+      "description" : "Allow all the operations on an entity for the owner.",
+      "resources" : ["all"],
+      "operations": ["EditAll", "ViewAll", "Delete"],
+      "effect": "allow",
+      "condition": "isOwner()"
+    },
+    {
+      "name": "OrganizationPolicy-NoOwner-Rule",
+      "description" : "Allow any one to set the owner of an entity that has no owner set.",
+      "resources" : ["all"],
+      "operations": ["EditOwner"],
+      "effect": "allow",
+      "condition": "noOwner()"
+    }
+  ]
+}

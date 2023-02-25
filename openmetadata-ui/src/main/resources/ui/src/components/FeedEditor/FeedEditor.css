@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 .ql-container {
   box-sizing: border-box;
   font-family: Helvetica, Arial, sans-serif;
@@ -992,6 +1005,9 @@
   border-radius: 6px;
   background: white;
 }
+.is_edit_post.editor-container {
+  margin: 6px;
+}
 .ql-toolbar.ql-snow {
   border-color: rgb(221, 227, 234);
   border-top-left-radius: 6px;
@@ -1059,7 +1075,15 @@
 button.ql-emoji {
   vertical-align: bottom;
 }
-#tab-panel {
+#emoji-palette > #tab-panel {
   gap: 4px;
-  margin-top: 8px;
+  padding-top: 8px;
+}
+
+#emoji-palette {
+  z-index: 9999;
+}
+
+.ap {
+  text-indent: 0px;
 }

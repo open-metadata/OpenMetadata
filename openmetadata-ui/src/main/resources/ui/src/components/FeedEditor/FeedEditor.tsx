@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,13 +23,13 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
 import {
-  EditorPlaceHolder,
   MENTION_ALLOWED_CHARS,
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
-} from '../../constants/feed.constants';
+} from '../../constants/Feeds.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
@@ -63,6 +63,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     }: FeedEditorProp,
     ref
   ) => {
+    const { t } = useTranslation();
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
@@ -89,14 +90,18 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           onClose: () => {
             toggleMentionList(true);
           },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onSelect: (item: Record<string, any>, insertItem: Function) => {
+          onSelect: (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            item: Record<string, any>,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            insertItem: (item: Record<string, any>) => void
+          ) => {
             toggleMentionList(true);
             insertItem(item);
           },
           source: matcher,
           showDenotationChar: false,
-          renderLoading: () => 'Loading...',
+          renderLoading: () => `${t('label.loading')}...`,
         },
         markdownOptions: {},
         clipboard: {
@@ -169,7 +174,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
-          placeholder={EditorPlaceHolder}
+          placeholder={t('message.markdown-editor-placeholder')}
           style={getEditorStyles()}
           theme="snow"
           value={value}

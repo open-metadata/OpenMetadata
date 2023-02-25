@@ -13,7 +13,10 @@
 Metric Core definitions
 """
 
+# pylint: disable=invalid-name
+
 from abc import ABC, abstractmethod
+from enum import Enum
 from functools import wraps
 from typing import Any, Dict, Optional, Tuple, TypeVar
 
@@ -40,10 +43,18 @@ def _label(_fn):
 
     @wraps(_fn)
     def inner(self, *args, **kwargs):
-        res = _fn(self, *args, **kwargs)
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
+        res = _fn(self, *args, **kwargs)
         # If the metric computation returns some value
         if res is not None:
+            try:
+                if pd.isnull(res):
+                    res = None
+            except ValueError:
+                pass
+            if not hasattr(res, "label"):
+                return res
             return res.label(self.name())
 
         return None
@@ -123,6 +134,20 @@ class Metric(ABC):
         """
         return True
 
+    @classmethod
+    def is_window_metric(cls) -> bool:
+        """
+        Marks the metric as a window metric.
+
+        By default, assume it is not a window metric
+        """
+        return False
+
+    @classmethod
+    def is_system_metrics(cls) -> bool:
+        """Mark true if returns system metrics"""
+        return False
+
     @property
     def metric_type(self):
         """
@@ -187,6 +212,14 @@ class CustomMetric(Metric, ABC):
         """
 
 
+class SystemMetric(Metric, ABC):
+    """Abstract class for system metrics"""
+
+    @abstractmethod
+    def sql(self):
+        """SQL query to get system Metric"""
+
+
 class ComposedMetric(Metric, ABC):
     """
     A Metric composed by other metrics.
@@ -214,3 +247,15 @@ class ComposedMetric(Metric, ABC):
         This metric computes its value based on
         the results already present in the Profiler
         """
+
+
+class MetricTypes(Enum):
+    """List of metric types"""
+
+    Table = "Table"
+    Static = "Static"
+    Composed = "Composed"
+    Custom = "Custom"
+    Query = "Query"
+    Window = "Window"
+    System = "System"

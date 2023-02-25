@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,15 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import {
   MessagingConnection,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
+import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
+import kinesisConnection from '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json';
+import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
@@ -33,8 +36,30 @@ export const getBrokers = (config: MessagingConnection['config']) => {
 export const getMessagingConfig = (type: MessagingServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  if (type === MessagingServiceType.Kafka) {
-    schema = kafkaConnection;
+
+  switch (type) {
+    case MessagingServiceType.Kafka:
+      schema = kafkaConnection;
+
+      break;
+
+    case MessagingServiceType.Redpanda:
+      schema = redpandaConnection;
+
+      break;
+
+    case MessagingServiceType.CustomMessaging:
+      schema = customMessagingConnection;
+
+      break;
+
+    case MessagingServiceType.Kinesis:
+      schema = kinesisConnection;
+
+      break;
+
+    default:
+      break;
   }
 
   return cloneDeep({ schema, uiSchema });

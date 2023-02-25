@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,30 +15,23 @@ import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent, useMemo } from 'react';
-import { TestConnection } from '../../axiosAPIs/serviceAPI';
+import { useTranslation } from 'react-i18next';
+import { TestConnection } from 'rest/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
-import {
-  DashboardService,
-  DashboardServiceType,
-} from '../../generated/entity/services/dashboardService';
-import {
-  DatabaseService,
-  DatabaseServiceType,
-} from '../../generated/entity/services/databaseService';
-import {
-  MessagingService,
-  MessagingServiceType,
-} from '../../generated/entity/services/messagingService';
-import {
-  PipelineService,
-  PipelineServiceType,
-} from '../../generated/entity/services/pipelineService';
-import { ConfigData, DataService } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
+import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
+import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
+import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
+import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
+import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
+import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
+import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import {
   getTestConnectionType,
@@ -48,11 +41,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
-  data?:
-    | DatabaseService
-    | MessagingService
-    | DashboardService
-    | PipelineService;
+  data?: ServicesType;
   okText?: string;
   cancelText?: string;
   serviceType: string;
@@ -60,6 +49,7 @@ interface Props {
   status: LoadingState;
   onCancel?: () => void;
   onSave: (data: ISubmitEvent<ConfigData>) => void;
+  disableTestConnection?: boolean;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
@@ -71,13 +61,17 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onCancel,
   onSave,
+  disableTestConnection = false,
 }: Props) => {
+  const { t } = useTranslation();
+  const { isAirflowAvailable } = useAirflowStatus();
+
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceType);
   }, [serviceType]);
 
   const config = !isNil(data)
-    ? ((data as DataService).connection.config as ConfigData)
+    ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {
@@ -96,14 +90,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           if (res.status === 200) {
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['test-connection-error']
-          );
+          showErrorToast(err, t('server.test-connection-error'));
           reject(err);
         });
     });
@@ -144,19 +135,33 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
         break;
       }
+      case ServiceCategory.ML_MODEL_SERVICES: {
+        connSch = getMlmodelConfig(serviceType as MlModelServiceType);
+
+        break;
+      }
+      case ServiceCategory.METADATA_SERVICES: {
+        connSch = getMetadataConfig(serviceType as MetadataServiceType);
+
+        break;
+      }
     }
 
     return (
       <FormBuilder
         cancelText={cancelText}
+        disableTestConnection={disableTestConnection}
         formData={validConfig}
+        isAirflowAvailable={isAirflowAvailable}
         okText={okText}
         schema={connSch.schema}
         status={status}
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
         onSubmit={handleSave}
-        onTestConnection={allowTestConn ? handleTestConnection : undefined}
+        onTestConnection={
+          allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
+        }
       />
     );
   };

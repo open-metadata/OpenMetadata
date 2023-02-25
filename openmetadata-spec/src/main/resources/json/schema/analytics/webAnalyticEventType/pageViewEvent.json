@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/analytics/pageViewData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "pageViewData",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.analytics.PageViewData",
+  "description": "Page view data event",
+  "properties": {
+        "fullUrl": {
+          "description": "complete URL of the page",
+          "type": "string"
+        },
+        "url": {
+          "description": "url part after the domain specification",
+          "type": "string"
+        },
+        "hostname": {
+          "description": "domain name",
+          "type": "string"
+        },
+        "language": {
+          "description": "language set on the page",
+          "type": "string"
+        },
+        "screenSize": {
+          "description": "Size of the screen",
+          "type": "string"
+        },
+        "userId": {
+          "description": "OpenMetadata logged in user Id",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "sessionId": {
+          "description": "Unique ID identifying a session",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "pageLoadTime": {
+          "description": "time for the page to load in seconds",
+          "type": "number"
+        },
+        "referrer": {
+          "description": "referrer URL",
+          "type": "string"
+        }
+      }
+}

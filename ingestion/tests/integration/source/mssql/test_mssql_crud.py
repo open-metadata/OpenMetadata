@@ -22,8 +22,8 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
+from metadata.utils.logger import log_ansi_encoded_string
 
 headers = {"Content-type": "application/json"}
 url = "http://localhost:8585/api/v1/"
@@ -49,7 +49,7 @@ def status(r):
 def mssql_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("sqlserver", 1433)
-    print("Mssql is running on port {}".format(port))
+    log_ansi_encoded_string(message="Mssql is running on port {}".format(port))
     url = "http://localhost:8585"
     time.sleep(180)
     docker_services.wait_until_responsive(
@@ -64,10 +64,9 @@ def create_delete_table(client):
         Column(name="id", columnDataType="INT"),
         Column(name="name", columnDataType="VARCHAR"),
     ]
-    db_ref = EntityReference(
-        id=databases[0].id, name=databases[0].name.__root__, type="database"
+    table = CreateTableRequest(
+        name="test1", columns=columns, database=databases[0].fullyQualifiedName
     )
-    table = CreateTableRequest(name="test1", columns=columns, database=db_ref)
     created_table = client.create_or_update_table(table)
     if table.name.__root__ == created_table.name.__root__:
         requests.delete(
@@ -91,11 +90,12 @@ def create_delete_database(client):
     create_mssql_service = CreateDatabaseServiceRequest(**data)
     mssql_service = client.create_database_service(create_mssql_service)
     create_database_request = CreateDatabaseRequest(
-        name="dwh", service=EntityReference(id=mssql_service.id, type="databaseService")
+        name="dwh",
+        service=mssql_service.fullyQualifiedName,
     )
     created_database = client.create_database(create_database_request)
     resp = create_delete_table(client)
-    print(resp)
+    log_ansi_encoded_string(message=resp)
     client.delete_database(created_database.id.__root__)
     client.delete_database_service(mssql_service.id.__root__)
     return resp

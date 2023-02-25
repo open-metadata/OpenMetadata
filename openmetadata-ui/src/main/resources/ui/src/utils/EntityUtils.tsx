@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,30 +11,47 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
-import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
-import React from 'react';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
-import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
+import { Popover } from 'antd';
+import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
+import {
+  LeafNodes,
+  LineagePos,
+} from 'components/EntityLineage/EntityLineage.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import i18next from 'i18next';
+import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
+import { Bucket } from 'Models';
+import React, { Fragment } from 'react';
+import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
+  getTableDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ColumnTestType, Table } from '../generated/entity/data/table';
+import {
+  Column,
+  ColumnJoins,
+  JoinedWith,
+  Table,
+} from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
-import SVGIcons from './SvgUtils';
+import {
+  getEntityName,
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './CommonUtils';
 import {
   getDataTypeString,
   getTierFromTableTags,
@@ -44,15 +61,12 @@ import { getTableTags } from './TagsUtils';
 
 export const getEntityTags = (
   type: string,
-  entityDetail: Partial<Table> &
-    Partial<Pipeline> &
-    Partial<Dashboard> &
-    Partial<Topic>
+  entityDetail: Table | Pipeline | Dashboard | Topic
 ): Array<TagLabel | undefined> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
-        ...getTableTags(entityDetail.columns || []),
+        ...getTableTags((entityDetail as Table).columns || []),
         ...(entityDetail.tags || []),
       ];
 
@@ -72,10 +86,7 @@ export const getEntityTags = (
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: Partial<Table> &
-    Partial<Pipeline> &
-    Partial<Dashboard> &
-    Partial<Topic>,
+  entityDetail: EntityData,
   serviceType: string
 ): Array<{
   name: string;
@@ -86,11 +97,17 @@ export const getEntityOverview = (
 }> => {
   switch (type) {
     case EntityType.TABLE: {
-      const { fullyQualifiedName, owner, tags, usageSummary, tableProfile } =
-        entityDetail;
-      const [service, database] = getPartialNameFromTableFQN(
+      const {
+        fullyQualifiedName,
+        owner,
+        tags,
+        usageSummary,
+        profile,
+        columns,
+      } = entityDetail as Table;
+      const [service, database, schema] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
-        [FqnPart.Service, FqnPart.Database],
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
       const tier = getTierFromTableTags(tags || []);
@@ -101,7 +118,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service,
           url: getServiceDetailsPath(
             service,
@@ -110,7 +127,7 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Database',
+          name: i18next.t('label.database'),
           value: database,
           url: getDatabaseDetailsPath(
             getPartialNameFromTableFQN(
@@ -122,56 +139,46 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.schema'),
+          value: schema,
+          url: getDatabaseSchemaDetailsPath(
+            getPartialNameFromTableFQN(
+              fullyQualifiedName ?? '',
+              [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+              FQN_SEPARATOR_CHAR
+            )
+          ),
+          isLink: true,
+        },
+        {
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: 'Usage',
+          name: i18next.t('label.usage'),
           value: usage,
           isLink: false,
         },
         {
-          name: 'Queries',
+          name: i18next.t('label.query-plural'),
           value: `${queries} past week`,
           isLink: false,
         },
         {
-          name: 'Columns',
-          value:
-            tableProfile && tableProfile[0]?.columnCount
-              ? tableProfile[0].columnCount
-              : '--',
+          name: i18next.t('label.column-plural'),
+          value: columns ? columns.length : '--',
           isLink: false,
         },
         {
-          name: 'Rows',
-          value: tableProfile ? (
-            <TableProfilerGraph
-              className="tw--mt-5"
-              data={
-                tableProfile
-                  ?.map((d) => ({
-                    date: d.profileDate,
-                    value: d.rowCount ?? 0,
-                  }))
-                  .reverse() as Array<{
-                  date: Date;
-                  value: number;
-                }>
-              }
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-          ) : (
-            '--'
-          ),
+          name: i18next.t('label.row-plural'),
+          value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
         },
       ];
@@ -181,12 +188,12 @@ export const getEntityOverview = (
 
     case EntityType.PIPELINE: {
       const { owner, tags, pipelineUrl, service, fullyQualifiedName } =
-        entityDetail;
+        entityDetail as Pipeline;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
@@ -195,18 +202,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: `${serviceType} url`,
+          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
           value: fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string,
           url: pipelineUrl as string,
           isLink: true,
@@ -224,12 +231,12 @@ export const getEntityOverview = (
         service,
         fullyQualifiedName,
         displayName,
-      } = entityDetail;
+      } = entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
@@ -238,18 +245,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: `${serviceType} url`,
+          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
           value:
             displayName ||
             (fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string),
@@ -366,119 +373,16 @@ export const isLeafNode = (
   }
 };
 
-export const getInfoElements = (data: ExtraInfo) => {
-  let retVal = <></>;
-  const displayVal = data.placeholderText || data.value;
-
-  switch (data.key) {
-    case 'Owner':
-      {
-        retVal =
-          displayVal && displayVal !== '--' ? (
-            isString(displayVal) ? (
-              <div className="tw-inline-block tw-mr-2">
-                <ProfilePicture
-                  displayName={displayVal}
-                  id=""
-                  name={data.profileName || ''}
-                  width={data.avatarWidth || '20'}
-                />
-              </div>
-            ) : (
-              <></>
-            )
-          ) : (
-            <>No Owner</>
-          );
-      }
-
-      break;
-    case 'Tier':
-      {
-        retVal = !displayVal || displayVal === '--' ? <>No Tier</> : <></>;
-      }
-
-      break;
-    default:
-      {
-        retVal = (
-          <>
-            {data.key
-              ? displayVal
-                ? data.showLabel
-                  ? `${data.key}: `
-                  : null
-                : `No ${data.key}`
-              : null}
-          </>
-        );
-      }
-
-      break;
-  }
-
-  return (
-    <span>
-      <span className="tw-text-grey-muted">{retVal}</span>
-      {displayVal ? (
-        <span>
-          {data.isLink ? (
-            <a
-              data-testid="owner-link"
-              href={data.value as string}
-              rel="noopener noreferrer"
-              target={data.openInNewTab ? '_blank' : '_self'}>
-              <>
-                <span
-                  className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
-                    {
-                      'tw-w-52': (displayVal as string).length > 32,
-                    }
-                  )}>
-                  {displayVal}
-                </span>
-                {data.openInNewTab && (
-                  <SVGIcons
-                    alt="external-link"
-                    className="tw-align-middle"
-                    icon="external-link"
-                    width="12px"
-                  />
-                )}
-              </>
-            </a>
-          ) : (
-            <>
-              {data.key === 'Owner' ? (
-                <span
-                  className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
-                    { 'tw-w-52': (displayVal as string).length > 32 }
-                  )}
-                  data-testid="owner-name"
-                  title={displayVal as string}>
-                  {displayVal}
-                </span>
-              ) : (
-                <span>{displayVal}</span>
-              )}
-            </>
-          )}
-        </span>
-      ) : null}
-    </span>
-  );
-};
-
 export const ENTITY_LINK_SEPARATOR = '::';
 
-export const getEntityFeedLink: Function = (
-  type: string,
-  fqn: string,
+export const getEntityFeedLink = (
+  type?: string,
+  fqn?: string,
   field?: string
-): string | undefined => {
-  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+): string => {
+  if (isUndefined(type) || isUndefined(fqn)) {
+    return '';
+  }
   // url decode the fqn
   fqn = decodeURIComponent(fqn);
 
@@ -489,45 +393,6 @@ export const getEntityFeedLink: Function = (
 
 export const isSupportedTest = (dataType: string) => {
   return dataType === 'ARRAY' || dataType === 'STRUCT';
-};
-
-export const filteredColumnTestOption = (dataType: string) => {
-  switch (getDataTypeString(dataType)) {
-    case 'numeric':
-      return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.ColumnValueLengthsToBeBetween
-      );
-
-    case 'varchar':
-      return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.ColumnValuesToBeBetween
-      );
-
-    case 'timestamp':
-    case 'date': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeNotInSet,
-        ColumnTestType.ColumnValueLengthsToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-    case 'boolean': {
-      const excluded = [
-        ColumnTestType.ColumnValuesToBeNotInSet,
-        ColumnTestType.ColumnValueLengthsToBeBetween,
-        ColumnTestType.ColumnValuesToBeBetween,
-      ];
-
-      return Object.values(ColumnTestType).filter(
-        (test) => !excluded.includes(test)
-      );
-    }
-    default:
-      return Object.values(ColumnTestType);
-  }
 };
 
 export const isColumnTestSupported = (dataType: string) => {
@@ -546,4 +411,174 @@ export const filterEntityAssets = (data: EntityReference[]) => {
   const includedEntity = Object.values(AssetsType);
 
   return data.filter((d) => includedEntity.includes(d.type as AssetsType));
+};
+
+export const getResourceEntityFromEntityType = (entityType: string) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+    case SearchIndex.TABLE:
+      return ResourceEntity.TABLE;
+
+    case EntityType.TOPIC:
+    case SearchIndex.TOPIC:
+      return ResourceEntity.TOPIC;
+
+    case EntityType.DASHBOARD:
+    case SearchIndex.DASHBOARD:
+      return ResourceEntity.DASHBOARD;
+
+    case EntityType.PIPELINE:
+    case SearchIndex.PIPELINE:
+      return ResourceEntity.PIPELINE;
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return ResourceEntity.ML_MODEL;
+  }
+
+  return ResourceEntity.ALL;
+};
+
+/**
+ * It searches for a given text in a given table and returns a new table with only the columns that
+ * contain the given text
+ * @param {Column[]} table - Column[] - the table to search in
+ * @param {string} searchText - The text to search for.
+ * @returns An array of columns that have been searched for a specific string.
+ */
+export const searchInColumns = (
+  table: Column[],
+  searchText: string
+): Column[] => {
+  const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+    const searchLowerCase = lowerCase(searchText);
+    const isContainData =
+      lowerCase(column.name).includes(searchLowerCase) ||
+      lowerCase(column.description).includes(searchLowerCase) ||
+      lowerCase(getDataTypeString(column.dataType)).includes(searchLowerCase);
+
+    if (isContainData) {
+      return [...searchedCols, column];
+    } else if (!isUndefined(column.children)) {
+      const searchedChildren = searchInColumns(column.children, searchText);
+      if (searchedChildren.length > 0) {
+        return [
+          ...searchedCols,
+          {
+            ...column,
+            children: searchedChildren,
+          },
+        ];
+      }
+    }
+
+    return searchedCols;
+  }, [] as Column[]);
+
+  return searchedValue;
+};
+
+/**
+ * It checks if a column has a join
+ * @param {string} columnName - The name of the column you want to check if joins are available for.
+ * @param joins - Array<ColumnJoins>
+ * @returns A boolean value.
+ */
+export const checkIfJoinsAvailable = (
+  columnName: string,
+  joins: Array<ColumnJoins>
+): boolean => {
+  return (
+    joins &&
+    Boolean(joins.length) &&
+    Boolean(joins.find((join) => join.columnName === columnName))
+  );
+};
+
+/**
+ * It takes a column name and a list of joins and returns the list of joinedWith for the column name
+ * @param {string} columnName - The name of the column you want to get the frequently joined with
+ * columns for.
+ * @param joins - Array<ColumnJoins>
+ * @returns An array of joinedWith objects
+ */
+export const getFrequentlyJoinedWithColumns = (
+  columnName: string,
+  joins: Array<ColumnJoins>
+): Array<JoinedWith> => {
+  return (
+    joins?.find((join) => join.columnName === columnName)?.joinedWith || []
+  );
+};
+
+export const getFrequentlyJoinedColumns = (
+  columnName: string,
+  joins: Array<ColumnJoins>,
+  columnLabel: string
+) => {
+  const frequentlyJoinedWithColumns = getFrequentlyJoinedWithColumns(
+    columnName,
+    joins
+  );
+
+  return checkIfJoinsAvailable(columnName, joins) ? (
+    <div className="m-t-sm" data-testid="frequently-joined-columns">
+      <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
+      <span>
+        {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
+          <Fragment key={index}>
+            {index > 0 && <span className="m-r-xss">,</span>}
+            <Link
+              className="link-text"
+              to={getTableDetailsPath(
+                getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
+                getPartialNameFromTableFQN(columnJoin.fullyQualifiedName, [
+                  FqnPart.Column,
+                ])
+              )}>
+              {getPartialNameFromTableFQN(
+                columnJoin.fullyQualifiedName,
+                [FqnPart.Database, FqnPart.Table, FqnPart.Column],
+                FQN_SEPARATOR_CHAR
+              )}
+            </Link>
+          </Fragment>
+        ))}
+
+        {frequentlyJoinedWithColumns.length > 3 && (
+          <Popover
+            content={
+              <div className="text-left">
+                {frequentlyJoinedWithColumns
+                  ?.slice(3)
+                  .map((columnJoin, index) => (
+                    <Fragment key={index}>
+                      <a
+                        className="link-text d-block p-y-xss"
+                        href={getTableDetailsPath(
+                          getTableFQNFromColumnFQN(
+                            columnJoin?.fullyQualifiedName
+                          ),
+                          getPartialNameFromTableFQN(
+                            columnJoin?.fullyQualifiedName,
+                            [FqnPart.Column]
+                          )
+                        )}>
+                        {getPartialNameFromTableFQN(
+                          columnJoin?.fullyQualifiedName,
+                          [FqnPart.Database, FqnPart.Table, FqnPart.Column]
+                        )}
+                      </a>
+                    </Fragment>
+                  ))}
+              </div>
+            }
+            placement="bottom"
+            trigger="click">
+            <span className="show-more m-l-xss text-underline">...</span>
+          </Popover>
+        )}
+      </span>
+    </div>
+  ) : null;
 };

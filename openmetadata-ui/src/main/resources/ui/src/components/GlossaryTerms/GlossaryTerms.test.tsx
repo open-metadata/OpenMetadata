@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,56 @@
  *  limitations under the License.
  */
 
-import { findByText, getByTestId, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import {
   mockedAssetData,
   mockedGlossaryTerms,
+  MOCK_ASSETS_DATA,
 } from '../../mocks/Glossary.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    permissions: {
+      glossaryTerm: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      glossary: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+  userPermissions: {
+    hasViewPermissions: jest.fn(),
+  },
+}));
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
@@ -26,42 +69,58 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
+jest.mock('rest/miscAPI', () => ({
+  searchData: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
+}));
 
-jest.mock('../../components/tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
-});
-
-jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ));
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('./SummaryDetail', () =>
+  jest.fn().mockReturnValue(<div>SummaryDetails</div>)
+);
+jest.mock('./tabs/RelatedTerms', () =>
+  jest.fn().mockReturnValue(<div>RelatedTermsComponent</div>)
+);
+jest.mock('./tabs/GlossaryTermSynonyms', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermSynonymsComponent</div>)
+);
+jest.mock('./tabs/GlossaryTermReferences', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermReferencesComponent</div>)
+);
+jest.mock('./tabs/AssetsTabs.component', () =>
+  jest.fn().mockReturnValue(<div>AssetsTabs</div>)
+);
+jest.mock('components/Glossary/GlossaryTermTab/GlossaryTermTab.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermTab</div>)
+);
+jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
+);
+
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,
-  isHasAccess: true,
+  permissions: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  } as OperationPermission,
   glossaryTerm: mockedGlossaryTerms[0],
   handleGlossaryTermUpdate: jest.fn(),
   onAssetPaginate: jest.fn(),
@@ -69,30 +128,61 @@ const mockProps = {
 };
 
 describe('Test Glossary-term component', () => {
-  it('Should render Glossary-term component', () => {
-    const { container } = render(<GlossaryTerms {...mockProps} />);
+  it('Should render Glossary-term component', async () => {
+    await act(async () => {
+      render(<GlossaryTerms {...mockProps} />);
+    });
 
-    const glossaryTerm = getByTestId(container, 'glossary-term');
+    const glossaryTerm = screen.getByTestId('glossary-term');
+    const tagsContainer = await screen.findByText(/Tags-container component/i);
+    const tabs = await screen.findAllByRole('tab');
 
-    expect(glossaryTerm).toBeInTheDocument();
-  });
-
-  it('Should render Tags-container', async () => {
-    const { container } = render(<GlossaryTerms {...mockProps} />);
-
-    const tagsContainer = await findByText(
-      container,
-      /Tags-container component/i
-    );
-
+    expect(
+      await screen.findByText('GlossaryHeader.component')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(tagsContainer).toBeInTheDocument();
+    expect(glossaryTerm).toBeInTheDocument();
+    expect(tabs).toHaveLength(3);
+    expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
+      'label.glossary-term-plural',
+      'label.asset-plural1', // 1 added as its count for assets
+      'label.summary',
+    ]);
   });
 
-  it('Should render Description', async () => {
-    const { container } = render(<GlossaryTerms {...mockProps} />);
+  it('onClick of assets tab, it should render properly', async () => {
+    await act(async () => {
+      render(<GlossaryTerms {...mockProps} />);
+    });
+    const tabs = await screen.findAllByRole('tab');
+    await act(async () => {
+      fireEvent.click(tabs[1]);
+    });
 
-    const description = await findByText(container, /Description component/i);
+    expect(tabs[1].textContent).toStrictEqual('label.asset-plural1');
+    expect(await screen.findByText('AssetsTabs')).toBeInTheDocument();
+  });
 
-    expect(description).toBeInTheDocument();
+  it('onClick of summary tab, it should render properly', async () => {
+    await act(async () => {
+      render(<GlossaryTerms {...mockProps} />);
+    });
+    const tabs = await screen.findAllByRole('tab');
+    await act(async () => {
+      fireEvent.click(tabs[2]);
+    });
+
+    expect(tabs[2].textContent).toStrictEqual('label.summary');
+
+    expect(
+      await screen.findByText('RelatedTermsComponent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('GlossaryTermSynonymsComponent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('GlossaryTermReferencesComponent')
+    ).toBeInTheDocument();
   });
 });

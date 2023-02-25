@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ServiceDataObj } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
 
 export const mockIngestionWorkFlow = {
   data: {
@@ -20,6 +20,7 @@ export const mockIngestionWorkFlow = {
         id: 'c804ec51-8fcf-4040-b830-5d967c4cbf49',
         name: 'test3_metadata',
         deployed: true,
+        enabled: true,
         displayName: 'test3_metadata',
         pipelineType: 'metadata',
         owner: {
@@ -135,4 +136,4 @@ export const mockService = {
   },
   href: 'http://localhost:8585/api/v1/services/databaseServices/c68e904a-4262-4b58-84c1-8a986b4aa47d',
   deleted: false,
-} as ServiceDataObj;
+} as ServicesType;

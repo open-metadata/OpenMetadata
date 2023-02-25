@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { FormErrorData, Team } from 'Models';
+/* eslint-disable @typescript-eslint/ban-types */
+
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { t } from 'i18next';
+import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
   useEffect,
@@ -19,11 +23,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import { Team } from '../../generated/entity/teams/team';
 import { errorMsg } from '../../utils/CommonUtils';
 
 type FormProp = {
-  saveData: (value: {}) => void;
+  saveData: (value: object) => void;
   initialData: Team;
   errorData?: FormErrorData;
 };
@@ -67,8 +71,8 @@ const Form: React.FC<FormProp> = forwardRef(
         saveData({
           ...data,
           name: data.name.trim(),
-          displayName: data.displayName.trim(),
-          description: data.description.trim(),
+          displayName: data.displayName?.trim(),
+          description: data.description?.trim(),
         });
       }
     }, [data]);
@@ -83,7 +87,9 @@ const Form: React.FC<FormProp> = forwardRef(
         <div className="tw-flex tw-w-full">
           <div className="tw-w-full">
             <div className="tw-mb-4">
-              <label className="tw-form-label required-field">Name</label>
+              <label className="tw-form-label required-field">
+                {t('label.name')}
+              </label>
               <input
                 autoComplete="off"
                 className="tw-form-inputs tw-form-inputs-padding"
@@ -98,7 +104,7 @@ const Form: React.FC<FormProp> = forwardRef(
             </div>
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">
-                Display name
+                {t('label.display-name')}
               </label>
               <input
                 autoComplete="off"
@@ -113,9 +119,9 @@ const Form: React.FC<FormProp> = forwardRef(
               {errorData?.displayName && errorMsg(errorData.displayName)}
             </div>
             <div>
-              <label className="tw-form-label">Description</label>
+              <label className="tw-form-label">{t('label.description')}</label>
               <RichTextEditor
-                initialValue={data.description}
+                initialValue={data.description ?? ''}
                 ref={markdownRef}
               />
             </div>

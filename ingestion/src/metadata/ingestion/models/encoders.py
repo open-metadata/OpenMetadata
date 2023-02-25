@@ -11,9 +11,10 @@
 """
 Custom pydantic encoders
 """
-
 from pydantic import SecretStr
 from pydantic.json import pydantic_encoder
+
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
 def show_secrets_encoder(obj):
@@ -22,7 +23,10 @@ def show_secrets_encoder(obj):
     :param obj: Pydantic Model
     :return: JSON repr
     """
-    if type(obj) == SecretStr:
+    if isinstance(obj, CustomSecretStr):
+        return obj.get_secret_value(skip_secret_manager=True) if obj else None
+
+    if isinstance(obj, SecretStr):
         return obj.get_secret_value() if obj else None
-    else:
-        return pydantic_encoder(obj)
+
+    return pydantic_encoder(obj)

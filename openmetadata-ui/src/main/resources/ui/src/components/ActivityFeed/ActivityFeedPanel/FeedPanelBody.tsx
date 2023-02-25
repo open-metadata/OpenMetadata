@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { getReplyText } from '../../../utils/FeedUtils';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -23,13 +24,16 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   className,
   isLoading,
   onConfirmation,
+  updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,
     from: threadData.createdBy,
     postTs: threadData.threadTs,
     id: threadData.id,
+    reactions: threadData.reactions,
   };
 
   return (
@@ -42,8 +46,14 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
             <div data-testid="main-message">
               <ActivityFeedCard
                 isEntityFeed
+                isThread
+                announcementDetails={threadData.announcement}
                 className="tw-mb-3"
                 feed={mainThread as Post}
+                feedType={threadData.type || ThreadType.Conversation}
+                threadId={threadData.id}
+                updateThreadHandler={updateThreadHandler}
+                onConfirmation={onConfirmation}
               />
             </div>
           ) : null}
@@ -51,7 +61,11 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
             <div data-testid="replies">
               <div className="tw-mb-3 tw-flex">
                 <span data-testid="replies-count">
-                  {getReplyText(repliesLength, 'reply', 'replies')}
+                  {getReplyText(
+                    repliesLength,
+                    t('label.reply-lowercase'),
+                    t('label.reply-lowercase-plural')
+                  )}
                 </span>
                 <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                   <hr />
@@ -62,8 +76,10 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                   isEntityFeed
                   className="tw-mb-3"
                   feed={reply}
+                  feedType={threadData.type || ThreadType.Conversation}
                   key={key}
                   threadId={threadData.id}
+                  updateThreadHandler={updateThreadHandler}
                   onConfirmation={onConfirmation}
                 />
               ))}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,23 +11,13 @@
  *  limitations under the License.
  */
 
-import { FormErrorData, Team } from 'Models';
+import { Button, Modal, Space, Typography } from 'antd';
+import { t } from 'i18next';
 import React, { useRef, useState } from 'react';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
-import { Button } from '../../buttons/Button/Button';
-type FormData = TagsCategory | Team;
-type FormModalProp = {
-  onCancel: () => void;
-  onChange?: (data: TagsCategory | Team) => void;
-  onSave: (data: TagsCategory | Team) => void;
-  form: React.ElementType;
-  header: string;
-  initialData: FormData;
-  errorData?: FormErrorData;
-};
-type FormRef = {
-  fetchMarkDownData: () => string;
-};
+import { Classification } from '../../../generated/entity/classification/classification';
+import { Team } from '../../../generated/entity/teams/team';
+import { FormData, FormModalProp, FormRef } from './FormModal.interface';
+
 const FormModal = ({
   onCancel,
   onChange,
@@ -36,6 +26,9 @@ const FormModal = ({
   header,
   initialData,
   errorData,
+  isSaveButtonDisabled,
+  visible,
+  showHiddenFields = false,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
@@ -49,48 +42,50 @@ const FormModal = ({
   };
 
   return (
-    <dialog className="tw-modal" data-testid="modal-container">
-      <div className="tw-modal-backdrop" onClick={() => onCancel()} />
-      <div className="tw-modal-container tw-overflow-y-auto tw-max-h-screen">
-        <form action="." method="POST" onSubmit={onSubmitHandler}>
-          <div className="tw-modal-header">
-            <p
-              className="tw-modal-title tw-text-grey-body"
-              data-testid="header">
-              {header}
-            </p>
-          </div>
-          <div className="tw-modal-body">
-            <Form
-              errorData={errorData}
-              initialData={initialData}
-              ref={formRef}
-              saveData={(data: TagsCategory | Team) => {
-                setData(data);
-                onChange && onChange(data);
-              }}
-            />
-          </div>
-          <div className="tw-modal-footer" data-testid="cta-container">
-            <Button
-              size="regular"
-              theme="primary"
-              variant="link"
-              onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button
-              data-testid="saveButton"
-              size="regular"
-              theme="primary"
-              type="submit"
-              variant="contained">
-              Save
-            </Button>
-          </div>
-        </form>
-      </div>
-    </dialog>
+    <Modal
+      centered
+      destroyOnClose
+      closable={false}
+      data-testid="modal-container"
+      footer={
+        <Space
+          align="end"
+          className="justify-end p-r-lg p-t-sm"
+          data-testid="cta-container">
+          <Button type="link" onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="saveButton"
+            disabled={isSaveButtonDisabled}
+            form="form-modal"
+            htmlType="submit"
+            type="primary">
+            {t('label.save')}
+          </Button>
+        </Space>
+      }
+      open={visible}
+      title={
+        <Typography.Text strong data-testid="header">
+          {header}
+        </Typography.Text>
+      }
+      width={1300}
+      onCancel={onCancel}>
+      <form id="form-modal" onSubmit={onSubmitHandler}>
+        <Form
+          errorData={errorData}
+          initialData={initialData}
+          ref={formRef}
+          saveData={(data: Classification | Team) => {
+            setData(data);
+            onChange && onChange(data);
+          }}
+          showHiddenFields={showHiddenFields}
+        />
+      </form>
+    </Modal>
   );
 };
 

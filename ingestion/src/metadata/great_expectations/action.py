@@ -15,7 +15,9 @@ Open Metadata table quality.
 This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
-
+import traceback
+import warnings
+from datetime import datetime, timezone
 from typing import Dict, Optional, Union
 
 from great_expectations.checkpoint.actions import ValidationAction
@@ -26,26 +28,43 @@ from great_expectations.core.expectation_validation_result import (
 )
 from great_expectations.data_asset.data_asset import DataAsset
 from great_expectations.data_context.data_context import DataContext
-from great_expectations.data_context.types.resource_identifiers import (
-    ExpectationSuiteIdentifier,
-    GeCloudIdentifier,
-    ValidationResultIdentifier,
-)
+
+try:
+    from great_expectations.data_context.types.resource_identifiers import (
+        ExpectationSuiteIdentifier,
+        GeCloudIdentifier,
+        ValidationResultIdentifier,
+    )
+except ImportError:
+    from great_expectations.data_context.types.resource_identifiers import (
+        ExpectationSuiteIdentifier,
+        GXCloudIdentifier as GeCloudIdentifier,
+        ValidationResultIdentifier,
+    )
+
 from great_expectations.validator.validator import Validator
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.great_expectations.builders.generic_test_case_builder import (
-    GenericTestCaseBuilder,
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
 )
-from metadata.great_expectations.builders.supported_ge_tests import SupportedGETests
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import (
+    EntityType,
+    TestCaseParameterDefinition,
+    TestPlatform,
+)
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,
     render_template,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.logger import great_expectations_logger
 
 logger = great_expectations_logger()
@@ -68,15 +87,33 @@ class OpenMetadataValidationAction(ValidationAction):
         data_context: DataContext,
         *,
         config_file_path: str = None,
+        database_service_name: Optional[str] = None,
         ometa_service_name: Optional[str] = None,
+        test_suite_name: Optional[str] = None,
     ):
         super().__init__(data_context)
-        self.ometa_service_name = ometa_service_name
+        self._ometa_service_name = (
+            ometa_service_name  # will be deprecated in future release
+        )
+        self._database_service_name = database_service_name
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
+        self.test_suite_name = test_suite_name
 
-    # pylint: disable=arguments-differ,unused-argument
-    def _run(
+    @property
+    def database_service_name(self):
+        """Handle depracation warning"""
+        if self._ometa_service_name:
+            warnings.warn(
+                "`ometa_service_name` will be deperacted in  openmetadata-ingestion==0.13."
+                " Use `database_service_name` instead",
+                DeprecationWarning,
+            )
+
+            return self._ometa_service_name
+        return self._database_service_name
+
+    def _run(  # pylint: disable=arguments-renamed,unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
         validation_result_suite_identifier: Union[
@@ -152,10 +189,10 @@ class OpenMetadataValidationAction(ValidationAction):
              ValueError: if 2 entities with the same
                          `database`.`schema`.`table` are found
         """
-        if self.ometa_service_name:
+        if self.database_service_name:
             return self.ometa_conn.get_by_name(
                 entity=Table,
-                fqdn=f"{self.ometa_service_name}.{database}.{schema_name}.{table_name}",
+                fqn=f"{self.database_service_name}.{database}.{schema_name}.{table_name}",
             )
 
         table_entity = [
@@ -208,27 +245,119 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return OpenMetadata(create_ometa_connection_obj(rendered_config))
 
+    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:
+        """build test case fqn from table entity and GE test results
+
+        Args:
+            table_fqn (str): table fully qualified name
+            result (Dict): result from great expectation tests
+        """
+        split_table_fqn = table_fqn.split(".")
+        return fqn.build(
+            self.ometa_conn,
+            entity_type=TestCase,
+            service_name=split_table_fqn[0],
+            database_name=split_table_fqn[1],
+            schema_name=split_table_fqn[2],
+            table_name=split_table_fqn[3],
+            column_name=result["expectation_config"]["kwargs"].get("column"),
+            test_case_name=result["expectation_config"]["expectation_type"],
+        )
+
+    def _build_entity_link_from_fqn(
+        self, table_fqn: str, column_name: Optional[str]
+    ) -> str:
+        """build entity link
+
+        Args:
+            table_fqn (str): table fqn
+            column_name (Optionla[str]): column name
+
+        Returns:
+            str: _description_
+        """
+        return (
+            f"<#E::table::{table_fqn}::columns::{column_name}>"
+            if column_name
+            else f"<#E::table::{table_fqn}>"
+        )
+
     def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.
-        Test is added using a generic test case builder that accepts
-        a specific test builder. Test builder is retrieved from
-        `SupportedGETests` based on the `expectation_type` fetch from GE result.
+        Test Definitions will be created on the fly from the results of the
+        great expectations run. We will then write the test case results to the
+        specific test case.
 
         Args:
             result: GE test result
             table_entity: table entity object
-
         """
+
         try:
-            test_builder = SupportedGETests[
-                result["expectation_config"]["expectation_type"]
-            ].value
-            test_builder(result, self.ometa_conn, table_entity)
-            GenericTestCaseBuilder(
-                test_case_builder=test_builder
-            ).build_test_from_builder()
-        except KeyError:
-            logger.warning(
-                "GE Test %s not yet support. Skipping test ingestion",
-                result["expectation_config"]["expectation_type"],
+            test_suite = self.ometa_conn.get_or_create_test_suite(
+                test_suite_name=self.test_suite_name or "great_expectation_default",
+                test_suite_description="Test Suite Created from Great Expectation checkpoint run",
             )
+            test_definition = self.ometa_conn.get_or_create_test_definition(
+                test_definition_fqn=result["expectation_config"]["expectation_type"],
+                test_definition_description=result["expectation_config"][
+                    "expectation_type"
+                ].replace("_", " "),
+                entity_type=EntityType.COLUMN
+                if "column" in result["expectation_config"]["kwargs"]
+                else EntityType.TABLE,
+                test_platforms=[TestPlatform.GreatExpectations],
+                test_case_parameter_definition=[
+                    TestCaseParameterDefinition(
+                        name=key,
+                    )
+                    for key, _ in result["expectation_config"]["kwargs"].items()
+                    if key not in {"column", "batch_id"}
+                ],
+            )
+
+            test_case_fqn = self._build_test_case_fqn(
+                table_entity.fullyQualifiedName.__root__, result
+            )
+
+            test_case = self.ometa_conn.get_or_create_test_case(
+                test_case_fqn,
+                entity_link=self._build_entity_link_from_fqn(
+                    table_entity.fullyQualifiedName.__root__,
+                    fqn.split_test_case_fqn(test_case_fqn).column,
+                ),
+                test_suite_fqn=test_suite.fullyQualifiedName.__root__,
+                test_definition_fqn=test_definition.fullyQualifiedName.__root__,
+                test_case_parameter_values=[
+                    TestCaseParameterValue(
+                        name=key,
+                        value=str(value),
+                    )
+                    for key, value in result["expectation_config"]["kwargs"].items()
+                    if key not in {"column", "batch_id"}
+                ],
+            )
+
+            self.ometa_conn.add_test_case_results(
+                test_results=TestCaseResult(
+                    timestamp=datetime.now(timezone.utc).timestamp(),
+                    testCaseStatus=TestCaseStatus.Success
+                    if result["success"]
+                    else TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(
+                            name="observed_value",
+                            value=str(result["result"].get("observed_value")),
+                        )
+                    ],
+                ),
+                test_case_fqn=test_case.fullyQualifiedName.__root__,
+            )
+
+            logger.info(
+                f"Test case result for {test_case.fullyQualifiedName.__root__} successfully ingested"
+            )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(exc)

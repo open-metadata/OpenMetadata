@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
@@ -37,47 +37,33 @@ describe('Test Schema modal component', () => {
   });
 
   it('Should render schema modal component', async () => {
-    const { findByTestId } = render(<SchemaModal {...mockProp} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<SchemaModal visible {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    const modalContainer = await findByTestId('schema-modal');
+    const modalContainer = await screen.findByTestId('schema-modal');
 
     expect(modalContainer).toBeInTheDocument();
 
-    const modalBackdrop = await findByTestId('schema-modal-backdrop');
-
-    expect(modalBackdrop).toBeInTheDocument();
-
-    const header = await findByTestId('schema-modal-header');
+    const header = await screen.findByTestId('schema-modal-header');
 
     expect(header).toBeInTheDocument();
 
-    const modalCloseButton = await findByTestId('schema-modal-close-button');
+    const modalCloseButton = await screen.findByTestId(
+      'schema-modal-close-button'
+    );
 
     expect(modalCloseButton).toBeInTheDocument();
 
-    const modalBody = await findByTestId('schem-modal-body');
+    const modalBody = await screen.findByTestId('schema-modal-body');
 
     expect(modalBody).toBeInTheDocument();
   });
 
-  it('Should call onClose method on click of backedrop', async () => {
-    const { findByTestId } = render(<SchemaModal {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const modalBackdrop = await findByTestId('schema-modal-backdrop');
-
-    expect(modalBackdrop).toBeInTheDocument();
-
-    fireEvent.click(modalBackdrop);
-
-    expect(onClose).toBeCalled();
-  });
-
   it('Should call onClose method on click of close button', async () => {
-    const { findByTestId } = render(<SchemaModal {...mockProp} />, {
+    const { findByTestId } = render(<SchemaModal visible {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -87,6 +73,6 @@ describe('Test Schema modal component', () => {
 
     fireEvent.click(modalCloseButton);
 
-    expect(onClose).toBeCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,41 +11,66 @@
  *  limitations under the License.
  */
 
+import { FormSubmitType } from '../../../enums/form.enum';
 import {
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../../../generated/metadataIngestion/dbtPipeline';
+import {
+  AddIngestionState,
+  ModifiedDbtConfig,
+} from '../../AddIngestion/addIngestion.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export interface DBTFormCommonProps {
   okText: string;
   cancelText: string;
   onCancel: () => void;
-  onSubmit: (data?: DbtConfigSource) => void;
+  onSubmit: (data?: DbtConfig) => void;
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
-  data: DbtConfigSource;
-  gcsType?: GCS_CONFIG;
-  source?: DBT_SOURCES;
-  handleGcsTypeChange?: (type: GCS_CONFIG) => void;
-  handleSourceChange?: (src: DBT_SOURCES) => void;
+  formType: FormSubmitType;
+  data: AddIngestionState;
+
+  onChange: (newState: Partial<AddIngestionState>) => void;
 }
 
+export type DbtConfigCloud = Pick<
+  ModifiedDbtConfig,
+  | 'dbtCloudAccountId'
+  | 'dbtCloudAuthToken'
+  | 'dbtUpdateDescriptions'
+  | 'dbtCloudProjectId'
+  | 'dbtClassificationName'
+  | 'dbtCloudUrl'
+>;
+
 export type DbtConfigLocal = Pick<
-  DbtConfigSource,
-  'dbtCatalogFilePath' | 'dbtManifestFilePath'
+  ModifiedDbtConfig,
+  | 'dbtCatalogFilePath'
+  | 'dbtManifestFilePath'
+  | 'dbtRunResultsFilePath'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtConfigHttp = Pick<
-  DbtConfigSource,
-  'dbtCatalogHttpPath' | 'dbtManifestHttpPath'
+  ModifiedDbtConfig,
+  | 'dbtCatalogHttpPath'
+  | 'dbtManifestHttpPath'
+  | 'dbtRunResultsHttpPath'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtConfigS3GCS = Pick<
-  DbtConfigSource,
-  'dbtSecurityConfig' | 'dbtPrefixConfig'
+  ModifiedDbtConfig,
+  | 'dbtSecurityConfig'
+  | 'dbtPrefixConfig'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtS3Creds = Pick<
@@ -57,9 +82,11 @@ export type DbtS3Creds = Pick<
   | 'endPointURL'
 >;
 
-export type DbtS3CredsReq = Pick<
-  DbtS3Creds,
-  'awsAccessKeyId' | 'awsSecretAccessKey' | 'awsRegion'
+export type DbtS3CredsReq = Pick<DbtS3Creds, 'awsRegion'>;
+
+export type DbtConfigCloudReq = Pick<
+  DbtConfigCloud,
+  'dbtCloudAccountId' | 'dbtCloudAuthToken'
 >;
 
 export interface DbtSourceTypes {
@@ -68,6 +95,8 @@ export interface DbtSourceTypes {
 }
 
 export type DbtGCSCreds = GCSCredentialsValues;
+
+export type ErrorDbtCloud = Record<keyof DbtConfigCloud, string>;
 
 export type ErrorDbtLocal = Record<keyof DbtConfigLocal, string>;
 

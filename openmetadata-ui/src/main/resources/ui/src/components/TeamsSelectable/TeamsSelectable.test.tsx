@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,32 +22,18 @@ const mockProps = {
   onSelectionChange: mockSelChange,
 };
 
-jest.mock('react-select/async', () => {
-  return jest
+jest.mock('antd', () => ({
+  TreeSelect: jest
     .fn()
     .mockImplementation(({ onChange }) => (
-      <div onClick={() => onChange([])}>AsyncSelect.component</div>
-    ));
-});
-
-jest.mock('../../axiosAPIs/teamsAPI', () => ({
-  getTeams: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        data: [],
-      },
-    })
-  ),
+      <div onClick={() => onChange([])}>TreeSelect.component</div>
+    )),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
-  getSuggestedTeams: jest.fn().mockImplementation(() =>
+jest.mock('rest/teamsAPI', () => ({
+  getTeamsHierarchy: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: {
-        suggest: {
-          'metadata-suggest': [{ options: [] }],
-        },
-      },
+      data: [],
     })
   ),
 }));
@@ -58,9 +44,9 @@ describe('TeamsSelectable component test', () => {
       wrapper: MemoryRouter,
     });
 
-    const asyncSelect = await findByText('AsyncSelect.component');
+    const treeSelect = await findByText('TreeSelect.component');
 
-    expect(asyncSelect).toBeInTheDocument();
+    expect(treeSelect).toBeInTheDocument();
   });
 
   it('TeamsSelectable component should fire selection change', async () => {
@@ -68,17 +54,17 @@ describe('TeamsSelectable component test', () => {
       wrapper: MemoryRouter,
     });
 
-    const asyncSelect = await findByText('AsyncSelect.component');
+    const treeSelect = await findByText('TreeSelect.component');
 
     fireEvent.click(
-      asyncSelect,
+      treeSelect,
       new MouseEvent('click', {
         bubbles: true,
         cancelable: true,
       })
     );
 
-    expect(asyncSelect).toBeInTheDocument();
+    expect(treeSelect).toBeInTheDocument();
     expect(mockSelChange).toHaveBeenCalled();
   });
 });

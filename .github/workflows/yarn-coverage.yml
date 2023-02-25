@@ -1,4 +1,4 @@
-name: SonarCloud + Node Yarn Coverage
+name: SonarCloud + Jest Coverage
 
 on:
   # Trigger analysis when pushing in master or pull requests, and when creating
@@ -6,15 +6,22 @@ on:
   push:
     branches:
       - main
+      - "0.[0-9]+.[0-9]+"
     paths:
       - openmetadata-ui/src/main/resources/ui/**
   pull_request_target:
     types: [opened, synchronize, reopened]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
+
+permissions:
+  contents: read
+  pull-requests: write # Required for Providing Jest Coverage Comment
+
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
-concurrency: 
+  UI_COVERAGE_DIRECTORY: openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
+concurrency:
   group: yarn-coverage-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
@@ -24,49 +31,108 @@ jobs:
         node-version: [16.x]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        # Disabling shallow clone is recommended for improving relevancy of reporting
-        fetch-depth: 0
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
-    - name: Install Yarn Packages
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: yarn install
-    - name: Run Coverage
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: yarn test:coverage
-      id: yarn_coverage
-    - name: yarn add sonarqube-scanner
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: npm install -g sonarqube-scanner
-      id: npm_install_sonar_scanner
-    - name: SonarCloud Scan On PR
-      if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: |
-        sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
-        -Dproject.settings=sonar-project.properties \
-        -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-        -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-        -Dsonar.pullrequest.base=main \
-        -Donar.pullrequest.github.repository=OpenMetadata \
-        -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-        -Dsonar.pullrequest.provider=github
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
-        SONARCLOUD_URL: https://sonarcloud.io
-    - name: SonarCloud Scan
-      if: github.event_name == 'push' && steps.npm_install_sonar_scanner.outcome == 'success'
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: |
-        sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
-        -Dproject.settings=sonar-project.properties
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
-        SONARCLOUD_URL: https://sonarcloud.io
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea #v1.0.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
+
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Disabling shallow clone is recommended for improving relevancy of reporting
+          fetch-depth: 0
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Caching NPM dependencies 
+        uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: bash
+        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
+
+      - name: Caching NPM dependencies
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        if: steps.npm-cache.outputs.exit-code == 0
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Antlr4 CLI
+        run: |
+          sudo make install_antlr_cli
+      - name: Install Yarn Packages
+        if: steps.yarn-cache.outputs.exit-code == 0
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install
+      - name: Run Coverage
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn test:cov-summary
+        id: yarn_coverage
+      - name: Jest coverage comment
+        uses: MishaKav/jest-coverage-comment@v1.0.22
+        with:
+          coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
+          title: Jest test Coverage
+          summary-title: UI tests summary
+          badge-title: Coverage
+      - name: yarn add sonarqube-scanner
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: npm install -g sonarqube-scanner
+        id: npm_install_sonar_scanner
+      - name: SonarCloud Scan On PR
+        if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
+          -Dproject.settings=sonar-project.properties \
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+          -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+          -Dsonar.pullrequest.base=main \
+          -Donar.pullrequest.github.repository=OpenMetadata \
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
+          -Dsonar.pullrequest.provider=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
+          SONARCLOUD_URL: https://sonarcloud.io
+      - name: SonarCloud Scan
+        if: github.event_name == 'push' && steps.npm_install_sonar_scanner.outcome == 'success'
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
+          -Dproject.settings=sonar-project.properties
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
+          SONARCLOUD_URL: https://sonarcloud.io

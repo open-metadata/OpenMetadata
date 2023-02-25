@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,6 +19,9 @@ import AnchorDropDownList from './AnchorDropDownList';
 import CheckBoxDropDownList from './CheckBoxDropDownList';
 import { DropDownListItem, DropDownProp, DropDownType } from './types';
 
+/**
+ * @deprecated use AntD dropdown instead
+ */
 const DropDown: React.FC<DropDownProp> = ({
   className = '',
   disabled = false,
@@ -134,7 +137,7 @@ const DropDown: React.FC<DropDownProp> = ({
 
                 {isDropDownIconVisible ? (
                   <DropdownIcon
-                    style={{ marginTop: '7px', color: normalLink }}
+                    style={{ marginTop: '5px', color: normalLink }}
                   />
                 ) : null}
               </>

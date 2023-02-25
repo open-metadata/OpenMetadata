@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,32 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Icon from '@ant-design/icons';
+import { Tooltip } from 'antd';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { Fragment } from 'react';
-import PopOver from '../components/common/popover/PopOver';
+import React from 'react';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
+import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
+import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
+
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getCustomEntityPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -30,25 +47,31 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { Column, DataType } from '../generated/entity/data/table';
-import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
+import {
+  Column,
+  DataType,
+  TableConstraint,
+} from '../generated/entity/data/table';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
-import { ModifiedTableColumn } from '../interface/dataQuality.interface';
-import { getGlossaryPath } from './RouterUtils';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+  sortTagsCaseInsensitive,
+} from './CommonUtils';
+import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
-import SVGIcons from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
-    case 'REGULAR':
-      return 'table';
     case 'QUERY':
-      return 'query';
+      return t('label.query-lowercase');
     default:
-      return 'table';
+      return t('label.table-lowercase');
   }
 };
 
@@ -66,8 +89,8 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
-    isLiteral ? 'Usage' : ''
-  } - ${ordinalPercentile} pctile`;
+    isLiteral ? t('label.usage') : ''
+  } - ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
@@ -124,27 +147,38 @@ export const getSearchTableTagsWithoutTier = (
   );
 };
 
-export const getConstraintIcon = (constraint = '', className = '') => {
-  let title: string, icon: string;
+export const getConstraintIcon = (
+  constraint = '',
+  className = '',
+  width = '16px'
+) => {
+  let title: string, icon: SvgComponent;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
-        title = 'Primary key';
-        icon = 'key';
+        title = t('label.primary-key');
+        icon = IconKey;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
-        title = 'Unique';
-        icon = 'unique';
+        title = t('label.unique');
+        icon = IconUnique;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
-        title = 'Not null';
-        icon = 'not-null';
+        title = t('label.not-null');
+        icon = IconNotNull;
+      }
+
+      break;
+    case ConstraintTypes.FOREIGN_KEY:
+      {
+        title = t('label.foreign-key');
+        icon = IconForeignKey;
       }
 
       break;
@@ -153,14 +187,13 @@ export const getConstraintIcon = (constraint = '', className = '') => {
   }
 
   return (
-    <PopOver
-      className={classNames('tw-absolute tw-left-2', className)}
-      position="bottom"
-      size="small"
+    <Tooltip
+      className={classNames(className)}
+      placement="bottom"
       title={title}
-      trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="12px" />
-    </PopOver>
+      trigger="hover">
+      <Icon alt={title} component={icon} style={{ fontSize: width }} />
+    </Tooltip>
   );
 };
 
@@ -203,7 +236,10 @@ export const getEntityLink = (
       return getEditWebhookPath(fullyQualifiedName);
 
     case EntityType.TYPE:
-      return getCustomEntityPath(fullyQualifiedName);
+      return getSettingPath(
+        GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
+        `${fullyQualifiedName}s`
+      );
 
     case EntityType.MLMODEL:
     case SearchIndex.MLMODEL:
@@ -217,45 +253,44 @@ export const getEntityLink = (
 };
 
 export const getEntityIcon = (indexType: string) => {
-  let icon = '';
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
-      icon = 'topic-grey';
-
-      break;
+      return <TopicIcon />;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
-      icon = 'dashboard-grey';
+      return <DashboardIcon />;
 
-      break;
+    case SearchIndex.MLMODEL:
+    case EntityType.MLMODEL:
+      return <MlModelIcon />;
+
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
-      icon = 'pipeline-grey';
+      return <PipelineIcon />;
 
-      break;
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      icon = 'table-grey';
-
-      break;
+      return <TableIcon />;
   }
-
-  return <SVGIcons alt={icon} icon={icon} width="14" />;
 };
 
 export const makeRow = (column: Column) => {
   return {
     description: column.description || '',
-    tags: column?.tags || [],
+    // Sorting tags as the response of PATCH request does not return the sorted order
+    // of tags, but is stored in sorted manner in the database
+    // which leads to wrong PATCH payload sent after further tags removal
+    tags: sortTagsCaseInsensitive(column.tags || []),
+    key: column?.name,
     ...column,
   };
 };
 
 export const makeData = (
-  columns: ModifiedTableColumn[] = []
+  columns: Column[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
   return columns.map((column) => ({
     ...makeRow(column),
@@ -284,6 +319,7 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Bigint:
     case DataType.Numeric:
     case DataType.Tinyint:
+    case DataType.Decimal:
       return PrimaryTableDataTypes.NUMERIC;
     case DataType.Boolean:
     case DataType.Enum:
@@ -293,49 +329,111 @@ export const getDataTypeString = (dataType: string): string => {
   }
 };
 
-export const getTableTestsValue = (tableTestCase: TableTest[]) => {
-  const tableTestLength = tableTestCase.length;
+export const generateEntityLink = (fqn: string, includeColumn = false) => {
+  const columnLink = '<#E::table::ENTITY_FQN::columns::COLUMN>';
+  const tableLink = '<#E::table::ENTITY_FQN>';
 
-  const failingTests = tableTestCase.filter((test) =>
-    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
+  if (includeColumn) {
+    const tableFqn = getTableFQNFromColumnFQN(fqn);
+    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
+
+    return columnLink
+      .replace('ENTITY_FQN', tableFqn)
+      .replace('COLUMN', columnName);
+  } else {
+    return tableLink.replace('ENTITY_FQN', fqn);
+  }
+};
+
+export const getEntityFqnFromEntityLink = (
+  entityLink: string,
+  includeColumn = false
+) => {
+  const link = entityLink.split('>')[0];
+  const entityLinkData = link.split('::');
+  const tableFqn = entityLinkData[2];
+
+  if (includeColumn) {
+    return `${tableFqn}.${entityLinkData[entityLinkData.length - 1]}`;
+  }
+
+  return tableFqn;
+};
+
+export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
+  switch (status) {
+    case TestCaseStatus.Success:
+      return IconSuccessBadge;
+
+    case TestCaseStatus.Failed:
+      return IconFailBadge;
+
+    case TestCaseStatus.Aborted:
+      return IconPendingBadge;
+
+    default:
+      return IconPendingBadge;
+  }
+};
+
+export function getTableExpandableConfig<T>(
+  isDraggable?: boolean
+): ExpandableConfig<T> {
+  const expandableConfig: ExpandableConfig<T> = {
+    expandIcon: ({ expanded, onExpand, expandable, record }) =>
+      expandable ? (
+        <>
+          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+          <Icon
+            className="mr-1"
+            component={expanded ? DropDownIcon : RightArrowIcon}
+            data-testid="expand-icon"
+            size={16}
+            onClick={(e) => onExpand(record, e)}
+          />
+        </>
+      ) : (
+        isDraggable && (
+          <>
+            <Icon className="drag-icon" component={DragIcon} />
+            <div className="expand-cell-empty-icon-container" />
+          </>
+        )
+      ),
+  };
+
+  return expandableConfig;
+}
+
+export const prepareConstraintIcon = (
+  columnName: string,
+  columnConstraint?: string,
+  tableConstraints?: TableConstraint[],
+  iconClassName?: string,
+  iconWidth?: string
+) => {
+  // get the table constraint for column
+  const tableConstraint = tableConstraints?.find((constraint) =>
+    constraint.columns?.includes(columnName)
   );
-  const passingTests = tableTestCase.filter((test) =>
-    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
-  );
+
+  // prepare column constraint element
+  const columnConstraintEl = columnConstraint
+    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    : null;
+
+  // prepare table constraint element
+  const tableConstraintEl = tableConstraint
+    ? getConstraintIcon(
+        tableConstraint.constraintType,
+        iconClassName || 'tw-mr-2',
+        iconWidth
+      )
+    : null;
 
   return (
-    <Fragment>
-      {tableTestLength ? (
-        <Fragment>
-          {failingTests.length ? (
-            <div className="tw-flex">
-              <p className="tw-mr-2">
-                <FontAwesomeIcon
-                  className="tw-text-status-failed"
-                  icon="times"
-                />
-              </p>
-              <p>{`${failingTests.length}/${tableTestLength} tests failing`}</p>
-            </div>
-          ) : (
-            <Fragment>
-              {passingTests.length ? (
-                <div className="tw-flex">
-                  <div className="tw-mr-2">
-                    <FontAwesomeIcon
-                      className="tw-text-status-success"
-                      icon="check-square"
-                    />
-                  </div>
-                  <>{`${passingTests.length} tests`}</>
-                </div>
-              ) : (
-                <>{`${tableTestLength} tests`}</>
-              )}
-            </Fragment>
-          )}
-        </Fragment>
-      ) : null}
-    </Fragment>
+    <span data-testid="constraints">
+      {columnConstraintEl} {tableConstraintEl}
+    </span>
   );
 };

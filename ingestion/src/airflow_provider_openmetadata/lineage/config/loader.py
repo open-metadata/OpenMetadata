@@ -15,7 +15,7 @@ OpenMetadata Airflow Lineage Backend
 import json
 import os
 
-from airflow.configuration import conf
+from airflow.configuration import AirflowConfigParser
 from pydantic import BaseModel
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
@@ -32,9 +32,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 class AirflowLineageConfig(BaseModel):
     airflow_service_name: str
     metadata_config: OpenMetadataConnection
+    only_keep_dag_lineage: bool = False
+    max_status: int = 10
 
 
-def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
+def parse_airflow_config(
+    airflow_service_name: str, conf: AirflowConfigParser
+) -> AirflowLineageConfig:
     """
     Get airflow config from airflow.cfg and parse it
     to the config model
@@ -53,10 +57,16 @@ def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
             raise InvalidAirflowProviderException(
                 f"Cannot find {auth_provider_type} in airflow providers registry."
             )
-        security_config = load_security_config_fn()
+        security_config = load_security_config_fn(conf)
 
     return AirflowLineageConfig(
         airflow_service_name=airflow_service_name,
+        # Check if value is a literal string `true`
+        only_keep_dag_lineage=conf.get(
+            LINEAGE, "only_keep_dag_lineage", fallback="false"
+        )
+        == "true",
+        max_status=int(conf.get(LINEAGE, "max_status", fallback=10)),
         metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,
@@ -65,6 +75,7 @@ def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
             ),
             authProvider=auth_provider_type,
             securityConfig=security_config,
+            verifySSL=conf.get(LINEAGE, "verify_ssl", fallback="no-ssl"),
         ),
     )
 
@@ -75,9 +86,13 @@ def get_lineage_config() -> AirflowLineageConfig:
     a JSON file path configures as env in OPENMETADATA_LINEAGE_CONFIG
     or return a default config.
     """
+
+    # Import conf settings at call time
+    from airflow.configuration import conf  # pylint: disable=import-outside-toplevel
+
     airflow_service_name = conf.get(LINEAGE, "airflow_service_name", fallback=None)
     if airflow_service_name:
-        return parse_airflow_config(airflow_service_name)
+        return parse_airflow_config(airflow_service_name, conf=conf)
 
     openmetadata_config_file = os.getenv("OPENMETADATA_LINEAGE_CONFIG")
 

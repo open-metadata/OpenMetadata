@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByTestId,
-  findByTestId,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { ArrowHeadType, EdgeProps, Position } from 'react-flow-renderer';
 import { MemoryRouter } from 'react-router-dom';
+import { EdgeProps, Position } from 'reactflow';
+import { EntityType } from '../../enums/entity.enum';
 import { CustomEdge } from './CustomEdge.component';
 
 jest.mock('../../constants/Lineage.constants', () => ({
@@ -35,51 +31,75 @@ const mockCustomEdgeProp = {
   sourcePosition: Position.Left,
   targetPosition: Position.Right,
   style: {},
-  arrowHeadType: ArrowHeadType.ArrowClosed,
-  markerEndId: '',
+  markerEnd: '',
   data: {
     source: 'node1',
     target: 'node2',
+    sourceType: EntityType.TABLE,
+    targetType: EntityType.DASHBOARD,
     onEdgeClick: jest.fn(),
     selectedNode: {
       id: 'node1',
     },
+    isColumnLineage: false,
+    isEditMode: true,
   },
   selected: true,
 } as EdgeProps;
 
 describe('Test CustomEdge Component', () => {
   it('Check if CustomEdge has all child elements', async () => {
-    const { container } = render(<CustomEdge {...mockCustomEdgeProp} />, {
+    render(<CustomEdge {...mockCustomEdgeProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const deleteButton = await findByTestId(container, 'delete-button');
-    const edgePathElement = await findAllByTestId(
-      container,
+    const deleteButton = await screen.findByTestId('delete-button');
+    const edgePathElement = await screen.findAllByTestId(
       'react-flow-edge-path'
     );
+    const pipelineLabelAsEdge = screen.queryByTestId('pipeline-label');
 
     expect(deleteButton).toBeInTheDocument();
+    expect(pipelineLabelAsEdge).not.toBeInTheDocument();
     expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 
   it('Check if CustomEdge has selected as false', async () => {
-    const { container } = render(
-      <CustomEdge {...mockCustomEdgeProp} selected={false} />,
+    render(<CustomEdge {...mockCustomEdgeProp} selected={false} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const edgePathElement = await screen.findAllByTestId(
+      'react-flow-edge-path'
+    );
+
+    const deleteButton = screen.queryByTestId('delete-button');
+
+    expect(deleteButton).not.toBeInTheDocument();
+    expect(edgePathElement).toHaveLength(edgePathElement.length);
+  });
+
+  it('Pipeline as edge should be visible', async () => {
+    render(
+      <CustomEdge
+        {...mockCustomEdgeProp}
+        data={{
+          ...mockCustomEdgeProp.data,
+          targetType: EntityType.TABLE,
+          label: 'Pipeline',
+          pipeline: {
+            id: 'pipeline1',
+            type: 'pipeline-id',
+          },
+        }}
+      />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const edgePathElement = await findAllByTestId(
-      container,
-      'react-flow-edge-path'
-    );
+    const pipelineLabelAsEdge = await screen.findByTestId('pipeline-label');
 
-    const deleteButton = queryByTestId(container, 'delete-button');
-
-    expect(deleteButton).not.toBeInTheDocument();
-    expect(edgePathElement).toHaveLength(edgePathElement.length);
+    expect(pipelineLabelAsEdge).toBeInTheDocument();
   });
 });

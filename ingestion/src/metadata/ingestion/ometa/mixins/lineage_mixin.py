@@ -13,18 +13,20 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-
+import traceback
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.utils import get_entity_type, ometa_logger
+from metadata.ingestion.ometa.utils import get_entity_type
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 
 
 class OMetaLineageMixin(Generic[T]):
@@ -44,8 +46,12 @@ class OMetaLineageMixin(Generic[T]):
         try:
             self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
         except APIError as err:
+            logger.debug(traceback.format_exc())
             logger.error(
-                "Error %s trying to PUT lineage for %s", err.status_code, data.json()
+                "Error %s trying to PUT lineage for %s: %s",
+                err.status_code,
+                data.json(),
+                str(err),
             )
             raise err
 
@@ -119,8 +125,22 @@ class OMetaLineageMixin(Generic[T]):
             )
             return res
         except APIError as err:
-            logger.error(
+            logger.debug(traceback.format_exc())
+            logger.warning(
                 f"Error {err.status_code} trying to GET linage for "
-                + f"{entity.__name__} and {path}"
+                + f"{entity.__name__} and {path}: {err}"
             )
             return None
+
+    def delete_lineage_edge(self, edge: EntitiesEdge) -> None:
+        """
+        Remove the given Edge
+        """
+        try:
+            self.client.delete(
+                f"{self.get_suffix(AddLineageRequest)}/{edge.fromEntity.type}/{edge.fromEntity.id.__root__}/"
+                f"{edge.toEntity.type}/{edge.toEntity.id.__root__}"
+            )
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")

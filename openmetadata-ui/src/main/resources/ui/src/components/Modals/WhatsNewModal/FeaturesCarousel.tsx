@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,58 +11,52 @@
  *  limitations under the License.
  */
 
-/* eslint-disable max-len */
-
+import { Carousel } from 'antd';
+import { CarouselProps, CarouselRef } from 'antd/lib/carousel';
 import { uniqueId } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
-import Slider from 'react-slick';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import { FeaturesCarouselProps } from './FeaturesCarousel.interface';
 
-type CarousalData = {
-  title: string;
-  description: string;
-  isImage: boolean;
-  path: string;
-};
-
-type Props = {
-  data: CarousalData[];
-};
-
-const FeaturesCarousel = ({ data }: Props) => {
+const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
   const [isDataChange, setIsDataChange] = useState(false);
-  const sliderRef = useRef<typeof Slider | null>(null);
+  const sliderRef = useRef<CarouselRef | null>(null);
 
-  const settings = {
-    dots: true,
-    dotsClass: 'slick-dots testid-dots-button',
-    arrows: false,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    beforeChange: (current: number) => {
-      if (current >= data.length) {
-        setIsDataChange(true);
-      } else {
-        setIsDataChange(false);
-      }
-    },
-    onReInit: () => {
-      if (isDataChange) {
-        setTimeout(() => {
-          sliderRef?.current?.slickGoTo(0);
-        }, 200);
-      }
-    },
-  };
+  const FEATURES_CAROUSEL_SETTINGS = useMemo(
+    () =>
+      ({
+        dots: {
+          className: 'carousel-dots testid-dots-button',
+        },
+        autoplay: true,
+        prefixCls: 'features-carousel',
+        infinite: true,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        beforeChange: (current: number) => {
+          if (current >= data.length) {
+            setIsDataChange(true);
+          } else {
+            setIsDataChange(false);
+          }
+        },
+        onReInit: () => {
+          if (isDataChange) {
+            setTimeout(() => {
+              sliderRef?.current?.goTo(0);
+            }, 200);
+          }
+        },
+      } as CarouselProps),
+    [sliderRef, setIsDataChange, data, isDataChange]
+  );
 
   useEffect(() => {
     setIsDataChange(true);
   }, [data]);
 
   return (
-    <Slider ref={sliderRef} {...settings}>
+    <Carousel ref={sliderRef} {...FEATURES_CAROUSEL_SETTINGS}>
       {data.map((d) => (
         <div className="tw-px-1" key={uniqueId()}>
           <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
@@ -89,7 +83,7 @@ const FeaturesCarousel = ({ data }: Props) => {
           </div>
         </div>
       ))}
-    </Slider>
+    </Carousel>
   );
 };
 

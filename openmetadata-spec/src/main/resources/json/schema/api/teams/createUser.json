@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/api/teams/createUser.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateUserRequest",
+  "description": "Request to create User entity",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.teams.CreateUser",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../entity/teams/user.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Used for user biography.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'FirstName LastName'",
+      "type": "string"
+    },
+    "email": {
+      "$ref": "../../type/basic.json#/definitions/email"
+    },
+    "timezone": {
+      "description": "Timezone of the user",
+      "type": "string",
+      "format": "timezone"
+    },
+    "isBot": {
+      "description": "When true indicates user is a bot with appropriate privileges",
+      "type": "boolean"
+    },
+    "botName": {
+      "description": "User bot name if we want to associate this bot with an specific bot",
+      "type": "string"
+    },
+    "isAdmin": {
+      "description": "When true indicates user is an administrator for the system with superuser privileges",
+      "type": "boolean",
+      "default": false
+    },
+    "profile": {
+      "$ref": "../../type/profile.json",
+      "default": null
+    },
+    "teams": {
+      "description": "Teams that the user belongs to",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "roles": {
+      "description": "Roles that the user has been assigned",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "authenticationMechanism": {
+      "description": "Authentication mechanism specified ",
+      "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",
+      "default": null
+    },
+    "createPasswordType": {
+      "description": "User Password Method",
+      "type": "string",
+      "enum": ["ADMIN_CREATE", "USER_CREATE"],
+      "default": "USER_CREATE"
+    },
+    "password": {
+      "description": "Password for User",
+      "type": "string"
+    },
+    "confirmPassword": {
+      "description": "Confirm Password for User",
+      "type": "string"
+    }
+  },
+  "required": ["name", "email"],
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Form, { FormProps } from '@rjsf/core';
+import { CheckOutlined } from '@ant-design/icons';
+import Form from '@rjsf/antd';
+import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { t } from 'i18next';
+import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -28,10 +31,12 @@ import Loader from '../../Loader/Loader';
 interface Props extends FormProps<ConfigData> {
   okText: string;
   cancelText: string;
+  isAirflowAvailable: boolean;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
   onTestConnection?: (formData: ConfigData) => Promise<void>;
+  disableTestConnection: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -45,26 +50,45 @@ const FormBuilder: FunctionComponent<Props> = ({
   onSubmit,
   onTestConnection,
   uiSchema,
+  isAirflowAvailable,
+  disableTestConnection,
   ...props
 }: Props) => {
-  let oForm: Form<ConfigData> | null;
+  const formRef = useRef<CoreForm<ConfigData>>();
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formatFormDataForRender(formData)
+    formatFormDataForRender(formData ?? {})
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
     useState<LoadingState>('initial');
 
+  const [hostIp, setHostIp] = useState<string>('[fetching]');
+
+  const fetchHostIp = async () => {
+    try {
+      const data = await getPipelineServiceHostIp();
+      setHostIp(data?.ip || '[unknown]');
+    } catch (error) {
+      setHostIp('[error - unknown]');
+    }
+  };
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
+
   const handleCancel = () => {
-    setLocalFormData(formatFormDataForRender(formData));
+    setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
     if (onCancel) {
       onCancel();
     }
   };
 
   const handleSubmit = () => {
-    if (oForm?.submit) {
-      oForm.submit();
+    if (formRef.current) {
+      formRef.current.submit();
     }
   };
 
@@ -95,22 +119,37 @@ const FormBuilder: FunctionComponent<Props> = ({
         return (
           <div className="tw-flex">
             <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Testing Connection</span>
+            <span className="tw-ml-2">{t('label.testing-connection')}</span>
           </div>
         );
       case 'success':
         return (
           <div className="tw-flex">
-            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
-            <span className="tw-ml-2">Connection test was successful</span>
+            <SVGIcons
+              alt="success-badge"
+              icon={Icons.SUCCESS_BADGE}
+              width={24}
+            />
+            <span className="tw-ml-2">
+              {t('message.connection-test-successful')}
+            </span>
           </div>
         );
 
       case 'initial':
       default:
-        return 'Test your connections before creating service';
+        return t('message.test-your-connection-before-creating-service');
     }
   };
+
+  const transformErrors = (errors: AjvError[]) =>
+    errors.map((error) => {
+      const fieldName = error.params.missingProperty;
+      const customMessage = `${startCase(fieldName)} is required`;
+      error.message = customMessage;
+
+      return error;
+    });
 
   return (
     <Form
@@ -120,12 +159,12 @@ const FormBuilder: FunctionComponent<Props> = ({
         'no-header': !showFormHeader,
       })}
       formData={localFormData}
-      ref={(form) => {
-        oForm = form;
-      }}
+      ref={formRef}
       schema={schema}
+      showErrorList={false}
+      transformErrors={transformErrors}
       uiSchema={uiSchema}
-      onChange={(e) => {
+      onChange={(e: IChangeEvent) => {
         handleChange(e.formData);
         props.onChange && props.onChange(e);
       }}
@@ -133,7 +172,16 @@ const FormBuilder: FunctionComponent<Props> = ({
       {...props}>
       {isEmpty(schema) && (
         <div className="tw-text-grey-muted tw-text-center">
-          No Connection Configs available.
+          {t('message.no-config-available')}
+        </div>
+      )}
+      {!isEmpty(schema) && isAirflowAvailable && (
+        <div
+          className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+          data-testid="ip-address">
+          <div className="tw-self-center">
+            {t('message.airflow-host-ip-address', { hostIp })}
+          </div>
         </div>
       )}
       {!isEmpty(schema) && onTestConnection && (
@@ -144,12 +192,12 @@ const FormBuilder: FunctionComponent<Props> = ({
               'tw-opacity-40': connectionTesting,
             })}
             data-testid="test-connection-btn"
-            disabled={connectionTesting}
+            disabled={connectionTesting || disableTestConnection}
             size="small"
             theme="primary"
             variant="outlined"
             onClick={handleTestConnection}>
-            Test Connection
+            {t('label.test-connection')}
           </Button>
         </div>
       )}
@@ -179,7 +227,7 @@ const FormBuilder: FunctionComponent<Props> = ({
               size="regular"
               theme="primary"
               variant="contained">
-              <FontAwesomeIcon icon="check" />
+              <CheckOutlined />
             </Button>
           ) : (
             <Button

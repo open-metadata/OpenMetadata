@@ -14,80 +14,20 @@
 package org.openmetadata.client.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 
 public class OktaSSOConfig {
   /** Okta Client ID for the service application. (Required) */
-  private String clientId;
+  @Getter @Setter private String clientId;
   /** Okta Client Secret for the API service application. (Required) */
-  private String clientSecret;
+  @Getter @Setter private String clientSecret;
   /** Okta Authorization Server Url. (Required) */
-  private String authorizationServerURL;
+  @Getter private String authorizationServerURL;
 
   /** Okta client scopes. */
-  private List<String> scopes = new ArrayList<String>();
-
-  /** Okta Client ID. (Required) */
-  public String getClientId() {
-    return clientId;
-  }
-
-  /** Okta Client ID. (Required) */
-  public void setClientId(String clientId) {
-    this.clientId = clientId;
-  }
-
-  public OktaSSOConfig withClientId(String clientId) {
-    this.clientId = clientId;
-    return this;
-  }
-
-  /** Okta Client Secret. (Required) */
-  public String getClientSecret() {
-    return clientSecret;
-  }
-
-  /** Okta Client Secret. (Required) */
-  public void setClientSecret(String clientId) {
-    this.clientSecret = clientId;
-  }
-
-  public OktaSSOConfig withClientSecret(String clientId) {
-    this.clientSecret = clientId;
-    return this;
-  }
-
-  /** Okta org url. (Required) */
-  public String getAuthorizationServerURL() {
-    return authorizationServerURL;
-  }
-
-  /** Okta org url. (Required) */
-  public void setAuthorizationServerURL(String orgURL) {
-    this.authorizationServerURL = orgURL;
-  }
-
-  public OktaSSOConfig withAuthorizationServerURL(String orgURL) {
-    this.authorizationServerURL = orgURL;
-    return this;
-  }
-
-  /** Okta client scopes. */
-  public List<String> getScopes() {
-    return scopes;
-  }
-
-  /** Okta client scopes. */
-  public void setScopes(List<String> scopes) {
-    this.scopes = scopes;
-  }
-
-  public OktaSSOConfig withScopes(List<String> scopes) {
-    this.scopes = scopes;
-    return this;
-  }
+  @Getter @Setter private List<String> scopes = new ArrayList<>();
 
   @Override
   public String toString() {
@@ -118,42 +58,5 @@ public class OktaSSOConfig {
       sb.append(']');
     }
     return sb.toString();
-  }
-
-  public enum GrantType {
-    AUTHORIZATION_CODE("authorization_code"),
-    CLIENT_CREDENTIALS("client_credentials"),
-    IMPLICIT("implicit");
-    private final String value;
-    private static final Map<String, OktaSSOConfig.GrantType> CONSTANTS =
-        new HashMap<String, OktaSSOConfig.GrantType>();
-
-    static {
-      for (OktaSSOConfig.GrantType c : values()) {
-        CONSTANTS.put(c.value, c);
-      }
-    }
-
-    GrantType(String value) {
-      this.value = value;
-    }
-
-    @Override
-    public String toString() {
-      return this.value;
-    }
-
-    public String value() {
-      return this.value;
-    }
-
-    public static OktaSSOConfig.GrantType fromValue(String value) {
-      OktaSSOConfig.GrantType constant = CONSTANTS.get(value);
-      if (constant == null) {
-        throw new IllegalArgumentException(value);
-      } else {
-        return constant;
-      }
-    }
   }
 }

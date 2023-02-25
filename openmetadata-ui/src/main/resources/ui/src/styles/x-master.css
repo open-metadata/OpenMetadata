@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,10 +13,10 @@
 
 /* Generic */
 
-@import '~antd/dist/antd.css';
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #f8f9fa;
 }
 a {
   color: #2eaadc;
@@ -26,6 +26,18 @@ a:hover,
 a:focus {
   color: #2eaadc;
   text-decoration: none;
+}
+
+.list-reset {
+  margin: 0;
+}
+
+p {
+  margin-bottom: 0px;
+}
+
+pre {
+  font-family: 'Inter', sans-serif;
 }
 
 /* Bootstrap Extended */
@@ -40,9 +52,6 @@ a:focus {
 .table td,
 .table th {
   padding: 0.75em;
-}
-.text-primary {
-  color: #2eaadc !important;
 }
 .text-success {
   color: #28a745 !important;
@@ -60,10 +69,6 @@ a:focus {
   color: #c45296 !important;
 }
 
-.bg-primary {
-  color: #ffffff;
-  background-color: #2eaadc !important;
-}
 .bg-success {
   color: #ffffff;
   background-color: #28a745 !important;
@@ -166,33 +171,11 @@ a:focus {
   box-shadow: none;
 }
 .search-grey {
-  width: 600px;
+  width: calc(100vw - 800px);
   background: #f8f9fa;
 }
 .search-grey::placeholder {
   color: #6b7280;
-}
-
-.search-grey.has-search {
-  padding: 18px 20px;
-  padding-left: 12px;
-}
-.search-grey.has-search .form-control.search {
-  padding-left: 2.375rem;
-  background: #f3f3f3;
-  border-radius: 20px;
-  border: none;
-}
-.search-grey.has-search .search-icon {
-  position: absolute;
-  z-index: 2;
-  display: block;
-  width: 2.375rem;
-  height: 1.95rem;
-  line-height: 1.95rem;
-  text-align: center;
-  pointer-events: none;
-  color: #aaa;
 }
 
 /* Breadcrumb */
@@ -748,12 +731,21 @@ body .profiler-graph .recharts-active-dot circle {
   cursor: pointer;
 }
 
-.react-flow__edge .react-flow__edge-path {
-  stroke-width: 2px;
-}
-
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0px !important;
+}
+
+.react-flow__attribution > a {
+  color: #fff !important;
 }
 
 /* EntityVersion  */
@@ -778,11 +770,12 @@ body .profiler-graph .recharts-active-dot circle {
   height: calc(100vh - 110px);
 }
 
+/* 64 header + ( 16 + 16 )spacing Y = 96*/
 #left-panel {
   position: fixed;
   overflow-y: scroll;
-  width: 300px;
-  height: calc(100vh - 90px);
+  width: 304px;
+  height: calc(100vh - 96px);
 }
 
 #right-panel {
@@ -819,7 +812,7 @@ body .profiler-graph .recharts-active-dot circle {
   position: relative;
 }
 .page-layout-container.l3-col {
-  grid-template-columns: 300px auto 300px;
+  grid-template-columns: 304px auto 304px;
 }
 .page-layout-container.l2-ltr-col {
   grid-template-columns: 350px auto auto;
@@ -920,6 +913,10 @@ body .profiler-graph .recharts-active-dot circle {
   grid-template-columns: 200px auto 200px;
 }
 
+.feed-meesage > div > p:last-child {
+  margin-bottom: 0px;
+}
+
 code {
   padding: 2px 3px;
   border-radius: 4px;
@@ -967,8 +964,18 @@ code {
   -webkit-box-orient: vertical;
 }
 
+.ant-btn-text:hover span {
+  text-decoration: underline;
+  color: #7147e8;
+  background-color: transparent;
+}
+
 .ant-card-body {
-  padding: 12px;
+  padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
 }
 
 .ant-card-head-title {
@@ -985,10 +992,349 @@ code {
 }
 
 .ant-card-head {
+  padding: 0 14px;
   font-size: 14px;
   min-height: 20px;
 }
 
 .ant-card-extra {
   padding: 0px;
+}
+/* 
+*/
+/* Reaction CSS Start */
+.ant-btn-add-reactions:hover,
+.ant-btn-add-reactions:focus {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-reaction,
+.ant-btn-popover-reaction {
+  height: auto;
+  padding: 0 8px;
+  font-size: 16px;
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.ant-btn-popover-reaction:hover {
+  background-color: #7147e860;
+}
+
+.ant-btn-reaction:hover,
+.ant-btn-isReacted {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-isReacted:hover {
+  color: #7147e8;
+  border-color: #7147e880;
+}
+
+.ant-btn-popover-isReacted,
+.ant-btn-popover-isReacted:hover {
+  background-color: #7147e860;
+}
+
+/* Reaction CSS End */
+.ant-advaced-field-select {
+  color: #7147e8;
+  min-width: 130px;
+}
+.ant-suggestion-dropdown {
+  min-width: 200px !important;
+}
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #dbd1f9;
+}
+
+@media only screen and (max-width: 1440px) {
+  #left-panel {
+    width: 284px;
+  }
+
+  .page-layout-container.l3-col {
+    grid-template-columns: 284px auto 284px;
+  }
+}
+
+/* Description CSS */
+
+.description {
+  word-break: break-all;
+}
+
+/* Feed popover CSS start */
+
+.ant-popover-inner-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-task-status > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
+  display: none;
+}
+.ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-card > .ant-popover-content > .ant-popover-inner,
+.ant-popover-task-status > .ant-popover-content > .ant-popover-inner,
+.ant-popover-request-description > .ant-popover-content > .ant-popover-inner,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
+  border-radius: 6px;
+  border: 1px solid #dde3ea;
+}
+
+.ant-popover-card
+  > .ant-popover-content
+  > .ant-popover-inner
+  > .ant-popover-title {
+  padding: 4px 8px;
+}
+
+.ant-modal-content {
+  border-radius: 6px;
+}
+
+.ant-modal-header {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+/* Feed popover CSS end */
+
+/* Antd custom button CSS */
+.ant-btn-link-custom,
+.ant-btn-link-custom:hover {
+  color: #7147e8;
+}
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
+.ant-btn-primary-custom {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+}
+
+.ant-dropdown-button.ant-btn-primary-dropdown
+  > .ant-btn-primary.ant-btn-icon-only {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  border-left-color: #ffffff;
+}
+.ant-btn-primary-custom:hover,
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
+.ant-btn-primary-custom span:hover {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  text-decoration: none;
+}
+
+.ant-btn-group .ant-btn-primary:first-child:not(:last-child) {
+  border-right-color: #ffffff;
+}
+/* Antd custom button CSS */
+
+.ant-select-custom {
+  width: 100%;
+  margin: 8px 0px;
+  outline: none;
+}
+.ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: #7147e8;
+}
+.ant-select-focused {
+  border-color: #7147e8;
+  outline: none;
+}
+
+/* Description tabs CSS */
+.ant-tabs-description {
+  margin-top: 8px;
+}
+
+.ant-tabs-description > .ant-tabs-nav {
+  margin-bottom: 0px;
+}
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover,
+.ant-tabs-custom-line
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-custom-line
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover {
+  color: #7147e8;
+}
+.ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
+  padding: 0px 16px;
+}
+.ant-tabs-ink-bar {
+  background: #7147e8;
+}
+/* Description tabs CSS */
+
+/* Task Detail Side CSS */
+
+.ant-layout-sider-task-detail {
+  background: #ffffff;
+  border: 1px solid #dde3ea;
+  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  padding-top: 0px;
+  overflow-y: auto;
+}
+
+/* Task Detail Side CSS */
+.data-box {
+  padding: 8px 12px;
+}
+
+.data-box.Successful {
+  background-color: #28a745;
+}
+
+.data-box.Failed {
+  background-color: #cb2431;
+}
+
+.data-box.Pending {
+  background-color: #1890ff;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
+}
+
+.leaf-node.Successful .task-node {
+  border-color: #07a35a;
+  background-color: #07a35a40;
+}
+
+.leaf-node.Failed .task-node {
+  border-color: #e54937;
+  background-color: #e5493740;
+}
+
+.leaf-node.Pending .task-node {
+  border-color: #276ef1;
+  background-color: #276ef140;
+}
+
+.leaf-node.Successful .react-flow__handle {
+  background-color: #07a35a !important;
+}
+
+.leaf-node.Failed .react-flow__handle {
+  background-color: #e54937 !important;
+}
+
+.leaf-node.Pending .react-flow__handle {
+  background-color: #276ef1 !important;
+}
+
+.ProseMirror .placeholder {
+  color: #6b7280 !important;
+}
+div.ant-typography-ellipsis-custom {
+  margin-bottom: 0px;
+}
+
+.user-profile-antd-card .ant-card-body:first-child {
+  padding: 0px;
+  overflow: hidden;
+}
+
+.add-webhook-container #center {
+  padding-right: 0px;
+}
+
+.ant-dropdown-menu-item-selected {
+  color: #7147e8;
+  background-color: #7147e825;
+}
+
+.table-query-editor pre.CodeMirror-line {
+  padding-right: 60px !important;
+}
+
+/* antd switch css */
+.ant-switch-checked {
+  background: #7147e8;
+}
+/* antd switch css */
+
+.ant-empty-tasks {
+  margin-top: 32px;
+}
+
+/* Feed text pre tag CSS */
+.activity-feed-card-text {
+  padding-top: 6px;
+}
+
+.activity-feed-card-text pre {
+  white-space: pre-wrap; /* Since CSS 2.1 */
+}
+/* Feed text pre tag CSS */
+
+.ant-switch-checked {
+  background: rgb(244, 240, 253);
+}
+
+/* 64 header + ( 16 + 16 )spacing Y = 96*/
+.left-panel-container {
+  height: calc(100vh - 96px);
+  border: 1px solid rgb(229, 231, 235);
+  border-radius: 4px;
+  box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.06);
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.left-panel-container::-webkit-scrollbar {
+  display: none;
+}
+
+/**
+* This is to override tailwind default behavior for svg alignment
+* It was causing issue to antD styling hence resetting it to default
+*/
+svg {
+  vertical-align: baseline;
 }

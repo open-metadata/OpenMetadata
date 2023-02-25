@@ -13,7 +13,7 @@
 Define Modulo function
 """
 # Keep SQA docs style defining custom constructs
-# pylint: disable=consider-using-f-string,duplicate-code
+# pylint: disable=duplicate-code
 
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
@@ -42,15 +42,48 @@ def validate_and_compile(element, compiler, **kw):
 
 @compiles(ModuloFn)
 def _(element, compiler, **kw):
-
+    """Generic modulo function"""
     value, base = validate_and_compile(element, compiler, **kw)
-    return f"{value} % {base}"
+    return f"{value} %% {base}"
 
 
 @compiles(ModuloFn, Dialects.BigQuery)
 @compiles(ModuloFn, Dialects.Redshift)
 @compiles(ModuloFn, Dialects.Snowflake)
+@compiles(ModuloFn, Dialects.Postgres)
+@compiles(ModuloFn, Dialects.Athena)
+@compiles(ModuloFn, Dialects.MySQL)
+@compiles(ModuloFn, Dialects.Oracle)
+@compiles(ModuloFn, Dialects.Presto)
+@compiles(ModuloFn, Dialects.Trino)
+@compiles(ModuloFn, Dialects.IbmDbSa)
+@compiles(ModuloFn, Dialects.Db2)
+@compiles(ModuloFn, Dialects.Vertica)
 def _(element, compiler, **kw):
-
+    """Modulo function for specific dialect"""
     value, base = validate_and_compile(element, compiler, **kw)
     return f"MOD({value}, {base})"
+
+
+@compiles(ModuloFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handles modulo function for ClickHouse"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"modulo({value}, {base})"
+
+
+@compiles(ModuloFn, Dialects.SQLite)
+def _(element, compiler, **kw):
+    """SQLite modulo function"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"{value} % {base}"
+
+
+@compiles(ModuloFn, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    """Azure SQL modulo function"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    if compiler.dialect.driver == "pyodbc":
+        # pyodbc compiles to c++ code.
+        return f"{value} % {base}"
+    return f"{value} %% {base}"

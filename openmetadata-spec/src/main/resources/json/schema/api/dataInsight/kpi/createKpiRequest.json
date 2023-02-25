@@ -1,0 +1,51 @@
+{
+  "$id": "https://open-metadata.org/schema/api/dataInsight/kpi/createKpiRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateKpiRequest",
+  "description": "Schema corresponding to a Kpi.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Kpi.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Kpi.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Kpi.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this Kpi",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "dataInsightChart": {
+      "description": "Fully qualified name of the Chart this kpi refers to",
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "startDate": {
+      "description": "Start Date for the KPIs",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "endDate": {
+      "description": "End Date for the KPIs",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "targetDefinition": {
+      "description": "Metrics from the chart and the target to achieve the result.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTarget"
+      }
+    },
+    "metricType": {
+      "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
+    }
+  },
+  "required": ["name", "description", "dataInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],
+  "additionalProperties": false
+}

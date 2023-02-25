@@ -10,23 +10,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-MYSQL_HOST=${MYSQL_HOST:-mysql}
-MYSQL_PORT=${MYSQL_PORT:-3306}
+DB_HOST=${DB_HOST:-mysql}
+DB_PORT=${DB_PORT:-3306}
 
-MYSQL_DB=${MYSQL_DB:-airflow_db}
-MYSQL_USER=${MYSQL_USER:-airflow_user}
-MYSQL_PASSWORD=${MYSQL_PASSWORD:-airflow_pass}
+AIRFLOW_DB=${AIRFLOW_DB:-airflow_db}
+DB_USER=${DB_USER:-airflow_user}
+DB_SCHEME=${DB_SCHEME:-mysql+pymysql}
+DB_PASSWORD=${DB_PASSWORD:-airflow_pass}
 
-MYSQL_CONN="${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DB}"
+DB_CONN="${DB_SCHEME}://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}"
 
 AIRFLOW_ADMIN_USER=${AIRFLOW_ADMIN_USER:-admin}
 AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD:-admin}
 
 OPENMETADATA_SERVER=${OPENMETADATA_SERVER:-"http://openmetadata-server:8585"}
 
-sed -i "s#\(sql_alchemy_conn = \).*#\1mysql+pymysql://${MYSQL_CONN}#" /airflow/airflow.cfg
-
-while ! wget -O /dev/null -o /dev/null $MYSQL_HOST:$MYSQL_PORT; do sleep 5; done
+sed -i "s#\(sql_alchemy_conn = \).*#\1${DB_CONN}#" /opt/airflow/airflow.cfg
 
 airflow db init
 
@@ -40,5 +39,8 @@ airflow users create \
 
 (sleep 5; airflow db upgrade)
 (sleep 5; airflow db upgrade)
+
+# we need to this in case the container is restarted and the scheduler exited without tidying up its lock file
+rm -f /opt/airflow/airflow-webserver-monitor.pid
 airflow webserver --port 8080 -D &
 airflow scheduler

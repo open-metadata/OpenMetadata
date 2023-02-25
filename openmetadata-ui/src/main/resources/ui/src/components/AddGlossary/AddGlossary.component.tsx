@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import classNames from 'classnames';
-import { cloneDeep } from 'lodash';
-import { EditorContentRef, FormattedUsersData } from 'Models';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Space, Switch, Typography } from 'antd';
+import Tags from 'components/Tag/Tags/tags';
+import { LOADING_STATE } from 'enums/common.enum';
+import { cloneDeep, toString } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
-import { UrlEntityCharRegEx } from '../../constants/regex.constants';
+import { useTranslation } from 'react-i18next';
+import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
+import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import {
-  errorMsg,
-  getCurrentUserId,
-  requiredField,
-} from '../../utils/CommonUtils';
-import { Button } from '../buttons/Button/Button';
+import { EntityReference } from '../../generated/type/entityReference';
+import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
+import { AddTags } from '../AddTags/add-tags.component';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
-import Tags from '../tags/tags';
-import { AddGlossaryProps } from './AddGlossary.interface';
+import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -46,6 +46,7 @@ const AddGlossary = ({
   onSave,
 }: AddGlossaryProps) => {
   const markdownRef = useRef<EditorContentRef>();
+  const { t } = useTranslation();
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
@@ -55,18 +56,20 @@ const AddGlossary = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [showReviewerModal, setShowReviewerModal] = useState(false);
+  const [tags, setTags] = useState<EntityTags[]>([]);
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const getDescription = () => {
     return markdownRef.current?.getEditorContent() || '';
   };
 
   const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
+    setShowReviewerModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -105,7 +108,7 @@ const AddGlossary = ({
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: UrlEntityCharRegEx.test(name.trim()),
+      invalidName: allowedNameRegEx.test(name),
       description: !getDescription()?.trim(),
     };
     setShowErrorMsg(errMsg);
@@ -116,71 +119,33 @@ const AddGlossary = ({
   const handleSave = () => {
     if (validateForm()) {
       const data: CreateGlossary = {
-        name,
-        displayName: name,
+        name: name.trim(),
+        displayName: name.trim(),
         description: getDescription(),
-        reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
+        reviewers:
+          reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
+          [],
         owner: {
           id: getCurrentUserId(),
           type: 'user',
         },
+        tags: tags,
+        mutuallyExclusive,
       };
 
       onSave(data);
     }
   };
 
-  const getSaveButton = () => {
-    return allowAccess ? (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-glossary"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
-        )}
-      </>
-    ) : null;
-  };
-
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Glossary</h6>
-        <div className="tw-mb-5">
-          A Glossary is a controlled vocabulary used to define the concepts and
-          terminology in an organization. Glossaries can be specific to a
-          certain domain (for e.g., Business Glossary, Technical Glossary). In
-          the glossary, the standard terms and concepts can be defined along
-          with the synonyms, and related terms. Control can be established over
-          how and who can add the terms in the glossary.
-        </div>
-        {/* {getDocButton('Read Glossary Doc', '', 'glossary-doc')} */}
+        <Typography.Title level={5}>
+          {t('label.configure-entity', {
+            entity: t('label.glossary'),
+          })}
+        </Typography.Title>
+        <div className="mb-5">{t('message.create-new-glossary-guide')}</div>
       </>
     );
   };
@@ -191,97 +156,138 @@ const AddGlossary = ({
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">{header}</h6>
-      <div className="tw-pb-3" data-testid="add-glossary">
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="name">
-            {requiredField('Name:')}
-          </label>
+      <div className="tw-form-container">
+        <Typography.Title data-testid="form-heading" level={5}>
+          {header}
+        </Typography.Title>
+        <div className="tw-pb-3" data-testid="add-glossary">
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="name">
+              {requiredField(`${t('label.name')}:`)}
+            </label>
 
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="name"
-            id="name"
-            name="name"
-            placeholder="Name"
-            type="text"
-            value={name}
-            onChange={handleValidation}
-          />
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="name"
+              id="name"
+              name="name"
+              placeholder={t('label.name')}
+              type="text"
+              value={name}
+              onChange={handleValidation}
+            />
 
-          {showErrorMsg.name
-            ? errorMsg('Glossary name is required.')
-            : showErrorMsg.invalidName
-            ? errorMsg('Glossary name is invalid.')
-            : null}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-0"
-            htmlFor="description">
-            {requiredField('Description:')}
-          </label>
-          <RichTextEditor
-            data-testid="description"
-            initialValue={description}
-            readonly={!allowAccess}
-            ref={markdownRef}
-          />
-          {showErrorMsg.description && errorMsg('Description is required.')}
-        </Field>
+            {showErrorMsg.name
+              ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_REQUIRED]
+              : showErrorMsg.invalidName
+              ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_INVALID]
+              : null}
+          </Field>
+          <Field>
+            <label
+              className="tw-block tw-form-label tw-mb-0"
+              htmlFor="description">
+              {requiredField(`${t('label.description')}:`)}
+            </label>
+            <RichTextEditor
+              data-testid="description"
+              initialValue={description}
+              readonly={!allowAccess}
+              ref={markdownRef}
+            />
+            {showErrorMsg.description &&
+              ADD_GLOSSARY_ERROR[AddGlossaryError.DESCRIPTION_REQUIRED]}
+          </Field>
 
-        <div>
-          <div className="tw-flex tw-items-center tw-mt-4">
-            <p className="w-form-label tw-mr-3">Reviewers: </p>
+          <Field>
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
+              <label htmlFor="tags">{t('label.tag-plural')}:</label>
+              <AddTags
+                data-testid="tags"
+                setTags={(tag: EntityTags[]) => setTags(tag)}
+              />
+            </Space>
+          </Field>
+
+          <Field>
+            <Space align="end">
+              <label
+                className="tw-form-label m-b-0 tw-mb-1"
+                data-testid="mutually-exclusive-label"
+                htmlFor="mutuallyExclusive">
+                {t('label.mutually-exclusive')}
+              </label>
+              <Switch
+                checked={mutuallyExclusive}
+                data-testid="mutually-exclusive-button"
+                id="mutuallyExclusive"
+                onChange={(value) => setMutuallyExclusive(value)}
+              />
+            </Space>
+          </Field>
+
+          <div>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <span className="w-form-label tw-mr-3">
+                {`${t('label.reviewer-plural')}:`}
+              </span>
+              <Button
+                data-testid="add-reviewers"
+                size="small"
+                type="primary"
+                onClick={() => setShowReviewerModal(true)}>
+                <PlusOutlined style={{ color: 'white' }} />
+              </Button>
+            </div>
+            <div className="tw-my-4" data-testid="reviewers-container">
+              {Boolean(reviewer.length) &&
+                reviewer.map((d, index) => {
+                  return (
+                    <Tags
+                      editable
+                      isRemovable
+                      className="tw-bg-gray-200"
+                      key={index}
+                      removeTag={handleReviewerRemove}
+                      tag={d.name ?? ''}
+                      type="contained"
+                    />
+                  );
+                })}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
             <Button
-              className="tw-h-5 tw-px-2"
-              data-testid="add-reviewers"
-              size="x-small"
-              theme="primary"
-              variant="contained"
-              onClick={() => setShowRevieweModal(true)}>
-              <FontAwesomeIcon icon="plus" />
+              data-testid="cancel-glossary"
+              type="link"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+
+            <Button
+              data-testid="save-glossary"
+              disabled={!allowAccess}
+              loading={saveState === LOADING_STATE.WAITING}
+              type="primary"
+              onClick={handleSave}>
+              {t('label.save')}
             </Button>
           </div>
-          <div className="tw-my-4" data-testid="reviewers-container">
-            {Boolean(reviewer.length) &&
-              reviewer.map((d, index) => {
-                return (
-                  <Tags
-                    editable
-                    isRemovable
-                    className="tw-bg-gray-200"
-                    key={index}
-                    removeTag={handleReviewerRemove}
-                    tag={d.name}
-                    type="contained"
-                  />
-                );
-              })}
-          </div>
         </div>
-
-        <div className="tw-flex tw-justify-end">
-          <Button
-            data-testid="cancel-glossary"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={onCancel}>
-            Cancel
-          </Button>
-          {getSaveButton()}
-        </div>
-      </div>
-
-      {showRevieweModal && (
         <ReviewerModal
-          header="Add Reviewer"
+          header={t('label.add-entity', {
+            entity: t('label.reviewer'),
+          })}
           reviewer={reviewer}
+          visible={showReviewerModal}
           onCancel={onReviewerModalCancel}
           onSave={handleReviewerSave}
         />
-      )}
+      </div>
     </PageLayout>
   );
 };

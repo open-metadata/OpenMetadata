@@ -1,0 +1,105 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: security-scan
+on:
+  schedule:
+    - cron:  '0 0 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Install Ubuntu dependencies
+        run: |
+          # stop relying on apt cache of GitHub runners
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          librdkafka-dev unixodbc-dev libevent-dev wkhtmltopdf
+
+      # Install and Authenticate to Snyk
+      - name: Install Snyk & Authenticate
+        run: |
+          sudo make install_antlr_cli
+          sudo npm install -g snyk
+          snyk auth ${SNYK_TOKEN}
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_all install_apis
+
+      - name: Maven build
+        id: maven-build
+        continue-on-error: true
+        run: mvn -DskipTests clean install
+
+      - name: Run Scan
+        id: security-report
+        if: steps.maven-build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          source env/bin/activate
+          make snyk-report
+
+      - name: Slack on Failure
+        if: steps.security-report.outcome != 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "🚨 Security report failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_REPORT_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Slack on Success
+        if: steps.security-report.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "🟢 Security report generated, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_REPORT_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Upload Snyk Report HTML files
+        if: steps.security-report.outcome == 'success'
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-report
+
+      - name: Force failure
+        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
+        run: |
+          exit 1

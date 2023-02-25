@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import React from 'react';
 import AppState from '../AppState';
 import { CurrentTourPageType } from '../enums/tour.enum';
+import { Transi18next } from './CommonUtils';
 import { getCurrentDatasetTab } from './DatasetDetailsUtils';
 
 export const getSteps = (value: string, clearSearchTerm: () => void) => {
@@ -21,10 +23,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     {
       content: () => (
         <p>
-          Discover all your data assets in a single place with{' '}
-          <strong>OpenMetadata</strong>, a centralized metadata store.
-          Collaborate with your team and get a holistic picture of the data in
-          your organization.
+          <Transi18next
+            i18nKey="message.tour-step-discover-all-assets-at-one-place"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.open-metadata'),
+            }}
+          />
         </p>
       ),
       stepInteraction: false,
@@ -33,8 +38,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     {
       content: () => (
         <p>
-          <strong>Activity Feeds</strong> help you understand how the data is
-          changing in your organization.
+          <Transi18next
+            i18nKey="message.tour-step-activity-feed"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.activity-feed-plural'),
+            }}
+          />
         </p>
       ),
       selector: '#feedData',
@@ -43,9 +53,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     {
       content: () => (
         <p>
-          Search for matching data assets by &quot;name&quot;,
-          &quot;description&quot;, &quot;column name&quot;, and so on from the{' '}
-          <strong>Search</strong> box.
+          <Transi18next
+            i18nKey="message.tour-step-search-for-matching-dataset"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.search'),
+            }}
+          />
         </p>
       ),
       selector: '#searchBox',
@@ -56,8 +70,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       beforePrev: clearSearchTerm,
       content: () => (
         <p>
-          In the search box, type <strong>&quot;{value}&quot;</strong>. Hit{' '}
-          <strong>Enter.</strong>
+          <Transi18next
+            i18nKey="message.tour-step-type-search-term"
+            renderElement={<strong />}
+            values={{
+              text: value,
+              enterText: i18next.t('label.enter'),
+            }}
+          />
         </p>
       ),
       actionType: 'enter',
@@ -74,9 +94,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       },
       content: () => (
         <p>
-          From the <strong>&quot;Explore&quot;</strong> page, view a summary of
-          each asset, including: title, description, owner, tier (importance),
-          usage, and location.
+          <Transi18next
+            i18nKey="message.tour-step-explore-summary-asset"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.explore'),
+            }}
+          />
         </p>
       ),
       selector: '#tabledatacard0',
@@ -85,11 +109,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     {
       content: () => (
         <p>
-          Click on the <strong>title of the asset</strong> to view more details.
+          <Transi18next
+            i18nKey="message.tour-step-click-on-link-to-view-more"
+            renderElement={<strong />}
+          />
         </p>
       ),
       actionType: 'click',
-      selector: '#tabledatacard0Title',
+      selector: '#tabledatacard0-title',
       beforeNext: () => {
         AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
       },
@@ -100,10 +127,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       },
       content: () => (
         <p>
-          {' '}
-          Get to know the table <strong>Schema</strong>, including column names
-          and data types as well as column descriptions and tags. You can even
-          view metadata for complex types such as structs.
+          <Transi18next
+            i18nKey="message.tour-step-get-to-know-table-schema"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
         </p>
       ),
       stepInteraction: false,
@@ -116,7 +146,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       actionType: 'click',
       content: () => (
         <p>
-          Click on the <strong>&quot;Sample Data&quot;</strong> tab.
+          <Transi18next
+            i18nKey="message.tour-step-click-on-entity-tab"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.sample-data'),
+            }}
+          />
         </p>
       ),
       selector: '#sampleData',
@@ -128,8 +164,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     {
       content: () => (
         <p>
-          Take a look at the <strong>Sample Data</strong> to get a feel for what
-          the table contains and how you might use it.
+          <Transi18next
+            i18nKey="message.tour-step-look-at-sample-data"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.sample-data'),
+            }}
+          />
         </p>
       ),
       selector: '#sampleDataDetails',
@@ -145,17 +186,29 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       actionType: 'click',
       content: () => (
         <p>
-          Click on the <strong>&quot;Profiler&quot;</strong> tab.
+          <Transi18next
+            i18nKey="message.tour-step-click-on-entity-tab"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.profiler'),
+            }}
+          />
         </p>
       ),
-      selector: '#profiler',
+      selector: '#profilerDataQuality',
     },
     {
       content: () => (
         <p>
-          Discover assets with the <strong>Data Profiler</strong>. Get to know
-          the table usage stats, check for null values and duplicates, and
-          understand the column data distributions.
+          <Transi18next
+            i18nKey="message.tour-step-discover-data-assets-with-data-profile"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.data-entity', {
+                entity: i18next.t('label.profiler'),
+              }),
+            }}
+          />
         </p>
       ),
       stepInteraction: false,
@@ -171,7 +224,13 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       actionType: 'click',
       content: () => (
         <p>
-          Click on the <strong>&quot;Lineage&quot;</strong> tab
+          <Transi18next
+            i18nKey="message.tour-step-click-on-entity-tab"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.lineage'),
+            }}
+          />
         </p>
       ),
       selector: '#lineage',
@@ -179,37 +238,17 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     {
       content: () => (
         <p>
-          With <strong>Lineage</strong>, trace the path of data across tables,
-          pipelines, & dashboards.
+          <Transi18next
+            i18nKey="message.tour-step-trace-path-across-tables"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.lineage'),
+            }}
+          />
         </p>
       ),
       stepInteraction: false,
       selector: '#lineageDetails',
-    },
-    {
-      beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('manage');
-      },
-      actionType: 'click',
-      content: () => (
-        <p>
-          Click on the <strong>&quot;Manage&quot;</strong> tab
-        </p>
-      ),
-      selector: '#manage',
-    },
-    {
-      beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
-      },
-      content: () => (
-        <p>
-          From <strong>&quot;Manage&quot;</strong>, you can claim ownership, and
-          set the tier.
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#manageTabDetails',
     },
   ];
 };

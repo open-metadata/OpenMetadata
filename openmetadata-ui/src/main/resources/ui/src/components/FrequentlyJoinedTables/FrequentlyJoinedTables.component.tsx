@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
+import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { getTableDetailsPath } from '../../constants/constants';
 import { JoinedWith } from '../../generated/entity/data/table';
 import { getCountBadge } from '../../utils/CommonUtils';
-import PopOver from '../common/popover/PopOver';
 
 type Props = {
   header: string;
@@ -31,7 +32,9 @@ const getUniqueTablesWithCount = (tableFQNs: Props['tableList']) => {
       let duplicates = false;
       for (const table of resList) {
         if (table.fullyQualifiedName === curr.fullyQualifiedName) {
-          if (table?.joinCount) table.joinCount += curr?.joinCount as number;
+          if (table?.joinCount) {
+            table.joinCount += curr?.joinCount as number;
+          }
           duplicates = true;
 
           break;
@@ -116,21 +119,20 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
         {joinedTables.length > viewCap && (
           <div data-testid="related-tables-data">
-            <PopOver
-              html={additionalOptions()}
-              position="bottom"
-              theme="light"
+            <Popover
+              content={additionalOptions()}
+              placement="bottom"
               trigger="click">
               <span className="show-more">
                 {`+ ${joinedTables.length - viewCap} more`}
               </span>
-            </PopOver>
+            </Popover>
           </div>
         )}
 
         {joinedTables.length <= 0 ? (
           <div className="tw-py-1 tw-text-grey-muted">
-            No information about joined tables.
+            {t('message.no-info-about-joined-tables')}
           </div>
         ) : null}
       </div>

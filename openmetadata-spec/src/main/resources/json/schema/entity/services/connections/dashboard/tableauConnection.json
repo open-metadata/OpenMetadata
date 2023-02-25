@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/tableauConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableauConnection",
+  "description": "Tableau Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.TableauConnection",
+  "definitions": {
+    "tableauType": {
+      "description": "Tableau service type",
+      "type": "string",
+      "enum": ["Tableau"],
+      "default": "Tableau"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/tableauType",
+      "default": "Tableau"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Tableau Server.",
+      "type": "string",
+      "format": "uri"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username for Tableau.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for Tableau.",
+      "type": "string",
+      "format": "password"
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "Tableau API version.",
+      "type": "string"
+    },
+    "siteName": {
+      "title": "Site Name",
+      "description": "Tableau Site Name.",
+      "type": "string"
+    },
+    "siteUrl": {
+      "title": "Site Url",
+      "description": "Tableau Site Url.",
+      "type": "string"
+    },
+    "personalAccessTokenName": {
+      "title": "Personal Access Token",
+      "description": "Personal Access Token Name.",
+      "type": "string"
+    },
+    "personalAccessTokenSecret": {
+      "title": "Personal Access Token Secret",
+      "description": "Personal Access Token Secret.",
+      "type": "string",
+      "format": "password"
+    },
+    "env": {
+      "title": "Tableau Environment",
+      "description": "Tableau Environment Name.",
+      "type": "string",
+      "default": "tableau_prod"
+    },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["apiVersion", "env"]
+}

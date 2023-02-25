@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,15 @@ import { getByTestId, getByText, render } from '@testing-library/react';
 import React from 'react';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
-jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../../../AppState', () => ({
+  userDetails: {
+    name: 'testUser',
+    displayName: 'Test User',
+  },
+  users: [{ name: 'user1', displayName: 'User1DN' }],
+}));
+
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       authConfig: {},
@@ -25,15 +33,6 @@ jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
     })),
   };
 });
-
-jest.mock('../../../AppState', () =>
-  jest.fn().mockReturnValue({
-    users: [],
-    userDetails: {
-      displayName: 'Test User',
-    },
-  })
-);
 
 const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
@@ -68,6 +67,6 @@ describe('Test Error placeholder ingestion Component', () => {
     const errorES = getByTestId(container, 'es-error');
     const errMsg = getByTestId(errorES, 'error-text');
 
-    expect(errMsg.textContent).toMatch(/test_search_index/i);
+    expect(errMsg.textContent).toMatch('message.unable-to-error-elasticsearch');
   });
 });

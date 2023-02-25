@@ -12,7 +12,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-            "executionTime": 1646221199,
+            "timestamp": 1646221199,
             "testCaseStatus": "Failed",
             "result": "Found 100.0 rows vs. the expected 120"
         }
@@ -27,7 +27,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found 120.0 rows vs. the expected 120"
         }
@@ -42,7 +42,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found 5.0 columns vs. the expected 5"
         }
@@ -58,7 +58,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found 120.0 rows vs. the expected range [100, 200]"
         }
@@ -74,7 +74,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found 120.0 rows vs. the expected range [100, 200]"
         }
@@ -92,7 +92,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found min=1.0 vs. the expected min=0"
         }
@@ -108,7 +108,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found min=1.0 vs. the expected min=0"
         }
@@ -122,7 +122,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found uniqueCount=100.0 vs. valuesCount=100.0"
         }
@@ -136,7 +136,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found uniqueCount=100.0 vs. valuesCount=100.0"
         }
@@ -150,7 +150,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found nullCount=0"
         }
@@ -164,7 +164,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found nullCount=0"
         }
@@ -180,7 +180,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Failed",
           "result": "Found likeCount=0. Nothing matches %something%"
         }
@@ -196,7 +196,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Failed",
           "result": "Found likeCount=0. Nothing matches %something%"
         }
@@ -212,7 +212,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Failed",
           "result": "Found nullCount=0.0 vs. the expected nullCount=10"
         }
@@ -228,7 +228,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Failed",
           "result": "Found nullCount=0.0 vs. the expected nullCount=10"
         }
@@ -245,7 +245,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found min=1.0 vs. the expected min=0"
         }
@@ -262,7 +262,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found min=1.0 vs. the expected min=0"
         }
@@ -281,7 +281,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646220190,
+          "timestamp": 1646220190,
           "testCaseStatus": "Success",
           "result": "Found countInSet=0"
         }
@@ -300,7 +300,7 @@
         },
         "executionFrequency": "Daily",
         "result": {
-          "executionTime": 1646221199,
+          "timestamp": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found countInSet=0"
         }

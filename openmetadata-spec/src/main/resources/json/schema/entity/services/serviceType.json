@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/serviceType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Service Type",
+  "description": "This schema defines the service types entities which requires a connection.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.entity.services.ServiceType",
+  "enum": [
+    "Dashboard",
+    "Database",
+    "Messaging",
+    "Metadata",
+    "MlModel",
+    "Pipeline",
+    "ObjectStore"
+  ],
+  "additionalProperties": false
+}

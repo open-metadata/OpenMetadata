@@ -1,0 +1,92 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/databaseSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Database Schema",
+  "description": "This schema defines the Database Schema entity. A database schema is collection of tables, views, stored procedures, and other database objects.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this schema instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the schema.",
+      "$ref": "#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this schema.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the schema instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this schema.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to the database cluster/service where this schema is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this schema is hosted in.",
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
+    },
+    "database": {
+      "description": "Reference to Database that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tables": {
+      "description": "References to tables in the schema.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this database.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "database", "service"],
+  "additionalProperties": false
+}

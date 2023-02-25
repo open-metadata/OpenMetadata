@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Abstract Processor definition to build a Workflow
+"""
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, List
@@ -19,22 +21,37 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
+# pylint: disable=duplicate-code
 @dataclass
 class ProcessorStatus(Status):
-    records = 0
+    records: List[str] = field(default_factory=list)
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
     def processed(self, record: Any):
-        self.records += 1
+        self.records.append(record)
 
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
 
     def failure(self, info: Any) -> None:
         self.failures.append(info)
+
+
+@dataclass
+class ProfilerProcessorStatus(ProcessorStatus):
+    entity: str = None
+
+    # Disabling linting here until we find a better way to handling workflow statuses
+    def failure(  # pylint: disable=arguments-differ
+        self, column: str, metric: str, reason: str
+    ) -> None:
+        self.failures.append({self.entity: {column: {metric: {reason}}}})
 
 
 @dataclass

@@ -12,20 +12,40 @@
 """
 Test Profiler behavior
 """
+import os
+from concurrent.futures import TimeoutError
+from datetime import datetime, timezone
 from unittest import TestCase
+from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 import sqlalchemy.types
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    DataType,
+    Table,
+    TableProfile,
+)
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+    SQLiteScheme,
+)
 from metadata.ingestion.source import sqa_types
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler
-from metadata.utils.connections import create_and_bind_session
 
 Base = declarative_base()
 
@@ -44,42 +64,68 @@ class ProfilerTest(TestCase):
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
-    session = create_and_bind_session(engine)
+    db_path = os.path.join(
+        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
+    )
+    sqlite_conn = SQLiteConnection(
+        scheme=SQLiteScheme.sqlite_pysqlite,
+        databaseMode=db_path + "?check_same_thread=False",
+    )
+
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            profiler_interface_args=ProfilerInterfaceArgs(
+                service_connection_config=sqlite_conn,
+                table_entity=table_entity,
+                ometa_client=None,
+            )
+        )
 
     @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare Ingredients
         """
-        User.__table__.create(bind=cls.engine)
+        User.__table__.create(bind=cls.sqa_profiler_interface.session.get_bind())
 
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
             User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
         ]
-        cls.session.add_all(data)
-        cls.session.commit()
+        cls.sqa_profiler_interface.session.add_all(data)
+        cls.sqa_profiler_interface.session.commit()
 
     def test_default_profiler(self):
         """
         Check our pre-cooked profiler
         """
-        simple = DefaultProfiler(session=self.session, table=User)
-        simple.execute()
+        simple = DefaultProfiler(
+            profiler_interface=self.sqa_profiler_interface,
+        )
+        simple.compute_metrics()
 
         profile = simple.get_profile()
 
-        assert profile.rowCount == 2
-        assert profile.columnCount == 5
+        assert profile.tableProfile.rowCount == 2
+        assert profile.tableProfile.columnCount == 5
 
         age_profile = next(
-            iter(
-                [
-                    col_profile
-                    for col_profile in profile.columnProfile
-                    if col_profile.name == "age"
-                ]
+            (
+                col_profile
+                for col_profile in profile.columnProfile
+                if col_profile.name == "age"
             ),
             None,
         )
@@ -104,6 +150,8 @@ class ProfilerTest(TestCase):
             variance=None,
             distinctCount=2.0,
             distinctProportion=1.0,
+            median=30.5,
+            timestamp=datetime.now(tz=timezone.utc).timestamp()
             # histogram=Histogram(
             #     boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
             # ),
@@ -124,15 +172,15 @@ class ProfilerTest(TestCase):
             like,
             count,
             like_ratio,
-            session=self.session,
-            table=User,
-            use_cols=[User.age],
+            profiler_interface=self.sqa_profiler_interface,
         )
 
         with pytest.raises(MissingMetricException):
             # We are missing ingredients here
             Profiler(
-                like, like_ratio, session=self.session, table=User, use_cols=[User.age]
+                like,
+                like_ratio,
+                profiler_interface=self.sqa_profiler_interface,
             )
 
     def test_skipped_types(self):
@@ -152,15 +200,59 @@ class ProfilerTest(TestCase):
 
         profiler = Profiler(
             Metrics.COUNT.value,
-            session=self.session,
-            table=NotCompute,
-            use_cols=[
-                NotCompute.null_col,
-                NotCompute.array_col,
-                NotCompute.json_col,
-                NotCompute.map_col,
-                NotCompute.struct_col,
-            ],
+            profiler_interface=self.sqa_profiler_interface,
         )
 
         assert not profiler.column_results
+
+    def test__check_profile_and_handle(self):
+        """test _check_profile_and_handle returns as expected"""
+        profiler = Profiler(
+            Metrics.COUNT.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+
+        profile = profiler._check_profile_and_handle(
+            CreateTableProfileRequest(
+                tableProfile=TableProfile(
+                    timestamp=datetime.now().timestamp(), columnCount=10
+                )
+            )
+        )
+
+        assert profile.tableProfile.columnCount == 10
+
+        with pytest.raises(Exception):
+            profiler._check_profile_and_handle(
+                CreateTableProfileRequest(
+                    tableProfile=TableProfile(
+                        timestamp=datetime.now().timestamp(), profileSample=100
+                    )
+                )
+            )
+
+    def test_profiler_with_timeout(self):
+        """check timeout is properly used"""
+
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    ometa_client=None,
+                    timeout_seconds=0,
+                )
+            )
+
+        simple = DefaultProfiler(
+            profiler_interface=sqa_profiler_interface,
+        )
+
+        with pytest.raises(TimeoutError):
+            simple.compute_metrics()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        os.remove(cls.db_path)

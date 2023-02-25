@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PlusOutlined } from '@ant-design/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/core';
 import classNames from 'classnames';
 import React, { Fragment, FunctionComponent } from 'react';
@@ -45,7 +45,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
               onClick={() => {
                 props.onAddClick(props.schema)();
               }}>
-              <FontAwesomeIcon icon="plus" />
+              <PlusOutlined />
             </Button>
           )}
         </div>

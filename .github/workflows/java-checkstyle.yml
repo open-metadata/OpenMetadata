@@ -11,11 +11,14 @@
 
 name: Java Checkstyle
 
-# read-write repo token
-# access to secrets
 on:
   pull_request_target:
-    branches: [ main ]
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
 
 concurrency: 
   group: java-checkstyle-${{ github.head_ref }}
@@ -23,17 +26,39 @@ concurrency:
 jobs:
   java-checkstyle:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
-          java-version: 11
+          java-version: '11'
+          distribution: 'adopt'
 
       - name: Run checkstyle
         run: mvn googleformatter:format@reformat-sources

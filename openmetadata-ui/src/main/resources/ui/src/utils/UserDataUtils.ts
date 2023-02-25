@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,22 +11,26 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
+import { OidcUser } from 'components/authentication/auth-provider/AuthProvider.interface';
 import { isEqual, isUndefined } from 'lodash';
-import { SearchedUsersAndTeams, SearchResponse } from 'Models';
-import AppState from '../AppState';
-import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
+import { SearchedUsersAndTeams } from 'Models';
 import {
   getSearchedTeams,
   getSearchedUsers,
   getSuggestedTeams,
   getSuggestedUsers,
-} from '../axiosAPIs/miscAPI';
-import { getRoles } from '../axiosAPIs/rolesAPI';
-import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
+} from 'rest/miscAPI';
+import { getUserById, getUserByName, getUsers } from 'rest/userAPI';
+import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { User } from '../generated/entity/teams/user';
+import {
+  RawSuggestResponse,
+  SearchResponse,
+} from '../interface/search.interface';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 
@@ -34,27 +38,16 @@ import { getImages } from './CommonUtils';
 export const getAllUsersList = (arrQueryFields = ''): void => {
   getUsers(arrQueryFields, 1)
     .then((res) => {
-      AppState.updateUsers(res.data.data);
+      AppState.updateUsers(res.data);
     })
     .catch(() => {
       AppState.updateUsers([]);
     });
 };
 
-const getAllRoles = (): void => {
-  getRoles()
-    .then((res: AxiosResponse) => {
-      AppState.updateUserRole(res.data.data);
-    })
-    .catch(() => {
-      AppState.updateUserRole([]);
-    });
-};
-
 export const fetchAllUsers = () => {
   AppState.loadUserProfilePics();
   getAllUsersList('profile,teams,roles');
-  getAllRoles();
 };
 
 export const getUserDataFromOidc = (
@@ -65,7 +58,10 @@ export const getUserDataFromOidc = (
     ? getImages(oidcUser.profile.picture)
     : undefined;
   const profileEmail = oidcUser.profile.email;
-  const email = profileEmail ? profileEmail : userData.email;
+  const email =
+    profileEmail && profileEmail.indexOf('@') !== -1
+      ? profileEmail
+      : userData.email;
 
   return {
     ...userData,
@@ -111,7 +107,7 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
 
   promise
     .then((res) => {
-      const userData = res.data as User;
+      const userData = res as User;
       const profile = userData.profile?.images?.image512 || '';
 
       AppState.updateUserProfilePic(userData.id, userData.name, profile);
@@ -129,14 +125,19 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
     });
 };
 
-export const getUserProfilePic = (userId?: string, username?: string) => {
+export const getUserProfilePic = (
+  permission: boolean,
+  userId?: string,
+  username?: string
+) => {
   let profile;
   if (userId || username) {
     profile = AppState.getUserProfilePic(userId, username);
 
     if (
       isUndefined(profile) &&
-      !AppState.isProfilePicLoading(userId, username)
+      !AppState.isProfilePicLoading(userId, username) &&
+      permission
     ) {
       fetchUserProfilePic(userId, username);
     }
@@ -145,33 +146,43 @@ export const getUserProfilePic = (userId?: string, username?: string) => {
   return profile;
 };
 
-export const searchFormattedUsersAndTeams = (
+export const searchFormattedUsersAndTeams = async (
   searchQuery = WILD_CARD_CHAR,
   from = 1
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+) => {
+  try {
     const promises = [
       getSearchedUsers(searchQuery, from),
-      getSearchedTeams(searchQuery, from),
+      getSearchedTeams(searchQuery, from, 'teamType:Group'),
     ];
-    Promise.allSettled(promises)
-      .then(
-        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
-          const users =
-            resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(resUsers.value.data.hits.hits)
-              : [];
-          const teams =
-            resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(resTeams.value.data.hits.hits)
-              : [];
-          resolve({ users, teams });
-        }
-      )
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
-  });
+
+    const [resUsers, resTeams] = await Promise.allSettled(promises);
+
+    const users =
+      resUsers.status === SettledStatus.FULFILLED
+        ? formatUsersResponse(
+            (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits.hits
+          )
+        : [];
+    const teams =
+      resTeams.status === SettledStatus.FULFILLED
+        ? formatTeamsResponse(
+            (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits.hits
+          )
+        : [];
+    const usersTotal =
+      resUsers.status === SettledStatus.FULFILLED
+        ? resUsers.value.data.hits.total.value
+        : 0;
+    const teamsTotal =
+      resTeams.status === SettledStatus.FULFILLED
+        ? resTeams.value.data.hits.total.value
+        : 0;
+
+    return { users, teams, usersTotal, teamsTotal };
+  } catch (error) {
+    return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
+  }
 };
 
 export const suggestFormattedUsersAndTeams = (
@@ -182,24 +193,25 @@ export const suggestFormattedUsersAndTeams = (
       getSuggestedUsers(searchQuery),
       getSuggestedTeams(searchQuery),
     ];
+
     Promise.allSettled(promises)
-      .then(
-        ([resUsers, resTeams]: Array<PromiseSettledResult<AxiosResponse>>) => {
-          const users =
-            resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(
-                  resUsers.value.data.suggest['metadata-suggest'][0].options
-                )
-              : [];
-          const teams =
-            resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(
-                  resTeams.value.data.suggest['metadata-suggest'][0].options
-                )
-              : [];
-          resolve({ users, teams });
-        }
-      )
+      .then(([resUsers, resTeams]) => {
+        const users =
+          resUsers.status === SettledStatus.FULFILLED
+            ? formatUsersResponse(
+                (resUsers.value.data as RawSuggestResponse<SearchIndex.USER>)
+                  .suggest['metadata-suggest'][0].options
+              )
+            : [];
+        const teams =
+          resTeams.status === SettledStatus.FULFILLED
+            ? formatTeamsResponse(
+                (resTeams.value.data as RawSuggestResponse<SearchIndex.TEAM>)
+                  .suggest['metadata-suggest'][0].options
+              )
+            : [];
+        resolve({ users, teams });
+      })
       .catch((err: AxiosError) => {
         reject(err);
       });

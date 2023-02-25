@@ -1,0 +1,123 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/bigQueryConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BigQueryConnection",
+  "description": "Google BigQuery Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.BigQueryConnection",
+  "definitions": {
+    "bigqueryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "BigQuery"
+      ],
+      "default": "BigQuery"
+    },
+    "bigqueryScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "bigquery"
+      ],
+      "default": "bigquery"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/bigqueryType",
+      "default": "BigQuery"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/bigqueryScheme",
+      "default": "bigquery"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "BigQuery APIs URL.",
+      "type": "string",
+      "default": "bigquery.googleapis.com"
+    },
+    "credentials": {
+      "title": "GCS Credentials",
+      "description": "GCS Credentials",
+      "$ref": "../../../../security/credentials/gcsCredentials.json"
+    },
+    "partitionQueryDuration": {
+      "title": "Partition Query Duration",
+      "description": "Duration for partitioning BigQuery tables.",
+      "type": "integer",
+      "default": 1
+    },
+    "partitionQuery": {
+      "title": "Partition Query",
+      "description": "Partitioning query for BigQuery tables.",
+      "type": "string",
+      "default": "select * from {}.{} WHERE {} = \"{}\" LIMIT 1000"
+    },
+    "partitionField": {
+      "title": "Partition Field",
+      "description": "Column name on which the BigQuery table will be partitioned.",
+      "type": "string",
+      "default": "_PARTITIONTIME"
+    },
+    "taxonomyProjectID": {
+      "title": "Taxonomy Project IDs",
+      "description": "Project IDs used to fetch policy tags",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "taxonomyLocation": {
+      "title": "Taxonomy Location",
+      "description": "Taxonomy location used to fetch policy tags",
+      "type": "string",
+      "default": "us"
+    },
+    "usageLocation": {
+      "title": "Usage Location",
+      "description": "Location used to query INFORMATION_SCHEMA.JOBS_BY_PROJECT to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or you specific region. Australia and Asia multi-regions are not yet in GA.",
+      "type": "string",
+      "default": "us"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "credentials"
+  ]
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,10 +12,16 @@
  */
 
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { startCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { serviceTypes } from '../../../constants/services.const';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  excludedService,
+  serviceTypes,
+} from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
+import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -51,8 +57,23 @@ const SelectServiceType = ({
       ? serviceCategory
       : allCategory[0];
     setCategory(selectedCategory);
-    setSelectedConnectors(serviceTypes[selectedCategory]);
+    setSelectedConnectors(
+      serviceTypes[selectedCategory].filter(
+        (service) => !excludedService.find((e) => e === service)
+      )
+    );
   }, [serviceCategory]);
+
+  const filteredConnectors = useMemo(
+    () =>
+      selectedConnectors.filter(
+        (connectorType) =>
+          !excludedService.includes(
+            connectorType as MlModelServiceType | MetadataServiceType
+          )
+      ),
+    [selectedConnectors]
+  );
 
   return (
     <div>
@@ -79,7 +100,9 @@ const SelectServiceType = ({
         <Field>
           <Searchbar
             removeMargin
-            placeholder="Search for connector..."
+            placeholder={`${t('label.search-for-type', {
+              type: t('label.connector'),
+            })}...`}
             searchValue={connectorSearchTerm}
             typingInterval={500}
             onSearch={handleConnectorSearchTerm}
@@ -89,7 +112,7 @@ const SelectServiceType = ({
           <div
             className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
             data-testid="select-service">
-            {selectedConnectors.map((type) => (
+            {filteredConnectors.map((type) => (
               <div
                 className={classNames(
                   'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
@@ -110,12 +133,19 @@ const SelectServiceType = ({
                     )}
                   </div>
                 </div>
-                <p className="">{type}</p>
+                <p className="break-word text-center">
+                  {type.includes('Custom') ? startCase(type) : type}
+                </p>
               </div>
             ))}
           </div>
         </div>
-        {showError && errorMsg('Service is required')}
+        {showError &&
+          errorMsg(
+            t('message.field-text-is-required', {
+              fieldText: t('label.service'),
+            })
+          )}
       </Field>
       <Field className="tw-flex tw-justify-end tw-mt-10">
         <Button
@@ -125,7 +155,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          <span>Cancel</span>
+          <span>{t('label.cancel')}</span>
         </Button>
 
         <Button
@@ -134,7 +164,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="contained"
           onClick={onNext}>
-          <span>Next</span>
+          <span>{t('label.next')}</span>
         </Button>
       </Field>
     </div>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,42 +11,44 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Modal, Row, Typography } from 'antd';
+import { t } from 'i18next';
 import React from 'react';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
-type TourEndModalProps = {
-  onSave: () => void;
-};
-const TourEndModal = ({ onSave }: TourEndModalProps) => {
+import { TourEndModalProps } from './TourEndModal.interface';
+
+const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
   return (
-    <dialog className="tw-modal" data-testid="modal-container">
-      <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-overflow-y-auto tw-max-h-screen tw-w-120">
-        <div className="tw-modal-body tw-min-h-32 tw-flex tw-flex-col tw-justify-center tw-items-center">
+    <Modal
+      closable={false}
+      data-testid="modal-container"
+      footer={
+        <Button
+          data-testid="saveButton"
+          size="large"
+          type="primary"
+          onClick={onSave}>
+          {t('label.explore-now')}
+        </Button>
+      }
+      open={visible}>
+      <Row className="text-center" gutter={[16, 16]}>
+        <Col className="mt-4" span={24}>
           <SVGIcons
-            alt="OpenMetadata Logo"
+            alt={t('label.open-metadata-logo')}
             icon={Icons.LOGO_SMALL}
             width="70"
           />
-          <p className="tw-text-base tw-text-center tw-mt-5">
-            You’ve successfully completed the tour.
+        </Col>
+        <Col span={24}>
+          <Typography className="text-base mt-5">
+            {t('message.successfully-completed-the-tour')}
             <br />
-            Get started with OpenMetadata.
-          </p>
-        </div>
-        <div className="tw-modal-footer" data-testid="cta-container">
-          <Button
-            data-testid="saveButton"
-            size="regular"
-            theme="primary"
-            type="submit"
-            variant="contained"
-            onClick={onSave}>
-            Explore Now
-          </Button>
-        </div>
-      </div>
-    </dialog>
+            {t('message.get-started-with-open-metadata')}
+          </Typography>
+        </Col>
+      </Row>
+    </Modal>
   );
 };
 

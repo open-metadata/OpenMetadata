@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,7 +21,7 @@ import 'codemirror/addon/selection/active-line';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/sql/sql';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { JSON_TAB_SIZE } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -41,14 +41,17 @@ const SchemaEditor = ({
   },
   options,
   editorClass,
+  onChange,
 }: {
   value: string;
   className?: string;
   mode?: Mode;
+  readOnly?: boolean;
   options?: {
     [key: string]: string | boolean | Array<string>;
   };
   editorClass?: string;
+  onChange?: (value: string) => void;
 }) => {
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
@@ -65,7 +68,7 @@ const SchemaEditor = ({
     readOnly: true,
     ...options,
   };
-  const [internalValue, setInternalValue] = useState(
+  const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
   const handleEditorInputBeforeChange = (
@@ -75,14 +78,26 @@ const SchemaEditor = ({
   ): void => {
     setInternalValue(getSchemaEditorValue(value));
   };
+  const handleEditorInputChange = (
+    _editor: Editor,
+    _data: EditorChange,
+    value: string
+  ): void => {
+    onChange && onChange(getSchemaEditorValue(value));
+  };
+
+  useEffect(() => {
+    setInternalValue(getSchemaEditorValue(value));
+  }, [value]);
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="code-mirror-container">
       <CodeMirror
         className={editorClass}
         options={defaultOptions}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
+        onChange={handleEditorInputChange}
       />
     </div>
   );

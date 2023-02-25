@@ -1,0 +1,248 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.query-builder-container {
+  &.query-builder {
+    margin: 0;
+    font: inherit;
+    overflow: visible;
+  }
+
+  .group-or-rule-container.group-container {
+    padding-right: 0px;
+  }
+
+  & > .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      .group--children {
+        .group-or-rule-container.group-container:first-child {
+          .group--header .action.action--DELETE {
+            display: none;
+          }
+        }
+      }
+      & > .group--header + .group--children {
+        padding-left: 0;
+      }
+    }
+  }
+  .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      background-color: transparent;
+      border: none;
+
+      & > .group--header {
+        margin: 0;
+        padding: 0;
+
+        .group--conjunctions {
+          position: absolute;
+          left: 0px;
+          top: 0px;
+          .ant-btn-group button span {
+            text-transform: uppercase;
+          }
+        }
+
+        .action.action--ADD-RULE {
+          display: none;
+        }
+        .action.action--DELETE {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+        }
+
+        .action.action--ADD-GROUP {
+          position: absolute;
+          bottom: 8px;
+          z-index: 1;
+          max-width: 128px;
+          border-color: #7147e8;
+          border-radius: 4px;
+          left: 0;
+          right: 0;
+          margin: auto;
+        }
+      }
+    }
+  }
+
+  .ant-btn-group {
+    position: initial;
+  }
+
+  .rule--body {
+    margin-right: 124px;
+  }
+
+  .group--children {
+    padding-top: 22px;
+    padding-bottom: 22px;
+
+    .group-or-rule-container.group-container,
+    .group-or-rule-container.rule-container {
+      .group.group-or-rule,
+      .rule.group-or-rule {
+        background: #f9fbfc;
+        /* table */
+
+        border: 1px solid #dde3ea;
+        border-radius: 4px;
+        box-sizing: border-box;
+
+        &:not(:first-child) {
+          padding: 16px 8px;
+        }
+      }
+
+      .group.group-or-rule {
+        .group--header {
+          .group--conjunctions {
+            position: absolute;
+            right: 36px;
+            top: 60px;
+            left: auto;
+            z-index: 1;
+
+            .ant-btn-group button span {
+              text-transform: uppercase;
+            }
+          }
+
+          .action.action--ADD-RULE {
+            position: absolute;
+            right: 36px;
+            bottom: 32px;
+            z-index: 1;
+            display: block;
+            border-color: #7147e8;
+            border-radius: 4px;
+          }
+
+          .action.action--ADD-GROUP {
+            display: none;
+          }
+
+          .action.action--DELETE {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            z-index: 1;
+
+            font-size: 16px;
+          }
+        }
+      }
+
+      .rule.group-or-rule {
+        padding: 0;
+        border: none;
+
+        .rule--header {
+          .ant-btn-group {
+            align-self: end;
+            margin-bottom: 8px;
+          }
+        }
+      }
+    }
+  }
+}
+
+.group--children > .group-or-rule-container > .group-or-rule::before,
+.group--children > .group-or-rule-container > .group-or-rule::after {
+  display: none;
+}
+
+.rule--body {
+  .rule--field,
+  .rule--operator,
+  .rule--widget {
+    .rule--label {
+      font-weight: normal;
+      margin-bottom: 6px;
+    }
+  }
+}
+
+.qb-lite .rule:hover .rule .widget--valuesrc,
+.qb-lite .rule:hover .rule .rule--drag-handler,
+.qb-lite .rule:hover .rule .rule--header,
+.qb-lite .rule:not(:hover) .widget--valuesrc,
+.qb-lite .rule:not(:hover) .rule--drag-handler,
+.qb-lite .rule:not(:hover) .rule--header {
+  opacity: 1;
+}
+
+.qb-lite .group--header:hover .group--header .group--drag-handler,
+.qb-lite .group--header:hover .group--header .group--actions,
+.qb-lite .group--header:not(:hover) .group--drag-handler,
+.qb-lite .group--header:not(:hover) .group--actions,
+.qb-lite .rule_group:not(:hover) .group--drag-handler,
+.qb-lite .rule_group:not(:hover) .group--actions {
+  opacity: 1;
+}
+
+.qb-lite .group--header .group--conjunctions .ant-btn:not(.ant-btn-primary),
+.qb-lite .group--header .group--header .rule_group_ext--drag-handler,
+.qb-lite
+  .group--header:not(:hover)
+  .group--conjunctions
+  .ant-btn:not(.ant-btn-primary),
+.qb-lite .group--header:not(:hover) .rule_group_ext--drag-handler,
+.qb-lite
+  .rule_group:not(:hover)
+  .group--conjunctions
+  .ant-btn:not(.ant-btn-primary),
+.qb-lite .rule_group:not(:hover) .rule_group_ext--drag-handler {
+  width: inherit;
+  padding: 0 7px;
+  overflow: hidden;
+  opacity: 1;
+}
+
+.rule-container .ant-btn-group {
+  visibility: hidden;
+}
+.rule-container + .rule-container .ant-btn-group {
+  visibility: visible;
+}
+
+.rule--field {
+  width: 180px;
+
+  .ant-select {
+    width: 100% !important;
+  }
+}
+
+.rule--operator,
+.widget--widget {
+  margin-left: 16px;
+}
+
+.rule--operator {
+  width: 120px;
+  .ant-select {
+    width: 100%;
+  }
+}
+
+.rule--widget {
+  min-width: 180px;
+  .ant-select,
+  .widget--widget {
+    width: 100% !important;
+  }
+}

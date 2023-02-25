@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,10 +21,14 @@ import {
 import React from 'react';
 import DropDownList from './DropDownList';
 
+jest.mock('../common/UserTag/UserTag.component', () => ({
+  UserTag: jest.fn().mockReturnValue(<div>ProfilePicture</div>),
+}));
+
 const dropDownList = [
   {
     name: 'test 1',
-    value: 'd155f04f-ce16-4d4e-8698-23c88d293312',
+    value: 'd155f04f-ce16-4d4e-8698-23c88d293311',
   },
   {
     name: 'test 2',
@@ -34,6 +38,7 @@ const dropDownList = [
 const listGroups = ['Teams'];
 
 const MockOnSelect = jest.fn();
+const MockRemoveOwner = jest.fn();
 
 describe('Test DropDownList Component', () => {
   it('Component should render', () => {
@@ -59,7 +64,7 @@ describe('Test DropDownList Component', () => {
       />
     );
 
-    expect(getAllByTestId(container, 'list-item').length).toBe(2);
+    expect(getAllByTestId(container, 'list-item')).toHaveLength(2);
   });
 
   it('OnSelect of List item, callback should be called', () => {
@@ -81,7 +86,30 @@ describe('Test DropDownList Component', () => {
       })
     );
 
-    expect(MockOnSelect).toBeCalledTimes(1);
+    expect(MockOnSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('Selected list item should have remove button', () => {
+    const { container } = render(
+      <DropDownList
+        dropDownList={dropDownList}
+        listGroups={listGroups}
+        removeOwner={MockRemoveOwner}
+        value="d155f04f-ce16-4d4e-8698-23c88d293311"
+        onSelect={MockOnSelect}
+      />
+    );
+
+    const selectedItem = getByTestId(container, 'remove-owner');
+    fireEvent.click(
+      selectedItem,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    expect(MockRemoveOwner).toHaveBeenCalledTimes(1);
   });
 
   it('On search, show no result placeholder', () => {

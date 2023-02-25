@@ -17,72 +17,111 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.openmetadata</groupId>
-  <artifactId>catalog</artifactId>
-  <version>0.11.0-SNAPSHOT</version>
+  <groupId>org.open-metadata</groupId>
+  <artifactId>platform</artifactId>
+  <name>OpenMetadata-Platform</name>
+  <description> is an all-in-one platform for data discovery, data lineage, data quality, observability, governance,
+    and team collaboration. It is one of the fastest growing open-source projects with a vibrant community and
+    adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store
+    based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
+    OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
+  </description>
+  <version>1.0.0-SNAPSHOT</version>
+  <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
+    <module>openmetadata-spec</module>
     <module>common</module>
-    <module>catalog-rest-service</module>
+    <module>openmetadata-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
+    <module>openmetadata-clients</module>
   </modules>
   <packaging>pom</packaging>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
   <scm>
     <connection>scm:git:git@github.com:Open-Metadata/OpenMetadata</connection>
     <developerConnection>scm:git:git@github.com:Open-Metadata/OpenMetadata</developerConnection>
     <url>scm:git:git@github.com:Open-Metadata/OpenMetadata</url>
   </scm>
 
+  <developers>
+    <developer>
+      <name>OpenMetadata</name>
+      <email>openmetadata@getcollate.io</email>
+      <organization>Get Collate</organization>
+      <organizationUrl>https://getcollate.io/</organizationUrl>
+    </developer>
+  </developers>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.6.1</mockito.version>
+    <mockito.version>4.11.0</mockito.version>
+    <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.13.3</jackson.version>
-    <dropwizard.version>2.0.28</dropwizard.version>
-    <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
-    <jersey-bom.version>2.35</jersey-bom.version>
+    <jackson.version>2.14.1</jackson.version>
+    <jackson-databind.version>2.14.1</jackson-databind.version>
+    <dropwizard.version>2.1.4</dropwizard.version>
+    <diffMatch.version>1.0</diffMatch.version>
+    <jersey-bom.version>2.38</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
-    <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
-    <maven-surefire.version>3.0.0-M5</maven-surefire.version>
-    <maven-shade-plugin.version>2.4.1</maven-shade-plugin.version>
-    <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
-    <maven-src-plugin.version>2.2.1</maven-src-plugin.version>
+    <maven-dependency-plugin.version>3.3.0</maven-dependency-plugin.version>
+    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-surefire.version>3.0.0-M7</maven-surefire.version>
+    <maven-javadoc-plugin.version>3.4.1</maven-javadoc-plugin.version>
+    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
     <jakarta.version>3.0.2</jakarta.version>
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
-    <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.30.0</jdbi3.version>
-    <jeasy.version>4.1.0</jeasy.version>
+    <jacoco-plugin.version>0.8.8</jacoco-plugin.version>
+    <jdbi3.version>3.36.0</jdbi3.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
-    <flyway.version>8.1.0</flyway.version>
-    <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
-    <gson.version>2.9.0</gson.version>
-    <mysql.connector.version>8.0.29</mysql.connector.version>
-    <postgres.connector.version>42.3.6</postgres.connector.version>
-    <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
+    <flyway.version>9.10.2</flyway.version>
+    <redshift-jdbc.version>2.1.0.10</redshift-jdbc.version>
+    <gson.version>2.10.1</gson.version>
+    <mysql.connector.version>8.0.32</mysql.connector.version>
+    <postgres.connector.version>42.5.1</postgres.connector.version>
+    <jsonschema2pojo.version>1.1.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
-    <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
+    <tomcat-jdbc.version>10.1.4</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
     <elasticsearch.version>7.13.4</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.0</openapiswagger.version>
-    <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
+    <openapiswagger.version>2.2.7</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
-    <httpclient.version>4.5.13</httpclient.version>
-    <spring.version>5.3.20</spring.version>
-    <log4j.version>2.17.0</log4j.version>
-    <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
+    <httpclient.version>4.5.14</httpclient.version>
+    <!-- Upgrading to spring version 6.x requires Java 17 -->
+    <spring.version>5.3.24</spring.version>
+    <log4j.version>2.19.0</log4j.version>
+    <org.junit.jupiter.version>5.9.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.2</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
     <!--  upgrade only when we find how to import esnext modules in nodejs  -->
-    <antlr.version>4.10.1</antlr.version>
+    <antlr.version>4.11.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -90,13 +129,25 @@
     <sonar.organization>open-metadata</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.working.directory>target/sonar</sonar.working.directory>
-    <maven.sonar-plugin.version>3.7.0.1746</maven.sonar-plugin.version>
+    <maven.sonar-plugin.version>3.9.1.2184</maven.sonar-plugin.version>
     <sonar.language>java</sonar.language>
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-    <testng.version>7.6.0</testng.version>
-    <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.0.70</json-schema-validator.version>
+    <testng.version>7.6.1</testng.version>
+    <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
+    <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
+    <json-schema-validator.version>1.0.76</json-schema-validator.version>
+    <java-jwt.version>3.19.4</java-jwt.version>
+    <jwks-rsa.version>0.21.3</jwks-rsa.version>
+    <jjwt.version>0.9.1</jjwt.version>
+    <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
+    <freemarker.version>2.3.32</freemarker.version>
+    <passay.version>1.6.2</passay.version>
+    <bcrypt.version>0.9.0</bcrypt.version>
+    <simplejavamail.version>7.8.0</simplejavamail.version>
+    <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
+    <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
+    <unboundsdk.version>6.0.7</unboundsdk.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -130,7 +181,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.13.3</version>
+        <version>${jackson-databind.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -174,17 +225,12 @@
       <dependency>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
-        <version>${dropwizard-jdbi3.version}</version>
+        <version>${dropwizard.version}</version>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>
         <artifactId>jdbi3-core</artifactId>
         <version>${jdbi3.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.jeasy</groupId>
-        <artifactId>easy-rules-core</artifactId>
-        <version>${jeasy.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-cli</groupId>
@@ -219,6 +265,11 @@
         </exclusions>
       </dependency>
       <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-mysql</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <version>${postgres.connector.version}</version>
@@ -251,14 +302,6 @@
           </exclusion>
           <exclusion>
             <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-misc</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-sandbox</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-spatial</artifactId>
           </exclusion>
           <exclusion>
@@ -279,11 +322,6 @@
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpasyncclient</artifactId>
         <version>${httpasyncclient.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.openapitools.swagger</groupId>
-        <artifactId>swagger-maven-plugin</artifactId>
-        <version>${openapiswagger.version}</version>
       </dependency>
       <dependency>
         <groupId>io.swagger.core.v3</groupId>
@@ -334,7 +372,7 @@
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
         <artifactId>jakarta.xml.bind-api</artifactId>
-        <version>3.0.1</version>
+        <version>4.0.0</version>
       </dependency>
 
       <!-- Runtime, com.sun.xml.bind module -->
@@ -384,7 +422,6 @@
         <artifactId>slf4j-simple</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>
@@ -415,12 +452,12 @@
       <dependency>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-core</artifactId>
-          <version>2.17.2</version>
+          <version>${log4j.version}</version>
       </dependency>
       <dependency>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-api</artifactId>
-          <version>2.17.2</version>
+          <version>${log4j.version}</version>
       </dependency>
       <dependency>
         <groupId>com.wix</groupId>
@@ -439,7 +476,7 @@
       <dependency>
         <groupId>org.apache.johnzon</groupId>
         <artifactId>johnzon-core</artifactId>
-        <version>1.2.18</version>
+        <version>1.2.19</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -451,6 +488,30 @@
         <artifactId>disruptor</artifactId>
         <version>3.4.4</version>
       </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <!-- 9.x required for Dropwizard 2.1.x -->
+        <version>9.4.50.v20221201</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
+      <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>jakarta.el</artifactId>
+        <version>3.0.4</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONDATAFORMAT-1047329 -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-cbor</artifactId>
+        <version>2.14.1</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
     </dependencies>
   </dependencyManagement>
 
@@ -483,7 +544,7 @@
         <enabled>true</enabled>
       </snapshots>
       <id>aws-redshift</id>
-      <url>http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release</url>
+      <url>https://s3.amazonaws.com/redshift-maven-repository/release</url>
     </repository>
   </repositories>
 
@@ -496,10 +557,10 @@
       </activation>
       <build>
         <plugins>
-
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco-plugin.version}</version>
             <executions>
               <execution>
                 <id>prepare-agent</id>
@@ -520,6 +581,7 @@
           <plugin>
             <groupId>org.sonarsource.scanner.maven</groupId>
             <artifactId>sonar-maven-plugin</artifactId>
+            <version>${maven.sonar-plugin.version}</version>
             <executions>
               <execution>
                 <id>sonar-verify-execution</id>
@@ -534,13 +596,70 @@
       </build>
     </profile>
 
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <configuration>
+              <doclint>none</doclint>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
   </profiles>
   <reporting>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jxr-plugin</artifactId>
-        <version>3.1.1</version>
+        <version>3.3.0</version>
       </plugin>
     </plugins>
   </reporting>
@@ -548,9 +667,69 @@
     <pluginManagement>
       <plugins>
         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>3.1.0</version>
+          <executions>
+            <execution>
+              <id>enforce-maven</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <requireMavenVersion>
+                    <version>3.8</version>
+                  </requireMavenVersion>
+                </rules>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>3.2.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>3.0.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>3.0.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>3.1.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>3.4.2</version>
+        </plugin>
+        <plugin>
+          <groupId>io.openapitools.swagger</groupId>
+          <artifactId>swagger-maven-plugin</artifactId>
+          <version>2.1.6</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>3.12.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <version>${maven-dependency-plugin.version}</version>
+        </plugin>
+        <plugin>
           <groupId>com.theoryinpractise</groupId>
           <artifactId>googleformatter-maven-plugin</artifactId>
-          <version>1.7.3</version>
+          <version>1.7.5</version>
           <executions>
             <execution>
               <id>reformat-sources</id>
@@ -574,23 +753,16 @@
         <plugin>
            <groupId>org.apache.maven.plugins</groupId>
            <artifactId>maven-checkstyle-plugin</artifactId>
-           <version>3.1.2</version>
+           <version>3.2.0</version>
            <configuration>
              <configLocation>./checkstyle/checkstyle.xml</configLocation>
                <includeTestSourceDirectory>true</includeTestSourceDirectory>
            </configuration>
-           <dependencies>
-            <dependency>
-              <groupId>com.puppycrawl.tools</groupId>
-              <artifactId>checkstyle</artifactId>
-              <version>10.3</version>
-            </dependency>
-          </dependencies>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-release-plugin</artifactId>
-          <version>2.5</version>
+          <version>${maven-release-plugin.version}</version>
           <configuration>
             <arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
           </configuration>
@@ -598,6 +770,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.10.1</version>
           <configuration>
             <source>11</source>
             <target>11</target>
@@ -616,9 +789,9 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
-              <include>org.openmetadata.catalog.resources.**.*.java</include>
-              <include>org.openmetadata.catalog.util.*.java</include>
-              <include>org.openmetadata.catalog.EnumBackwardCompatibilityTest</include>
+              <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.util.*.java</include>
+              <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
           </configuration>
         </plugin>
@@ -661,7 +834,40 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>3.3</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>3.2.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-install-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
+        <version>${maven-release-plugin.version}</version>
         <configuration>
           <autoVersionSubmodules>true</autoVersionSubmodules>
           <tagNameFormat>v@{project.version}</tagNameFormat>
@@ -670,7 +876,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.5</version>
+        <version>2.13.0</version>
         <configuration>
           <generateBackupPoms>false</generateBackupPoms>
         </configuration>
@@ -678,17 +884,13 @@
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
         <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.7</version>
+        <version>1.6.13</version>
         <extensions>true</extensions>
         <configuration>
           <serverId>ossrh</serverId>
-          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-          <autoReleaseAfterClose>false</autoReleaseAfterClose>
+          <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>2.0</version>
       </plugin>
     </plugins>
   </build>

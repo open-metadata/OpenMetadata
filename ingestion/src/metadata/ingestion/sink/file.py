@@ -8,7 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Sink that will store metadata in a file.
+Useful for local testing without having OM up.
+"""
 import pathlib
 
 from metadata.config.common import ConfigModel
@@ -17,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -27,6 +31,10 @@ class FileSinkConfig(ConfigModel):
 
 
 class FileSink(Sink[Entity]):
+    """
+    Sink implementation to store metadata in a file
+    """
+
     config: FileSinkConfig
     report: SinkStatus
 
@@ -41,7 +49,8 @@ class FileSink(Sink[Entity]):
         self.report = SinkStatus()
 
         fpath = pathlib.Path(self.config.filename)
-        self.file = fpath.open("w")
+        # pylint: disable=consider-using-with
+        self.file = fpath.open("w", encoding=UTF_8)
         self.file.write("[\n")
         self.wrote_something = False
 

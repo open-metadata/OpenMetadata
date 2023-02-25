@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -41,37 +41,72 @@ export const mockServiceDetails = {
         href: 'http://pipelineServices',
       },
     },
+    {
+      collection: {
+        name: 'mlmodelServices',
+        documentation: 'MlModel service collection',
+        href: 'http://localhost:8585/api/v1/services/mlmodelServices',
+      },
+    },
   ],
 };
 
-export const mockDatabaseService = {
+export const mockMlmodelService = {
   data: {
     data: [
       {
-        id: '847deda6-5342-42ed-b392-f0178a502c13',
-        name: 'bigquery',
-        serviceType: 'BigQuery',
-        description: 'BigQuery service used for shopify data',
-        href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
-        jdbc: {
-          driverClass: 'jdbc',
-          connectionUrl: 'jdbc://localhost',
+        id: 'b59a9acb-6c90-481e-afd9-ec0f208c4f35',
+        name: 'mlflow_svc',
+        fullyQualifiedName: 'mlflow_svc',
+        serviceType: 'Mlflow',
+        description: 'description for mlflow_svc',
+        version: 0.4,
+        updatedAt: 1655890983668,
+        updatedBy: 'anonymous',
+        connection: {
+          config: {
+            type: 'Mlflow',
+            registryUri: 'http://localhost:8088',
+            trackingUri: 'http://localhost:8088',
+            supportsMetadataExtraction: null,
+          },
         },
-      },
-      {
-        id: '847deda6-5342-42ed-b392-f0178a502c13',
-        name: 'mysql',
-        serviceType: 'MySql',
-        description: 'MySql service used for shopify data',
-        href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
-        jdbc: {
-          driverClass: 'jdbc',
-          connectionUrl: 'jdbc://localhost',
-        },
+        href: 'http://localhost:8585/api/v1/services/mlmodelServices/b59a9acb-6c90-481e-afd9-ec0f208c4f35',
+        deleted: false,
       },
     ],
-    paging: { total: 2 },
+    paging: {
+      total: 1,
+    },
   },
+};
+
+export const mockDatabaseService = {
+  data: [
+    {
+      id: '847deda6-5342-42ed-b392-f0178a502c13',
+      name: 'bigquery',
+      serviceType: 'BigQuery',
+      description: 'BigQuery service used for shopify data',
+      href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
+      jdbc: {
+        driverClass: 'jdbc',
+        connectionUrl: 'jdbc://localhost',
+      },
+    },
+    {
+      id: '847deda6-5342-42ed-b392-f0178a502c13',
+      name: 'mysql',
+      serviceType: 'MySql',
+      description: 'MySql service used for shopify data',
+      href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
+      jdbc: {
+        driverClass: 'jdbc',
+        connectionUrl: 'jdbc://localhost',
+      },
+    },
+  ],
+  paging: { total: 2 },
 };
 
 export const mockKafkaService = {
@@ -116,10 +151,8 @@ export const mockCustomMessagingService = {
 };
 
 export const mockMessagingService = {
-  data: {
-    data: [mockKafkaService, mockPulsarService, mockCustomMessagingService],
-    paging: { total: 3 },
-  },
+  data: [mockKafkaService, mockPulsarService, mockCustomMessagingService],
+  paging: { total: 3 },
 };
 
 export const mockLookerService = {
@@ -232,33 +265,29 @@ export const mockCustomDashboardService = {
 };
 
 export const mockDashboardService = {
-  data: {
-    data: [
-      mockLookerService,
-      mockMetabaseService,
-      mockPowerBIService,
-      mockRedashService,
-      mockSupersetService,
-      mockTableauService,
-      mockCustomDashboardService,
-    ],
-    paging: { total: 7 },
-  },
+  data: [
+    mockLookerService,
+    mockMetabaseService,
+    mockPowerBIService,
+    mockRedashService,
+    mockSupersetService,
+    mockTableauService,
+    mockCustomDashboardService,
+  ],
+  paging: { total: 7 },
 };
 
 export const mockPipelineService = {
-  data: {
-    data: [
-      {
-        id: '7576944e-2921-4c15-9edc-b9bada93338a',
-        name: 'sample_airflow',
-        serviceType: 'Airflow',
-        description: 'Airflow service',
-        version: 0.1,
-        pipelineUrl: 'http://localhost:8080',
-        href: 'http://localhost:8585/api/v1/services/pipelineServices/7576944e-2921-4c15-9edc-b9bada93338a',
-      },
-    ],
-    paging: { total: 1 },
-  },
+  data: [
+    {
+      id: '7576944e-2921-4c15-9edc-b9bada93338a',
+      name: 'sample_airflow',
+      serviceType: 'Airflow',
+      description: 'Airflow service',
+      version: 0.1,
+      pipelineUrl: 'http://localhost:8080',
+      href: 'http://localhost:8585/api/v1/services/pipelineServices/7576944e-2921-4c15-9edc-b9bada93338a',
+    },
+  ],
+  paging: { total: 1 },
 };

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,15 +19,24 @@ const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
 const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
+const mockUpdateDescriptions = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
 
 const mockProps = {
   okText: 'Next',
   cancelText: 'Back',
+  dbtUpdateDescriptions: false,
   onCancel: mockCancel,
   onSubmit: mockSubmit,
   handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
+  handleUpdateDescriptions: mockUpdateDescriptions,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
+
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
+);
 
 describe('Test DBT S3 Config Form', () => {
   it('Fields should render', async () => {
@@ -172,7 +181,7 @@ describe('Test DBT S3 Config Form', () => {
       },
     });
 
-    expect(mockSecurityConfigChange).toBeCalledTimes(5);
+    expect(mockSecurityConfigChange).toHaveBeenCalledTimes(5);
   });
 
   it('prefix config should change', async () => {
@@ -192,7 +201,7 @@ describe('Test DBT S3 Config Form', () => {
       },
     });
 
-    expect(mockPrefixConfigChange).toBeCalledTimes(2);
+    expect(mockPrefixConfigChange).toHaveBeenCalledTimes(2);
   });
 
   it('should show errors on submit', async () => {
@@ -201,7 +210,7 @@ describe('Test DBT S3 Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).not.toBeCalled();
+    expect(mockSubmit).not.toHaveBeenCalled();
   });
 
   it('should submit', async () => {
@@ -223,7 +232,7 @@ describe('Test DBT S3 Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).toBeCalled();
+    expect(mockSubmit).toHaveBeenCalled();
   });
 
   it('should cancel', async () => {
@@ -232,6 +241,6 @@ describe('Test DBT S3 Config Form', () => {
 
     fireEvent.click(backBtn);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
   });
 });

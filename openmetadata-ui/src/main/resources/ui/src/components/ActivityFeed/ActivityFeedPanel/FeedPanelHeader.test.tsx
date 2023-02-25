@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelHeader from './FeedPanelHeader';
 
 const mockFeedPanelHeaderProp = {
@@ -22,10 +23,6 @@ const mockFeedPanelHeaderProp = {
   noun: 'Conversations',
   onShowNewConversation: jest.fn(),
 };
-
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<span>Icon</span>),
-}));
 
 describe('Test FeedPanelHeader Component', () => {
   it('Check if FeedPanelHeader has all child elements', async () => {
@@ -46,7 +43,7 @@ describe('Test FeedPanelHeader Component', () => {
     const bottomSeparator = await findByTestId(container, 'bottom-separator');
 
     expect(title).toBeInTheDocument();
-    expect(noun).toHaveTextContent('Conversations on');
+    expect(noun).toHaveTextContent('Conversations label.on-lowercase');
     expect(newConversationButton).toBeInTheDocument();
     expect(drawerCloseButton).toBeInTheDocument();
     expect(bottomSeparator).toBeInTheDocument();
@@ -83,6 +80,42 @@ describe('Test FeedPanelHeader Component', () => {
     const noun = await findByTestId(container, 'header-noun');
 
     // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('Conversation on');
+    expect(noun).toHaveTextContent('label.conversation label.on-lowercase');
+  });
+
+  it('Should render entityFQN if entityField is empty', async () => {
+    const { container } = render(
+      <FeedPanelHeader
+        {...mockFeedPanelHeaderProp}
+        entityFQN="x.y.z"
+        entityField=""
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const entityAttribute = await findByTestId(container, 'entity-attribute');
+
+    expect(entityAttribute).toHaveTextContent(/x.y.z/i);
+  });
+
+  it('Should render noun according to the threadtype', async () => {
+    const { container } = render(
+      <FeedPanelHeader
+        {...mockFeedPanelHeaderProp}
+        entityFQN="x.y.z"
+        entityField=""
+        noun={undefined}
+        threadType={ThreadType.Announcement}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const noun = await findByTestId(container, 'header-noun');
+
+    expect(noun).toHaveTextContent(/Announcement label.on-lowercase/i);
   });
 });

@@ -17,11 +17,7 @@ import traceback
 from typing import TYPE_CHECKING, Dict
 
 from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
-from airflow_provider_openmetadata.lineage.utils import (
-    add_status,
-    get_xlets,
-    parse_lineage,
-)
+from airflow_provider_openmetadata.lineage.utils import add_status
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -43,23 +39,29 @@ def failure_callback(context: Dict[str, str]) -> None:
         metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
+        dag: "DAG" = context["dag"]
 
-        operator.log.info("Parsing lineage & pipeline status on failure...")
+        operator.log.info("Updating pipeline status on error...")
 
-        op_inlets = get_xlets(operator, "_inlets")
-        op_outlets = get_xlets(operator, "_outlets")
-
-        # Get the pipeline created or updated during the lineage
-        pipeline = parse_lineage(
-            config, context, operator, op_inlets, op_outlets, metadata
+        airflow_service_entity: PipelineService = metadata.get_by_name(
+            entity=PipelineService, fqn=config.airflow_service_name
+        )
+        pipeline: Pipeline = metadata.get_by_name(
+            entity=Pipeline,
+            fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
         )
 
-        add_status(
-            operator=operator,
-            pipeline=pipeline,
-            metadata=metadata,
-            context=context,
-        )
+        if pipeline:
+            add_status(
+                operator=operator,
+                pipeline=pipeline,
+                metadata=metadata,
+                context=context,
+            )
+        else:
+            logging.warning(
+                f"Pipeline {airflow_service_entity.name.__root__}.{dag.dag_id} not found. Skipping status update."
+            )
 
     except Exception as exc:  # pylint: disable=broad-except
         logging.error(traceback.format_exc())

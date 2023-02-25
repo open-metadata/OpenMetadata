@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getMlModelByFQN } from '../../axiosAPIs/mlModelAPI';
+import { getMlModelByFQN } from 'rest/mlModelAPI';
 import MlModelPageComponent from './MlModelPage.component';
 
 const mockData = {
@@ -132,7 +132,7 @@ const mockData = {
   deleted: false,
 };
 
-jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+jest.mock('rest/mlModelAPI', () => ({
   getMlModelByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
@@ -147,11 +147,64 @@ jest.mock('../../axiosAPIs/mlModelAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
-jest.mock('../../components/MlModelDetail/MlModelDetail.component', () => {
+jest.mock('components/MlModelDetail/MlModelDetail.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="mlmodel-details">MlModelDetails</div>);
 });
+
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    permissions: {},
+    getEntityPermission: jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      EditAll: true,
+      EditCustomFields: true,
+      EditDataProfile: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditLineage: true,
+      EditOwner: true,
+      EditQueries: true,
+      EditSampleData: true,
+      EditTags: true,
+      EditTests: true,
+      EditTier: true,
+      ViewAll: true,
+      ViewDataProfile: true,
+      ViewQueries: true,
+      ViewSampleData: true,
+      ViewTests: true,
+      ViewUsage: true,
+    }),
+  })),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    EditAll: true,
+    EditCustomFields: true,
+    EditDataProfile: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditLineage: true,
+    EditOwner: true,
+    EditQueries: true,
+    EditSampleData: true,
+    EditTags: true,
+    EditTests: true,
+    EditTier: true,
+    ViewAll: true,
+    ViewDataProfile: true,
+    ViewQueries: true,
+    ViewSampleData: true,
+    ViewTests: true,
+    ViewUsage: true,
+  },
+}));
 
 describe('Test MlModel Entity Page', () => {
   it('Should render component', async () => {

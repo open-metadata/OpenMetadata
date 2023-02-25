@@ -18,30 +18,20 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>catalog</artifactId>
-    <groupId>org.openmetadata</groupId>
-    <version>0.11.0-SNAPSHOT</version>
+    <artifactId>platform</artifactId>
+    <groupId>org.open-metadata</groupId>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>openmetadata-dist</artifactId>
   <packaging>pom</packaging>
-  <name>Catalog Distribution</name>
-  <description>Catalog binary distribution</description>
+  <name>OpenMetadata Distribution</name>
+  <description>OpenMetadata binary distribution</description>
 
   <dependencies>
     <dependency>
-      <groupId>org.openmetadata</groupId>
-      <artifactId>catalog-rest-service</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.openmetadata</groupId>
-      <artifactId>common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.openmetadata</groupId>
-      <artifactId>openmetadata-ui</artifactId>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-service</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>
@@ -73,6 +63,7 @@
             <configuration>
               <attach>true</attach>
               <runOnlyAtExecutionRoot>false</runOnlyAtExecutionRoot>
+              <tarLongFileMode>posix</tarLongFileMode>
               <descriptors>
                 <descriptor>${project.basedir}/src/main/assembly/binary.xml</descriptor>
               </descriptors>
@@ -80,6 +71,7 @@
             </configuration>
           </plugin>
           <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
             <executions>
               <execution>
@@ -95,6 +87,13 @@
           </plugin>
         </plugins>
       </build>
+      <dependencies>
+        <dependency>
+          <groupId>org.open-metadata</groupId>
+          <artifactId>openmetadata-ui</artifactId>
+          <version>${project.version}</version>
+        </dependency>
+      </dependencies>
     </profile>
     <profile>
       <id>rpm</id>
@@ -169,7 +168,118 @@
         </plugin>
       </plugins>
     </build>
+    <dependencies>
+      <dependency>
+        <groupId>org.open-metadata</groupId>
+        <artifactId>openmetadata-ui</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    </dependencies>
   </profile>
+  <profile>
+    <id>only-backend</id>
+    <activation>
+      <property>
+        <name>onlyBackend</name>
+      </property>
+    </activation>
+    <build>
+      <finalName>${final.Name}-${project.version}</finalName>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <phase>package</phase>
+              <goals>
+                <goal>single</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <attach>true</attach>
+            <runOnlyAtExecutionRoot>false</runOnlyAtExecutionRoot>
+            <descriptors>
+              <descriptor>${project.basedir}/src/main/assembly/binary.xml</descriptor>
+            </descriptors>
+            <appendAssemblyId>false</appendAssemblyId>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <executions>
+            <execution>
+              <phase>install</phase>
+              <goals>
+                <goal>copy-dependencies</goal>
+              </goals>
+              <configuration>
+                <outputDirectory>${project.build.directory}/libs</outputDirectory>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </build>
+  </profile>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <configuration>
+              <doclint>none</doclint>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
  </profiles>
 
 </project>

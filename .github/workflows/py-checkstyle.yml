@@ -15,7 +15,10 @@ name: Python Checkstyle
 # access to secrets
 on:
   pull_request_target:
-    branches: [ main ]
+    types: [labeled, opened, synchronize, reopened]
+
+permissions:
+  contents: read
 
 concurrency: 
   group: py-checkstyle-${{ github.head_ref }}
@@ -24,26 +27,48 @@ concurrency:
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv antlr4
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
 
       - name: Install Python & Openmetadata related dependencies
         run: |
           python3 -m venv env
           source env/bin/activate
+          sudo make install_antlr_cli
           make install install_test install_dev
 
       # Add back linting once we have 10/10 on main
@@ -63,7 +88,7 @@ jobs:
           body: |
             **The Python checkstyle failed.**
 
-            Please run `make py_format` in the root of your repository and commit the changes to this PR.
+            Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
             You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
 
             You can install the pre-commit hooks with `make install_test precommit_install`.

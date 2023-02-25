@@ -1,0 +1,126 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/team.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team",
+  "description": "This schema defines the Team entity. A Team is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.teams.Team",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "teamType" : {
+      "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has a only Users",
+      "type" : "string",
+      "enum": [
+        "Group",
+        "Department",
+        "Division",
+        "BusinessUnit",
+        "Organization"
+      ],
+      "default": "Group"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "teamType": {
+      "description": "Team type",
+      "$ref": "#/definitions/teamType"
+    },
+    "name": {
+      "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Data Science team'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the team.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "profile": {
+      "description": "Team profile information.",
+      "$ref": "../../type/profile.json"
+    },
+    "parents" : {
+      "description" : "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
+      "$ref" : "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "children" : {
+      "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
+      "$ref" : "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "users": {
+      "description": "Users that are part of the team.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "default": null
+    },
+    "childrenCount": {
+      "description" : "Total count of Children teams.",
+      "type": "integer"
+    },
+    "userCount": {
+      "description": "Total count of users that are part of the team.",
+      "type": "integer"
+    },
+    "owns": {
+      "description": "List of entities owned by the team.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "owner": {
+      "description": "Owner of this team. ",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "isJoinable": {
+      "description": "Can any user join this team during sign up? Value of true indicates yes, and false no.",
+      "type": "boolean",
+      "default": true
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "defaultRoles": {
+      "description": "Default roles of a team. These roles will be inherited by all the users that are part of this team.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "inheritedRoles": {
+      "description": "Roles that a team is inheriting through membership in teams that have set team default roles.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "policies": {
+      "description": "Policies that is attached to this team.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required": ["id", "name", "href"],
+  "additionalProperties": false
+}

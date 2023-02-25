@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,4 +20,15 @@ export enum UserType {
 export enum OwnerType {
   USER = 'user',
   TEAM = 'team',
+}
+
+export enum CreatePasswordGenerator {
+  AutomaticGenerate = 'AUTOMATIC_GENERATE',
+  CreatePassword = 'CREATE_PASSWORD',
+}
+export enum UserProfileTab {
+  ACTIVITY = 'activity',
+  TASKS = 'tasks',
+  MY_DATA = 'mydata',
+  FOLLOWING = 'following',
 }

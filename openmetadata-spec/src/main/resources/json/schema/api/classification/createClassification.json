@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/api/classification/createClassification.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateClassificationRequest",
+  "description": "Create classification request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.classification.CreateClassification",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this classification.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the classification.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Tags under this category are mutually exclusive. When mutually exclusive is `true` the tags from this category are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this category are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
+      "type" : "boolean",
+      "default" : "false"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

@@ -1,0 +1,83 @@
+{
+    "tests": [
+        {
+            "testSuiteName": "critical_metrics_suite",
+            "testSuiteDescription": "This is a critical test suite running tests important for the business",
+            "scheduleInterval": "0 0 * * MON",
+            "testCases": [
+                {
+                    "name": "table_column_count_equals",
+                    "description": "test the number of column in table",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableColumnCountToEqual",
+                    "parameterValues": [
+                        {
+                            "name": "columnCount",
+                            "value": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "table_column_count_between",
+                    "description": "test the number of column in table is between x and y",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableColumnCountToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "minColValue",
+                            "value": 1
+                        },
+                        {
+                            "name": "maxColValue",
+                            "value": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "column_value_max_to_be_between",
+                    "description": "test the value of a column is between x and y",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>",
+                    "testDefinitionName": "columnValueMaxToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "minValueForMaxInCol",
+                            "value": 50
+                        },
+                        {
+                            "name": "maxValueForMaxInCol",
+                            "value": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "column_values_to_match_regex",
+                    "description": "test value of a column match regex",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+                    "testDefinitionName": "columnValuesToMatchRegex",
+                    "parameterValues": [
+                        {
+                            "name": "regex",
+                            "value": "Doe.*"
+                        }
+                    ]
+                },
+                {
+                    "name": "column_values_to_be_between",
+                    "description": "test the number of column in table is between x and y",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "min",
+                            "value": 90001
+                        },
+                        {
+                            "name": "max",
+                            "value": 96162
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

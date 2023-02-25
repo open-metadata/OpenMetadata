@@ -1,0 +1,97 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/kpi/kpi.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Kpi",
+  "description": "Defines a kpi with a metric and target.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.dataInsight.kpi.Kpi",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this KPI Definition instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this KPI Definition.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this KPI Definition.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the KpiObjective.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "metricType": {
+      "$ref": "./basic.json#/definitions/kpiTargetType"
+    },
+    "dataInsightChart": {
+      "description": "Data Insight Chart Referred by this Kpi Objective.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "targetDefinition": {
+      "description": "Metrics from the chart and the target to achieve the result.",
+      "type": "array",
+      "items": {
+        "$ref": "./basic.json#/definitions/kpiTarget"
+      }
+    },
+    "kpiResult": {
+      "description": "Result of the Kpi",
+      "$ref": "./basic.json#/definitions/kpiResult"
+    },
+    "startDate": {
+      "description": "Start Date for the KPIs",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endDate": {
+      "description": "End Date for the KPIs",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "owner": {
+      "description": "Owner of this KPI definition.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "dataInsightChart",
+    "startDate",
+    "endDate",
+    "targetDefinition",
+    "metricType"
+  ],
+  "additionalProperties": false
+}

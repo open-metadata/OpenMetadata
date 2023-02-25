@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/email/smtpSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SmtpSettings",
+  "description": "This schema defines the SMTP Settings for sending Email",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.email.SmtpSettings",
+  "properties": {
+    "emailingEntity": {
+      "description": "Emailing Entity",
+      "type": "string",
+      "default": "OpenMetadata"
+    },
+    "supportUrl": {
+      "description": "Support Url",
+      "type": "string",
+      "default": "https://slack.open-metadata.org"
+    },
+    "enableSmtpServer": {
+      "description": "If this is enable password will details will be shared on mail",
+      "type": "boolean",
+      "default": false
+    },
+    "openMetadataUrl": {
+      "description": "Openmetadata Server Endpoint",
+      "type": "string"
+    },
+    "senderMail": {
+      "description": "Mail of the sender",
+      "type": "string"
+    },
+    "serverEndpoint": {
+      "description": "Smtp Server Endpoint",
+      "type": "string"
+    },
+    "serverPort": {
+      "description": "Smtp Server Endpoint",
+      "type": "integer"
+    },
+    "username": {
+      "description": "Smtp Server Username",
+      "type": "string"
+    },
+    "password": {
+      "description": "Smtp Server Password",
+      "type": "string"
+    },
+    "transportationStrategy": {
+      "type": "string",
+      "enum": ["SMTP", "SMPTS", "SMTP_TLS"],
+      "default": "SMTP"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["serverEndpoint", "serverPort", "username", "password", "senderMail", "openMetadataUrl"]
+}

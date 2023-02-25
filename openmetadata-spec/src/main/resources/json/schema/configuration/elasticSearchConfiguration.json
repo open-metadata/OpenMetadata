@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/elasticSearchConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearchConfiguration",
+  "description": "This schema defines the Elastic Search Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration",
+  "definitions": {
+    "searchIndexMappingLanguage": {
+      "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+      "description": "This schema defines the language options available for search index mappings.",
+      "type": "string",
+      "enum": [
+        "EN",
+        "JP"
+      ],
+      "default": "EN"
+    }
+  },
+  "properties": {
+    "host": {
+      "description": "Elastic Search Host",
+      "type": "string"
+    },
+    "port": {
+      "description": "Elastic Search port",
+      "type": "integer"
+    },
+    "scheme": {
+      "description": "Http/Https connection scheme",
+      "type": "string"
+    },
+    "username": {
+      "description": "Elastic Search Username for Login",
+      "type": "string"
+    },
+    "password": {
+      "description": "Elastic Search Password for Login",
+      "type": "string"
+    },
+    "truststorePath": {
+      "description": "Truststore Path",
+      "type": "string"
+    },
+    "truststorePassword": {
+      "description": "Truststore Password",
+      "type": "string"
+    },
+    "connectionTimeoutSecs": {
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 5
+    },
+    "socketTimeoutSecs": {
+      "description": "Socket Timeout in Seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "batchSize": {
+      "description": "Batch Size for Requests",
+      "type": "integer",
+      "default": 10
+    },
+    "searchIndexMappingLanguage": {
+      "$ref": "#/definitions/searchIndexMappingLanguage"
+    }
+  },
+  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "additionalProperties": false
+}

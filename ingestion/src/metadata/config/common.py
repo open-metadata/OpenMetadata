@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Common configuration models and exceptions
+"""
 import io
 import json
 import os
@@ -19,17 +21,17 @@ from typing import IO, Any, Optional
 import yaml
 from pydantic import BaseModel
 
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
-
 
 class ConfigModel(BaseModel):
+    """Class definition for config model"""
+
     class Config:
         extra = "forbid"
 
 
 class DynamicTypedConfig(ConfigModel):
+    """Class definition for Dynamic Typed Config"""
+
     type: str
     config: Optional[Any]
 
@@ -43,38 +45,52 @@ class ConfigurationError(Exception):
 
 
 class ConfigurationMechanism(ABC):
+    """
+    Class definition for configuration mechanism
+    """
+
     @abstractmethod
     def load_config(self, config_fp: IO) -> dict:
-        pass
+        """
+        Abstract method to load configuration from yaml files
+        """
 
 
 class YamlConfigurationMechanism(ConfigurationMechanism):
-    """load configuration from yaml files"""
+    """
+    load configuration from yaml files
+    """
 
     def load_config(self, config_fp: IO) -> dict:
+        """
+        Method to load configuration from yaml files
+        """
+
         try:
             config = yaml.safe_load(config_fp)
             return config
-        except yaml.error.YAMLError:
-            msg = "YAML Configuration file is not a valid YAML"
-            logger.error(msg)
-            raise ConfigurationError(msg)
+        except yaml.error.YAMLError as exc:
+            raise ConfigurationError(f"YAML Configuration file is not valid \n {exc}")
 
 
 class JsonConfigurationMechanism(ConfigurationMechanism):
-    """load configuration from json files"""
+    """
+    load configuration from json files
+    """
 
     def load_config(self, config_fp: IO) -> dict:
         try:
             config = json.load(config_fp)
             return config
-        except json.decoder.JSONDecodeError:
-            msg = "JSON Configuration file is not a valid JSON"
-            logger.error(msg)
-            raise ConfigurationError(msg)
+        except json.decoder.JSONDecodeError as exc:
+            raise ConfigurationError(f"JSON Configuration file is not valid \n {exc}")
 
 
 def load_config_file(config_file: pathlib.Path) -> dict:
+    """
+    Method to load configuration from json or yaml,yml files
+    """
+
     if not config_file.is_file():
         raise ConfigurationError(f"Cannot open config file {config_file}")
 
@@ -85,9 +101,7 @@ def load_config_file(config_file: pathlib.Path) -> dict:
         config_mech = JsonConfigurationMechanism()
     else:
         raise ConfigurationError(
-            "Only .json and .yml are supported. Cannot process file type {}".format(
-                config_file.suffix
-            )
+            f"Only .json and .yml are supported. Cannot process file type {config_file.suffix}"
         )
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()

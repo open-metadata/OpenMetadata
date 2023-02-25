@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,56 +11,53 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
-${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE},${TabSpecificField.TESTS},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION}`;
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION}`;
 
 export const datasetTableTabs = [
   {
-    name: 'Schema',
+    name: i18next.t('label.schema'),
     path: 'schema',
   },
   {
-    name: 'Activity Feed',
+    name: i18next.t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Sample Data',
+    name: i18next.t('label.sample-data'),
     path: 'sample_data',
-    field: TabSpecificField.SAMPLE_DATA,
   },
   {
-    name: 'Queries',
+    name: i18next.t('label.query-plural'),
     path: 'table_queries',
-    field: TabSpecificField.TABLE_QUERIES,
   },
   {
-    name: 'Profiler',
+    name: i18next.t('label.profiler'),
     path: 'profiler',
   },
   {
-    name: 'Data Quality',
+    name: i18next.t('label.data-entity', {
+      entity: i18next.t('label.quality'),
+    }),
     path: 'data-quality',
   },
   {
-    name: 'Lineage',
+    name: i18next.t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'DBT',
+    name: i18next.t('label.dbt-uppercase'),
     path: 'dbt',
   },
   {
-    name: 'Custom Properties',
+    name: i18next.t('label.custom-property-plural'),
     path: 'custom_properties',
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
   },
 ];
 
@@ -102,10 +99,6 @@ export const getCurrentDatasetTab = (tab: string) => {
 
     case 'custom_properties':
       currentTab = 9;
-
-      break;
-    case 'manage':
-      currentTab = 10;
 
       break;
 

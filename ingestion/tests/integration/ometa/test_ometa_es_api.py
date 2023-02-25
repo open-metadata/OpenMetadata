@@ -11,6 +11,8 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+import logging
+import time
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -33,8 +35,11 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 
 
 class OMetaESTest(TestCase):
@@ -43,7 +48,13 @@ class OMetaESTest(TestCase):
     Install the ingestion package before running the tests
     """
 
-    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        authProvider="openmetadata",
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
+    )
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -62,6 +73,25 @@ class OMetaESTest(TestCase):
     service_type = "databaseService"
 
     @classmethod
+    def check_es_index(cls) -> None:
+        """
+        Wait until the index has been updated with the test table.
+        """
+        logging.info("Checking ES index status...")
+        tries = 0
+
+        res = None
+        while not res and tries <= 5:  # Kill in 5 seconds
+
+            res = cls.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
+            )
+            if not res:
+                tries += 1
+                time.sleep(1)
+
+    @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare ingredients
@@ -71,32 +101,28 @@ class OMetaESTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db-es",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db-es", type="database"
-        )
+        cls.create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema-es", database=cls.db_reference
+            name="test-schema-es",
+            database=cls.create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema-es", type="databaseSchema"
-        )
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         create = CreateTableRequest(
             name="test-es",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         cls.entity = cls.metadata.create_or_update(create)
+
+        # Leave some time for indexes to get updated, otherwise this happens too fast
+        cls.check_es_index()
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -121,42 +147,48 @@ class OMetaESTest(TestCase):
         """
         We can fetch tables from a service
         """
-        res = self.metadata.es_search_from_service(
+
+        fqn_search_string = fqn._build(
+            self.service.name.__root__, "*", "*", self.entity.name.__root__
+        )
+
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={"name": self.entity.name.__root__},
+            fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         # We get the created table back
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
-        res = self.metadata.es_search_from_service(
+        fqn_search_string = fqn._build(
+            self.service.name.__root__,
+            self.create_db_entity.name.__root__,
+            "*",
+            self.entity.name.__root__,
+        )
+
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={
-                "name": self.entity.name.__root__,
-                "database": self.db_reference.name,
-            },
+            fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
-        res = self.metadata.es_search_from_service(
+        fqn_search_string = fqn._build(
+            self.service.name.__root__,
+            self.create_db_entity.name.__root__,
+            self.create_schema_entity.name.__root__,
+            self.entity.name.__root__,
+        )
+
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={
-                "name": self.entity.name.__root__,
-                "database": self.db_reference.name,
-                "database_schema": self.schema_reference.name,
-            },
+            fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         self.assertIsNotNone(res)
@@ -166,11 +198,9 @@ class OMetaESTest(TestCase):
         """
         Wrong filters return none
         """
-        res = self.metadata.es_search_from_service(
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={"name": "random"},
-            retries=1,
+            fqn_search_string="random",
         )
 
         self.assertIsNone(res)

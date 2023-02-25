@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,31 +11,72 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
-import React, { FC, HTMLAttributes } from 'react';
+import { Col, Row } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import React, { FC, useEffect, useState } from 'react';
+import { getTableQueryByTableId } from 'rest/tableAPI';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
+import { showErrorToast } from '../../utils/ToastUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
 
-interface TableQueriesProp extends HTMLAttributes<HTMLDivElement> {
-  queries: Table['tableQueries'];
+interface TableQueriesProp {
+  isTableDeleted?: boolean;
+  tableId: string;
 }
 
-const TableQueries: FC<TableQueriesProp> = ({ queries, className }) => {
+const TableQueries: FC<TableQueriesProp> = ({
+  isTableDeleted,
+  tableId,
+}: TableQueriesProp) => {
+  const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
+  const [isQueriesLoading, setIsQueriesLoading] = useState(true);
+
+  const fetchTableQuery = async () => {
+    try {
+      const queries = await getTableQueryByTableId(tableId);
+      setTableQueries(queries.tableQueries ?? []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsQueriesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setIsQueriesLoading(true);
+    if (tableId && !isTableDeleted) {
+      fetchTableQuery();
+    } else {
+      setIsQueriesLoading(false);
+    }
+  }, [tableId]);
+
+  if (isQueriesLoading) {
+    return <Loader />;
+  }
+
   return (
-    <div className={className} data-testid="table-queries">
-      <div className="tw-my-6" data-testid="queries-container">
-        {!isUndefined(queries) && queries.length > 0 ? (
-          queries.map((query, index) => <QueryCard key={index} query={query} />)
-        ) : (
-          <div
-            className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-            data-testid="no-queries">
-            <span>No queries data available.</span>
+    <Row className="p-xs" gutter={32} id="tablequeries">
+      {tableQueries && !isEmpty(tableQueries) ? (
+        <Col offset={3} span={18}>
+          <div className="m-y-lg" data-testid="queries-container">
+            {tableQueries.map((query, index) => (
+              <QueryCard key={index} query={query} />
+            ))}
           </div>
-        )}
-      </div>
-    </div>
+        </Col>
+      ) : (
+        <Col className="flex-center font-medium" span={24}>
+          <div data-testid="no-queries">
+            <ErrorPlaceHolder heading="queries" />
+          </div>
+        </Col>
+      )}
+    </Row>
   );
 };
 

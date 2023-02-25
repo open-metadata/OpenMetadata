@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import i18n from 'utils/i18next/LocalUtil';
 import { FormValidationRulesType } from '../../../enums/form.enum';
 import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
 import {
-  DbtConfigHttp,
-  DbtConfigLocal,
+  DbtConfigCloudReq,
   DbtGCSCreds,
   DbtS3Creds,
   DbtS3CredsReq,
@@ -25,65 +25,53 @@ import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [
   {
-    name: 'No Config Source',
-    value: '',
-  },
-  {
-    name: 'Local Config Source',
+    label: i18n.t('label.local-config-source'),
     value: DBT_SOURCES.local,
   },
   {
-    name: 'HTTP Config Source',
+    label: i18n.t('label.http-config-source'),
     value: DBT_SOURCES.http,
   },
   {
-    name: 'S3 Config Source',
+    label: i18n.t('label.cloud-config-source'),
+    value: DBT_SOURCES.cloud,
+  },
+  {
+    label: i18n.t('label.s3-config-source'),
     value: DBT_SOURCES.s3,
   },
   {
-    name: 'GCS Config Source',
+    label: i18n.t('label.gcs-config-source'),
     value: DBT_SOURCES.gcs,
   },
 ];
 
 export const GCSCreds: Array<DropDownListItem> = [
   {
-    name: 'GCS Credentials Values',
+    label: i18n.t('label.gcs-credential-value'),
     value: GCS_CONFIG.GCSValues,
   },
   {
-    name: 'GCS Credentials Path',
+    label: i18n.t('label.gcs-credential-path'),
     value: GCS_CONFIG.GCSCredentialsPath,
   },
 ];
 
-export const reqDBTLocalFields: Record<keyof DbtConfigLocal, string> = {
-  dbtCatalogFilePath: 'DBT Catalog File Path',
-  dbtManifestFilePath: 'DBT Manifest File Path',
+export const reqDBTCloudFields: Record<keyof DbtConfigCloudReq, string> = {
+  dbtCloudAccountId: 'dbt Cloud Account Id',
+  dbtCloudAuthToken: 'dbt Cloud Authentication Token',
 };
 
-export const reqDBTHttpFields: Record<keyof DbtConfigHttp, string> = {
-  dbtCatalogHttpPath: 'DBT Catalog Http Path',
-  dbtManifestHttpPath: 'DBT Manifest Http Path',
+export const reqDBTLocalFields: Record<string, string> = {
+  dbtManifestFilePath: 'dbt Manifest File Path',
+};
+
+export const reqDBTHttpFields: Record<string, string> = {
+  dbtManifestHttpPath: 'dbt Manifest Http Path',
 };
 
 export const reqDBTS3Fields: Record<keyof DbtS3CredsReq, string> = {
-  awsAccessKeyId: 'AWS Access Key ID',
-  awsSecretAccessKey: 'AWS Secret Access Key',
   awsRegion: 'AWS Region',
-};
-
-export const reqDBTGCSCredsFields: Record<keyof DbtGCSCreds, string> = {
-  authProviderX509CertUrl: 'Authentication Provider x509 Certificate URL',
-  authUri: 'Authentication URI',
-  clientEmail: 'Client Email',
-  clientId: 'Client ID',
-  clientX509CertUrl: 'Client x509 Certificate URL',
-  privateKey: 'Private Key',
-  privateKeyId: 'Private Key ID',
-  projectId: 'Project ID',
-  tokenUri: 'Token URI',
-  type: 'Credentials Type',
 };
 
 export const rulesDBTS3CredsFields: Record<

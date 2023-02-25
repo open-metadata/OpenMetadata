@@ -13,10 +13,13 @@
 
 package org.openmetadata.client.security.interfaces;
 
-import feign.*;
-import io.swagger.client.ApiClient;
+import feign.Headers;
+import feign.Param;
+import feign.QueryMap;
+import feign.RequestLine;
 import java.util.Map;
-import org.openmetadata.client.model.OktaAccessTokenResponse;
+import org.openmetadata.client.ApiClient;
+import org.openmetadata.client.model.AccessTokenResponse;
 
 public interface OktaAccessTokenApi extends ApiClient.Api {
   @RequestLine(
@@ -25,11 +28,11 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  OktaAccessTokenResponse getAccessToken(
-      @Param("grant_type") String grant_type,
+  AccessTokenResponse getAccessToken(
+      @Param("grant_type") String grantType,
       @Param("scope") String scope,
-      @Param("client_assertion_type") String client_assertion_type,
-      @Param("client_assertion") String client_assertion);
+      @Param("client_assertion_type") String clientAssertionType,
+      @Param("client_assertion") String clientAssertion);
 
   @RequestLine(
       "POST /v1/token?grant_type={grant_type}&scope={scope}&client_assertion_type={client_assertion_type}&client_assertion={client_assertion}")
@@ -37,12 +40,12 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  OktaAccessTokenResponse getAccessToken(@QueryMap(encoded = true) Map<String, Object> queryParams);
+  AccessTokenResponse getAccessToken(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   @RequestLine("POST /v1/token?grant_type={grant_type}&scope={scope}")
   @Headers({
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  OktaAccessTokenResponse getAccessToken(@Param("grant_type") String grant_type, @Param("scope") String scope);
+  AccessTokenResponse getAccessToken(@Param("grant_type") String grantType, @Param("scope") String scope);
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /* eslint-disable max-len */
-export const dashboardVersionProp = {
+
+import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+import { DashboardVersionProp } from './DashboardVersion.interface';
+
+export const dashboardVersionProps = {
   version: '0.3',
   currentVersionData: {
     id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
@@ -35,7 +38,7 @@ export const dashboardVersionProp = {
         deleted: false,
       },
       {
-        id: '0698ab5d-a122-4b86-a6e5-d10bf3550bd7',
+        id: '0698ab5d-a122-4b86-a6e5-d10bf3550bd6',
         type: 'chart',
         name: 'without_description',
         description: '',
@@ -100,7 +103,7 @@ export const dashboardVersionProp = {
     ],
   },
   deleted: false,
-};
+} as unknown as DashboardVersionProp;
 
 export const mockTagChangeVersion = {
   id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
@@ -162,7 +165,8 @@ export const mockTagChangeVersion = {
     previousVersion: 0.3,
   },
   deleted: false,
-};
+} as unknown as VersionData;
+
 export const mockNoChartData = {
   id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
   description: 'test description',
@@ -213,4 +217,4 @@ export const mockNoChartData = {
     previousVersion: 0.3,
   },
   deleted: false,
-};
+} as unknown as VersionData;

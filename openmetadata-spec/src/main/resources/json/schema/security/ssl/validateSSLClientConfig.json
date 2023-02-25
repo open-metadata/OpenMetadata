@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/security/ssl/validateSSLClientConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ValidateSSLClientConfig",
+  "description": "OpenMetadata Client configured to validate SSL certificates.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+  "properties": {
+    "certificatePath": {
+      "description": "CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

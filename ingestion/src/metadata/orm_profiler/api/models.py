@@ -15,12 +15,46 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import Optional
+from typing import List, Optional, Union
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    Table,
+    TableData,
+)
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.orm_profiler.profiler.models import ProfilerDef
-from metadata.orm_profiler.validations.models import TestDef, TestSuite
+
+
+class ColumnConfig(ConfigModel):
+    """Column config for profiler"""
+
+    excludeColumns: Optional[List[str]]
+    includeColumns: Optional[List[ColumnProfilerConfig]]
+
+
+class TableConfig(ConfigModel):
+    """table profile config"""
+
+    fullyQualifiedName: FullyQualifiedEntityName
+    profileSample: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = None
+    profileQuery: Optional[str] = None
+    partitionConfig: Optional[PartitionProfilerConfig]
+    columnConfig: Optional[ColumnConfig]
+
+
+class ProfileSampleConfig(ConfigModel):
+    """Profile Sample Config"""
+
+    profile_sample: Optional[Union[float, int]] = None
+    profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
 
 
 class ProfilerProcessorConfig(ConfigModel):
@@ -30,7 +64,7 @@ class ProfilerProcessorConfig(ConfigModel):
     """
 
     profiler: Optional[ProfilerDef] = None
-    test_suite: Optional[TestSuite] = None
+    tableConfig: Optional[List[TableConfig]] = None
 
 
 class ProfilerResponse(ConfigModel):
@@ -42,6 +76,5 @@ class ProfilerResponse(ConfigModel):
     """
 
     table: Table
-    profile: TableProfile
-    record_tests: Optional[TestDef] = None
+    profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None

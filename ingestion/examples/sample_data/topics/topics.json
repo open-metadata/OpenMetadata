@@ -1,6 +1,6 @@
 {
-	"topics": [{
-			"id": "c95f7521-79ff-47ec-bdb1-57b72dafa620",
+	"topics": [
+		{
 			"name": "customer_events",
 			"description": "Kafka topic to capture the customer events such as location updates or profile updates",
 			"partitions": 56,
@@ -9,10 +9,9 @@
 			"maximumMessageSize":167,
 			"cleanupPolicies": ["delete"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}"
 		},
 		{
-			"id": "21fc6b93-ba08-482e-aa04-ef2266723594",
 			"name": "product_events",
 			"description": "Kafka topic to capture the product events. This topic will get updates on products decription, price etc.",
 			"partitions": 128,
@@ -21,10 +20,9 @@
 			"maximumMessageSize":208,
 			"cleanupPolicies": ["delete"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Product\",\"fields\":[{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"sku\",\"type\":\"string\"},{\"name\":\"barcode\",\"type\":\"string\"},{\"name\":\"shop_id\",\"type\":\"int\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"type\":\"record\",\"name\":\"Product\",\"fields\":[{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"sku\",\"type\":\"string\"},{\"name\":\"barcode\",\"type\":\"string\"},{\"name\":\"shop_id\",\"type\":\"int\"}]}"
 		},
 		{
-			"id": "59874709-7fa3-4971-9bdc-8ff27240df1a",
 			"name": "shop_updates",
 			"description": "Kafka topic to get any shop updates such as new products, location",
 			"partitions": 16,
@@ -33,10 +31,9 @@
 			"maximumMessageSize":226,
 			"cleanupPolicies": ["delete"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Shop\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"domain\",\"type\":\"string\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"type\":\"record\",\"name\":\"Shop\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"domain\",\"type\":\"string\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"}]}"
 		},
 		{
-			"id": "982c4580-5574-40da-8f80-56697b93c8b2",
 			"name": "shop_products",
 			"description": "Kafka topic to get products in a shop. This is constantly updating",
 			"partitions": 128,
@@ -45,10 +42,9 @@
 			"maximumMessageSize":244,
 			"cleanupPolicies": ["compact","delete"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Shop Products\",\"fields\":[{\"name\":\"prodcut_id\",\"type\":\"int\"},{\"name\":\"product_variant_id\",\"type\":\"int\"},{\"name\":\"shop_id\",\"type\":\"int\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"product_title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"quantity\",\"type\":\"int\"},{\"name\":\"product_vendor\",\"type\":\"int\"},{\"name\":\"fulfillable_quantity\",\"type\":\"int\"},{\"name\":\"fulfilment_service\",\"type\":\"string\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"type\":\"record\",\"name\":\"Shop\",\"fields\":[{\"name\":\"prodcut_id\",\"type\":\"int\"},{\"name\":\"product_variant_id\",\"type\":\"int\"},{\"name\":\"shop_id\",\"type\":\"int\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"product_title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"quantity\",\"type\":\"int\"},{\"name\":\"product_vendor\",\"type\":\"int\"},{\"name\":\"fulfillable_quantity\",\"type\":\"int\"},{\"name\":\"fulfilment_service\",\"type\":\"string\"}]}"
 		},
 		{
-			"id": "0a0d4154-21f5-4f97-a5d2-18e13d3ac46e",
 			"name": "orders",
 			"description": "All the order events on our online store",
 			"partitions": 128,
@@ -57,10 +53,9 @@
 			"maximumMessageSize":61,
 			"cleanupPolicies": ["compact"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"order_id\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"shipping_address_id\",\"type\":\"int\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"total_price\",\"type\":\"double\"},{\"name\":\"discount_code\",\"type\":\"string\"},{\"name\":\"processed_at\",\"type\":\"int\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"order_id\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"shipping_address_id\",\"type\":\"int\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"total_price\",\"type\":\"double\"},{\"name\":\"discount_code\",\"type\":\"string\"},{\"name\":\"processed_at\",\"type\":\"int\"}]}"
 		},
 		{
-			"id": "127e911e-8a41-40f5-8eec-35e71fdb9f38",
 			"name": "sales",
 			"description": "All sales related events gets captured in this topic",
 			"partitions": 128,
@@ -69,7 +64,49 @@
 			"maximumMessageSize":249,
 			"cleanupPolicies": ["compact","delete"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"sale_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"order_id\",\"type\":\"double\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"sale_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"billing_address_id_2\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"order_id\",\"type\":\"double\"}]}"
+		},
+		{
+			"name": "avro_record",
+			"description": "All Avro record related events gets captured in this topic",
+			"partitions": 128,
+			"retentionSize": 1931232624,
+			"replicationFactor":4,
+			"maximumMessageSize":249,
+			"cleanupPolicies": ["compact","delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"level\",\"type\":\"record\",\"fields\":[{\"name\":\"uid\",\"type\":\"int\"},{\"name\":\"somefield\",\"type\":\"string\"},{\"name\":\"options\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"lvl2_record\",\"fields\":[{\"name\":\"item1_lvl2\",\"type\":\"string\"},{\"name\":\"item2_lvl2\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"lvl3_record\",\"fields\":[{\"name\":\"item1_lvl3\",\"type\":\"string\"},{\"name\":\"item2_lvl3\",\"type\":\"string\"}]}}}]}}}]}"
+		},
+		{
+			"name": "json_schema_record",
+			"description": "All Json Schema record related events gets captured in this topic",
+			"partitions": 128,
+			"retentionSize": 1931232624,
+			"replicationFactor":4,
+			"maximumMessageSize":249,
+			"cleanupPolicies": ["compact","delete"],
+			"schemaType": "JSON",
+			"schemaText": "{\"type\":\"object\",\"required\":[\"name\",\"age\",\"club_name\"],\"properties\":{\"name\":{\"type\":\"object\",\"required\":[\"first_name\",\"last_name\"],\"properties\":{\"first_name\":{\"type\":\"string\"},\"last_name\":{\"type\":\"string\"}}},\"age\":{\"type\":\"integer\"},\"club_name\":{\"type\":\"string\"}}}"
+		},
+		{
+			"name": "address_book",
+			"description": "All Protobuf record related events gets captured in this topic",
+			"partitions": 128,
+			"retentionSize": 1931232624,
+			"replicationFactor":4,
+			"maximumMessageSize":249,
+			"cleanupPolicies": ["compact","delete"],
+			"schemaType": "Protobuf",
+			"schemaText": "syntax = \"proto2\";\n\npackage tutorial;\n\nmessage Person {\n  optional string name = 1;\n  optional int32 id = 2;\n  optional string email = 3;\n\n  enum PhoneType {\n    MOBILE = 0;\n    HOME = 1;\n    WORK = 2;\n  }\n\n  message PhoneNumber {\n    optional string number = 1;\n    optional PhoneType type = 2 [default = HOME];\n  }\n\n  repeated PhoneNumber phones = 4;\n}\n\nmessage AddressBook {\n  repeated Person people = 1;\n}"
+		},
+		{
+			"name": "customer_contacts",
+			"description": "Kafka topic to capture the customer contacts such as email, phone",
+			"partitions": 56,
+			"retentionSize": 455858109,
+			"replicationFactor":2,
+			"maximumMessageSize":167,
+			"cleanupPolicies": ["delete"]
 		}
 	]
 }

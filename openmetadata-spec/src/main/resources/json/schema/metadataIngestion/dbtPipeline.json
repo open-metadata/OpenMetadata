@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/dbtPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "dbtPipeline",
+  "description": "DBT Pipeline Configuration.",
+  "definitions": {
+    "dbtConfigType": {
+      "description": "DBT Config Pipeline type",
+      "type": "string",
+      "enum": ["DBT"],
+      "default": "DBT"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/dbtConfigType",
+      "default": "DBT"
+    },
+    "dbtConfigSource": {
+      "mask": true,
+      "title": "DBT Configuration Source",
+      "description": "Available sources to fetch DBT catalog and manifest files.",
+      "oneOf": [
+        {
+          "$ref": "./dbtconfig/dbtCloudConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtLocalConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtHttpConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtS3Config.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtGCSConfig.json"
+        }
+      ]
+    },
+    "dbtUpdateDescriptions": {
+      "description": "Optional configuration to update the description from DBT or not",
+      "type": "boolean",
+      "default": false
+    },
+    "dbtClassificationName": {
+      "title": "dbt Classification Name",
+      "description": "Custom OpenMetadata Classification name for dbt tags.",
+      "type": "string",
+      "default": "dbtTags"
+    }
+  },
+  "additionalProperties": false
+}

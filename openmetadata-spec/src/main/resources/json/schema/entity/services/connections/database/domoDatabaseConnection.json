@@ -1,0 +1,66 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/domoDatabaseConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DomoDatabaseConnection",
+    "description": "Domo Database Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.DomoDatabaseConnection",
+    "definitions": {
+      "domoDatabaseType": {
+        "description": " service type",
+        "type": "string",
+        "enum": ["DomoDatabase"],
+        "default": "DomoDatabase"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/domoDatabaseType",
+        "default": "DomoDatabase"
+      },
+      "clientId": {
+        "title": "Client ID",
+        "description": "Client ID for DOMO",
+        "type": "string"
+      },
+      "secretToken": {
+        "title": "Secret Token",
+        "description": "Secret Token to connect DOMO",
+        "type": "string",
+        "format": "password"
+      },
+      "accessToken": {
+        "title": "Access Token",
+        "description": "Access token to connect to DOMO",
+        "type": "string"
+      },
+      "apiHost": {
+        "expose": true,
+        "title": "API Host",
+        "description": "API Host to connect to DOMO instance",
+        "default": "api.domo.com",
+        "type": "string",
+        "format": "string"
+      },
+      "sandboxDomain": {
+        "title": "Sandbox Domain",
+        "description": "Connect to Sandbox Domain",
+        "type": "string",
+        "format": "uri"
+      },
+      "databaseName": {
+        "title": "Database Name",
+        "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+        "type": "string"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["clientId", "secretToken", "sandboxDomain"]
+  }
+  

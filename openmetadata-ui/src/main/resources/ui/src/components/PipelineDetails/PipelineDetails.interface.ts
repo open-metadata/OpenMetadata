@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,64 +12,42 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  EntityThread,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
-import { CreateThread } from '../../generated/api/feed/createThread';
+
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
-  version: string;
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
-  serviceType: string;
   pipelineUrl: string;
   entityName: string;
   pipelineDetails: Pipeline;
-  activeTab: number;
-  owner: EntityReference;
-  description: string;
-  tier: TagLabel;
   followers: Array<EntityReference>;
-  pipelineTags: Array<EntityTags>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
   tasks: Task[];
-  deleted?: boolean;
-  isLineageLoading?: boolean;
-  entityThread: EntityThread[];
-  isentityThreadLoading: boolean;
-  feedCount: number;
-  entityFieldThreadCount: EntityFieldThreadCount[];
   paging: Paging;
-  pipelineStatus: Pipeline['pipelineStatus'];
-  isPipelineStatusLoading: boolean;
-  fetchFeedHandler: (after?: string) => void;
-  createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
-  descriptionUpdateHandler: (updatedPipeline: Pipeline) => void;
+  descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   tagUpdateHandler: (updatedPipeline: Pipeline) => void;
-  taskUpdateHandler: (patch: Array<Operation>) => void;
+  taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   versionHandler: () => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (threadId: string, postId: string) => void;
+  onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
 }

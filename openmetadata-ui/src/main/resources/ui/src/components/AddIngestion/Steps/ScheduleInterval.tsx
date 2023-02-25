@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../buttons/Button/Button';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import { Field } from '../../Field/Field';
@@ -20,18 +21,26 @@ import Loader from '../../Loader/Loader';
 import { ScheduleIntervalProps } from '../addIngestion.interface';
 
 const ScheduleInterval = ({
-  status,
-  repeatFrequency,
-  handleRepeatFrequencyChange,
-  submitButtonLabel,
+  includePeriodOptions,
   onBack,
+  onChange,
   onDeploy,
+  repeatFrequency,
+  status,
+  submitButtonLabel,
 }: ScheduleIntervalProps) => {
+  const handleRepeatFrequencyChange = (repeatFrequency: string) =>
+    onChange({
+      repeatFrequency: repeatFrequency,
+    });
+  const { t } = useTranslation();
+
   return (
     <div data-testid="schedule-intervel-container">
       <Field>
         <div>
           <CronEditor
+            includePeriodOptions={includePeriodOptions}
             value={repeatFrequency}
             onChange={handleRepeatFrequencyChange}
           />
@@ -45,7 +54,7 @@ const ScheduleInterval = ({
           theme="primary"
           variant="text"
           onClick={onBack}>
-          <span>Back</span>
+          <span>{t('label.back')}</span>
         </Button>
 
         {status === 'waiting' ? (
@@ -64,7 +73,7 @@ const ScheduleInterval = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <FontAwesomeIcon icon="check" />
+            <CheckOutlined />
           </Button>
         ) : (
           <Button

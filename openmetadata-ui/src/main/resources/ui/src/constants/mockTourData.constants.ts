@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { FQN_SEPARATOR_CHAR } from './char.constants';
+/* eslint-disable max-len */
 
-/* eslint-disable */
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { SearchIndex } from '../enums/search.enum';
+import {
+  Constraint,
+  ConstraintType,
+  DatabaseServiceType,
+  DataType,
+  TableType,
+} from '../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { SearchResponse } from '../interface/search.interface';
 
 export const mockFeedData = [
   {
@@ -91,7 +101,7 @@ export const mockLineageData = {
 
 export const mockDatasetData = {
   entityName: 'dim_address',
-  datasetFQN: 'bigquery.shopify.dim_address',
+  datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
   activeTab: 1,
   description:
     'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
@@ -556,7 +566,7 @@ export const mockDatasetData = {
   columns: [
     {
       name: 'address_id',
-      dataType: 'NUMERIC',
+      dataType: DataType.Numeric,
       dataTypeDisplay: 'numeric',
       description: 'Unique identifier for the address.',
       fullyQualifiedName: 'bigquery.shopify.dim_address.address_id',
@@ -566,7 +576,7 @@ export const mockDatasetData = {
     },
     {
       name: 'shop_id',
-      dataType: 'NUMERIC',
+      dataType: DataType.Numeric,
       dataTypeDisplay: 'numeric',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
@@ -576,7 +586,7 @@ export const mockDatasetData = {
     },
     {
       name: 'first_name',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'First name of the customer.',
@@ -586,7 +596,7 @@ export const mockDatasetData = {
     },
     {
       name: 'last_name',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'Last name of the customer.',
@@ -596,7 +606,7 @@ export const mockDatasetData = {
     },
     {
       name: 'address1',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 500,
       dataTypeDisplay: 'varchar',
       description: 'The first address line. For example, 150 Elgin St.',
@@ -606,7 +616,7 @@ export const mockDatasetData = {
     },
     {
       name: 'address2',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 500,
       dataTypeDisplay: 'varchar',
       description: 'The second address line. For example, Suite 800.',
@@ -616,7 +626,7 @@ export const mockDatasetData = {
     },
     {
       name: 'company',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: "The name of the customer's business, if one exists.",
@@ -626,7 +636,7 @@ export const mockDatasetData = {
     },
     {
       name: 'city',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'The name of the city. For example, Palo Alto.',
@@ -636,7 +646,7 @@ export const mockDatasetData = {
     },
     {
       name: 'region',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 512,
       dataTypeDisplay: 'varchar',
       description:
@@ -647,7 +657,7 @@ export const mockDatasetData = {
     },
     {
       name: 'zip',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 10,
       dataTypeDisplay: 'varchar',
       description: 'The ZIP or postal code. For example, 90210.',
@@ -657,7 +667,7 @@ export const mockDatasetData = {
     },
     {
       name: 'country',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 50,
       dataTypeDisplay: 'varchar',
       description: 'The full name of the country. For example, Canada.',
@@ -667,7 +677,7 @@ export const mockDatasetData = {
     },
     {
       name: 'phone',
-      dataType: 'VARCHAR',
+      dataType: DataType.Varchar,
       dataLength: 15,
       dataTypeDisplay: 'varchar',
       description: 'The phone number of the customer.',
@@ -1123,7 +1133,7 @@ export const mockDatasetData = {
     columns: [
       {
         name: 'address_id',
-        dataType: 'NUMERIC',
+        dataType: DataType.Numeric,
         dataTypeDisplay: 'numeric',
         description: 'Unique identifier for the address.',
         fullyQualifiedName: 'bigquery.shopify.dim_address.address_id',
@@ -1133,7 +1143,7 @@ export const mockDatasetData = {
       },
       {
         name: 'shop_id',
-        dataType: 'NUMERIC',
+        dataType: DataType.Numeric,
         dataTypeDisplay: 'numeric',
         description:
           'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
@@ -1143,7 +1153,7 @@ export const mockDatasetData = {
       },
       {
         name: 'first_name',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'First name of the customer.',
@@ -1153,7 +1163,7 @@ export const mockDatasetData = {
       },
       {
         name: 'last_name',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Last name of the customer.',
@@ -1163,7 +1173,7 @@ export const mockDatasetData = {
       },
       {
         name: 'address1',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 500,
         dataTypeDisplay: 'varchar',
         description: 'The first address line. For example, 150 Elgin St.',
@@ -1173,7 +1183,7 @@ export const mockDatasetData = {
       },
       {
         name: 'address2',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 500,
         dataTypeDisplay: 'varchar',
         description: 'The second address line. For example, Suite 800.',
@@ -1183,7 +1193,7 @@ export const mockDatasetData = {
       },
       {
         name: 'company',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: "The name of the customer's business, if one exists.",
@@ -1193,7 +1203,7 @@ export const mockDatasetData = {
       },
       {
         name: 'city',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'The name of the city. For example, Palo Alto.',
@@ -1203,7 +1213,7 @@ export const mockDatasetData = {
       },
       {
         name: 'region',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 512,
         dataTypeDisplay: 'varchar',
         description:
@@ -1214,7 +1224,7 @@ export const mockDatasetData = {
       },
       {
         name: 'zip',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 10,
         dataTypeDisplay: 'varchar',
         description: 'The ZIP or postal code. For example, 90210.',
@@ -1224,7 +1234,7 @@ export const mockDatasetData = {
       },
       {
         name: 'country',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 50,
         dataTypeDisplay: 'varchar',
         description: 'The full name of the country. For example, Canada.',
@@ -1234,7 +1244,7 @@ export const mockDatasetData = {
       },
       {
         name: 'phone',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 15,
         dataTypeDisplay: 'varchar',
         description: 'The phone number of the customer.',
@@ -3439,717 +3449,1113 @@ export const mockDatasetData = {
   lineageLeafNodes: {},
 };
 
-export const mockSearchData = {
-  resSearchResults: {
-    data: {
-      took: 73,
-      timed_out: false,
-      _shards: {
-        total: 1,
-        successful: 1,
-        skipped: 0,
-        failed: 0,
-      },
-      hits: {
-        total: {
-          value: 4,
-          relation: 'eq',
-        },
-        max_score: 5,
-        hits: [
-          {
-            _index: 'table_search_index',
-            _type: '_doc',
-            _id: '644405ad-60fe-4329-884f-fc3e3ab6c6a5',
-            _score: 5.028171,
-            _source: {
-              name: 'dim_address',
-              fqdn: 'sample_data.ecommerce_db.shopify.dim_address',
-              service: 'sample_data',
-              deleted: false,
-              suggest: [
-                {
-                  input: 'sample_data.ecommerce_db.shopify.dim_address',
-                  weight: 5,
-                },
-                {
-                  input: 'dim_address',
-                  weight: 10,
-                },
-              ],
-              description:
-                'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
+export const mockSearchData: SearchResponse<ExploreSearchIndex> = {
+  took: 44,
+  timed_out: false,
+  hits: {
+    total: {
+      value: 4,
+      relation: 'eq',
+    },
+    hits: [
+      {
+        _index: SearchIndex.TABLE,
+        _type: '_doc',
+        _id: '343fe234-299e-42be-8f67-3359a87892fb',
+        _source: {
+          entityType: 'table',
+          type: 'table',
+          id: '343fe234-299e-42be-8f67-3359a87892fb',
+          name: 'dim_address',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+          displayName: 'dim_address',
+          version: 0.3,
+          updatedAt: 1659023655062,
+          updatedBy: 'anonymous',
+          href: 'http://localhost:8585/api/v1/tables/343fe234-299e-42be-8f67-3359a87892fb',
+          columns: [
+            {
+              dataType: DataType.Numeric,
+              name: 'address_id',
+              description: 'Unique identifier for the address.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.address_id',
+              ordinalPosition: 1,
+              dataTypeDisplay: 'numeric',
               tags: [],
-              followers: [],
-              database: 'ecommerce_db',
-              display_name: 'dim_address',
-              service_type: 'SampleData',
-              service_category: 'databaseService',
-              entity_type: 'table',
-              last_updated_timestamp: 1651646494234,
-              table_id: '644405ad-60fe-4329-884f-fc3e3ab6c6a5',
-              database_schema: 'shopify',
-              table_type: 'Regular',
-              column_names: [
-                'address_id',
-                'shop_id',
-                'first_name',
-                'last_name',
-                'address1',
-                'address2',
-                'company',
-                'city',
-                'region',
-                'zip',
-                'country',
-                'phone',
-              ],
-              column_descriptions: [
-                'Unique identifier for the address.',
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shop_id',
+              description:
                 'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
-                'First name of the customer.',
-                'Last name of the customer.',
-                'The first address line. For example, 150 Elgin St.',
-                'The second address line. For example, Suite 800.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.shop_id',
+              ordinalPosition: 2,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'first_name',
+              description: 'First name of the customer.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.first_name',
+              ordinalPosition: 3,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'last_name',
+              description: 'Last name of the customer.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.last_name',
+              ordinalPosition: 4,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 500,
+              dataType: DataType.Varchar,
+              name: 'address1',
+              description: 'The first address line. For example, 150 Elgin St.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.address1',
+              ordinalPosition: 5,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 500,
+              dataType: DataType.Varchar,
+              name: 'address2',
+              description: 'The second address line. For example, Suite 800.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.address2',
+              ordinalPosition: 6,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'company',
+              description:
                 "The name of the customer's business, if one exists.",
-                'The name of the city. For example, Palo Alto.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.company',
+              ordinalPosition: 7,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'city',
+              description: 'The name of the city. For example, Palo Alto.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.city',
+              ordinalPosition: 8,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 512,
+              dataType: DataType.Varchar,
+              name: 'region',
+              description:
                 'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
-                'The ZIP or postal code. For example, 90210.',
-                'The full name of the country. For example, Canada.',
-                'The phone number of the customer.',
-              ],
-            },
-            highlight: {
-              name: ['<span class="text-highlighter">dim_address</span>'],
-            },
-          },
-          {
-            _index: 'table_search_index',
-            _type: '_doc',
-            _id: '94f17852-72a4-4098-88e3-51a9956492d4',
-            _score: 5.028171,
-            _source: {
-              name: 'dim_api_client',
-              fqdn: 'sample_data.ecommerce_db.shopify.dim_api_client',
-              service: 'sample_data',
-              deleted: false,
-              suggest: [
-                {
-                  input: 'sample_data.ecommerce_db.shopify.dim_api_client',
-                  weight: 5,
-                },
-                {
-                  input: 'dim_api_client',
-                  weight: 10,
-                },
-              ],
-              description:
-                'This dimension table contains a row for each channel or app that your customers use to create orders. Some examples of these include Facebook and Online Store. You can join this table with the sales table to measure channel performance.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.region',
+              ordinalPosition: 9,
+              dataTypeDisplay: 'varchar',
               tags: [],
-              followers: [],
-              database: 'ecommerce_db',
-              display_name: 'dim_api_client',
-              service_type: 'SampleData',
-              service_category: 'databaseService',
-              entity_type: 'table',
-              last_updated_timestamp: 1651646494754,
-              table_id: '94f17852-72a4-4098-88e3-51a9956492d4',
-              database_schema: 'shopify',
-              table_type: 'Regular',
-              column_names: ['api_client_id', 'title'],
-              column_descriptions: [
-                'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-                'Full name of the app or channel. For example, Point of Sale, Online Store.',
-              ],
             },
-            highlight: {
-              name: ['<span class="text-highlighter">dim_api_client</span>'],
-            },
-          },
-          {
-            _index: 'table_search_index',
-            _type: '_doc',
-            _id: '11b39960-aa07-45da-ac81-b9ac750587f6',
-            _score: 1.0281708,
-            _source: {
-              name: 'fact_order',
-              fqdn: 'sample_data.ecommerce_db.shopify.fact_order',
-              service: 'sample_data',
-              deleted: false,
-              suggest: [
-                {
-                  input: 'sample_data.ecommerce_db.shopify.fact_order',
-                  weight: 5,
-                },
-                {
-                  input: 'fact_order',
-                  weight: 10,
-                },
-              ],
-              description:
-                'The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics.',
+            {
+              dataLength: 10,
+              dataType: DataType.Varchar,
+              name: 'zip',
+              description: 'The ZIP or postal code. For example, 90210.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.zip',
+              ordinalPosition: 10,
+              dataTypeDisplay: 'varchar',
               tags: [],
-              followers: [],
-              database: 'ecommerce_db',
-              display_name: 'fact_order',
-              service_type: 'SampleData',
-              service_category: 'databaseService',
-              entity_type: 'table',
-              last_updated_timestamp: 1651646496420,
-              table_id: '11b39960-aa07-45da-ac81-b9ac750587f6',
-              database_schema: 'shopify',
-              table_type: 'Regular',
-              column_names: [
-                'order_id',
-                'api_client_id',
-                'billing_address_id',
-                'customer_id',
-                'location_id',
-                'shipping_address_id',
-                'shop_id',
-                'user_id',
-                'name',
-                'total_price',
-                'discount_code',
-                'processed_at',
-                'canceled_at',
-                'deleted_at',
-                'test',
-              ],
-              column_descriptions: [
+            },
+            {
+              dataLength: 50,
+              dataType: DataType.Varchar,
+              name: 'country',
+              description: 'The full name of the country. For example, Canada.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.country',
+              ordinalPosition: 11,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 15,
+              dataType: DataType.Varchar,
+              name: 'phone',
+              description: 'The phone number of the customer.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address.phone',
+              ordinalPosition: 12,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+          ],
+          databaseSchema: {
+            deleted: false,
+            name: 'shopify',
+            description:
+              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            id: 'cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            href: 'http://localhost:8585/api/v1/databaseSchemas/cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            type: 'databaseSchema',
+            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          },
+          database: {
+            deleted: false,
+            name: 'ecommerce_db',
+            description:
+              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            id: 'a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            href: 'http://localhost:8585/api/v1/databases/a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            type: 'database',
+            fullyQualifiedName: 'sample_data.ecommerce_db',
+          },
+          service: {
+            deleted: false,
+            name: 'sample_data',
+            id: '5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            href: 'http://localhost:8585/api/v1/services/databaseServices/5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            type: 'databaseService',
+            fullyQualifiedName: 'sample_data',
+          },
+          usageSummary: {
+            dailyStats: {
+              count: 1,
+              percentileRank: 0,
+            },
+            weeklyStats: {
+              count: 1,
+              percentileRank: 0,
+            },
+            monthlyStats: {
+              count: 1,
+              percentileRank: 0,
+            },
+            date: new Date('2022-07-25'),
+          },
+          deleted: false,
+          serviceType: DatabaseServiceType.BigQuery,
+          tags: [
+            {
+              tagFQN: 'PII.Sensitive',
+              labelType: LabelType.Manual,
+              description:
+                'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
+              source: TagSource.Tag,
+              state: State.Confirmed,
+            },
+          ],
+          followers: [],
+          description:
+            'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address!',
+          tableType: TableType.Regular,
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.PrimaryKey,
+              columns: ['address_id', 'shop_id'],
+            },
+          ],
+        },
+        highlight: {
+          name: ['<span class="text-highlighter">dim_address</span>'],
+        },
+        sort: [1659023655062000],
+      },
+      {
+        _index: SearchIndex.TABLE,
+        _type: '_doc',
+        _id: '81bf535d-ce3f-41d6-ba80-51f431ed94f4',
+        _source: {
+          entityType: 'table',
+          type: 'table',
+          id: '81bf535d-ce3f-41d6-ba80-51f431ed94f4',
+          name: 'dim_address_clean',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_address_clean',
+          displayName: 'dim_address_clean',
+          version: 0.2,
+          updatedAt: 1658941044740,
+          updatedBy: 'anonymous',
+          href: 'http://localhost:8585/api/v1/tables/81bf535d-ce3f-41d6-ba80-51f431ed94f4',
+          columns: [
+            {
+              dataType: DataType.Numeric,
+              name: 'address_id',
+              description: 'Unique identifier for the address.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.address_id',
+              ordinalPosition: 1,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shop_id',
+              description:
+                'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.shop_id',
+              ordinalPosition: 2,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'first_name',
+              description: 'First name of the customer.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.first_name',
+              ordinalPosition: 3,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'last_name',
+              description: 'Last name of the customer.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.last_name',
+              ordinalPosition: 4,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 500,
+              dataType: DataType.Varchar,
+              name: 'address',
+              description: 'Clean address',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.address',
+              ordinalPosition: 5,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'company',
+              description:
+                "The name of the customer's business, if one exists.",
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.company',
+              ordinalPosition: 7,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'city',
+              description: 'The name of the city. For example, Palo Alto.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.city',
+              ordinalPosition: 8,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 512,
+              dataType: DataType.Varchar,
+              name: 'region',
+              description:
+                'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.region',
+              ordinalPosition: 9,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 10,
+              dataType: DataType.Varchar,
+              name: 'zip',
+              description: 'The ZIP or postal code. For example, 90210.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.zip',
+              ordinalPosition: 10,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 50,
+              dataType: DataType.Varchar,
+              name: 'country',
+              description: 'The full name of the country. For example, Canada.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.country',
+              ordinalPosition: 11,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataLength: 15,
+              dataType: DataType.Varchar,
+              name: 'phone',
+              description: 'The phone number of the customer.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_address_clean.phone',
+              ordinalPosition: 12,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+          ],
+          databaseSchema: {
+            deleted: false,
+            name: 'shopify',
+            description:
+              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            id: 'cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            href: 'http://localhost:8585/api/v1/databaseSchemas/cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            type: 'databaseSchema',
+            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          },
+          database: {
+            deleted: false,
+            name: 'ecommerce_db',
+            description:
+              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            id: 'a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            href: 'http://localhost:8585/api/v1/databases/a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            type: 'database',
+            fullyQualifiedName: 'sample_data.ecommerce_db',
+          },
+          service: {
+            deleted: false,
+            name: 'sample_data',
+            id: '5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            href: 'http://localhost:8585/api/v1/services/databaseServices/5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            type: 'databaseService',
+            fullyQualifiedName: 'sample_data',
+          },
+          usageSummary: {
+            dailyStats: {
+              count: 1,
+              percentileRank: 0,
+            },
+            weeklyStats: {
+              count: 1,
+              percentileRank: 0,
+            },
+            monthlyStats: {
+              count: 1,
+              percentileRank: 0,
+            },
+            date: new Date('2022-07-25'),
+          },
+          deleted: false,
+          serviceType: DatabaseServiceType.BigQuery,
+          tags: [],
+          followers: [],
+          description: 'Created from dim_address after a small cleanup!',
+          tableType: TableType.Regular,
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.PrimaryKey,
+              columns: ['address_id', 'shop_id'],
+            },
+          ],
+        },
+        highlight: {
+          name: ['<span class="text-highlighter">dim_address_clean</span>'],
+          description: [
+            'Created from <span class="text-highlighter">dim_address</span> after a small cleanup!',
+          ],
+        },
+        sort: [1658941044740000],
+      },
+      {
+        _index: SearchIndex.TABLE,
+        _type: '_doc',
+        _id: '668b3670-2a42-438f-a633-521d6b99af6b',
+        _source: {
+          entityType: 'table',
+          type: 'table',
+          id: '668b3670-2a42-438f-a633-521d6b99af6b',
+          name: 'fact_order',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_order',
+          displayName: 'fact_order',
+          version: 0.2,
+          updatedAt: 1658940884969,
+          updatedBy: 'anonymous',
+          href: 'http://localhost:8585/api/v1/tables/668b3670-2a42-438f-a633-521d6b99af6b',
+          columns: [
+            {
+              dataType: DataType.Numeric,
+              name: 'order_id',
+              description:
                 'Unique numeric identifier for the order across Shopify stores. In your Shopify admin, this ID is used internally. Most merchants are familiar with the other ID that appears on orders in the Shopify admin. This ID can be found in the Name column.',
-                'The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the dim_api_client table.',
-                null,
-                'The ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.',
-                null,
-                null,
-                'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-                'The ID of the staff member who created the order. This column is a foreign key reference to the ID in the dim_staff table. This column applies to Shopify POS orders and to orders that were converted from draft orders.',
-                'The identifier of the order that the merchant and customer sees. This is the ID that appears on the order in the Shopify admin. For example, #1001. By default, this identifier is unique to one store. If you have multiple stores, then use the order_id column to guarantee uniqueness across multiple stores.',
-                'The total price of the order, including shipping and taxes. This column includes gift card sales, but does not include returns. This value may not be accurate for API-imported orders. Do not use this column for financial calculations. Instead, use the total_price column in the sales table.',
-                'The discount code that was applied to the order.',
-                'The date (ISO 8601) and time (UTC) when the order was created. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
-                'If the order was canceled, then this column contains the date (ISO 8601) and time (UTC) when the order was canceled. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
-                'If the order was deleted, then this column contains the date (ISO 8601) and time (UTC) when the order was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
-                'True when the order is a test order, False otherwise.',
-              ],
-            },
-            highlight: {
-              column_descriptions: [
-                'This column is a foreign key reference to the api_client_id column in the <span class="text-highlighter">dim_api_client</span> table.',
-              ],
-            },
-          },
-          {
-            _index: 'table_search_index',
-            _type: '_doc',
-            _id: '53ee6a12-6ba7-437a-a9b8-5d64fb7ffe1a',
-            _score: 1.0281708,
-            _source: {
-              name: 'fact_sale',
-              fqdn: 'sample_data.ecommerce_db.shopify.fact_sale',
-              service: 'sample_data',
-              deleted: false,
-              suggest: [
-                {
-                  input: 'sample_data.ecommerce_db.shopify.fact_sale',
-                  weight: 5,
-                },
-                {
-                  input: 'fact_sale',
-                  weight: 10,
-                },
-              ],
-              description:
-                'The fact table captures the value of products sold or returned, as well as the values of other charges such as taxes and shipping costs. The sales table contains one row per order line item, one row per returned line item, and one row per shipping charge. Use this table when you need financial metrics.',
+              constraint: Constraint.PrimaryKey,
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.order_id',
+              ordinalPosition: 1,
+              dataTypeDisplay: 'numeric',
               tags: [],
-              followers: [],
-              database: 'ecommerce_db',
-              display_name: 'fact_sale',
-              service_type: 'SampleData',
-              service_category: 'databaseService',
-              entity_type: 'table',
-              last_updated_timestamp: 1651646496653,
-              table_id: '53ee6a12-6ba7-437a-a9b8-5d64fb7ffe1a',
-              database_schema: 'shopify',
-              table_type: 'Regular',
-              column_names: [
-                'sale_id',
-                'billing_address_id',
-                'api_client_id',
-                'customer_id',
-                'line_item_id',
-                'location_id',
-                'order_id',
-                'product_id',
-                'product_variant_id',
-                'shipping_address_id',
-                'shop_id',
-                'user_id',
-                'gross_sales',
-                'net_sales',
-                'total_sales',
-                'returns',
-                'discounts',
-                'shipping',
-                'taxes',
-                'gift_card_discounts',
-                'gift_card_gross_sales',
-                'gift_cards_issued',
-                'quantity',
-                'currency',
-                'is_deleted',
-                'test',
-                'happened_at',
-              ],
-              column_descriptions: [
-                'ID of the sale row. This column is the primary key for this table.',
-                'ID of the billing address of the customer. This column is a foreign key reference to the address_id column in the dim_address table.',
-                'ID of the API client from which the adjustment was made. This column is a foreign key reference to the ID of the API client in the dim_api_client table.',
-                'ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.',
-                'ID of the line item. This column is a foreign key reference to line_item_id column in the fact_line_item table. When the row describes a shipping charge, there is no line_item_id value.',
-                'ID of the Shopify POS location. This column is a foreign key reference to the location_id column in the dim_location table. When the order is not a POS order, then there is no location ID.',
-                'ID of the order. This column is a foreign key reference to order_id column in the fact_order table.',
-                'ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim.product table. When the line item describes a shipping charge, then there is no product ID.',
-                'ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim.product_variant table. When the row describes a shipping charge, then there is no product variant ID.',
-                "ID of the shipping address of the customer who made the order. This column is a foreign key reference to the address_id column in the dim_address table. Some sales, such as those made using Shopify POS, do not have a customer's shipping address associated with them.",
-                'ID of your store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-                'ID of the staff member who is associated with the sale. This column is a foreign key reference to the user_id column in the dim_staff table. Not all sales have a staff member associated with them.',
-                'Price of the product purchased multiplied by the quantity ordered. This value is formatted in the currency of your store. If the product purchased is a gift card, then 0 is returned because gift cards are not included in gross sales calculations. The gross sales amount also does not include any discounts, returns, taxes or shipping charges. The gross_sales column is calculated using the following formula: product (excluding gift cards) price x quantity (before taxes, shipping, discounts, and returns). Canceled, pending, and unpaid orders will have a value for this column, but test and deleted orders will not.',
-                "Net sales of the line item. The value of the line item's gross sales minus any discounts minus the value of any returned items. Net sales does not include taxes or shipping costs, or the sale of gift cards. If the line item contains gift cards, then the field contains 0. Net sales is calculated by using the following formula: gross_sales - discounts - returns.",
-                'Total sales of the line item. This value does not include gift cards. Total sales is calculated using the following formula: net_sales + shipping + taxes.',
-                'Value of the products returned by the customer regardless of the amount that the merchant actually receives from the customer. This value is usually a negative number, but it can also be zero (for example, if the item being returned was a free gift with purchase). Taxes and shipping charges are not included. The returns amount is calculated by using the following formula: 0 - (product variant price * quantity) + discounts.',
-                "Total amount discounted from the line item. The discounts column contains the sum of any line item discounts plus the line item's portion of any order-level discount. The value of the discount is either negative or zero. The discounts column is calculated using the following formula: line item discount + order level discount share.",
-                'When the line item is for a shipping charge, this column contains the amount charged for shipping the order or the amount of the shipping charge that is refunded when an item is returned. This value is positive for a shipping charge, and negative for the value returned. Any applicable taxes charged for shipping costs are recorded in the Taxes column. This column is calculated using the following formula: shipping charge or refund - shipping discount..',
-                'The amount of taxes charged or returned for the line item. This value will be positive for a sale and negative for a return. Tax on an order is split proportionally amongst the line items to which it applies. Gift cards are not taxed. If multiple taxes are applied (for example, State and City sales taxes), then this column contains the sum of those tax amounts. This column can include taxes charged on shipping, if they are applicable.',
-                'Total amount discounted from gift card sales. For example, if a $50 gift card is sold at a $10 discount for $40, then this column will contain $10.',
-                'Total face value of gift cards sold. For example, a $50 gift card is sold at a $10 discount for $40. In this example, the gift_card_gross_sales column will contain $50. Use this column to measure the increase in liabilities due to gift cards being issued (even though this value will not balance against the actual payments that you receive).',
-                'Net amount that the gift cards sold for, after discounts. For example, for a $50 gift card sold at a $10 discount for $40, this column will contain $40. Use this column to balance against the payments that you receive.',
-                'Quantity of the items sold or returned. This value will be negative for returns and zero for line items that contain shipping charges.',
-                'Three-letter ISO currency code of the payment. For example, USD is the code for United States Dollar. This is the currency of the store at the time of the order.',
-                "Contains 1 when the sale's order was deleted, otherwise contains 0.",
-                'Whether the sale is a test order. Returns True when the sale is a test sale. See Test orders.',
-                'Date (ISO 8601) and time (UTC) when the order was created for a sale or when the order was returned.',
-              ],
             },
-            highlight: {
-              column_descriptions: [
-                'This column is a foreign key reference to the address_id column in the <span class="text-highlighter">dim_address</span> table.',
-                'This column is a foreign key reference to the ID of the API client in the <span class="text-highlighter">dim_api_client</span> table.',
-                'This column is a foreign key reference to the address_id column in the <span class="text-highlighter">dim_address</span> table.',
-              ],
+            {
+              dataType: DataType.Numeric,
+              name: 'api_client_id',
+              description:
+                'The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the dim_api_client table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.api_client_id',
+              ordinalPosition: 2,
+              dataTypeDisplay: 'numeric',
+              tags: [],
             },
+            {
+              dataType: DataType.Numeric,
+              name: 'billing_address_id',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.billing_address_id',
+              ordinalPosition: 3,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'customer_id',
+              description:
+                'The ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.customer_id',
+              ordinalPosition: 4,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'location_id',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.location_id',
+              ordinalPosition: 5,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shipping_address_id',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.shipping_address_id',
+              ordinalPosition: 6,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shop_id',
+              description:
+                'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.shop_id',
+              ordinalPosition: 7,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'user_id',
+              description:
+                'The ID of the staff member who created the order. This column is a foreign key reference to the ID in the dim_staff table. This column applies to Shopify POS orders and to orders that were converted from draft orders.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.user_id',
+              ordinalPosition: 8,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'name',
+              description:
+                'The identifier of the order that the merchant and customer sees. This is the ID that appears on the order in the Shopify admin. For example, #1001. By default, this identifier is unique to one store. If you have multiple stores, then use the order_id column to guarantee uniqueness across multiple stores.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.name',
+              ordinalPosition: 9,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'total_price',
+              description:
+                'The total price of the order, including shipping and taxes. This column includes gift card sales, but does not include returns. This value may not be accurate for API-imported orders. Do not use this column for financial calculations. Instead, use the total_price column in the sales table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.total_price',
+              ordinalPosition: 10,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataLength: 100,
+              dataType: DataType.Varchar,
+              name: 'discount_code',
+              description: 'The discount code that was applied to the order.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.discount_code',
+              ordinalPosition: 11,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataType: DataType.Timestamp,
+              name: 'processed_at',
+              description:
+                'The date (ISO 8601) and time (UTC) when the order was created. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.processed_at',
+              ordinalPosition: 12,
+              dataTypeDisplay: 'timestamp',
+              tags: [],
+            },
+            {
+              dataType: DataType.Timestamp,
+              name: 'canceled_at',
+              description:
+                'If the order was canceled, then this column contains the date (ISO 8601) and time (UTC) when the order was canceled. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.canceled_at',
+              ordinalPosition: 13,
+              dataTypeDisplay: 'timestamp',
+              tags: [],
+            },
+            {
+              dataType: DataType.Timestamp,
+              name: 'deleted_at',
+              description:
+                'If the order was deleted, then this column contains the date (ISO 8601) and time (UTC) when the order was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.deleted_at',
+              ordinalPosition: 14,
+              dataTypeDisplay: 'timestamp',
+              tags: [],
+            },
+            {
+              dataType: DataType.Boolean,
+              name: 'test',
+              description:
+                'True when the order is a test order, False otherwise.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_order.test',
+              ordinalPosition: 15,
+              dataTypeDisplay: 'boolean',
+              tags: [],
+            },
+          ],
+          databaseSchema: {
+            deleted: false,
+            name: 'shopify',
+            description:
+              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            id: 'cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            href: 'http://localhost:8585/api/v1/databaseSchemas/cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            type: 'databaseSchema',
+            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
           },
-        ],
+          database: {
+            deleted: false,
+            name: 'ecommerce_db',
+            description:
+              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            id: 'a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            href: 'http://localhost:8585/api/v1/databases/a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            type: 'database',
+            fullyQualifiedName: 'sample_data.ecommerce_db',
+          },
+          service: {
+            deleted: false,
+            name: 'sample_data',
+            id: '5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            href: 'http://localhost:8585/api/v1/services/databaseServices/5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            type: 'databaseService',
+            fullyQualifiedName: 'sample_data',
+          },
+          usageSummary: {
+            dailyStats: {
+              count: 2,
+              percentileRank: 28,
+            },
+            weeklyStats: {
+              count: 2,
+              percentileRank: 28,
+            },
+            monthlyStats: {
+              count: 2,
+              percentileRank: 28,
+            },
+            date: new Date('2022-07-25'),
+          },
+          deleted: false,
+          serviceType: DatabaseServiceType.BigQuery,
+          tags: [],
+          followers: [],
+          description:
+            'The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics. ',
+          tableType: TableType.Regular,
+        },
+        highlight: {
+          'columns.description': [
+            'This column is a foreign key reference to the api_client_id column in the <span class="text-highlighter">dim_api_client</span> table.',
+          ],
+        },
+        sort: [1658940884969000],
       },
-      aggregations: {
-        'sterms#EntityType': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
+      {
+        _index: SearchIndex.TABLE,
+        _type: '_doc',
+        _id: 'b18b3400-fbcb-471d-b9d1-519ced543dc5',
+        _source: {
+          entityType: 'table',
+          type: 'table',
+          id: 'b18b3400-fbcb-471d-b9d1-519ced543dc5',
+          name: 'fact_sale',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
+          displayName: 'fact_sale',
+          version: 0.2,
+          updatedAt: 1658940881516,
+          updatedBy: 'anonymous',
+          href: 'http://localhost:8585/api/v1/tables/b18b3400-fbcb-471d-b9d1-519ced543dc5',
+          columns: [
             {
-              key: 'table',
-              doc_count: 4,
+              dataType: DataType.Numeric,
+              name: 'sale_id',
+              description:
+                'ID of the sale row. This column is the primary key for this table.',
+              constraint: Constraint.PrimaryKey,
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.sale_id',
+              ordinalPosition: 1,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'billing_address_id',
+              description:
+                'ID of the billing address of the customer. This column is a foreign key reference to the address_id column in the dim_address table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.billing_address_id',
+              ordinalPosition: 2,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'api_client_id',
+              description:
+                'ID of the API client from which the adjustment was made. This column is a foreign key reference to the ID of the API client in the dim_api_client table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.api_client_id',
+              ordinalPosition: 3,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'customer_id',
+              description:
+                'ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.customer_id',
+              ordinalPosition: 4,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'line_item_id',
+              description:
+                'ID of the line item. This column is a foreign key reference to line_item_id column in the fact_line_item table. When the row describes a shipping charge, there is no line_item_id value.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.line_item_id',
+              ordinalPosition: 5,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'location_id',
+              description:
+                'ID of the Shopify POS location. This column is a foreign key reference to the location_id column in the dim_location table. When the order is not a POS order, then there is no location ID.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.location_id',
+              ordinalPosition: 6,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'order_id',
+              description:
+                'ID of the order. This column is a foreign key reference to order_id column in the fact_order table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.order_id',
+              ordinalPosition: 7,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'product_id',
+              description:
+                'ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim.product table. When the line item describes a shipping charge, then there is no product ID.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.product_id',
+              ordinalPosition: 8,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'product_variant_id',
+              description:
+                'ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim.product_variant table. When the row describes a shipping charge, then there is no product variant ID.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.product_variant_id',
+              ordinalPosition: 9,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shipping_address_id',
+              description:
+                "ID of the shipping address of the customer who made the order. This column is a foreign key reference to the address_id column in the dim_address table. Some sales, such as those made using Shopify POS, do not have a customer's shipping address associated with them.",
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id',
+              ordinalPosition: 10,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shop_id',
+              description:
+                'ID of your store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.shop_id',
+              ordinalPosition: 11,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'user_id',
+              description:
+                'ID of the staff member who is associated with the sale. This column is a foreign key reference to the user_id column in the dim_staff table. Not all sales have a staff member associated with them.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.user_id',
+              ordinalPosition: 12,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'gross_sales',
+              description:
+                'Price of the product purchased multiplied by the quantity ordered. This value is formatted in the currency of your store. If the product purchased is a gift card, then 0 is returned because gift cards are not included in gross sales calculations. The gross sales amount also does not include any discounts, returns, taxes or shipping charges. The gross_sales column is calculated using the following formula: product (excluding gift cards) price x quantity (before taxes, shipping, discounts, and returns). Canceled, pending, and unpaid orders will have a value for this column, but test and deleted orders will not.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.gross_sales',
+              ordinalPosition: 13,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'net_sales',
+              description:
+                "Net sales of the line item. The value of the line item's gross sales minus any discounts minus the value of any returned items. Net sales does not include taxes or shipping costs, or the sale of gift cards. If the line item contains gift cards, then the field contains 0. Net sales is calculated by using the following formula: gross_sales - discounts - returns.",
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.net_sales',
+              ordinalPosition: 14,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'total_sales',
+              description:
+                'Total sales of the line item. This value does not include gift cards. Total sales is calculated using the following formula: net_sales + shipping + taxes.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.total_sales',
+              ordinalPosition: 15,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'returns',
+              description:
+                'Value of the products returned by the customer regardless of the amount that the merchant actually receives from the customer. This value is usually a negative number, but it can also be zero (for example, if the item being returned was a free gift with purchase). Taxes and shipping charges are not included. The returns amount is calculated by using the following formula: 0 - (product variant price * quantity) + discounts.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.returns',
+              ordinalPosition: 16,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'discounts',
+              description:
+                "Total amount discounted from the line item. The discounts column contains the sum of any line item discounts plus the line item's portion of any order-level discount. The value of the discount is either negative or zero. The discounts column is calculated using the following formula: line item discount + order level discount share.",
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.discounts',
+              ordinalPosition: 17,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'shipping',
+              description:
+                'When the line item is for a shipping charge, this column contains the amount charged for shipping the order or the amount of the shipping charge that is refunded when an item is returned. This value is positive for a shipping charge, and negative for the value returned. Any applicable taxes charged for shipping costs are recorded in the Taxes column. This column is calculated using the following formula: shipping charge or refund - shipping discount..',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.shipping',
+              ordinalPosition: 18,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'taxes',
+              description:
+                'The amount of taxes charged or returned for the line item. This value will be positive for a sale and negative for a return. Tax on an order is split proportionally amongst the line items to which it applies. Gift cards are not taxed. If multiple taxes are applied (for example, State and City sales taxes), then this column contains the sum of those tax amounts. This column can include taxes charged on shipping, if they are applicable.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.taxes',
+              ordinalPosition: 19,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'gift_card_discounts',
+              description:
+                'Total amount discounted from gift card sales. For example, if a $50 gift card is sold at a $10 discount for $40, then this column will contain $10.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.gift_card_discounts',
+              ordinalPosition: 20,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'gift_card_gross_sales',
+              description:
+                'Total face value of gift cards sold. For example, a $50 gift card is sold at a $10 discount for $40. In this example, the gift_card_gross_sales column will contain $50. Use this column to measure the increase in liabilities due to gift cards being issued (even though this value will not balance against the actual payments that you receive).',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.gift_card_gross_sales',
+              ordinalPosition: 21,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'gift_cards_issued',
+              description:
+                'Net amount that the gift cards sold for, after discounts. For example, for a $50 gift card sold at a $10 discount for $40, this column will contain $40. Use this column to balance against the payments that you receive.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.gift_cards_issued',
+              ordinalPosition: 22,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataType: DataType.Numeric,
+              name: 'quantity',
+              description:
+                'Quantity of the items sold or returned. This value will be negative for returns and zero for line items that contain shipping charges.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.quantity',
+              ordinalPosition: 23,
+              dataTypeDisplay: 'numeric',
+              tags: [],
+            },
+            {
+              dataLength: 200,
+              dataType: DataType.Varchar,
+              name: 'currency',
+              description:
+                'Three-letter ISO currency code of the payment. For example, USD is the code for United States Dollar. This is the currency of the store at the time of the order.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.currency',
+              ordinalPosition: 24,
+              dataTypeDisplay: 'varchar',
+              tags: [],
+            },
+            {
+              dataType: DataType.Boolean,
+              name: 'is_deleted',
+              description:
+                "Contains 1 when the sale's order was deleted, otherwise contains 0.",
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.is_deleted',
+              ordinalPosition: 25,
+              dataTypeDisplay: 'boolean',
+              tags: [],
+            },
+            {
+              dataType: DataType.Boolean,
+              name: 'test',
+              description:
+                'Whether the sale is a test order. Returns True when the sale is a test sale. See Test orders.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.test',
+              ordinalPosition: 26,
+              dataTypeDisplay: 'boolean',
+              tags: [],
+            },
+            {
+              dataType: DataType.Timestamp,
+              name: 'happened_at',
+              description:
+                'Date (ISO 8601) and time (UTC) when the order was created for a sale or when the order was returned.',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.fact_sale.happened_at',
+              ordinalPosition: 27,
+              dataTypeDisplay: 'timestamp',
+              tags: [],
             },
           ],
-        },
-        'sterms#ServiceCategory': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'databaseService',
-              doc_count: 4,
+          databaseSchema: {
+            deleted: false,
+            name: 'shopify',
+            description:
+              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            id: 'cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            href: 'http://localhost:8585/api/v1/databaseSchemas/cedec7e5-93b3-4b2b-9647-05c198abbf19',
+            type: 'databaseSchema',
+            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          },
+          database: {
+            deleted: false,
+            name: 'ecommerce_db',
+            description:
+              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            id: 'a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            href: 'http://localhost:8585/api/v1/databases/a32582b3-16ab-45e1-8e91-b75ac613ddc0',
+            type: 'database',
+            fullyQualifiedName: 'sample_data.ecommerce_db',
+          },
+          service: {
+            deleted: false,
+            name: 'sample_data',
+            id: '5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            href: 'http://localhost:8585/api/v1/services/databaseServices/5375e6bb-87d9-4e4d-afbe-0b7f77e14427',
+            type: 'databaseService',
+            fullyQualifiedName: 'sample_data',
+          },
+          usageSummary: {
+            dailyStats: {
+              count: 3,
+              percentileRank: 71,
             },
+            weeklyStats: {
+              count: 3,
+              percentileRank: 71,
+            },
+            monthlyStats: {
+              count: 3,
+              percentileRank: 71,
+            },
+            date: new Date('2022-07-25'),
+          },
+          deleted: false,
+          serviceType: DatabaseServiceType.BigQuery,
+          tags: [],
+          followers: [],
+          description:
+            'The fact table captures the value of products sold or returned, as well as the values of other charges such as taxes and shipping costs. The sales table contains one row per order line item, one row per returned line item, and one row per shipping charge. Use this table when you need financial metrics. ',
+          tableType: TableType.Regular,
+        },
+        highlight: {
+          'columns.description': [
+            'This column is a foreign key reference to the address_id column in the <span class="text-highlighter">dim_address</span> table.',
+            'This column is a foreign key reference to the ID of the API client in the <span class="text-highlighter">dim_api_client</span> table.',
+            'This column is a foreign key reference to the address_id column in the <span class="text-highlighter">dim_address</span> table.',
           ],
         },
-        'sterms#Tier': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
-              doc_count: 1,
-            },
-          ],
-        },
-        'sterms#Service': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'BigQuery',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tags': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'PII.Sensitive',
-              doc_count: 1,
-            },
-            {
-              key: 'PersonalData.Personal',
-              doc_count: 1,
-            },
-            {
-              key: 'User.CreditCardNumber',
-              doc_count: 1,
-            },
-          ],
-        },
+        sort: [1658940881516000],
       },
-    },
-    status: 200,
-    statusText: 'OK',
-    headers: {
-      connection: 'close',
-      'content-encoding': 'gzip',
-      'content-type': 'application/json',
-      date: 'Mon, 29 Nov 2021 12:18:24 GMT',
-      'transfer-encoding': 'chunked',
-      vary: 'Accept-Encoding',
-      'x-powered-by': 'Express',
-    },
-    config: {
-      url: '/search/query?q=*dim_a*&from=0&size=10&sort_order=desc&index=table_search_index',
-      method: 'get',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-      },
-      baseURL: '/api/v1',
-      transformRequest: [null],
-      transformResponse: [null],
-      timeout: 0,
-      xsrfCookieName: 'XSRF-TOKEN',
-      xsrfHeaderName: 'X-XSRF-TOKEN',
-      maxContentLength: -1,
-      maxBodyLength: -1,
-    },
-    request: {},
+    ],
   },
-  resAggServiceType: {
-    data: {
-      took: 31,
-      timed_out: false,
-      _shards: {
-        total: 1,
-        successful: 1,
-        skipped: 0,
-        failed: 0,
-      },
-      hits: {
-        total: {
-          value: 4,
-          relation: 'eq',
+  aggregations: {
+    entityType: {
+      buckets: [
+        {
+          key: 'table',
+          doc_count: 4,
         },
-        max_score: null,
-        hits: [],
-      },
-      aggregations: {
-        'sterms#EntityType': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'table',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#ServiceCategory': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'databaseService',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tier': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
-              doc_count: 1,
-            },
-          ],
-        },
-        'sterms#Service': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'BigQuery',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tags': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'PII.Sensitive',
-              doc_count: 1,
-            },
-            {
-              key: 'PersonalData.Personal',
-              doc_count: 1,
-            },
-            {
-              key: 'User.CreditCardNumber',
-              doc_count: 1,
-            },
-          ],
-        },
-      },
+      ],
     },
-    status: 200,
-    statusText: 'OK',
-    headers: {
-      connection: 'close',
-      'content-encoding': 'gzip',
-      'content-length': '325',
-      'content-type': 'application/json',
-      date: 'Mon, 29 Nov 2021 12:18:24 GMT',
-      vary: 'Accept-Encoding',
-      'x-powered-by': 'Express',
+    serviceType: {
+      buckets: [
+        {
+          key: 'databaseService',
+          doc_count: 4,
+        },
+      ],
     },
-    config: {
-      url: '/search/query?q=*dim_a*&from=0&size=0&sort_order=desc&index=table_search_index',
-      method: 'get',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-      },
-      baseURL: '/api/v1',
-      transformRequest: [null],
-      transformResponse: [null],
-      timeout: 0,
-      xsrfCookieName: 'XSRF-TOKEN',
-      xsrfHeaderName: 'X-XSRF-TOKEN',
-      maxContentLength: -1,
-      maxBodyLength: -1,
+    'tier.tagFQN': {
+      buckets: [],
     },
-    request: {},
-  },
-  resAggTier: {
-    data: {
-      took: 9,
-      timed_out: false,
-      _shards: {
-        total: 1,
-        successful: 1,
-        skipped: 0,
-        failed: 0,
-      },
-      hits: {
-        total: {
-          value: 4,
-          relation: 'eq',
+    'service.name.keyword': {
+      buckets: [
+        {
+          key: 'sample_data',
+          doc_count: 4,
         },
-        max_score: null,
-        hits: [],
-      },
-      aggregations: {
-        'sterms#EntityType': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'table',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#ServiceCategory': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'databaseService',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tier': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
-              doc_count: 1,
-            },
-          ],
-        },
-        'sterms#Service': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'BigQuery',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tags': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'PII.Sensitive',
-              doc_count: 1,
-            },
-            {
-              key: 'PersonalData.Personal',
-              doc_count: 1,
-            },
-            {
-              key: 'User.CreditCardNumber',
-              doc_count: 1,
-            },
-          ],
-        },
-      },
+      ],
     },
-    status: 200,
-    statusText: 'OK',
-    headers: {
-      connection: 'close',
-      'content-encoding': 'gzip',
-      'content-length': '326',
-      'content-type': 'application/json',
-      date: 'Mon, 29 Nov 2021 12:18:24 GMT',
-      vary: 'Accept-Encoding',
-      'x-powered-by': 'Express',
+    'database.name.keyword': {
+      buckets: [
+        {
+          key: 'ecommerce_db',
+          doc_count: 4,
+        },
+      ],
     },
-    config: {
-      url: '/search/query?q=*dim_a*&from=0&size=0&sort_order=desc&index=table_search_index',
-      method: 'get',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-      },
-      baseURL: '/api/v1',
-      transformRequest: [null],
-      transformResponse: [null],
-      timeout: 0,
-      xsrfCookieName: 'XSRF-TOKEN',
-      xsrfHeaderName: 'X-XSRF-TOKEN',
-      maxContentLength: -1,
-      maxBodyLength: -1,
+    'service.type': {
+      buckets: [
+        {
+          key: 'BigQuery',
+          doc_count: 4,
+        },
+      ],
     },
-    request: {},
-  },
-  resAggTag: {
-    data: {
-      took: 9,
-      timed_out: false,
-      _shards: {
-        total: 1,
-        successful: 1,
-        skipped: 0,
-        failed: 0,
-      },
-      hits: {
-        total: {
-          value: 4,
-          relation: 'eq',
+    'tags.tagsFQN': {
+      buckets: [
+        {
+          key: 'PII.Sensitive',
+          doc_count: 1,
         },
-        max_score: null,
-        hits: [],
-      },
-      aggregations: {
-        'sterms#EntityType': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'table',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#ServiceCategory': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'databaseService',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tier': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
-              doc_count: 1,
-            },
-          ],
-        },
-        'sterms#Service': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'BigQuery',
-              doc_count: 4,
-            },
-          ],
-        },
-        'sterms#Tags': {
-          doc_count_error_upper_bound: 0,
-          sum_other_doc_count: 0,
-          buckets: [
-            {
-              key: 'PII.Sensitive',
-              doc_count: 1,
-            },
-            {
-              key: 'PersonalData.Personal',
-              doc_count: 1,
-            },
-            {
-              key: 'User.CreditCardNumber',
-              doc_count: 1,
-            },
-          ],
-        },
-      },
+      ],
     },
-    status: 200,
-    statusText: 'OK',
-    headers: {
-      connection: 'close',
-      'content-encoding': 'gzip',
-      'content-length': '326',
-      'content-type': 'application/json',
-      date: 'Mon, 29 Nov 2021 12:18:24 GMT',
-      vary: 'Accept-Encoding',
-      'x-powered-by': 'Express',
+    'databaseSchema.name.keyword': {
+      buckets: [
+        {
+          key: 'shopify',
+          doc_count: 4,
+        },
+      ],
     },
-    config: {
-      url: '/search/query?q=*dim_a*&from=0&size=0&sort_order=desc&index=table_search_index',
-      method: 'get',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-      },
-      baseURL: '/api/v1',
-      transformRequest: [null],
-      transformResponse: [null],
-      timeout: 0,
-      xsrfCookieName: 'XSRF-TOKEN',
-      xsrfHeaderName: 'X-XSRF-TOKEN',
-      maxContentLength: -1,
-      maxBodyLength: -1,
-    },
-    request: {},
   },
 };

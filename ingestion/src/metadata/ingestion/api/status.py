@@ -8,13 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Status output utilities
+"""
 import json
 import pprint
-from dataclasses import dataclass
 
 
-@dataclass
 class Status:
     def as_obj(self) -> dict:
         return self.__dict__

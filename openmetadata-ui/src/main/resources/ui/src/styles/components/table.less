@@ -1,0 +1,81 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.ant-table-wrapper {
+  .ant-table-thead {
+    tr > th {
+      font-weight: @typography-title-font-weight;
+      color: #5e5c58;
+    }
+    background: @white;
+  }
+  .ant-table-bordered {
+    table {
+      border: 1px solid #dde3ea;
+
+      tbody {
+        tr {
+          td {
+            .drag-icon {
+              width: 12px;
+              height: 12px;
+              margin-right: 2px;
+              display: inline-flex;
+              visibility: hidden;
+            }
+
+            .expand-icon {
+              cursor: pointer;
+            }
+
+            .expand-cell-empty-icon-container {
+              width: 16px;
+              height: 16px;
+              display: inline-flex;
+            }
+          }
+        }
+        .ant-table-cell-row-hover {
+          .drag-icon {
+            visibility: initial;
+          }
+        }
+      }
+    }
+    .ant-table-container > .ant-table-content > table > tbody > tr > td {
+      border-right: none;
+    }
+  }
+}
+
+.table-shadow {
+  .ant-table-bordered {
+    table {
+      box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.12);
+    }
+  }
+}
+
+.ant-table.ant-table-small .ant-table-thead > tr > th:first-child {
+  padding-left: 16px;
+}
+
+.ant-table.ant-table-small .ant-table-tbody > tr > td:first-child {
+  padding-left: 16px;
+}
+
+.vertical-top-align-td {
+  .ant-table-cell {
+    vertical-align: top;
+  }
+}

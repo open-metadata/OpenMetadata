@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CloseOutlined } from '@ant-design/icons';
+import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { capitalize } from 'lodash';
-import React, { Fragment } from 'react';
+import React, { Fragment, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -54,19 +57,22 @@ const UserCard = ({
   isIconVisible = false,
   isDataset = false,
   isCheckBoxes = false,
-  isOwner = false,
   onTitleClick,
   onSelect,
   onRemove,
 }: Props) => {
-  const { isAdminUser, userPermissions } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+  const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
+
+  const editPermission = useMemo(() => {
+    return checkPermission(Operation.EditAll, ResourceEntity.USER, permissions);
+  }, [permissions]);
 
   /**
-   * prepare asset displayname and return it
+   * prepare asset displayName and return it
    * @param type - asset type
    * @param fqn - asset fqn
-   * @returns - displayname
+   * @returns - displayName
    */
   const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
@@ -186,8 +192,8 @@ const UserCard = ({
             <Fragment>
               <span
                 className={classNames(
-                  'tw-font-normal tw-my-1',
-                  isActionVisible ? 'tw-truncate tw-w-32' : null,
+                  'tw-font-normal',
+                  isActionVisible ? 'tw-w-32' : 'tw-w-52',
                   {
                     'tw-cursor-pointer hover:tw-underline':
                       Boolean(onTitleClick),
@@ -197,57 +203,56 @@ const UserCard = ({
                 onClick={() => {
                   onTitleClick?.(item.fqn);
                 }}>
-                {item.displayName}
+                <Typography.Text
+                  className="ant-typography-ellipsis-custom"
+                  ellipsis={{ tooltip: true }}>
+                  {item.displayName}
+                </Typography.Text>
               </span>
               {item.name && item.name !== item.displayName && (
                 <span
                   className={classNames(
-                    isActionVisible ? 'tw-truncate tw-w-32 tw-my-1' : null
+                    isActionVisible ? 'tw-w-32' : 'tw-w-52'
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
-                  {isIconVisible ? item.name : capitalize(item.name)}
+                  <Typography.Text
+                    className="ant-typography-ellipsis-custom"
+                    ellipsis={{ tooltip: true }}>
+                    {isIconVisible ? item.name : capitalize(item.name)}
+                  </Typography.Text>
                 </span>
               )}
             </Fragment>
           )}
         </div>
       </div>
-      {isActionVisible && (
-        <div className="tw-flex-none">
-          {isCheckBoxes ? (
-            <input
-              className="tw-p-1 custom-checkbox"
-              data-testid="checkboxAddUser"
-              type="checkbox"
-              onChange={() => {
-                onSelect?.(item.id as string);
-              }}
-            />
-          ) : (
-            <NonAdminAction
-              html={<>You do not have permission to update the team.</>}
-              isOwner={isOwner}
-              permission={Operation.UpdateTeam}
-              position="bottom">
-              <span
-                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                  'tw-opacity-40':
-                    !isAdminUser &&
-                    !isAuthDisabled &&
-                    !isOwner &&
-                    !userPermissions[Operation.UpdateTeam],
-                })}
+      {isActionVisible &&
+        (isCheckBoxes ? (
+          <input
+            className="tw-p-1 custom-checkbox tw-self-center"
+            data-testid="checkboxAddUser"
+            type="checkbox"
+            onChange={() => {
+              onSelect?.(item.id as string);
+            }}
+          />
+        ) : (
+          <div className="tw-flex-none">
+            <Tooltip
+              title={
+                editPermission ? t('label.remove') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                className={classNames('tw-h-8 tw-rounded tw-mb-3')}
                 data-testid="remove"
+                disabled={!editPermission}
+                type="text"
                 onClick={() => onRemove?.(item.id as string)}>
-                <FontAwesomeIcon
-                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
-                  icon="remove"
-                />
-              </span>
-            </NonAdminAction>
-          )}
-        </div>
-      )}
+                <CloseOutlined className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100" />
+              </Button>
+            </Tooltip>
+          </div>
+        ))}
     </div>
   );
 };

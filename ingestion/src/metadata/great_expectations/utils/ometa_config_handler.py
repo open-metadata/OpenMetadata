@@ -13,6 +13,7 @@ Utility functions to create open metadata connections from yaml file
 """
 
 import os
+import traceback
 from typing import Any, Optional
 
 import yaml
@@ -21,6 +22,9 @@ from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoe
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.utils.logger import great_expectations_logger
+
+logger = great_expectations_logger()
 
 
 def env(key: str) -> Optional[Any]:
@@ -69,9 +73,15 @@ def render_template(environment: Environment, template_file: str = "config.yml")
         tmplt = environment.get_template(template_file)
         return tmplt.render()
     except TemplateNotFound as err:
-        raise TemplateNotFound(
-            f"Config file at {environment.loader.searchpath} not found"
-        ) from err
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Template file at {template_file} not found: {err}")
+        try:
+            tmplt = environment.get_template("config.yaml")
+            return tmplt.render()
+        except TemplateNotFound as exc:
+            raise TemplateNotFound(
+                f"Config file at {environment.loader.searchpath} not found"
+            ) from exc
 
 
 def create_ometa_connection_obj(config: str) -> OpenMetadataConnection:

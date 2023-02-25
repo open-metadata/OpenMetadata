@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/ambv/black
-    rev: 21.12b0
+    rev: 22.3.0
     hooks:
       - id: black
         language_version: python3.8
         exclude: ingestion/src/metadata/generated
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.9.3
+    rev: 5.12.0
     hooks:
       - id: isort
         args: ["--profile", "black"]
@@ -20,7 +20,7 @@ repos:
     rev: v2.5.1
     hooks:
       - id: prettier
-        files: ^catalog-rest-service/src/main/resources/json/schema/
+        files: ^openmetadata-service/src/main/resources/json/schema/
   - repo: local
     hooks:
       - id: google-style-java

@@ -12,12 +12,16 @@
 """
 Unique Count Metric definition
 """
-from typing import Optional
+from typing import Optional, cast
 
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
 class UniqueCount(QueryMetric):
@@ -46,9 +50,11 @@ class UniqueCount(QueryMetric):
                 "We are missing the session attribute to compute the UniqueCount."
             )
 
+        if self.col.type.__class__.__name__ in NOT_COMPUTE:
+            return None
+
         # Run all queries on top of the sampled data
         col = column(self.col.name)
-
         only_once = (
             session.query(func.count(col))
             .select_from(sample)
@@ -57,5 +63,21 @@ class UniqueCount(QueryMetric):
         )
 
         only_once_cte = only_once.cte("only_once")
-
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
+
+    def df_fn(self, df=None):
+        """
+        Build the Unique Count metric
+        """
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
+        try:
+            return df[self.col.name].nunique()
+        except Exception as err:
+            logger.debug(
+                f"Don't know how to process type {self.col.type}"
+                f"when computing Distinct Count.\n Error: {err}"
+            )
+            return 0

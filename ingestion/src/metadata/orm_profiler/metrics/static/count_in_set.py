@@ -13,12 +13,13 @@
 CountInSet Metric definition
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from typing import List
 
-from sqlalchemy import case, column, func
+from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -47,6 +48,7 @@ class CountInSet(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "values"):
             raise AttributeError(
                 "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
@@ -54,8 +56,24 @@ class CountInSet(StaticMetric):
 
         try:
             set_values = set(self.values)
-            return func.sum(case([(column(self.col.name).in_(set_values), 1)], else_=0))
+            return SumFn(case([(column(self.col.name).in_(set_values), 1)], else_=0))
 
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(f"Error trying to run countInSet for {self.col.name} - {err}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
+            return None
+
+    @_label
+    def df_fn(self, df):
+        """pandas function"""
+        if not hasattr(self, "values"):
+            raise AttributeError(
+                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
+            )
+
+        try:
+            return df[self.col.name][df[self.col.name].isin(list(self.values))].count()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None

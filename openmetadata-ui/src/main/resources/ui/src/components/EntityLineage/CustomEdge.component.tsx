@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,40 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React, { Fragment } from 'react';
-import {
-  EdgeProps,
-  getBezierPath,
-  getEdgeCenter,
-  getMarkerEnd,
-} from 'react-flow-renderer';
-import { foreignObjectSize } from '../../constants/Lineage.constants';
+import { EdgeProps, getBezierPath } from 'reactflow';
+import { ReactComponent as FunctionIcon } from '../../assets/svg/ic-function.svg';
+import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-grey.svg';
+import { FOREIGN_OBJECT_SIZE } from '../../constants/Lineage.constants';
+import { EntityType } from '../../enums/entity.enum';
 import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
+
+interface LineageEdgeIconProps {
+  children: React.ReactNode;
+  x: number;
+  y: number;
+  offset: number;
+}
+
+export const LineageEdgeIcon = ({
+  children,
+  x,
+  y,
+  offset,
+}: LineageEdgeIconProps) => {
+  return (
+    <foreignObject
+      height={FOREIGN_OBJECT_SIZE}
+      requiredExtensions="http://www.w3.org/1999/xhtml"
+      width={FOREIGN_OBJECT_SIZE}
+      x={x - FOREIGN_OBJECT_SIZE / offset}
+      y={y - FOREIGN_OBJECT_SIZE / offset}>
+      {children}
+    </foreignObject>
+  );
+};
 
 export const CustomEdge = ({
   id,
@@ -31,15 +55,14 @@ export const CustomEdge = ({
   sourcePosition,
   targetPosition,
   style = {},
-  arrowHeadType,
-  markerEndId,
+  markerEnd,
   data,
   selected,
 }: EdgeProps) => {
-  const { onEdgeClick, ...rest } = data;
+  const { onEdgeClick, addPipelineClick, ...rest } = data;
   const offset = 4;
 
-  const edgePath = getBezierPath({
+  const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -47,7 +70,7 @@ export const CustomEdge = ({
     targetY,
     targetPosition,
   });
-  const invisibleEdgePath = getBezierPath({
+  const [invisibleEdgePath] = getBezierPath({
     sourceX: sourceX + offset,
     sourceY: sourceY + offset,
     sourcePosition,
@@ -55,7 +78,7 @@ export const CustomEdge = ({
     targetY: targetY + offset,
     targetPosition,
   });
-  const invisibleEdgePath1 = getBezierPath({
+  const [invisibleEdgePath1] = getBezierPath({
     sourceX: sourceX - offset,
     sourceY: sourceY - offset,
     sourcePosition,
@@ -63,13 +86,12 @@ export const CustomEdge = ({
     targetY: targetY - offset,
     targetPosition,
   });
-  const markerEnd = getMarkerEnd(arrowHeadType, markerEndId);
-  const [edgeCenterX, edgeCenterY] = getEdgeCenter({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-  });
+
+  const isTableToTableEdge = () => {
+    const { sourceType, targetType } = data;
+
+    return sourceType === EntityType.TABLE && targetType === EntityType.TABLE;
+  };
 
   const getInvisiblePath = (path: string) => {
     return (
@@ -97,25 +119,80 @@ export const CustomEdge = ({
       {getInvisiblePath(invisibleEdgePath)}
       {getInvisiblePath(invisibleEdgePath1)}
 
-      {selected ? (
-        <foreignObject
-          data-testid="delete-button"
-          height={foreignObjectSize}
-          requiredExtensions="http://www.w3.org/1999/xhtml"
-          width={foreignObjectSize}
-          x={edgeCenterX - foreignObjectSize / offset}
-          y={edgeCenterY - foreignObjectSize / offset}>
-          <button
-            className="tw-cursor-pointer tw-flex tw-z-9999"
-            onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-            <SVGIcons
-              alt="times-circle"
-              icon="icon-times-circle"
-              width="14px"
+      {!data.isColumnLineage && isTableToTableEdge() ? (
+        data.label ? (
+          <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
+            <Button
+              className="custom-edge-pipeline-button"
+              data-testid="pipeline-label"
+              icon={<PipelineIcon />}
+              type="primary"
+              onClick={(event) =>
+                data.isEditMode &&
+                addPipelineClick?.(event, rest as CustomEdgeData)
+              }
             />
-          </button>
-        </foreignObject>
-      ) : null}
+          </LineageEdgeIcon>
+        ) : (
+          selected &&
+          data.isEditMode && (
+            <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
+              <Button
+                className="tw-cursor-pointer tw-flex tw-z-9999"
+                data-testid="add-pipeline"
+                icon={
+                  <SVGIcons
+                    alt="times-circle"
+                    icon="icon-times-circle"
+                    width="16px"
+                  />
+                }
+                style={{
+                  transform: 'rotate(45deg)',
+                }}
+                type="link"
+                onClick={(event) =>
+                  addPipelineClick?.(event, rest as CustomEdgeData)
+                }
+              />
+            </LineageEdgeIcon>
+          )
+        )
+      ) : data.isEditMode ? (
+        selected && (
+          <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
+            <Button
+              className="tw-cursor-pointer tw-flex tw-z-9999"
+              data-testid="delete-button"
+              icon={
+                <SVGIcons
+                  alt="times-circle"
+                  icon="icon-times-circle"
+                  width="16px"
+                />
+              }
+              type="link"
+              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}
+            />
+          </LineageEdgeIcon>
+        )
+      ) : (
+        data.columnFunctionValue &&
+        data.isExpanded && (
+          <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
+            <Button
+              className="custom-edge-pipeline-button"
+              data-tesid="function-icon"
+              icon={<FunctionIcon />}
+              type="primary"
+              onClick={(event) =>
+                data.isEditMode &&
+                addPipelineClick?.(event, rest as CustomEdgeData)
+              }
+            />
+          </LineageEdgeIcon>
+        )
+      )}
     </Fragment>
   );
 };

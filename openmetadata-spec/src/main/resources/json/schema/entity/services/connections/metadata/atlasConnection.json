@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/atlasConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AtlasConnection",
+  "description": "Atlas Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.AtlasConnection",
+  "definitions": {
+    "atlasType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Atlas"],
+      "default": "Atlas"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/atlasType",
+      "default": "Atlas"
+    },
+    "username": {
+      "description": "username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Atlas.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Atlas service.",
+      "title": "Host and Port",
+      "type": "string",
+      "format": "uri",
+      "expose": true
+    },
+    "databaseServiceName": {
+      "description": "service type of the data source.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "messagingServiceName": {
+      "description": "service type of the messaging source",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }    
+    },
+    "entity_type": {
+      "title": "Entity Type",
+      "description": "Name of the Entity Type available in Atlas.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "required": ["entity_type", "username", "password"],
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
-import { EntityThread, Post } from 'Models';
+import { AxiosError } from 'axios';
 import React, { FC, Fragment, useEffect, useState } from 'react';
-import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import jsonData from '../../../jsons/en';
+import { useTranslation } from 'react-i18next';
+import { getFeedById } from 'rest/feedsAPI';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { getReplyText } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -27,23 +31,31 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   selectedThread,
   postFeed,
   onConfirmation,
+  updateThreadHandler,
 }) => {
-  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
+  const { t } = useTranslation();
+  const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,
     from: threadData.createdBy,
     postTs: threadData.threadTs,
     id: threadData.id,
+    reactions: threadData.reactions,
   };
 
   useEffect(() => {
     getFeedById(selectedThread.id)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-feed-error']);
+        showErrorToast(
+          err,
+          t('message.entity-fetch-error', {
+            entity: t('label.message-lowercase-plural'),
+          })
+        );
       });
   }, [selectedThread]);
 
@@ -54,8 +66,14 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           <div data-testid="main-message">
             <ActivityFeedCard
               isEntityFeed
+              isThread
+              announcementDetails={threadData.announcement}
               className="tw-mb-3"
               feed={mainThread as Post}
+              feedType={threadData.type || ThreadType.Conversation}
+              threadId={threadData.id}
+              updateThreadHandler={updateThreadHandler}
+              onConfirmation={onConfirmation}
             />
           </div>
         ) : null}
@@ -63,7 +81,11 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           <div data-testid="replies">
             <div className="tw-mb-3 tw-flex">
               <span data-testid="replies-count">
-                {getReplyText(repliesLength, 'reply', 'replies')}
+                {getReplyText(
+                  repliesLength,
+                  t('label.reply-lowercase'),
+                  t('label.reply-lowercase-plural')
+                )}
               </span>
               <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                 <hr />
@@ -74,19 +96,21 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                 isEntityFeed
                 className="tw-mb-3"
                 feed={reply}
+                feedType={threadData.type || ThreadType.Conversation}
                 key={key}
                 threadId={threadData.id}
+                updateThreadHandler={updateThreadHandler}
                 onConfirmation={onConfirmation}
               />
             ))}
           </div>
         ) : null}
-        <ActivityFeedEditor
-          buttonClass="tw-mr-4"
-          className="tw-ml-5 tw-mr-2 tw-my-6"
-          onSave={postFeed}
-        />
       </div>
+      <ActivityFeedEditor
+        buttonClass="tw-mr-4"
+        className="tw-ml-5 tw-mr-2 tw-my-6"
+        onSave={postFeed}
+      />
     </Fragment>
   );
 };

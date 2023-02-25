@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createGlossary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateGlossaryRequest",
+  "description": "Create Glossary entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateGlossary",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies this glossary.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this glossary.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/teams/user.json#/definitions/entityName"
+      }
+    },
+    "owner": {
+      "description": "Owner of this glossary",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this glossary",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type" : "boolean",
+      "default" : "false"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

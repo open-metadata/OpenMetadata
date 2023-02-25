@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,16 +12,15 @@
  */
 
 import { getByTestId, getByText, render } from '@testing-library/react';
-import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   Column,
   DataType,
   LabelType,
-  Source,
   State,
   Table,
+  TagSource,
 } from '../../generated/entity/data/table';
 import SchemaTab from './SchemaTab.component';
 const mockColumns: Column[] = [
@@ -34,13 +33,13 @@ const mockColumns: Column[] = [
       {
         tagFQN: 'string',
         labelType: LabelType.Manual,
-        source: Source.Tag,
+        source: TagSource.Tag,
         state: State.Confirmed,
       },
       {
         tagFQN: 'string2',
         labelType: LabelType.Derived,
-        source: Source.Tag,
+        source: TagSource.Tag,
         state: State.Confirmed,
       },
     ],
@@ -57,11 +56,6 @@ const mockjoins = [
 
 const mockUpdate = jest.fn();
 
-const mockOwner: TableDetail['owner'] = {
-  id: 'string',
-  type: 'user',
-};
-
 const mockSampleData = {
   columns: ['column1', 'column2', 'column3'],
   rows: [
@@ -76,7 +70,7 @@ jest.mock('../SampleDataTable/SampleDataTable.component', () => {
 });
 
 jest.mock('../EntityTable/EntityTable.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityTable</p>);
+  return jest.fn().mockReturnValue(<p>EntityTableV1</p>);
 });
 
 const mockTableConstraints = [
@@ -90,11 +84,11 @@ describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
       <SchemaTab
-        hasEditAccess
+        hasDescriptionEditAccess
+        hasTagEditAccess
         columnName="columnName"
         columns={mockColumns}
         joins={mockjoins}
-        owner={mockOwner}
         sampleData={mockSampleData}
         tableConstraints={mockTableConstraints}
         onUpdate={mockUpdate}

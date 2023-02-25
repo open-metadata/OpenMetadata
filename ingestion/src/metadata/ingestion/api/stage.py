@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Abstract Stage definition to build a Workflow
+"""
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Generic, List
@@ -22,10 +24,12 @@ from metadata.ingestion.api.status import Status
 class StageStatus(Status):
     records_produced = 0
 
+    records: List[str] = field(default_factory=list)
     warnings: Dict[str, List[str]] = field(default_factory=dict)
     failures: Dict[str, List[str]] = field(default_factory=dict)
 
     def records_status(self, record: Any) -> None:
+        self.records.append(record)
         self.records_produced += 1
 
     def warning_status(self, key: str, reason: str) -> None:
@@ -43,7 +47,7 @@ class StageStatus(Status):
 class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "Stage":
+    def create(cls, config_dict: dict, metadata_config: dict) -> "Stage":
         pass
 
     @abstractmethod

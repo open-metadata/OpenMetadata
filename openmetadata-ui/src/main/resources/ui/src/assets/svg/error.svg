@@ -1,12 +1,1 @@
-<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-
- <g>
-  <title>background</title>
-  <rect fill="none" id="canvas_background" height="402" width="582" y="-1" x="-1"/>
- </g>
- <g>
-  <title>Layer 1</title>
-  <circle fill="#ffffff" r="16" id="BG" cy="16" cx="16"/>
-  <path fill="#d72828" id="Exclamatory_x5F_Sign" d="m14.5,25l3,0l0,-3l-3,0l0,3zm0,-19l0,13l3,0l0,-13l-3,0z"/>
- </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"><g fill="#6B7280" clip-path="url(#a)"><path d="M8 9.999a.5.5 0 0 1-.5-.5v-3.5a.5.5 0 0 1 1 0v3.5a.5.5 0 0 1-.5.5Z"/><path d="M15.788 12.509 9.565 2.136c-.707-1.178-2.422-1.18-3.13 0L.213 12.509c-.589.98.12 2.24 1.268 2.24h13.04c1.149 0 1.857-1.26 1.268-2.24Zm-1.268 1.24H1.48a.48.48 0 0 1-.41-.726L7.292 2.65a.826.826 0 0 1 1.414 0l6.224 10.373a.48.48 0 0 1-.41.725Z"/><path d="M8 11.999a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>

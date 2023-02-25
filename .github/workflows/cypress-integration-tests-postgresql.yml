@@ -1,0 +1,166 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
+# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+
+name: PostgreSQL Cypress Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+      - '0.[0-9]+.[0-9]+'
+    paths-ignore:
+      - 'openmetadata-docs/**'
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+    paths-ignore:
+      - 'openmetadata-docs/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cypress-integration-tests-postgresql-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job: [0, 1]
+    environment: test
+    steps:
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Get yarn cache directory path
+        if: steps.cache-output.outputs.exit-code == 0
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        if: steps.yarn-cache-dir-path.outputs.exit-code == 0
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Set up JDK 11
+        if: steps.cache-output.outputs.exit-code == 0
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Generating Data Models
+        run: |
+          sudo make install_antlr_cli
+          make install_dev generate
+
+      - name: Start Server and Ingest Sample Data
+        env:
+          INGESTION_DEPENDENCY: "all"
+        run: ./docker/run_local_docker.sh -d postgresql
+        timeout-minutes: 30
+
+      - name: Run Cypress Tests
+        uses: cypress-io/github-action@v4
+        with:
+          install: false
+          record: true
+          parallel: true
+          working-directory: openmetadata-ui/src/main/resources/ui/
+          wait-on: 'http://localhost:8585'
+          group: Tests with database postgresql
+          browser: chrome
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
+          CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+          CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
+          CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+          CYPRESS_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
+          CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
+          CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+          CYPRESS_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
+          CYPRESS_REDSHIFT_HOST: ${{ secrets.TEST_REDSHIFT_HOST }}
+          CYPRESS_REDSHIFT_USERNAME: ${{ secrets.TEST_REDSHIFT_USERNAME }}
+          CYPRESS_REDSHIFT_PASSWORD: ${{ secrets.TEST_REDSHIFT_PASSWORD }}
+          CYPRESS_REDSHIFT_DATABASE: ${{ secrets.TEST_REDSHIFT_DATABASE }}
+          CYPRESS_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
+          CYPRESS_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
+          CYPRESS_METABASE_DB_SERVICE_NAME: ${{ secrets.TEST_METABASE_DB_SERVICE_NAME }}
+          CYPRESS_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
+          CYPRESS_SUPERSET_USERNAME: ${{ secrets.TEST_SUPERSET_USERNAME }}
+          CYPRESS_SUPERSET_PASSWORD: ${{ secrets.TEST_SUPERSET_PASSWORD }}
+          CYPRESS_SUPERSET_HOST_PORT: ${{ secrets.TEST_SUPERSET_HOST_PORT }}
+          CYPRESS_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.TEST_KAFKA_BOOTSTRAP_SERVERS }}
+          CYPRESS_KAFKA_SCHEMA_REGISTRY_URL: ${{ secrets.TEST_KAFKA_SCHEMA_REGISTRY_URL }}
+          CYPRESS_GLUE_ACCESS_KEY: ${{ secrets.TEST_GLUE_ACCESS_KEY }}
+          CYPRESS_GLUE_SECRET_KEY: ${{ secrets.TEST_GLUE_SECRET_KEY }}
+          CYPRESS_GLUE_AWS_REGION: ${{ secrets.TEST_GLUE_AWS_REGION }}
+          CYPRESS_GLUE_ENDPOINT: ${{ secrets.TEST_GLUE_ENDPOINT }}
+          CYPRESS_GLUE_STORAGE_SERVICE: ${{ secrets.TEST_GLUE_STORAGE_SERVICE }}
+          CYPRESS_MYSQL_USERNAME: ${{ secrets.TEST_MYSQL_USERNAME }}
+          CYPRESS_MYSQL_PASSWORD: ${{ secrets.TEST_MYSQL_PASSWORD }}
+          CYPRESS_MYSQL_HOST_PORT: ${{ secrets.TEST_MYSQL_HOST_PORT }}
+          CYPRESS_MYSQL_DATABASE_SCHEMA: ${{ secrets.TEST_MYSQL_DATABASE_SCHEMA }}
+          CYPRESS_POSTGRES_USERNAME: ${{ secrets.TEST_POSTGRES_USERNAME }}
+          CYPRESS_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
+          CYPRESS_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
+          CYPRESS_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
+
+          # Recommended: pass the GitHub token lets this action correctly
+          # determine the unique run id necessary to re-run the checks
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean Up
+        run: |
+          cd ./docker/local-metadata
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume

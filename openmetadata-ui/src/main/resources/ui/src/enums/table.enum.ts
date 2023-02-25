@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,6 +16,7 @@ export enum ConstraintTypes {
   NULL = 'NULL',
   NOT_NULL = 'NOT_NULL',
   UNIQUE = 'UNIQUE',
+  FOREIGN_KEY = 'FOREIGN_KEY',
 }
 
 export enum PrimaryTableDataTypes {
@@ -24,4 +25,9 @@ export enum PrimaryTableDataTypes {
   DATE = 'date',
   NUMERIC = 'numeric',
   BOOLEAN = 'boolean',
+}
+
+export enum ProfilerDashboardType {
+  TABLE = 'table',
+  COLUMN = 'column',
 }

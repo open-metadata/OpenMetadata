@@ -1,0 +1,36 @@
+{
+  "ignoreFile": ".licenseheaderignore",
+  "license": "LICENSE",
+  "trailingWhitespace": "TRIM",
+  "regexIdentifier": "##",
+  "licenseFormats": {
+    "sh|yml|yaml|^Dockerfile": {
+      "prepend": "#",
+      "eachLine": {
+        "prepend": "# "
+      },
+      "append": "#"
+    },
+    "html|xml": {
+      "prepend": "<!--",
+      "eachLine": {
+        "prepend": "  "
+      },
+      "append": "-->"
+    },
+    "ts|tsx|js|jsx|css|scss|less|go": {
+      "prepend": "/*",
+      "eachLine": {
+        "prepend": " *  "
+      },
+      "append": " */"
+    }
+  },
+  "defaultFormat": {
+    "prepend": "/*",
+    "eachLine": {
+      "prepend": " *  "
+    },
+    "append": " */"
+  }
+}

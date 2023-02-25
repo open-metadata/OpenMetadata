@@ -1,16 +1,18 @@
 #!/bin/bash
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
+#
+# Copyright 2022 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-schema_directory='catalog-rest-service/src/main/resources/json/schema/'
+schema_directory='openmetadata-spec/src/main/resources/json/schema/'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated/'
 addLicensing(){
     dir=$1
@@ -18,7 +20,8 @@ addLicensing(){
     echo "$txt" > "$dir"
 }
 generateType(){
-    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types
+    echo "Generating type for $2"
+    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types > /dev/null 2>&1
     if [ -s $om_ui_directory$2 ]
     then
         addLicensing "$om_ui_directory$2"
@@ -32,10 +35,10 @@ getTypes(){
         rm -r $om_ui_directory
     fi
 
-    for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
+    for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/openmetadata-spec\/src\/main\/resources\/json\/schema\///g')
     do
         joblist=$(jobs | wc -l)
-        while (( ${joblist} >= 10 ))
+        while [ ${joblist} -ge 30 ]
             do
                 sleep 1
                 joblist=$(jobs | wc -l)

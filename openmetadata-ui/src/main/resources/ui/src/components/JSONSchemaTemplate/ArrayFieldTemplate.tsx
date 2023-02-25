@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/core';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
@@ -36,7 +37,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
             theme="primary"
             variant="contained"
             onClick={props.onAddClick}>
-            <FontAwesomeIcon icon="plus" />
+            <PlusOutlined />
           </Button>
         )}
       </div>
@@ -57,8 +58,8 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
               <SVGIcons
                 alt="delete"
                 icon={Icons.DELETE}
-                title="Delete"
-                width="14px"
+                title={t('label.delete')}
+                width="16px"
               />
             </button>
           )}

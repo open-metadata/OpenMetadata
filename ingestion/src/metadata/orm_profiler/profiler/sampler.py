@@ -12,15 +12,27 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Optional, Union
+from typing import Dict, Optional, Union, cast
 
-from sqlalchemy import inspect
+from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import (
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    TableData,
+)
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
+from metadata.orm_profiler.orm.registry import Dialects
+from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
+from metadata.utils.sqa_utils import (
+    build_query_filter,
+    dispatch_to_date_or_datetime,
+    get_partition_col_type,
+)
 
 RANDOM_LABEL = "random"
 
@@ -33,49 +45,80 @@ class Sampler:
 
     def __init__(
         self,
-        session: Session,
+        session: Optional[Session],
         table: DeclarativeMeta,
-        profile_sample: Optional[float] = None,
+        profile_sample_config: Optional[ProfileSampleConfig] = None,
+        partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
     ):
-        self.profile_sample = profile_sample
+        self.profile_sample = None
+        self.profile_sample_type = None
+        if profile_sample_config:
+            self.profile_sample = profile_sample_config.profile_sample
+            self.profile_sample_type = profile_sample_config.profile_sample_type
         self.session = session
         self.table = table
-
+        self._partition_details = partition_details
+        self._profile_sample_query = profile_sample_query
         self.sample_limit = 100
+        self._sample_rows = None
 
+    @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
-        return self.session.query(
-            self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
-        ).cte(f"{self.table.__tablename__}_rnd")
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            return (
+                self.session.query(
+                    self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+                )
+                .suffix_with(
+                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                    dialect=Dialects.Snowflake,
+                )
+                .cte(f"{self.table.__tablename__}_rnd")
+            )
+        table_query = self.session.query(self.table)
+        return (
+            self.session.query(
+                self.table,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+            )
+            .order_by(RANDOM_LABEL)
+            .limit(self.profile_sample)
+            .cte(f"{self.table.__tablename__}_rnd")
+        )
 
     def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
+        if self._profile_sample_query:
+            return self._fetch_sample_data_with_query_object()
 
         if not self.profile_sample:
-            # Use the full table
+            if self._partition_details:
+                return self._partitioned_table()
+
             return self.table
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
+        session_query = self.session.query(rnd)
 
         # Prepare sampled CTE
-        sampled = (
-            self.session.query(rnd)
-            .where(rnd.c.random <= self.profile_sample)
-            .cte(f"{self.table.__tablename__}_sample")
+        sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
+            f"{self.table.__tablename__}_sample"
         )
-
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sqa_sample_data(self) -> TableData:
         """
-        Use the sampler to retrieve 100 sample data rows
+        Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
         """
+        if self._profile_sample_query:
+            return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
@@ -87,8 +130,80 @@ class Sampler:
             .limit(self.sample_limit)
             .all()
         )
-
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
         )
+
+    def _fetch_sample_data_from_user_query(self) -> TableData:
+        """Returns a table data object using results from query execution"""
+        rnd = self.session.execute(f"{self._profile_sample_query}")
+        try:
+            columns = [col.name for col in rnd.cursor.description]
+        except AttributeError:
+            columns = list(rnd.keys())
+        return TableData(
+            columns=columns,
+            rows=[list(row) for row in rnd.fetchmany(100)],
+        )
+
+    def _fetch_sample_data_with_query_object(self) -> Query:
+        """Returns sql alchemy object to use when running profiling"""
+        return self.session.query(self.table).from_statement(
+            text(f"{self._profile_sample_query}")
+        )
+
+    def _partitioned_table(self) -> Query:
+        """Return the Query object for partitioned tables"""
+        self._partition_details = cast(
+            PartitionProfilerConfig, self._partition_details
+        )  # satisfying type checker
+        partition_field = self._partition_details.partitionColumnName
+
+        type_ = get_partition_col_type(
+            partition_field,
+            self.table.__table__.c,
+        )
+
+        if not self._partition_details.partitionValues:
+            sample = (
+                self.session.query(self.table)
+                .filter(
+                    build_query_filter(
+                        [
+                            (
+                                column(partition_field),
+                                "ge",
+                                dispatch_to_date_or_datetime(
+                                    self._partition_details.partitionInterval,
+                                    text(
+                                        self._partition_details.partitionIntervalUnit.value
+                                    ),
+                                    type_,
+                                ),
+                            )
+                        ],
+                        False,
+                    )
+                )
+                .subquery()
+            )
+            return aliased(self.table, sample)
+
+        sample = (
+            self.session.query(self.table)
+            .filter(
+                build_query_filter(
+                    [
+                        (
+                            column(partition_field),
+                            "in",
+                            self._partition_details.partitionValues,
+                        )
+                    ],
+                    False,
+                )
+            )
+            .subquery()
+        )
+        return aliased(self.table, sample)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,25 @@
  */
 
 import { Card } from 'antd';
-import { Post } from 'Models';
+import classNames from 'classnames';
+import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
+import {
+  Post,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
+import AnnouncementBadge from '../Shared/AnnouncementBadge';
+import TaskBadge from '../Shared/TaskBadge';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
+import './FeedListBody.less';
 
 const FeedListBody: FC<FeedListBodyProp> = ({
   updatedFeedList,
@@ -29,9 +42,17 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onViewMore,
   selectedThreadId,
   onConfirmation,
+  updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
+  const history = useHistory();
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
+  };
+
+  const onReplyThread = (id: string) => {
+    onThreadSelect(id);
+    onViewMore();
   };
 
   const getFeedEditor = (id: string) => {
@@ -47,29 +68,38 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
   const getThreadFooter = (
     postLength: number,
-    lastPost: Post,
     repliedUsers: Array<string>,
     replies: number,
-    threadId: string
+    threadId: string,
+    lastPost?: Post
   ) => {
-    return postLength > 1 ? (
-      <div className="tw-mb-2">
-        <div className="tw-ml-9 tw-flex">
-          <FeedCardFooter
-            isFooterVisible
-            lastReplyTimeStamp={lastPost?.postTs}
-            repliedUsers={repliedUsers}
-            replies={replies}
-            threadId={threadId}
-            onThreadSelect={(id: string) => {
-              onThreadIdSelect('');
-              onThreadSelect(id);
-              onViewMore();
-            }}
-          />
-        </div>
+    return (
+      <div className="tw-ml-9 tw-my-2">
+        {Boolean(lastPost) && <div className="tw-filter-seperator" />}
+        {postLength > 1 ? (
+          <div className="tw-flex tw-my-4">
+            <FeedCardFooter
+              isFooterVisible
+              lastReplyTimeStamp={lastPost?.postTs}
+              repliedUsers={repliedUsers}
+              replies={replies}
+              threadId={threadId}
+              onThreadSelect={(id: string) => {
+                onThreadIdSelect('');
+                onThreadSelect(id);
+                onViewMore();
+              }}
+            />
+          </div>
+        ) : null}
       </div>
-    ) : null;
+    );
+  };
+
+  const handleCardClick = (taskId: number, isTask: boolean) => {
+    if (isTask) {
+      history.push(getTaskDetailPath(String(taskId)));
+    }
   };
 
   return (
@@ -82,71 +112,90 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             postTs: feed.threadTs,
             from: feed.createdBy,
             id: feed.id,
-          };
-          const postLength = feed.posts.length;
-          const replies = feed.postsCount - 1;
-          const repliedUsers = feed.posts
-            .map((f) => f.from)
-            .slice(0, postLength >= 3 ? 2 : 1);
-          const lastPost = feed.posts[postLength - 1];
+            reactions: feed.reactions,
+          } as Post;
+          const isTask = isEqual(feed.type, ThreadType.Task);
+          const isAnnouncement = feed.type === ThreadType.Announcement;
+          const postLength = feed?.posts?.length || 0;
+          const replies = feed.postsCount ? feed.postsCount - 1 : 0;
+          const repliedUsers = [
+            ...new Set((feed?.posts || []).map((f) => f.from)),
+          ];
+          const repliedUniqueUsersList = repliedUsers.slice(
+            0,
+            postLength >= 3 ? 2 : 1
+          );
+          const lastPost = feed?.posts?.[postLength - 1];
 
           return (
             <Card
+              className={classNames(
+                'ant-card-feed relative m-t-md',
+                isTask || isAnnouncement ? 'p-t-xs' : '',
+                isTask
+                  ? 'task-feed-card'
+                  : isAnnouncement
+                  ? 'announcement-feed-card'
+                  : ''
+              )}
               key={`${index} - card`}
-              style={{
-                border: '1px rgb(221, 227, 234) solid',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-                marginRight: '4px',
-                marginLeft: '4px',
-              }}>
+              onClick={() =>
+                feed.task && handleCardClick(feed.task.id, isTask)
+              }>
+              {isTask && (
+                <TaskBadge status={feed.task?.status as ThreadTaskStatus} />
+              )}
+              {isAnnouncement && <AnnouncementBadge />}
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
+                  isThread
+                  announcementDetails={feed.announcement}
                   data-testid="main-message"
                   entityLink={feed.about}
                   feed={mainFeed}
+                  feedType={feed.type || ThreadType.Conversation}
                   isEntityFeed={isEntityFeed}
+                  taskDetails={feed.task}
+                  threadId={feed.id}
+                  updateThreadHandler={updateThreadHandler}
+                  onConfirmation={onConfirmation}
+                  onReply={() => onReplyThread(feed.id)}
                 />
                 {postLength > 0 ? (
                   <Fragment>
                     {getThreadFooter(
                       postLength,
-                      lastPost,
-                      repliedUsers,
+                      repliedUniqueUsersList,
                       replies,
-                      feed.id
+                      feed.id,
+                      lastPost
                     )}
                     <ActivityFeedCard
-                      className="tw-mb-6 tw-ml-9"
+                      className="tw-ml-9"
                       data-testid="latest-message"
-                      feed={lastPost}
+                      feed={lastPost as Post}
+                      feedType={feed.type || ThreadType.Conversation}
                       isEntityFeed={isEntityFeed}
                       threadId={feed.id}
+                      updateThreadHandler={updateThreadHandler}
                       onConfirmation={onConfirmation}
+                      onReply={() => toggleReplyEditor(feed.id)}
                     />
-                    <p
-                      className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
-                      data-testid="quick-reply"
-                      onClick={() => {
-                        toggleReplyEditor(feed.id);
-                      }}>
-                      Reply
-                    </p>
                     {getFeedEditor(feed.id)}
                   </Fragment>
-                ) : (
-                  <p
-                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-1 tw-mb-1"
-                    data-testid="replyInSidePanel"
-                    onClick={() => {
-                      onThreadSelect(feed.id);
-                      onViewMore();
-                    }}>
-                    Reply
-                  </p>
-                )}
+                ) : null}
               </div>
+              {feed.task && (
+                <div className="tw-border-t tw-border-main tw-py-1 tw-flex">
+                  <span className="tw-text-grey-muted">
+                    {t('label.assignee-plural')}:{' '}
+                  </span>
+                  <AssigneeList
+                    assignees={feed.task.assignees || []}
+                    className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                  />
+                </div>
+              )}
             </Card>
           );
         })}

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "outDir": "./build",
     "rootDir": "./src",
+    "baseUrl": "./src",
     "typeRoots": ["./src/@types", "./node_modules/@types"],
     "incremental": true,
     "target": "ES5",

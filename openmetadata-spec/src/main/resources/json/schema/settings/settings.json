@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/settings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Settings",
+  "description": "This schema defines the Settings. A Settings represents a generic Setting.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.settings.Settings",
+  "definitions": {
+    "settingType": {
+      "javaType": "org.openmetadata.schema.settings.SettingsType",
+      "description": "This schema defines all possible filters enum in OpenMetadata.",
+      "type": "string",
+      "enum": [
+        "authorizerConfiguration",
+        "authenticationConfiguration",
+        "jwtTokenConfiguration",
+        "elasticsearch",
+        "eventHandlerConfiguration",
+        "airflowConfiguration",
+        "fernetConfiguration",
+        "slackEventPublishers",
+        "secretsManagerConfiguration",
+        "sandboxModeEnabled",
+        "slackChat",
+        "taskNotificationConfiguration",
+        "testResultNotificationConfiguration"
+      ]
+    }
+  },
+  "properties": {
+    "config_type": {
+      "description": "Unique identifier that identifies an entity instance.",
+      "$ref": "#/definitions/settingType"
+    },
+    "config_value": {
+      "oneOf": [
+        {
+          "$ref": "../configuration/pipelineServiceClientConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/authenticationConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/authorizerConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/elasticSearchConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/eventHandlerConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/fernetConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/jwtTokenConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/taskNotificationConfiguration.json"
+        }
+
+      ]
+    }
+  },
+  "required": ["config_type"],
+  "additionalProperties": false
+}

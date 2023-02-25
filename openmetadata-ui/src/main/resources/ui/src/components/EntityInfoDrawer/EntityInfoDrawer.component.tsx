@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { CloseOutlined } from '@ant-design/icons';
+import { Divider, Drawer } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { useEffect, useState } from 'react';
+import { t } from 'i18next';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
-import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getServiceById } from 'rest/serviceAPI';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -32,9 +35,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
-import TagsViewer from '../tags-viewer/tags-viewer';
+import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
-import './EntityInfoDrawer.style.css';
+import './EntityInfoDrawer.style.less';
+
+type EntityData = Table | Pipeline | Dashboard | Topic;
 
 const EntityInfoDrawer = ({
   show,
@@ -42,13 +47,8 @@ const EntityInfoDrawer = ({
   selectedNode,
   isMainNode = false,
 }: LineageDrawerProps) => {
-  const [entityDetail, setEntityDetail] = useState<
-    Partial<Table> & Partial<Pipeline> & Partial<Dashboard> & Partial<Topic>
-  >(
-    {} as Partial<Table> &
-      Partial<Pipeline> &
-      Partial<Dashboard> &
-      Partial<Topic>
+  const [entityDetail, setEntityDetail] = useState<EntityData>(
+    {} as EntityData
   );
   const [serviceType, setServiceType] = useState<string>('');
 
@@ -63,17 +63,16 @@ const EntityInfoDrawer = ({
           'owner',
           'columns',
           'usageSummary',
-          'tableProfile',
+          'profile',
         ])
-          .then((res: AxiosResponse) => {
-            setEntityDetail(res.data);
-            setIsLoading(false);
-            setServiceType(res.data.serviceType);
+          .then((res) => {
+            setEntityDetail(res);
+            setServiceType(res.serviceType ?? '');
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while getting ${selectedNode.name} details`
+              t('server.entity-fetch-error', { entity: selectedNode.name })
             );
           })
           .finally(() => {
@@ -85,24 +84,24 @@ const EntityInfoDrawer = ({
       case EntityType.PIPELINE: {
         setIsLoading(true);
         getPipelineByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
-          .then((res: AxiosResponse) => {
-            getServiceById('pipelineServices', res.data.service?.id)
-              .then((serviceRes: AxiosResponse) => {
-                setServiceType(serviceRes.data.serviceType);
+          .then((res) => {
+            getServiceById('pipelineServices', res.service?.id)
+              .then((serviceRes) => {
+                setServiceType(serviceRes.serviceType ?? '');
               })
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while getting ${selectedNode.name} service`
+                  t('server.entity-fetch-error', { entity: selectedNode.name })
                 );
               });
-            setEntityDetail(res.data);
+            setEntityDetail(res);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while getting ${selectedNode.name} details`
+              t('server.entity-fetch-error', { entity: selectedNode.name })
             );
           })
           .finally(() => {
@@ -114,24 +113,24 @@ const EntityInfoDrawer = ({
       case EntityType.DASHBOARD: {
         setIsLoading(true);
         getDashboardByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
-          .then((res: AxiosResponse) => {
-            getServiceById('dashboardServices', res.data.service?.id)
-              .then((serviceRes: AxiosResponse) => {
-                setServiceType(serviceRes.data.serviceType);
+          .then((res) => {
+            getServiceById('dashboardServices', res.service?.id)
+              .then((serviceRes) => {
+                setServiceType(serviceRes.serviceType ?? '');
               })
               .catch((err: AxiosError) => {
                 showErrorToast(
                   err,
-                  `Error while getting ${selectedNode.name} service`
+                  t('server.entity-fetch-error', { entity: selectedNode.name })
                 );
               });
-            setEntityDetail(res.data);
+            setEntityDetail(res);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              `Error while getting ${selectedNode.name} details`
+              t('server.entity-fetch-error', { entity: selectedNode.name })
             );
           })
           .finally(() => {
@@ -146,13 +145,26 @@ const EntityInfoDrawer = ({
     }
   };
 
+  const entityInfo = useMemo(
+    () => getEntityOverview(selectedNode.type, entityDetail, serviceType),
+    [selectedNode.type, entityDetail, serviceType]
+  );
+
   useEffect(() => {
     fetchEntityDetail(selectedNode);
   }, [selectedNode]);
 
   return (
-    <div className={classNames('side-drawer', { open: show })}>
-      <header className="tw-flex tw-justify-between">
+    <Drawer
+      destroyOnClose
+      bodyStyle={{ padding: 16 }}
+      closable={false}
+      extra={<CloseOutlined onClick={onCancel} />}
+      getContainer={false}
+      headerStyle={{ padding: 16 }}
+      mask={false}
+      style={{ position: 'absolute' }}
+      title={
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(selectedNode.type)}</span>
           {getHeaderLabel(
@@ -162,36 +174,15 @@ const EntityInfoDrawer = ({
             isMainNode
           )}
         </p>
-        <div className="tw-flex">
-          <svg
-            className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
-            data-testid="closeDrawer"
-            fill="none"
-            stroke="#6B7280"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            onClick={() => onCancel(false)}>
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        </div>
-      </header>
-      <hr className="tw-mt-3 tw-border-separator" />
+      }
+      visible={show}>
       {isLoading ? (
         <Loader />
       ) : (
         <>
           <section className="tw-mt-1">
             <div className="tw-flex tw-flex-col">
-              {getEntityOverview(
-                selectedNode.type,
-                entityDetail,
-                serviceType
-              ).map((d) => {
+              {entityInfo.map((d) => {
                 return (
                   <div className="tw-py-1.5 tw-flex" key={d.name}>
                     {d.name && <span>{d.name}:</span>}
@@ -217,9 +208,9 @@ const EntityInfoDrawer = ({
               })}
             </div>
           </section>
-          <hr className="tw-mt-3 tw-border-separator" />
+          {entityInfo.length > 0 && <Divider />}
           <section className="tw-mt-1">
-            <span className="tw-text-grey-muted">Tags</span>
+            <span className="tw-text-grey-muted">{t('label.tag-plural')}</span>
             <div className="tw-flex tw-flex-wrap tw-pt-1.5">
               {getEntityTags(selectedNode.type, entityDetail).length > 0 ? (
                 <TagsViewer
@@ -227,24 +218,28 @@ const EntityInfoDrawer = ({
                   tags={getEntityTags(selectedNode.type, entityDetail)}
                 />
               ) : (
-                <p className="tw-text-xs tw-text-grey-muted">No Tags added</p>
+                <p className="tw-text-xs tw-text-grey-muted">
+                  {t('label.no-tags-added')}
+                </p>
               )}
             </div>
           </section>
-          <hr className="tw-mt-3 tw-border-separator" />
+          <Divider />
           <section className="tw-mt-1">
-            <span className="tw-text-grey-muted">Description</span>
+            <span className="tw-text-grey-muted">{t('label.description')}</span>
             <div>
               {entityDetail.description?.trim() ? (
                 <RichTextEditorPreviewer markdown={entityDetail.description} />
               ) : (
-                <p className="tw-text-xs tw-text-grey-muted">No description</p>
+                <p className="tw-text-xs tw-text-grey-muted">
+                  {t('label.no-description')}
+                </p>
               )}
             </div>
           </section>
         </>
       )}
-    </div>
+    </Drawer>
   );
 };
 

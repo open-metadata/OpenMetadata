@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,52 +11,97 @@
  *  limitations under the License.
  */
 
-import { FilterObject, SearchDataFunctionType, SearchResponse } from 'Models';
+import { DefaultOptionType } from 'antd/lib/select';
+import { SORT_ORDER } from 'enums/common.enum';
+import { JsonTree } from 'react-awesome-query-builder';
+import { SearchIndex } from '../../enums/search.enum';
+import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Table } from '../../generated/entity/data/table';
+import { Topic } from '../../generated/entity/data/topic';
+import { SearchResponse } from '../../interface/search.interface';
+import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
+import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 
 export type UrlParams = {
   searchQuery: string;
   tab: string;
 };
 
-export type ExploreSearchData = {
-  resSearchResults: SearchResponse;
-  resAggServiceType: SearchResponse;
-  resAggTier: SearchResponse;
-  resAggTag: SearchResponse;
-  resAggDatabase: SearchResponse;
-  resAggDatabaseSchema: SearchResponse;
-  resAggServiceName: SearchResponse;
-};
+export type ExploreSearchIndex =
+  | SearchIndex.TABLE
+  | SearchIndex.PIPELINE
+  | SearchIndex.DASHBOARD
+  | SearchIndex.MLMODEL
+  | SearchIndex.TOPIC;
+
+export type ExploreSearchIndexKey =
+  | 'TABLE'
+  | 'PIPELINE'
+  | 'DASHBOARD'
+  | 'MLMODEL'
+  | 'TOPIC';
+
+export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
-  tabCounts: {
-    table: number;
-    topic: number;
-    dashboard: number;
-    pipeline: number;
-    dbtModel: number;
-    mlModel: number;
-  };
-  searchText: string;
-  initialFilter?: FilterObject;
-  searchFilter?: FilterObject;
+  tabCounts?: SearchHitCounts;
+
+  searchResults?: SearchResponse<ExploreSearchIndex>;
+
+  advancedSearchJsonTree?: JsonTree;
+  onChangeAdvancedSearchJsonTree: (jsonTree: JsonTree | undefined) => void;
+  onChangeAdvancedSearchQueryFilter: (
+    queryFilter: Record<string, unknown> | undefined
+  ) => void;
+
+  postFilter?: FilterObject;
+  onChangePostFilter: (filter: FilterObject) => void;
+
+  searchIndex: ExploreSearchIndex;
+  onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
+
   sortValue: string;
-  tab: string;
-  error: string;
-  searchQuery: string;
+  onChangeSortValue: (sortValue: string) => void;
+
+  sortOrder: string;
+  onChangeSortOder: (sortOder: SORT_ORDER) => void;
+
   showDeleted: boolean;
-  searchResult: ExploreSearchData | undefined;
-  isFilterSelected: boolean;
-  fetchCount: () => void;
-  handleFilterChange: (data: FilterObject) => void;
-  handlePathChange: (path: string) => void;
-  handleSearchText: (text: string) => void;
-  updateTableCount: (count: number) => void;
-  updateTopicCount: (count: number) => void;
-  updateDashboardCount: (count: number) => void;
-  updatePipelineCount: (count: number) => void;
-  updateDbtModelCount: (count: number) => void;
-  updateMlModelCount: (count: number) => void;
-  fetchData: (value: SearchDataFunctionType[]) => void;
-  onShowDeleted: (checked: boolean) => void;
+  onChangeShowDeleted: (showDeleted: boolean) => void;
+
+  page?: number;
+  onChangePage?: (page: number) => void;
+
+  loading?: boolean;
+}
+
+export interface ExploreQuickFilterField {
+  key: string;
+  label: string;
+  value: SearchDropdownOption[] | undefined;
+}
+
+export interface ExploreQuickFilterProps {
+  index: SearchIndex;
+  field: ExploreQuickFilterField;
+  onFieldRemove: (value: string) => void;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+}
+
+export interface SearchInputProps {
+  options: DefaultOptionType[];
+  value: string | undefined;
+  handleChange: (value: string) => void;
+  handleSearch: (value: string) => void;
+  handleSelect: (value: string) => void;
+  handleClear: () => void;
+}
+
+export type EntityDetailsType = Table | Topic | Dashboard | Pipeline | Mlmodel;
+
+export interface EntityDetailsObjectInterface {
+  details: EntityDetailsType;
+  entityType: string;
 }

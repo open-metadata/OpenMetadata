@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/lookerConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LookerConnection",
+  "description": "Looker Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.LookerConnection",
+  "definitions": {
+    "lookerType": {
+      "description": "Looker service type",
+      "type": "string",
+      "enum": ["Looker"],
+      "default": "Looker"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/lookerType",
+      "default": "Looker"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "User's Client ID. This user should have privileges to read all the metadata in Looker.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "User's Client Secret.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL to the Looker instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "clientId", "clientSecret"]
+}

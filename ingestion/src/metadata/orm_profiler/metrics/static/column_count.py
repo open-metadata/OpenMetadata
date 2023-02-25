@@ -14,10 +14,35 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import inspect, literal
-from sqlalchemy.orm import DeclarativeMeta
+from typing import cast
 
-from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from sqlalchemy import inspect, literal
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.sql.functions import FunctionElement
+
+from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.orm_profiler.orm.registry import Dialects
+
+
+class ColunCountFn(FunctionElement):
+    name = __qualname__
+    inherit_cache = CACHE
+
+
+@compiles(ColunCountFn)
+def _(element, compiler, **kw):
+    return compiler.process(element.clauses, **kw)
+
+
+@compiles(ColunCountFn, Dialects.IbmDbSa)
+@compiles(ColunCountFn, Dialects.Db2)
+def _(element, compiler, **kw):
+    """Returns column count for db2 database and handles casting variables.
+    If casting is not provided for variables, db2 throws error.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"CAST({proc} AS BIGINT)"
 
 
 class ColumnCount(StaticMetric):
@@ -50,8 +75,18 @@ class ColumnCount(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if not hasattr(self, "table"):
             raise AttributeError(
                 "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
             )
-        return literal(len(inspect(self.table).c))
+        return ColunCountFn(literal(len(inspect(self.table).c)))
+
+    @_label
+    def df_fn(self, df=None):
+        """dataframe function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
+        return len(df.columns)

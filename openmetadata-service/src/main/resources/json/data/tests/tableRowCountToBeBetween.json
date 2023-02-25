@@ -1,0 +1,22 @@
+{
+  "name": "tableRowCountToBeBetween",
+  "fullyQualifiedName": "tableRowCountToBeBetween",
+  "displayName": "Table Row Count To Be Between",
+  "description": "This defines the test TableRowCountToBeBetween. Test the number of rows to between to two values.",
+  "entityType": "TABLE",
+  "testPlatforms": ["OpenMetadata"],
+  "parameterDefinition": [
+    {
+      "name": "minValue",
+      "displayName": "Min",
+      "description": "Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of column",
+      "dataType": "INT"
+    },
+    {
+      "name": "maxValue",
+      "displayName": "Max",
+      "description": "Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum number of column",
+      "dataType": "INT"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,55 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByTestId,
-  findByTestId,
-  fireEvent,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
-import { flatten } from 'lodash';
-import { FormattedGlossaryTermData, TagOption } from 'Models';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Column } from '../../generated/api/data/createTable';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Table } from '../../generated/entity/data/table';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
-import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
-import { fetchGlossaryTerms } from '../../utils/GlossaryUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
-import EntityTable from './EntityTable.component';
-
-const mockTableheader = [
-  {
-    Header: 'Name',
-    accessor: 'name',
-  },
-  {
-    Header: 'Type',
-    accessor: 'dataTypeDisplay',
-  },
-  {
-    Header: 'Data Quality',
-    accessor: 'columnTests',
-  },
-  {
-    Header: 'Description',
-    accessor: 'description',
-  },
-  {
-    Header: 'Tags',
-    accessor: 'tags',
-  },
-];
-
-const mockEntityFieldThreads = [
-  {
-    entityLink:
-      '<#E::table::bigquery_gcp.ecommerce.shopify.raw_product_catalog::columns::products::description>',
-    count: 1,
-    entityField: 'columns::products::description',
-  },
-];
+import EntityTableV1 from './EntityTable.component';
 
 const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
@@ -143,7 +102,7 @@ const mockEntityTableProp = {
       tags: [],
       ordinalPosition: 6,
     },
-  ] as ModifiedTableColumn[],
+  ] as Column[],
   searchText: '',
   hasEditAccess: false,
   joins: [],
@@ -162,7 +121,6 @@ const mockTagList = [
     id: 'tagCatId1',
     name: 'TagCat1',
     description: '',
-    categoryType: 'Classification',
     children: [
       {
         id: 'tagId1',
@@ -178,7 +136,6 @@ const mockTagList = [
     id: 'tagCatId2',
     name: 'TagCat2',
     description: '',
-    categoryType: 'Classification',
     children: [
       {
         id: 'tagId2',
@@ -209,25 +166,24 @@ const mockGlossaryList = [
   },
 ];
 
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
-}));
-
-jest.mock('../common/non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="tag-action">{children}</p>
-    ));
+jest.mock('../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
+
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest.fn().mockReturnValue(<p>EditorModal</p>),
 }));
-jest.mock('../tags-container/tags-container', () => {
+
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
     return (
       <>
@@ -238,269 +194,73 @@ jest.mock('../tags-container/tags-container', () => {
     );
   });
 });
-jest.mock('../tags-viewer/tags-viewer', () => {
+
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p>TagViewer</p>);
 });
-jest.mock('../tags/tags', () => {
+
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tag</p>);
 });
 
 jest.mock('../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map(
-      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-    );
+    return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
   }),
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
-      return category.children || [];
-    });
-    const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-      return tag?.fullyQualifiedName || '';
-    });
-
-    return tagList;
-  }),
+  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
 }));
 
 describe('Test EntityTable Component', () => {
-  it('Check if it has all child elements', async () => {
-    const { container } = render(<EntityTable {...mockEntityTableProp} />, {
+  it('Initially, Table should load', async () => {
+    render(<EntityTableV1 {...mockEntityTableProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const entityTable = await findByTestId(container, 'entity-table');
+    const entityTable = await screen.findByTestId('entity-table');
 
     expect(entityTable).toBeInTheDocument();
-
-    const tableHeader = await findByTestId(container, 'table-header');
-
-    expect(tableHeader).toBeInTheDocument();
-
-    for (let index = 0; index < mockTableheader.length; index++) {
-      const headerValue = mockTableheader[index];
-
-      const header = await findByTestId(tableHeader, `${headerValue.accessor}`);
-
-      expect(header).toBeInTheDocument();
-    }
-
-    const tableBody = await findByTestId(container, 'table-body');
-
-    expect(tableBody).toBeInTheDocument();
-
-    const tableRows = await findAllByTestId(tableBody, 'row');
-
-    expect(tableRows).toHaveLength(mockEntityTableProp.tableColumns.length);
   });
 
   it('should render request description button', async () => {
-    const { container } = render(<EntityTable {...mockEntityTableProp} />, {
+    render(<EntityTableV1 {...mockEntityTableProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const entityTable = await findByTestId(container, 'entity-table');
+    const entityTable = await screen.findByTestId('entity-table');
 
     expect(entityTable).toBeInTheDocument();
 
-    const tableBody = await findByTestId(container, 'table-body');
-
-    expect(tableBody).toBeInTheDocument();
-
-    const tableRows = await findAllByTestId(tableBody, 'row');
-
-    const requestDescriptionButton = await findByTestId(
-      tableRows[0],
+    const requestDescriptionButton = await screen.findAllByTestId(
       'request-description'
     );
 
-    expect(requestDescriptionButton).toBeInTheDocument();
-
-    fireEvent.click(
-      requestDescriptionButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onEntityFieldSelect).toBeCalled();
-
-    const descriptionThread = queryByTestId(tableRows[0], 'field-thread');
-    const startDescriptionThread = queryByTestId(
-      tableRows[0],
-      'start-field-thread'
-    );
-
-    // should not be in the document, as request description button is present
-    expect(descriptionThread).not.toBeInTheDocument();
-    expect(startDescriptionThread).not.toBeInTheDocument();
+    expect(requestDescriptionButton[0]).toBeInTheDocument();
   });
 
   it('Should render start thread button', async () => {
-    const { container } = render(<EntityTable {...mockEntityTableProp} />, {
+    render(<EntityTableV1 {...mockEntityTableProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const entityTable = await findByTestId(container, 'entity-table');
+    const entityTable = await screen.findByTestId('entity-table');
 
     expect(entityTable).toBeInTheDocument();
 
-    const tableBody = await findByTestId(container, 'table-body');
-
-    expect(tableBody).toBeInTheDocument();
-
-    const tableRows = await findAllByTestId(tableBody, 'row');
-
-    const startThreadButton = await findByTestId(
-      tableRows[4],
+    const startThreadButton = await screen.findAllByTestId(
       'start-field-thread'
     );
 
-    expect(startThreadButton).toBeInTheDocument();
+    expect(startThreadButton[0]).toBeInTheDocument();
 
     fireEvent.click(
-      startThreadButton,
+      startThreadButton[0],
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
-  });
-
-  it('Should render thread button with count', async () => {
-    const { container } = render(
-      <EntityTable
-        {...mockEntityTableProp}
-        entityFieldThreads={mockEntityFieldThreads}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const entityTable = await findByTestId(container, 'entity-table');
-
-    expect(entityTable).toBeInTheDocument();
-
-    const tableBody = await findByTestId(container, 'table-body');
-
-    expect(tableBody).toBeInTheDocument();
-
-    const tableRows = await findAllByTestId(tableBody, 'row');
-
-    const threadButton = await findByTestId(tableRows[1], 'field-thread');
-
-    expect(threadButton).toBeInTheDocument();
-
-    fireEvent.click(
-      threadButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onThreadLinkSelect).toBeCalled();
-
-    const threadCount = await findByTestId(threadButton, 'field-thread-count');
-
-    expect(threadCount).toBeInTheDocument();
-
-    expect(threadCount).toHaveTextContent(
-      String(mockEntityFieldThreads[0].count)
-    );
-  });
-
-  it('Check if tags and glossary-terms are present', async () => {
-    const { getAllByTestId, findAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(tagWrapper);
-
-    const tag1 = await findAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(mockEntityTableProp.tableColumns.length);
-    expect(glossaryTerm1).toHaveLength(mockEntityTableProp.tableColumns.length);
-  });
-
-  it('Check if only tags are present', async () => {
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getAllByTestId, findAllByText, queryAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = await findAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(mockEntityTableProp.tableColumns.length);
-    expect(glossaryTerm1).toHaveLength(0);
-  });
-
-  it('Check if only glossary terms are present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getAllByTestId, findAllByText, queryAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = queryAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(0);
-    expect(glossaryTerm1).toHaveLength(mockEntityTableProp.tableColumns.length);
-  });
-
-  it('Check that tags and glossary terms are not present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getAllByTestId, queryAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = queryAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(0);
-    expect(glossaryTerm1).toHaveLength(0);
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 });

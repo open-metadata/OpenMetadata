@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,7 +48,15 @@ afterAll(() => {
 
 describe('Test ProfilePicture component', () => {
   it('ProfilePicture component should render with Avatar', async () => {
-    const { container } = render(<ProfilePicture {...mockData} />);
+    const { container } = render(
+      <ProfilePicture
+        {...mockData}
+        className=""
+        textClass=""
+        type="square"
+        width="36"
+      />
+    );
 
     const avatar = await findByText(container, 'Avatar');
 

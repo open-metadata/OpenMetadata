@@ -10,18 +10,16 @@
 #  limitations under the License.
 
 """
-Ingest utility for the metadata CLI
+Profiler utility for the metadata CLI
 """
 import pathlib
 import sys
 import traceback
 
-import click
-from pydantic import ValidationError
-
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 from metadata.utils.logger import cli_logger
+from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 
@@ -29,22 +27,23 @@ logger = cli_logger()
 def run_ingest(config_path: str) -> None:
     """
     Run the ingestion workflow from a config path
-    to a JSON file
+    to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
     config_file = pathlib.Path(config_path)
-    config_dict = load_config_file(config_file)
-
+    config_dict = None
     try:
-        logger.debug(f"Using config: {config_dict}")
+        config_dict = load_config_file(config_file)
         workflow = Workflow.create(config_dict)
-    except ValidationError as e:
-        click.echo(e, err=True)
+        logger.debug(f"Using config: {workflow.config}")
+    except Exception as exc:
         logger.debug(traceback.format_exc())
+        print_init_error(exc, config_dict, WorkflowType.INGEST)
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    ret = workflow.print_status()
+    workflow.print_status()
+    ret = workflow.result_status()
     sys.exit(ret)

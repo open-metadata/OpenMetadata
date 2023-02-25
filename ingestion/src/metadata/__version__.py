@@ -8,24 +8,59 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Module for getting versions of OpenMetadata and python
+"""
 
 import os
+import re
 import sys
 
-import pkg_resources
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
 
-version = pkg_resources.require("openmetadata-ingestion")[0].version
+
+class VersionParsingException(Exception):
+    """
+    Used when we cannot parse version information from a string
+    """
+
+
+def get_version_from_string(raw_version: str) -> str:
+    """
+    Given a raw version string, such as `0.10.1.dev0` or
+    `0.11.0-SNAPSHOT`, we should extract the major.minor.patch
+    :param raw_version: raw string with version info
+    :return: Clean version string
+    """
+    try:
+        return re.match(r"\d+.\d+.\d+", raw_version).group(0)
+    except AttributeError as err:
+        raise VersionParsingException(
+            f"Can't extract version from {raw_version}: {err}"
+        )
+
+
+def get_client_version() -> str:
+    """
+    Get openmetadata-ingestion module version
+    :return: client version
+    """
+    raw_version = version("openmetadata-ingestion")
+    return get_version_from_string(raw_version)
 
 
 def get_metadata_version() -> str:
+    """
+    Return the OpenMetadata version
+    """
+
     metadata_pkg_dir = os.path.join(os.path.dirname(__file__), "..", "..")
     metadata_pkg_dir = os.path.abspath(metadata_pkg_dir)
 
-    return "metadata {} from {} (python {})".format(
-        version,
-        metadata_pkg_dir,
-        get_major_minor_version(),
-    )
+    return f"metadata {get_client_version()} from {metadata_pkg_dir} (python {get_major_minor_version()})"
 
 
 def get_major_minor_version() -> str:
@@ -33,4 +68,5 @@ def get_major_minor_version() -> str:
     Return the major-minor version of the current Python as a string, e.g.
     "3.7" or "3.10".
     """
-    return "{}.{}".format(*sys.version_info)
+    major, minor, *_ = sys.version_info
+    return f"{major}.{minor}"

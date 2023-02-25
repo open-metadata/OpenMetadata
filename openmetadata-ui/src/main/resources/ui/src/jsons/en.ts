@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,9 +21,11 @@ const jsonData = {
     'add-column-test-error': 'Error while adding column test!',
     'add-ingestion-error': 'Error while adding ingestion workflow!',
     'add-service-error': 'Error while adding service!',
+    'add-settings-error': 'Error while adding settings',
 
     'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
+    'create-bot-error': 'Error while creating bot!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
     'create-role-error': 'Error While creating role!',
@@ -47,6 +49,12 @@ const jsonData = {
     'delete-user-error': 'Error while deleting user!',
     'delete-tag-category-error': 'Error while deleting tag category!',
     'delete-tag-error': 'Error while deleting tag!',
+
+    'email-verification-err':
+      'An email could not be sent for verification. Please contact your Administrator.',
+
+    'forgot-password-email-err':
+      'There is some issue in sending the mail. Please contact your Administrator.',
 
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
@@ -84,6 +92,7 @@ const jsonData = {
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
     'fetch-logged-in-user-error': 'Error while fetching logged-in user!',
+    'fetch-notifications-error': 'Error occurred while fetching notifications',
     'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
     'fetch-pipeline-status-error': 'Error while fetching pipeline status!',
     'fetch-policy-error': 'Error while fetching policy details!',
@@ -108,6 +117,13 @@ const jsonData = {
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
     'fetch-users-error': 'Error while fetching users!',
+    'fetch-table-profiler-config-error':
+      'Error while fetching table profiler config!',
+    'fetch-column-test-error': 'Error while fetching column test case!',
+    'fetch-entity-permissions-error': 'Unable to get permission for entity.',
+    'fetch-test-suite-error': 'Error while fetching test suite',
+    'fetch-test-cases-error': 'Error while fetching test cases',
+    'fetch-entity-details-error': 'Error while fetching entity.',
 
     'test-connection-error': 'Error while testing connection!',
 
@@ -123,6 +139,7 @@ const jsonData = {
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-owner-error': 'Error while updating owner',
+    'remove-owner-error': 'Error while removing owner',
     'update-role-error': 'Error while updating role!',
     'update-service-config-error': 'Error while updating ingestion workflow',
     'update-tags-error': 'Error while updating tags!',
@@ -134,15 +151,24 @@ const jsonData = {
       'Error while updating the admin user profile!',
     'update-service-error': 'Error while updating service!',
     'update-reviewer-error': 'Error while updating reviewer!',
+    'update-profiler-config-error': 'Error while updating profiler config!',
 
     'feed-post-error': 'Error while posting the message!',
 
     'join-team-error': 'Error while joining the team!',
     'leave-team-error': 'Error while leaving the team!',
+    'update-test-suite-error': 'Error while updating test suite',
+
+    'fetch-settings': 'Error while fetching settings',
+    'email-not-found': 'User with the given email address does not exist!',
+    'email-found': 'User with the given email address already exists!',
+    'unauthorized-user': 'UnAuthorized user! please check email or password',
+    'fetch-re-index-all': 'Error while fetching re index data!',
+    'update-re-index-all': 'Error while re indexing!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
-
+    'add-settings-success': 'Settings added successfully!',
     'join-team-success': 'Team joined successfully!',
     'leave-team-success': 'Left the team successfully!',
 
@@ -152,16 +178,31 @@ const jsonData = {
     'delete-glossary-success': 'Glossary deleted successfully!',
     'delete-glossary-term-success': 'Glossary term deleted successfully!',
     'test-connection-success': 'Connection tested successfully!',
+
+    'user-restored-success': 'User restored successfully!',
+
+    'update-profile-congif-success': 'Profile config updated successfully!',
+    'update-test-case-success': 'Test case updated successfully!',
+    'update-webhook-success': 'Webhook updated successfully!',
+    'create-user-account': 'User account created successfully!',
+    'reset-password-success': 'Password reset successfully!',
+    'account-verify-success': 'Email verified successfully!',
+    'update-password-success': 'Password updated successfully!',
+    'fetch-re-index-all': 'Re-index started',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
     'invalid-url': 'Url is invalid.',
     'is-required': 'is required',
+    'email-is-in-use': 'Email is already in use!',
   },
   label: {
     'delete-entity-text':
       'Once you delete this entity, it will be removed permanently.',
+    'email-confirmation':
+      'Please confirm your email, confirmation has been sent to your email',
+    'special-character-error': 'Special character is not allowed!',
   },
   message: {
     'no-services': 'No services',

@@ -18,7 +18,11 @@ from typing import Tuple
 
 import dateutil.parser
 
+from metadata.utils.logger import ometa_logger
+
 Credentials = Tuple[str, str, str]
+
+logger = ometa_logger()
 
 
 class URL(str):
@@ -70,8 +74,8 @@ class DATE(str):
         try:
             dateutil.parser.parse(value)
         except Exception as exc:
-            msg = f"{value} is not a valid date string"
-            raise Exception(msg) from exc
+            msg = f"{value} is not a valid date string: {exc}"
+            raise ValueError(msg)
 
         return str.__new__(cls, value)
 

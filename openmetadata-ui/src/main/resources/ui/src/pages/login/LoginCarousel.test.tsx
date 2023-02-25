@@ -1,42 +1,64 @@
-import { findAllByTestId, findByTestId, render } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { act, render, screen } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { LOGIN_SLIDE } from '../../constants/login.const';
+import { LOGIN_SLIDE } from '../../constants/Login.constants';
 import LoginCarousel from './LoginCarousel';
 
-jest.mock('react-slick', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="react-slick">{children}</div>
-    ));
-});
-
 describe('Test LoginCarousel component', () => {
-  it('LoginCarousel component should render properly', async () => {
-    const { container } = render(<LoginCarousel />, {
-      wrapper: MemoryRouter,
+  it('renders the carousel container', () => {
+    render(<LoginCarousel />);
+
+    expect(screen.getByTestId('carousel-container')).toBeInTheDocument();
+  });
+
+  it('renders a carousel with the correct number of slides', async () => {
+    await act(async () => {
+      render(<LoginCarousel />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    const reactSlick = await findByTestId(container, 'react-slick');
-    const carouselContainer = await findByTestId(
-      container,
-      'carousel-container'
-    );
-    const sliderContainer = await findAllByTestId(
-      container,
-      'slider-container'
-    );
-    const descriptions = await findAllByTestId(
-      container,
-      'carousel-slide-description'
+    const sliderContainers = await screen.findAllByTestId('slider-container');
+
+    const slides = sliderContainers.map(
+      (slider) => slider.parentElement?.parentElement as HTMLElement
     );
 
-    expect(reactSlick).toBeInTheDocument();
-    expect(carouselContainer).toBeInTheDocument();
-    expect(sliderContainer.length).toBe(LOGIN_SLIDE.length);
-    expect(descriptions.map((d) => d.textContent)).toEqual(
-      LOGIN_SLIDE.map((d) => d.description)
+    const slackList = slides.filter(
+      (slide) => !slide.classList.contains('slick-cloned')
     );
+
+    expect(slackList).toHaveLength(LOGIN_SLIDE.length);
+  });
+
+  it('renders the correct slide description for each slide', async () => {
+    await act(async () => {
+      render(<LoginCarousel />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const slideDescriptions = await screen.findAllByTestId(
+      'carousel-slide-description'
+    );
+    const descriptions = LOGIN_SLIDE.map((d) => `message.${d.descriptionKey}`);
+    slideDescriptions.forEach((description) => {
+      expect(
+        descriptions.includes(description.textContent as string)
+      ).toBeTruthy();
+    });
   });
 });

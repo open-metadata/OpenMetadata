@@ -1,0 +1,27 @@
+source:
+  type: tableau
+  serviceName: local_tableau
+  serviceConnection:
+    config:
+      type: Tableau
+      username: username
+      password: password
+      env: tableau_prod
+      hostPort: http://localhost
+      siteName: site_name
+      siteUrl: site_url
+      apiVersion: api_version
+      personalAccessTokenName: personal_access_token_name
+      personalAccessTokenSecret: personal_access_token_secret
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

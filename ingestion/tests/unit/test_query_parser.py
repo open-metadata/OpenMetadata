@@ -10,97 +10,259 @@
 #  limitations under the License.
 
 """
-Query parser utils tests
+Validate query parser logic
 """
-import json
+
 from unittest import TestCase
 
-from metadata.ingestion.api.workflow import Workflow
+from sqllineage.core.models import Column
 
-config = """
-{
-  "source": {
-    "type": "sample-usage",
-    "serviceName": "sample_data",
-    "serviceConnection": {
-      "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "ingestion/examples/sample_data"
-      }
-    },
-    "sourceConfig": {
-      "config":{
-        "type": "DatabaseUsage"
-      }
-      
-    }
-  },
-  "processor": {
-    "type": "query-parser",
-    "config": {
-    }
-  },
-  "stage": {
-    "type": "table-usage",
-    "config": {
-      "filename": "/tmp/sample_usage"
-    }
-  },
-  "bulkSink": {
-    "type": "metadata-usage",
-    "config": {
-      "filename": "/tmp/sample_usage"
-    }
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
-"""
+from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
+from metadata.ingestion.lineage.parser import LineageParser
 
 
-class QueryParserTest(TestCase):
-    def test_join_count(self):
+class QueryParserTests(TestCase):
+    """
+    Check methods from query_parser.py
+    """
+
+    query = col_lineage = """
+        SELECT
+          a.col1,
+          a.col2 + b.col2 AS col2,
+          case 
+            when col1 = 3 then 'hello'
+            else 'bye'
+          end as new_col
+        FROM foo a
+        JOIN db.grault b
+          ON a.col1 = b.col1
+        JOIN db.holis c
+          ON a.col1 = c.abc
+        JOIN db.random d
+          ON a.col2 = d.col2
+        WHERE a.col3 = 'abc'
+    """
+
+    parser = LineageParser(col_lineage)
+
+    def test_involved_tables(self):
+        tables = {str(table) for table in self.parser.involved_tables}
+        self.assertEqual(
+            tables, {"db.grault", "db.holis", "<default>.foo", "db.random"}
+        )
+
+    def test_clean_parser_table_list(self):
+        clean_tables = set(self.parser.clean_table_list)
+        self.assertEqual(clean_tables, {"db.grault", "db.holis", "foo", "db.random"})
+
+    def test_bracketed_parser_table_list(self):
+        parser = LineageParser(
+            "create view [test_schema].[test_view] as select * from [test_table];"
+        )
+        clean_tables = set(parser.clean_table_list)
+        self.assertEqual(clean_tables, {"test_schema.test_view", "test_table"})
+
+    def test_parser_table_aliases(self):
+        aliases = self.parser.table_aliases
+        self.assertEqual(
+            aliases, {"b": "db.grault", "c": "db.holis", "a": "foo", "d": "db.random"}
+        )
+
+    def test_get_table_joins(self):
         """
-        Check the join count
+        main logic point
         """
-        expected_result = {
-            "shopify.dim_address": 200,
-            "shopify.shop": 300,
-            "shopify.dim_customer": 250,
-            "dim_customer": 76,
-            "shopify.dim_location": 150,
-            "dim_location.shop_id": 50,
-            "shop": 56,
-            "shop_id": 50,
-            "shopify.dim_staff": 150,
-            "shopify.fact_line_item": 200,
-            "shopify.fact_order": 310,
-            "shopify.product": 10,
-            "shopify.fact_sale": 520,
-            "dim_address": 24,
-            "api": 4,
-            "dim_location": 8,
-            "product": 32,
-            "dim_staff": 10,
-            "fact_line_item": 34,
-            "fact_order": 30,
-            "fact_sale": 54,
-            "fact_session": 62,
-            "raw_customer": 20,
-            "raw_order": 26,
-            "raw_product_catalog": 12,
-        }
-        workflow = Workflow.create(json.loads(config))
-        workflow.execute()
-        for table_name, expected_count in expected_result.items():
-            try:
-                self.assertEqual(
-                    workflow.stage.table_usage[table_name].count, expected_count
-                )
-            except KeyError as err:
-                self.assertTrue(False)
-        workflow.stop()
+        joins = self.parser.table_joins
+
+        self.assertEqual(
+            joins["foo"],
+            [
+                TableColumnJoin(
+                    tableColumn=TableColumn(table="foo", column="col1"),
+                    joinedWith=[
+                        TableColumn(table="db.grault", column="col1"),
+                        TableColumn(table="db.holis", column="abc"),
+                    ],
+                ),
+                TableColumnJoin(
+                    tableColumn=TableColumn(table="foo", column="col2"),
+                    joinedWith=[
+                        TableColumn(table="db.random", column="col2"),
+                    ],
+                ),
+            ],
+        )
+
+    def test_capitals(self):
+        """
+        Example on how LineageRunner keeps capitals
+        for column names
+        """
+
+        query = """
+         SELECT
+           USERS.ID,
+           li.id
+        FROM TESTDB.PUBLIC.USERS
+        JOIN testdb.PUBLIC."lowercase_users" li
+          ON USERS.id = li.ID
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        joins = parser.table_joins
+
+        self.assertEqual(
+            joins["testdb.public.users"],
+            [
+                TableColumnJoin(
+                    tableColumn=TableColumn(
+                        table="testdb.public.users", column="id"
+                    ),  # lowercase col
+                    joinedWith=[
+                        TableColumn(
+                            table="testdb.public.lowercase_users", column="ID"
+                        ),  # uppercase col
+                    ],
+                ),
+            ],
+        )
+
+    def test_clean_raw_query_copy_grants(self):
+        """
+        Validate COPY GRANT query cleaning logic
+        """
+        query = "create or replace view my_view copy grants as select * from my_table"
+        self.assertEqual(
+            LineageParser.clean_raw_query(query),
+            "create or replace view my_view as select * from my_table",
+        )
+
+    def test_clean_raw_query_merge_into(self):
+        """
+        Validate MERGE INTO query cleaning logic
+        """
+        query = """
+            /* comment */ merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
+            when not matched then insert (table_1.a, table_2.b) values ('value1', 'value2')
+        """
+        self.assertEqual(
+            LineageParser.clean_raw_query(query),
+            "/* comment */ merge into table_1 using (select a, b from table_2)",
+        )
+
+    def test_clean_raw_query_copy_from(self):
+        """
+        Validate COPY FROM query cleaning logic
+        """
+        query = "COPY my_schema.my_table FROM 's3://bucket/path/object.csv';"
+        self.assertEqual(
+            LineageParser.clean_raw_query(query),
+            None,
+        )
+
+    def test_ctes_column_lineage(self):
+        """
+        Validate we obtain information from Comon Table Expressions
+        """
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+         WITH cte_table AS (
+           SELECT
+             USERS.ID,
+             USERS.NAME
+           FROM TESTDB.PUBLIC.USERS
+        ),
+        cte_table2 AS (
+           SELECT
+              ID,
+              NAME
+           FROM cte_table
+        )        
+        SELECT 
+          ID,
+          NAME
+        FROM cte_table2
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        tables = {str(table) for table in parser.source_tables}
+        self.assertEqual(tables, {"testdb.public.users"})
+        self.assertEqual(
+            parser.column_lineage,
+            [
+                (
+                    Column("testdb.public.users.id"),
+                    Column("cte_table.id"),
+                    Column("cte_table2.id"),
+                    Column("testdb.public.target.id"),
+                ),
+                (
+                    Column("testdb.public.users.name"),
+                    Column("cte_table.name"),
+                    Column("cte_table2.name"),
+                    Column("testdb.public.target.name"),
+                ),
+            ],
+        )
+
+    def test_table_with_single_comment(self):
+        """
+        Validate we obtain information from Comon Table Expressions
+        """
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        SELECT
+            ID,
+            -- A comment here
+            NAME
+        FROM TESTDB.PUBLIC.USERS
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, {"testdb.public.users", "testdb.public.target"})
+        self.assertEqual(
+            parser.column_lineage,
+            [
+                (Column("testdb.public.users.id"), Column("testdb.public.target.id")),
+                (
+                    Column("testdb.public.users.name"),
+                    Column("testdb.public.target.name"),
+                ),
+            ],
+        )
+
+    def test_table_with_aliases(self):
+        """
+        Validate we obtain information from Comon Table Expressions
+        """
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        SELECT
+            ID AS new_identifier,
+            NAME new_name
+        FROM TESTDB.PUBLIC.USERS
+        ;
+        """
+
+        parser = LineageParser(query)
+
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, {"testdb.public.users", "testdb.public.target"})
+        self.assertEqual(
+            parser.column_lineage,
+            [
+                (
+                    Column("testdb.public.users.id"),
+                    Column("testdb.public.target.new_identifier"),
+                ),
+                (
+                    Column("testdb.public.users.name"),
+                    Column("testdb.public.target.new_name"),
+                ),
+            ],
+        )

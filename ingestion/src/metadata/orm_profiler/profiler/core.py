@@ -12,31 +12,41 @@
 """
 Main Profile definition and queries to execute
 """
+from __future__ import annotations
+
 import traceback
-from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
+from datetime import datetime, timezone
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
 from pydantic import ValidationError
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
-from sqlalchemy.orm.util import AliasedClass
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    ColumnProfilerConfig,
+    SystemProfile,
+    TableProfile,
+)
+from metadata.interfaces.profiler_protocol import ProfilerProtocol
+from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
+    MetricTypes,
     QueryMetric,
     StaticMetric,
+    SystemMetric,
     TMetric,
 )
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import profiler_logger
-from metadata.utils.timeout import cls_timeout
 
 logger = profiler_logger()
 
@@ -53,70 +63,48 @@ class Profiler(Generic[TMetric]):
     Core Profiler.
 
     A profiler is composed of:
-    - A session, used to run the queries against.
+    - A profiler_interface, used to run the profiler against a source.
     - An ORM Table. One profiler attacks one table at a time.
     - A tuple of metrics, from which we will construct queries.
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods
-
     def __init__(
         self,
         *metrics: Type[TMetric],
-        session: Session,
-        table: DeclarativeMeta,
-        profile_date: datetime = datetime.now(),
-        ignore_cols: Optional[List[str]] = None,
-        use_cols: Optional[List[Column]] = None,
-        profile_sample: Optional[float] = None,
-        timeout_seconds: Optional[int] = TEN_MIN,
+        profiler_interface: ProfilerProtocol,
+        profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,
+        exclude_columns: Optional[List[str]] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
-        :param session: Where to run the queries
+        :param profiler_interface: Where to run the queries
         :param table: DeclarativeMeta containing table info
         :param ignore_cols: List of columns to ignore when computing the profile
         :param profile_sample: % of rows to use for sampling column metrics
         """
 
-        if not isinstance(table, DeclarativeMeta):
-            raise ValueError(f"Table {table} should be a DeclarativeMeta.")
-
-        self._session = session
-        self._table = table
+        self.profiler_interface = profiler_interface
+        self.include_columns = include_columns
+        self.exclude_columns = exclude_columns
         self._metrics = metrics
-        self._ignore_cols = ignore_cols
-        self._use_cols = use_cols
-        self._profile_sample = profile_sample
         self._profile_date = profile_date
+        self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.validate_composed_metric()
 
         # Initialize profiler results
         self._table_results: Dict[str, Any] = {}
         self._column_results: Dict[str, Any] = {}
+        self._system_results: Optional[List[Dict]] = []
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
-
-        # We will compute the sample from the property
-        self._sampler = Sampler(
-            session=session, table=table, profile_sample=profile_sample
-        )
-        self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
-
-        # Prepare a timeout controlled query runner
-        self.runner: QueryRunner = cls_timeout(timeout_seconds)(
-            QueryRunner(session=session, table=table, sample=self.sample)
-        )
-
-    @property
-    def session(self) -> Session:
-        return self._session
+        self.data_frame_list = None
 
     @property
     def table(self) -> DeclarativeMeta:
-        return self._table
+        return self.profiler_interface.table
 
     @property
     def metrics(self) -> Tuple[Type[TMetric], ...]:
@@ -124,7 +112,7 @@ class Profiler(Generic[TMetric]):
 
     @property
     def ignore_cols(self) -> List[str]:
-        return self._ignore_cols
+        return self._get_excluded_columns()
 
     @property
     def use_cols(self) -> List[Column]:
@@ -135,7 +123,7 @@ class Profiler(Generic[TMetric]):
         instead of picking up all table's columns
         and ignoring the specified ones.
         """
-        return self._use_cols
+        return self._get_included_columns()
 
     @property
     def profile_date(self) -> datetime:
@@ -148,23 +136,69 @@ class Profiler(Generic[TMetric]):
         by skipping the columns to ignore.
         """
 
-        if self.use_cols:
-            return self.use_cols
+        if self._columns:
+            return self._columns
 
-        ignore = self.ignore_cols if self.ignore_cols else {}
-
-        if not self._columns:
+        if self._get_included_columns():
             self._columns = [
-                column for column in inspect(self.table).c if column.name not in ignore
+                column
+                for column in self.profiler_interface.get_columns()
+                if column.name in self._get_included_columns()
+            ]
+
+        if not self._get_included_columns():
+            self._columns = [
+                column
+                for column in self._columns or self.profiler_interface.get_columns()
+                if column.name not in self._get_excluded_columns()
             ]
 
         return self._columns
+
+    def _get_excluded_columns(self) -> Optional[Set[str]]:
+        """Get excluded  columns for table being profiled"""
+        if self.exclude_columns:
+            return set(self.exclude_columns)
+        return {}
+
+    def _get_included_columns(self) -> Optional[Set[str]]:
+        """Get include columns for table being profiled"""
+        if self.include_columns:
+            return {include_col.columnName for include_col in self.include_columns}
+        return {}
 
     def _filter_metrics(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
         """
         Filter metrics by type
         """
         return [metric for metric in self.metrics if issubclass(metric, _type)]
+
+    def _check_profile_and_handle(
+        self, profile: CreateTableProfileRequest
+    ) -> CreateTableProfileRequest:
+        """Check if the profile data are empty. if empty then raise else return
+
+        Args:
+            profile (CreateTableProfileRequest): profile data
+
+        Raises:
+            Exception: that will be caught in the workflow and add the entity to failure source and processor status
+
+        Returns:
+            CreateTableProfileRequest:
+        """
+        for attrs, val in profile.tableProfile:
+            if attrs not in {"timestamp", "profileSample", "profileSampleType"} and val:
+                return profile
+
+        for col_element in profile.columnProfile:
+            for attrs, val in col_element:
+                if attrs not in {"timestamp", "name"} and val:
+                    return profile
+
+        raise RuntimeError(
+            f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
+        )
 
     @property
     def static_metrics(self) -> List[Type[StaticMetric]]:
@@ -182,19 +216,46 @@ class Profiler(Generic[TMetric]):
     def query_metrics(self) -> List[Type[QueryMetric]]:
         return self._filter_metrics(QueryMetric)
 
-    @staticmethod
-    def get_col_metrics(metrics: List[Type[TMetric]]) -> List[Type[TMetric]]:
+    @property
+    def system_metrics(self) -> List[Type[SystemMetric]]:
+        return self._filter_metrics(SystemMetric)
+
+    def get_col_metrics(
+        self, metrics: List[Type[TMetric]], column: Optional[Column] = None
+    ) -> List[Type[TMetric]]:
         """
         Filter list of metrics for column metrics with allowed types
         """
+
+        if column is None:
+            return [metric for metric in metrics if metric.is_col_metric()]
+
+        if (
+            self.profiler_interface.table_entity.tableProfilerConfig
+            and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+        ):
+            metric_names = next(
+                (
+                    include_columns.metrics
+                    for include_columns in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+                    if include_columns.columnName == column.name
+                ),
+                None,
+            )
+
+            if metric_names:
+                metrics = [
+                    Metric.value
+                    for Metric in Metrics
+                    if Metric.value.name() in metric_names
+                ]
+
         return [metric for metric in metrics if metric.is_col_metric()]
 
     @property
     def sample(self):
-        if not self._sample:
-            self._sample = self._sampler.random_sample()
-
-        return self._sample
+        """Return the sample used for the profiler"""
+        return self.profiler_interface.sample
 
     def validate_composed_metric(self) -> None:
         """
@@ -208,100 +269,6 @@ class Profiler(Generic[TMetric]):
                 raise MissingMetricException(
                     f"We need {metric.required_metrics()} for {metric.name}, but only got {names} in the profiler"
                 )
-
-    def run_static_metrics(self, col: Column):
-        """
-        Run the profiler and store its results
-
-        This should only execute column metrics.
-
-        If needed, we run on a random data sample.
-        """
-        logger.debug(f"Running SQL Profiler for {col.name}")
-
-        col_metrics = self.get_col_metrics(self.static_metrics)
-
-        if not col_metrics:
-            return
-
-        try:
-            row = self.runner.select_first_from_sample(
-                *[metric(col).fn() for metric in col_metrics]
-            )
-            self._column_results[col.name].update(dict(row))
-        except (TimeoutError, Exception) as err:
-            logger.warning(
-                f"Error trying to compute column profile for {col.name} - {err}"
-            )
-            self.session.rollback()
-
-    def run_table_metrics(self):
-        """
-        Run Table Static metrics
-
-        Table metrics are always executed on the whole data.
-        We will only sample column metrics, as they are usually
-        the most expensive.
-        """
-        # Table metrics do not have column informed
-        try:
-            table_metrics = [
-                metric for metric in self.static_metrics if not metric.is_col_metric()
-            ]
-
-            if not table_metrics:
-                return
-
-            row = self.runner.select_first_from_table(
-                *[metric().fn() for metric in table_metrics]
-            )
-            if row:
-                self._table_results.update(dict(row))
-        except (TimeoutError, Exception) as err:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error while running table metric for: {self.table.__tablename__} - {err}"
-            )
-            self.session.rollback()
-
-    def run_query_metrics(self, col: Column) -> None:
-        """
-        Run QueryMetrics
-        """
-
-        for metric in self.get_col_metrics(self.query_metrics):
-            logger.debug(f"Running query metric {metric.name()} for {col.name}")
-            try:
-                col_metric = metric(col)
-                metric_query = col_metric.query(
-                    sample=self.sample, session=self.session
-                )
-
-                # We might not compute some metrics based on the column type.
-                # In those cases, the `query` function returns None
-                if not metric_query:
-                    continue
-                if col_metric.metric_type == dict:
-                    query_res = self.runner.select_all_from_query(metric_query)
-                    # query_res has the shape of List[Row], where each row is a dict,
-                    # e.g., [{colA: 1, colB: 2},...]
-                    # We are going to transform this into a Dict[List] by pivoting, so that
-                    # data = {colA: [1,2,3], colB: [4,5,6]...}
-                    data = {
-                        k: [dic[k] for dic in query_res] for k in dict(query_res[0])
-                    }
-                    self._column_results[col.name].update({metric.name(): data})
-
-                else:
-                    row = self.runner.select_first_from_query(metric_query)
-                    self._column_results[col.name].update(dict(row))
-
-            except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
-                )
-                self.session.rollback()
 
     def run_composed_metrics(self, col: Column):
         """
@@ -323,57 +290,162 @@ class Profiler(Generic[TMetric]):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
-            self._column_results[col.name][metric.name()] = metric(col).fn(
-                current_col_results
+            self._column_results[col.name][
+                metric.name()
+            ] = self.profiler_interface.get_composed_metrics(
+                col,
+                metric,
+                current_col_results,
             )
 
-    def execute_column(self, col: Column) -> None:
-        """
-        Run the profiler on all the columns that
-        have been green-lighted.
+    def _prepare_table_metrics(self) -> List:
+        """prepare table metrics"""
+        table_metrics = [
+            metric
+            for metric in self.static_metrics
+            if (not metric.is_col_metric() and not metric.is_system_metrics())
+        ]
 
-        We can assume from this point onwards that
-        columns are of allowed types
-        """
-        self.run_static_metrics(col)
-        self.run_query_metrics(col)
-        self.run_composed_metrics(col)
+        if table_metrics:
+            return [
+                (
+                    table_metrics,  # metric functions
+                    MetricTypes.Table,  # metric type for function mapping
+                    None,  # column name
+                    self.table,  # table name
+                ),
+            ]
+        return []
 
-    def execute(self) -> "Profiler":
-        """
-        Run the whole profiling
-        """
+    def _prepare_system_metrics(self) -> List:
+        """prepare system metrics"""
+        system_metrics = self.system_metrics
 
-        logger.debug(f"Running profiler for {self.table.__tablename__}")
-
-        self.run_table_metrics()
-
-        for col in self.columns:
-            logger.debug(
-                f"Running profiler for {self.table.__tablename__}.{col.name} which is [{col.type}]"
-            )
-
-            # Skip not supported types
-            if col.type.__class__ in NOT_COMPUTE:
-                logger.debug(
-                    f"Skipping profile computation for {col.name}. Unsupported type {col.type.__class__}"
+        if system_metrics:
+            return [
+                (
+                    system_metric,  # metric functions
+                    MetricTypes.System,  # metric type for function mapping
+                    None,  # column name
+                    self.table,  # table name
                 )
-                continue
+                for system_metric in system_metrics
+            ]
 
-            # Init column results dict
-            self._column_results[col.name] = {"name": col.name}
+        return []
 
-            try:
-                self.execute_column(col)
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.error(
-                    f"Error trying to compute profile for {self.table.__tablename__}.{col.name} - {exc}"
+    def _prepare_column_metrics(self) -> List:
+        """prepare column metrics"""
+        columns = [
+            column
+            for column in self.columns
+            if column.type.__class__.__name__ not in NOT_COMPUTE
+        ]
+
+        column_metrics_for_thread_pool = [
+            *[
+                (
+                    self.get_col_metrics(self.static_metrics, column),
+                    MetricTypes.Static,
+                    column,
+                    self.table,
                 )
-                self.session.rollback()
+                for column in columns
+            ],
+            *[
+                (
+                    metric,
+                    MetricTypes.Query,
+                    column,
+                    self.table,
+                )
+                for column in self.columns
+                for metric in self.get_col_metrics(self.query_metrics, column)
+            ],
+            *[
+                (
+                    metric,
+                    MetricTypes.Window,
+                    column,
+                    self.table,
+                )
+                for column in self.columns
+                for metric in [
+                    metric
+                    for metric in self.get_col_metrics(self.static_metrics, column)
+                    if metric.is_window_metric()
+                ]
+            ],
+        ]
+
+        return column_metrics_for_thread_pool
+
+    def profile_entity(self) -> None:
+        """Get all the metrics for a given table"""
+        table_metrics = self._prepare_table_metrics()
+        system_metrics = self._prepare_system_metrics()
+        column_metrics = self._prepare_column_metrics()
+
+        all_metrics = [
+            *system_metrics,
+            *table_metrics,
+            *column_metrics,
+        ]
+        profile_results = self.profiler_interface.get_all_metrics(
+            all_metrics,
+        )
+        self._table_results = profile_results["table"]
+        self._column_results = profile_results["columns"]
+        self._system_results = profile_results.get("system")
+
+    def compute_metrics(self) -> Profiler:
+        """Run the whole profiling using multithreading"""
+        self.profile_entity()
+        for column in self.columns:
+            self.run_composed_metrics(column)
 
         return self
 
-    def get_profile(self) -> TableProfile:
+    def process(self, generate_sample_data: Optional[bool]) -> ProfilerResponse:
+        """
+        Given a table, we will prepare the profiler for
+        all its columns and return all the run profilers
+        in a Dict in the shape {col_name: Profiler}
+        """
+        logger.info(
+            f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+        )
+
+        self.compute_metrics()
+        if generate_sample_data:
+            try:
+                logger.info(
+                    f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
+                sample_data = self.profiler_interface.fetch_sample_data(self.table)
+                logger.info(
+                    "Successfully fetched sample data for "
+                    f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error fetching sample data: {err}")
+                sample_data = None
+
+        else:
+            sample_data = None
+
+        profile = self._check_profile_and_handle(self.get_profile())
+
+        table_profile = ProfilerResponse(
+            table=self.profiler_interface.table_entity,
+            profile=profile,
+            sample_data=sample_data,
+        )
+
+        return table_profile
+
+    def get_profile(self) -> CreateTableProfileRequest:
         """
         After executing the profiler, get all results
         and convert them to TableProfile.
@@ -401,23 +473,51 @@ class Profiler(Generic[TMetric]):
             # There are columns that we might have skipped from
             # computing metrics, if the type is not supported.
             # Let's filter those out.
-            computed_profiles = [
-                ColumnProfile(**self.column_results.get(col.name))
+            column_profile = [
+                ColumnProfile(
+                    **self.column_results.get(
+                        col.name
+                        if not isinstance(col.name, ColumnName)
+                        else col.name.__root__
+                    )
+                )
                 for col in self.columns
-                if self.column_results.get(col.name)
+                if self.column_results.get(
+                    col.name
+                    if not isinstance(col.name, ColumnName)
+                    else col.name.__root__
+                )
             ]
 
-            profile = TableProfile(
-                profileDate=self.profile_date.strftime("%Y-%m-%d"),
+            table_profile = TableProfile(
+                timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                columnProfile=computed_profiles,
+                profileSample=self.profile_sample_config.profile_sample
+                if self.profile_sample_config
+                else None,
+                profileSampleType=self.profile_sample_config.profile_sample_type
+                if self.profile_sample_config
+                else None,
             )
 
-            return profile
+            if self._system_results:
+                system_profile = [
+                    SystemProfile(**system_result)
+                    for system_result in self._system_results
+                ]
+            else:
+                system_profile = None
+
+            return CreateTableProfileRequest(
+                tableProfile=table_profile,
+                columnProfile=column_profile,
+                systemProfile=system_profile,
+            )
 
         except ValidationError as err:
-            logger.error(f"Cannot transform profiler results to TableProfile {err}")
+            logger.debug(traceback.format_exc())
+            logger.error(f"Cannot transform profiler results to TableProfile: {err}")
             raise err
 
     @property

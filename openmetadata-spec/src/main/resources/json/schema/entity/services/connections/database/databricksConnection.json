@@ -1,0 +1,97 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/databricksConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabricksConnection",
+  "description": "Databricks Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DatabricksConnection",
+  "definitions": {
+    "databricksType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Databricks"],
+      "default": "Databricks"
+    },
+    "databricksScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["databricks+connector"],
+      "default": "databricks+connector"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/databricksType",
+      "default": "Databricks"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/databricksScheme",
+      "default": "databricks+connector"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Databricks service.",
+      "type": "string"
+    },
+    "token": {
+      "title": "Token",
+      "description": "Generated Token to connect to Databricks.",
+      "type": "string",
+      "format": "password"
+    },
+    "httpPath": {
+      "title": "Http Path",
+      "description": "Databricks compute resources URL.",
+      "type": "string"
+    },
+    "catalog": {
+      "title": "Catalog",
+      "description": "Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "databaseSchema",
+      "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "token"]
+}

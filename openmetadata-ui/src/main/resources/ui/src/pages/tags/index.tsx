@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,155 +11,283 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
-import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
-import { FormErrorData, LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
+  Button,
+  Col,
+  Input,
+  Row,
+  Space,
+  Spin,
+  Table,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import Description from 'components/common/description/Description';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import Loader from 'components/Loader/Loader';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import FormModal from 'components/Modals/FormModal';
+import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
+import { LOADING_STATE } from 'enums/common.enum';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined, toLower, trim } from 'lodash';
+import { FormErrorData } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import {
+  createClassification,
   createTag,
-  createTagCategory,
+  deleteClassification,
   deleteTag,
-  deleteTagCategory,
-  getCategory,
-  updateTag,
-  updateTagCategory,
-} from '../../axiosAPIs/tagAPI';
-import { Button } from '../../components/buttons/Button/Button';
-import Description from '../../components/common/description/Description';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
-import Loader from '../../components/Loader/Loader';
-import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
-import FormModal from '../../components/Modals/FormModal';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
+  patchClassification,
+  patchTag,
+} from 'rest/tagAPI';
+import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
-  CreateTagCategory,
-  TagCategoryType,
-} from '../../generated/api/tags/createTagCategory';
+  getExplorePath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  TIER_CATEGORY,
+} from '../../constants/constants';
+import { delimiterRegex } from '../../constants/regex.constants';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
+import { ProviderType } from '../../generated/entity/bot';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
-import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import {
   getActiveCatClass,
   getCountBadge,
-  isEven,
+  getEntityDeleteMessage,
+  getEntityName,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
-import { getExplorePathWithInitFilters } from '../../utils/RouterUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
+import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
-
-type DeleteTagDetailsType = {
-  id: string;
-  name: string;
-  categoryName?: string;
-  isCategory: boolean;
-  status?: LoadingState;
-};
-
-type DeleteTagsType = {
-  data: DeleteTagDetailsType | undefined;
-  state: boolean;
-};
+import './TagPage.style.less';
+import { DeleteTagsType } from './TagsPage.interface';
+import { getDeleteIcon } from './TagsPageUtils';
 
 const TagsPage = () => {
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-  const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
-  const [currentCategory, setCurrentCategory] = useState<TagCategory>();
-  const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
-  const [isAddingCategory, setIsAddingCategory] = useState<boolean>(false);
+  const { getEntityPermission, permissions } = usePermissionProvider();
+  const history = useHistory();
+  const { tagCategoryName } = useParams<Record<string, string>>();
+  const [classifications, setClassifications] = useState<Array<Classification>>(
+    []
+  );
+  const [currentClassification, setCurrentClassification] =
+    useState<Classification>();
+  const [isEditClassification, setIsEditClassification] =
+    useState<boolean>(false);
+  const [isAddingClassification, setIsAddingClassification] =
+    useState<boolean>(false);
   const [isEditTag, setIsEditTag] = useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
-  const [editTag, setEditTag] = useState<TagClass>();
+  const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
+  const [errorDataClassification, setErrorDataClassification] =
+    useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
     data: undefined,
     state: false,
   });
+  const [classificationPermissions, setClassificationPermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [currentClassificationName, setCurrentClassificationName] =
+    useState<string>('');
+  const [tags, setTags] = useState<Tag[]>();
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+  const [isTagsLoading, setIsTagsLoading] = useState(false);
+  const { t } = useTranslation();
+  const createClassificationPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.CLASSIFICATION,
+        permissions
+      ),
+    [permissions]
+  );
+  const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
+    LOADING_STATE.INITIAL
+  );
 
-  const fetchCategories = () => {
-    setIsLoading(true);
-    getTagCategories('usageCount')
-      .then((res) => {
-        if (res.data) {
-          setCategoreis(res.data);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-tags-category-error']
-        );
-        showErrorToast(errMsg);
-        setError(errMsg);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+  const createTagPermission = useMemo(
+    () => checkPermission(Operation.Create, ResourceEntity.TAG, permissions),
+    [permissions]
+  );
+
+  const fetchCurrentClassificationPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.CLASSIFICATION,
+        currentClassification?.id as string
+      );
+      setClassificationPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
-  const fetchCurrentCategory = async (name: string, update?: boolean) => {
-    if (currentCategory?.name !== name || update) {
+  const handleEditNameCancel = () => {
+    setIsNameEditing(false);
+    setCurrentClassificationName(currentClassification?.name || '');
+  };
+
+  const fetchClassificationChildren = async (
+    currentClassificationName: string,
+    paging?: Paging
+  ) => {
+    setIsTagsLoading(true);
+
+    try {
+      const tagsResponse = await getTags({
+        arrQueryFields: 'usageCount',
+        parent: currentClassificationName,
+        after: paging?.after,
+        before: paging?.before,
+        limit: PAGE_SIZE,
+      });
+      setTags(tagsResponse.data);
+      setPaging(tagsResponse.paging);
+    } catch (error) {
+      const errMsg = getErrorText(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.tag-plural') })
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+      setTags([]);
+    } finally {
+      setIsTagsLoading(false);
+    }
+  };
+
+  const fetchClassifications = async (setCurrent?: boolean) => {
+    setIsLoading(true);
+
+    try {
+      const response = await getAllClassifications('termCount', 1000);
+      setClassifications(response.data);
+      if (setCurrent && response.data.length) {
+        setCurrentClassification(response.data[0]);
+        setCurrentClassificationName(response.data[0].name);
+
+        history.push(getTagPath(response.data[0].name));
+      }
+    } catch (error) {
+      const errMsg = getErrorText(
+        error as AxiosError,
+        t('server.fetch-tags-category-error')
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCurrentClassification = async (name: string, update?: boolean) => {
+    if (currentClassification?.name !== name || update) {
       setIsLoading(true);
       try {
-        const currentCategory = await getCategory(name, 'usageCount');
-        if (currentCategory.data) {
-          setCurrentCategory(currentCategory.data);
+        const currentClassification = await getClassificationByName(name, [
+          'usageCount',
+          'termCount',
+        ]);
+        if (currentClassification) {
+          setClassifications((prevClassifications) =>
+            prevClassifications.map((data) => {
+              if (data.name === name) {
+                return {
+                  ...data,
+                  termCount: currentClassification.termCount,
+                };
+              }
+
+              return data;
+            })
+          );
+          setCurrentClassification(currentClassification);
+          setCurrentClassificationName(currentClassification.name);
           setIsLoading(false);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       } catch (err) {
         const errMsg = getErrorText(
           err as AxiosError,
-          jsonData['api-error-messages']['fetch-tags-category-error']
+          t('server.fetch-tags-category-error')
         );
         showErrorToast(errMsg);
         setError(errMsg);
+        setCurrentClassification({ name } as Classification);
         setIsLoading(false);
       }
     }
   };
 
-  const onNewCategoryChange = (data: CreateTagCategory, forceSet = false) => {
-    if (errorDataCategory || forceSet) {
+  const onNewCategoryChange = (
+    data: CreateClassification,
+    forceSet = false
+  ) => {
+    if (errorDataClassification || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
-      } else if (/\s/g.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
+        errData['name'] = t('message.field-text-is-required', {
+          fieldText: t('label.name'),
+        });
+      } else if (delimiterRegex.test(data.name)) {
+        errData['name'] = t('message.entity-delimiters-not-allowed');
       } else if (
         !isUndefined(
-          categories.find((item) => toLower(item.name) === toLower(data.name))
+          classifications.find(
+            (item) => toLower(item.name) === toLower(data.name)
+          )
         )
       ) {
-        errData['name'] = 'Name already exists';
-      } else if (data.name.length < 2 || data.name.length > 25) {
-        errData['name'] = 'Name size must be between 2 and 25';
+        errData['name'] = t('message.entity-already-exists', {
+          entity: t('label.name'),
+        });
+      } else if (data.name.length < 2 || data.name.length > 64) {
+        errData['name'] = t('message.entity-size-must-be-between-2-and-64', {
+          entity: t('label.name'),
+        });
       } else if (!isUrlFriendlyName(data.name.trim())) {
-        errData['name'] = 'Special characters are not allowed';
+        errData['name'] = t('message.special-character-not-allowed');
       }
-      setErrorDataCategory(errData);
+      setErrorDataClassification(errData);
 
       return errData;
     }
@@ -167,26 +295,25 @@ const TagsPage = () => {
     return {};
   };
 
-  const createCategory = (data: CreateTagCategory) => {
+  const createCategory = (data: CreateClassification) => {
     const errData = onNewCategoryChange(data, true);
     if (!Object.values(errData).length) {
-      createTagCategory(data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setCurrentCategory(res.data);
-            fetchCategories();
+      createClassification({ ...data, name: trim(data.name) })
+        .then((res) => {
+          if (res) {
+            fetchClassifications();
+            setTimeout(() => {
+              history.push(getTagPath(res.name));
+            }, 100);
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['create-tag-category-error']
-          );
+          showErrorToast(err, t('server.create-tag-category-error'));
         })
         .finally(() => {
-          setIsAddingCategory(false);
+          setIsAddingClassification(false);
         });
     }
   };
@@ -195,11 +322,11 @@ const TagsPage = () => {
    * It will set current tag category for delete
    */
   const deleteTagHandler = () => {
-    if (currentCategory) {
+    if (currentClassification) {
       setDeleteTags({
         data: {
-          id: currentCategory.id as string,
-          name: currentCategory.displayName || currentCategory.name,
+          id: currentClassification.id as string,
+          name: currentClassification.displayName || currentClassification.name,
           isCategory: true,
         },
         state: true,
@@ -209,32 +336,42 @@ const TagsPage = () => {
 
   /**
    * Take tag category id and delete.
-   * @param categoryId - tag category id
+   * @param classificationId - tag category id
    */
-  const deleteTagCategoryById = (categoryId: string) => {
-    deleteTagCategory(categoryId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+  const deleteClassificationById = (classificationId: string) => {
+    deleteClassification(classificationId)
+      .then((res) => {
+        if (res) {
           setIsLoading(true);
-          const updatedCategory = categories.filter(
-            (data) => data.id !== categoryId
-          );
-          setCurrentCategory(updatedCategory[0]);
-          setCategoreis(updatedCategory);
-          setIsLoading(false);
+          setDeleteStatus(LOADING_STATE.SUCCESS);
+          setClassifications((classifications) => {
+            const updatedClassification = classifications.filter(
+              (data) => data.id !== classificationId
+            );
+            const currentClassification = updatedClassification[0];
+            setTimeout(() => {
+              history.push(
+                getTagPath(
+                  currentClassification?.fullyQualifiedName ||
+                    currentClassification?.name
+                )
+              );
+            }, 100);
+
+            return updatedClassification;
+          });
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['delete-tag-category-error']
-          );
+          showErrorToast(t('server.delete-tag-category-error'));
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-tag-category-error']
-        );
+        showErrorToast(err, t('server.delete-tag-category-error'));
       })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
+      .finally(() => {
+        setDeleteTags({ data: undefined, state: false });
+        setIsLoading(false);
+        setDeleteStatus(LOADING_STATE.INITIAL);
+      });
   };
 
   /**
@@ -242,81 +379,112 @@ const TagsPage = () => {
    * @param categoryName - tag category name
    * @param tagId -  tag id
    */
-  const handleDeleteTag = (categoryName: string, tagId: string) => {
-    deleteTag(categoryName, tagId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          if (currentCategory) {
-            const updatedTags = (currentCategory.children as TagClass[]).filter(
-              (data) => data.id !== tagId
-            );
-            setCurrentCategory({ ...currentCategory, children: updatedTags });
+  const handleDeleteTag = (tagId: string) => {
+    deleteTag(tagId)
+      .then((res) => {
+        if (res) {
+          if (currentClassification) {
+            setDeleteStatus(LOADING_STATE.SUCCESS);
+            setCurrentClassification({
+              ...currentClassification,
+            });
           }
         } else {
-          showErrorToast(jsonData['api-error-messages']['delete-tag-error']);
+          showErrorToast(t('server.delete-tag-error'));
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['delete-tag-error']);
-      })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
-  };
-
-  /**
-   * It redirects to respective function call based on tag/tagCategory
-   */
-  const handleConfirmClick = () => {
-    if (deleteTags.data?.isCategory) {
-      deleteTagCategoryById(deleteTags.data.id as string);
-    } else {
-      handleDeleteTag(
-        deleteTags.data?.categoryName as string,
-        deleteTags.data?.id as string
-      );
-    }
-  };
-
-  const UpdateCategory = (updatedHTML: string) => {
-    updateTagCategory(currentCategory?.name, {
-      name: currentCategory?.name,
-      description: updatedHTML,
-      categoryType: currentCategory?.categoryType,
-    })
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tag-category-error']
-        );
+        showErrorToast(err, t('server.delete-tag-error'));
       })
       .finally(() => {
-        setIsEditCategory(false);
+        setDeleteTags({ data: undefined, state: false });
+        setDeleteStatus(LOADING_STATE.INITIAL);
       });
   };
 
-  const onNewTagChange = (data: TagCategory, forceSet = false) => {
+  /**
+   * It redirects to respective function call based on tag/Classification
+   */
+  const handleConfirmClick = () => {
+    setDeleteStatus(LOADING_STATE.WAITING);
+    if (deleteTags.data?.isCategory) {
+      deleteClassificationById(deleteTags.data.id as string);
+    } else {
+      handleDeleteTag(deleteTags.data?.id as string);
+    }
+  };
+
+  const handleUpdateCategory = async (
+    updatedClassification: Classification
+  ) => {
+    if (!isUndefined(currentClassification)) {
+      const patchData = compare(currentClassification, updatedClassification);
+      try {
+        const response = await patchClassification(
+          currentClassification?.id || '',
+          patchData
+        );
+        if (response) {
+          fetchClassifications();
+          if (currentClassification?.name !== updatedClassification.name) {
+            history.push(getTagPath(response.name));
+            setIsNameEditing(false);
+          } else {
+            await fetchCurrentClassification(currentClassification?.name, true);
+          }
+        } else {
+          throw t('server.unexpected-response');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEditClassification(false);
+      }
+    }
+  };
+
+  const handleRenameSave = () => {
+    if (!isUndefined(currentClassification)) {
+      handleUpdateCategory({
+        ...currentClassification,
+        name: (currentClassificationName || currentClassification?.name) ?? '',
+      });
+    }
+  };
+
+  const handleUpdateDescription = async (updatedHTML: string) => {
+    if (!isUndefined(currentClassification)) {
+      handleUpdateCategory({
+        ...currentClassification,
+        description: updatedHTML,
+      });
+    }
+  };
+
+  const handleCategoryNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setCurrentClassificationName(e.target.value);
+    },
+    []
+  );
+
+  const onNewTagChange = (data: Classification, forceSet = false) => {
     if (errorDataTag || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
-      } else if (/\s/g.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
-      } else if (
-        !isUndefined(
-          currentCategory?.children?.find(
-            (item) => toLower((item as TagClass)?.name) === toLower(data.name)
-          )
-        )
-      ) {
-        errData['name'] = 'Name already exists';
-      } else if (data.name.length < 2 || data.name.length > 25) {
-        errData['name'] = 'Name size must be between 2 and 25';
+        errData['name'] = t('label.field-required', {
+          field: t('label.name'),
+        });
+      } else if (delimiterRegex.test(data.name)) {
+        errData['name'] = t('message.entity-delimiters-not-allowed', {
+          entity: t('label.name'),
+        });
+      } else if (data.name.length < 2 || data.name.length > 64) {
+        errData['name'] = t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 64,
+          min: 2,
+        });
       }
       setErrorDataTag(errData);
 
@@ -326,25 +494,26 @@ const TagsPage = () => {
     return {};
   };
 
-  const createPrimaryTag = (data: TagCategory) => {
+  const createPrimaryTag = (data: Classification) => {
     const errData = onNewTagChange(data, true);
     if (!Object.values(errData).length) {
-      createTag(currentCategory?.name, {
-        name: data.name,
+      createTag({
+        name: trim(data.name),
         description: data.description,
+        classification: currentClassification?.name ?? '',
       })
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentCategory(currentCategory?.name as string, true);
+        .then((res) => {
+          if (res) {
+            fetchCurrentClassification(
+              currentClassification?.name as string,
+              true
+            );
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['create-tag-error']
-          );
+          showErrorToast(err, t('label.create-tag-error'));
         })
         .finally(() => {
           setIsAddingTag(false);
@@ -352,395 +521,504 @@ const TagsPage = () => {
     }
   };
 
-  const updatePrimaryTag = (updatedHTML: string) => {
-    updateTag(currentCategory?.name, editTag?.name, {
-      name: editTag?.name,
-      description: updatedHTML,
-    })
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
+  const updatePrimaryTag = async (updatedHTML: string) => {
+    if (!isUndefined(editTag)) {
+      const patchData = compare(editTag, {
+        ...editTag,
+        description: updatedHTML,
+      });
+      try {
+        const response = await patchTag(editTag.id || '', patchData);
+        if (response) {
+          await fetchCurrentClassification(
+            currentClassification?.name as string,
+            true
+          );
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      })
-      .finally(() => {
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
         setIsEditTag(false);
         setEditTag(undefined);
-      });
+      }
+    }
   };
 
   const getUsageCountLink = (tagFQN: string) => {
-    if (tagFQN.startsWith('Tier')) {
-      return getExplorePathWithInitFilters('', undefined, `tier=${tagFQN}`);
-    } else {
-      return getExplorePathWithInitFilters('', undefined, `tags=${tagFQN}`);
+    const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
+
+    return getExplorePath({
+      extraParameters: {
+        postFilter: {
+          [`${type}.tagFQN`]: [tagFQN],
+        },
+      },
+    });
+  };
+
+  const handleActionDeleteTag = (record: Tag) => {
+    if (currentClassification) {
+      setDeleteTags({
+        data: {
+          id: record.id as string,
+          name: record.name,
+          categoryName: currentClassification?.name,
+          isCategory: false,
+          status: 'waiting',
+        },
+        state: true,
+      });
     }
   };
 
   useEffect(() => {
-    fetchCategories();
+    if (currentClassification) {
+      fetchCurrentClassificationPermission();
+    }
+  }, [currentClassification]);
+
+  useEffect(() => {
+    /**
+     * If ClassificationName is present then fetch that category
+     */
+    if (tagCategoryName) {
+      const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
+      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
+    }
+  }, [tagCategoryName]);
+
+  useEffect(() => {
+    /**
+     * Fetch all classifications initially
+     */
+    fetchClassifications(true);
   }, []);
 
   useEffect(() => {
-    setCurrentCategory(categories[0]);
-    if (currentCategory) {
-      setCurrentCategory(currentCategory);
+    currentClassification &&
+      fetchClassificationChildren(currentClassification?.name);
+  }, [currentClassification]);
+
+  const onClickClassifications = (category: Classification) => {
+    setCurrentClassification(category);
+    setCurrentClassificationName(category.name);
+    history.push(getTagPath(category.name));
+  };
+
+  const handlePageChange = (after: string | number, activePage?: number) => {
+    if (after) {
+      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+      fetchClassificationChildren(currentClassificationName, paging);
     }
-  }, [categories, currentCategory]);
+  };
+
+  // Use the component in the render method
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6 className="tw-heading tw-text-base">Tag Categories</h6>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-category"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => {
-                setIsAddingCategory((prevState) => !prevState);
-                setErrorDataCategory(undefined);
-              }}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </NonAdminAction>
-        </div>
-        {categories &&
-          categories.map((category: TagCategory) => (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                category.name,
-                currentCategory?.name
-              )}`}
-              data-testid="side-panel-category"
-              key={category.name}
-              onClick={() => {
-                fetchCurrentCategory(category.name);
-              }}>
-              <p className="tw-text-center tw-self-center tag-category label-category">
-                {category.displayName ?? category.name}
-              </p>
-
-              {getCountBadge(
-                currentCategory?.name === category.name
-                  ? currentCategory.children?.length
-                  : category.children?.length || 0,
-                'tw-self-center',
-                currentCategory?.name === category.name
-              )}
+      <LeftPanelCard id="tags">
+        <TagsLeftPanelSkeleton loading={isLoading}>
+          <div className="tw-py-2" data-testid="data-summary-container">
+            <div className="tw-px-3">
+              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+                {t('label.classification-plural')}
+              </h6>
+              <div className="tw-mb-3">
+                <Tooltip
+                  title={
+                    !createClassificationPermission &&
+                    t('message.no-permission-for-action')
+                  }>
+                  <Button
+                    block
+                    className=" text-primary"
+                    data-testid="add-classification"
+                    disabled={!createClassificationPermission}
+                    icon={<PlusIcon className="anticon" />}
+                    onClick={() => {
+                      setIsAddingClassification((prevState) => !prevState);
+                      setErrorDataClassification(undefined);
+                    }}>
+                    <span>
+                      {t('label.add-entity', {
+                        entity: t('label.classification'),
+                      })}
+                    </span>
+                  </Button>
+                </Tooltip>
+              </div>
             </div>
-          ))}
-      </>
+
+            {classifications &&
+              classifications.map((category: Classification) => (
+                <div
+                  className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
+                    category.name,
+                    currentClassification?.name
+                  )}`}
+                  data-testid="side-panel-classification"
+                  key={category.name}
+                  onClick={() => onClickClassifications(category)}>
+                  <Typography.Paragraph
+                    className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                    data-testid="tag-name"
+                    ellipsis={{ rows: 1, tooltip: true }}>
+                    {getEntityName(category as unknown as EntityReference)}
+                  </Typography.Paragraph>
+                  {getCountBadge(
+                    category.termCount,
+                    'tw-self-center',
+                    currentClassification?.name === category.name
+                  )}
+                </div>
+              ))}
+          </div>
+        </TagsLeftPanelSkeleton>
+      </LeftPanelCard>
     );
   };
 
-  return (
-    <>
-      {error ? (
-        <ErrorPlaceHolder>
-          <p className="tw-text-center tw-m-auto">{error}</p>
-        </ErrorPlaceHolder>
-      ) : (
-        <PageContainerV1 className="tw-py-4">
-          <PageLayout leftPanel={fetchLeftPanel()}>
-            {isLoading ? (
-              <Loader />
-            ) : (
-              <div className="full-height" data-testid="tags-container">
-                {currentCategory && (
-                  <div
-                    className="tw-flex tw-justify-between tw-items-center"
-                    data-testid="header">
-                    <div
-                      className="tw-heading tw-text-link tw-text-base"
-                      data-testid="category-name">
-                      {currentCategory.displayName ?? currentCategory.name}
-                    </div>
-                    <div>
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                          })}
-                          data-testid="add-new-tag-button"
-                          size="small"
-                          theme="primary"
-                          variant="contained"
-                          onClick={() => {
-                            setIsAddingTag((prevState) => !prevState);
-                            setErrorDataTag(undefined);
-                          }}>
-                          Add new tag
-                        </Button>
-                      </NonAdminAction>
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          className={classNames(
-                            'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
-                            {
-                              'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                            }
-                          )}
-                          data-testid="delete-tag-category-button"
-                          size="small"
-                          theme="primary"
-                          variant="contained"
-                          onClick={() => {
-                            deleteTagHandler();
-                          }}>
-                          Delete category
-                        </Button>
-                      </NonAdminAction>
-                    </div>
-                  </div>
-                )}
-                <div
-                  className="tw-mb-3 tw--ml-5"
-                  data-testid="description-container">
-                  <Description
-                    blurWithBodyBG
-                    description={currentCategory?.description || ''}
-                    entityName={
-                      currentCategory?.displayName ?? currentCategory?.name
-                    }
-                    isEdit={isEditCategory}
-                    onCancel={() => setIsEditCategory(false)}
-                    onDescriptionEdit={() => setIsEditCategory(true)}
-                    onDescriptionUpdate={UpdateCategory}
-                  />
-                </div>
-                <div className="tw-bg-white">
-                  <table className="tw-w-full" data-testid="table">
-                    <thead>
-                      <tr className="tableHead-row">
-                        <th
-                          className="tableHead-cell"
-                          data-testid="heading-name">
-                          Name
-                        </th>
-                        <th
-                          className="tableHead-cell"
-                          data-testid="heading-description">
-                          Description
-                        </th>
-                        <th
-                          className="tableHead-cell tw-w-10"
-                          data-testid="heading-actions">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="tw-text-sm" data-testid="table-body">
-                      {currentCategory?.children?.length ? (
-                        (currentCategory.children as TagClass[])?.map(
-                          (tag: TagClass, index: number) => {
-                            return (
-                              <tr
-                                className={`tableBody-row ${
-                                  !isEven(index + 1) && 'odd-row'
-                                }`}
-                                key={index}>
-                                <td className="tableBody-cell">
-                                  <p>{tag.name}</p>
-                                </td>
-                                <td className="tw-group tableBody-cell">
-                                  <div className="tw-cursor-pointer tw-flex">
-                                    <div>
-                                      {tag.description ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={tag.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description
-                                        </span>
-                                      )}
-                                    </div>
-                                    <NonAdminAction
-                                      permission={Operation.UpdateDescription}
-                                      position="left"
-                                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                      <button
-                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() => {
-                                          setIsEditTag(true);
-                                          setEditTag(tag);
-                                        }}>
-                                        <SVGIcons
-                                          alt="edit"
-                                          data-testid="editTagDescription"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    </NonAdminAction>
-                                  </div>
-                                  <div className="tw-mt-1" data-testid="usage">
-                                    <span className="tw-text-grey-muted tw-mr-1">
-                                      Usage:
-                                    </span>
-                                    {tag.usageCount ? (
-                                      <Link
-                                        className="link-text tw-align-middle"
-                                        data-testid="usage-count"
-                                        to={getUsageCountLink(
-                                          tag.fullyQualifiedName || ''
-                                        )}>
-                                        {tag.usageCount}
-                                      </Link>
-                                    ) : (
-                                      <span
-                                        className="tw-no-description"
-                                        data-testid="usage-count">
-                                        Not used
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="tableBody-cell">
-                                  <div className="tw-text-center">
-                                    <NonAdminAction
-                                      position="bottom"
-                                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                      <button
-                                        className="link-text"
-                                        data-testid="delete-tag"
-                                        onClick={() =>
-                                          setDeleteTags({
-                                            data: {
-                                              id: tag.id as string,
-                                              name: tag.name,
-                                              categoryName:
-                                                currentCategory.name,
-                                              isCategory: false,
-                                              status: 'waiting',
-                                            },
-                                            state: true,
-                                          })
-                                        }>
-                                        {deleteTags.data?.id === tag.id ? (
-                                          deleteTags.data?.status ===
-                                          'success' ? (
-                                            <FontAwesomeIcon icon="check" />
-                                          ) : (
-                                            <Loader
-                                              size="small"
-                                              type="default"
-                                            />
-                                          )
-                                        ) : (
-                                          <SVGIcons
-                                            alt="delete"
-                                            icon="icon-delete"
-                                            title="Delete"
-                                            width="12px"
-                                          />
-                                        )}
-                                      </button>
-                                    </NonAdminAction>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          }
-                        )
-                      ) : (
-                        <tr className="tableBody-row">
-                          <td
-                            className="tableBody-cell tw-text-center"
-                            colSpan={4}>
-                            No tags available.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                {isEditTag && (
-                  <ModalWithMarkdownEditor
-                    header={`Edit description for ${editTag?.name}`}
-                    placeholder="Enter Description"
-                    value={editTag?.description as string}
-                    onCancel={() => {
-                      setIsEditTag(false);
-                      setEditTag(undefined);
-                    }}
-                    onSave={updatePrimaryTag}
-                  />
-                )}
-                {isAddingCategory && (
-                  <FormModal
-                    errorData={errorDataCategory}
-                    form={Form}
-                    header="Adding new category"
-                    initialData={{
-                      name: '',
-                      description: '',
-                      categoryType: TagCategoryType.Descriptive,
-                    }}
-                    onCancel={() => setIsAddingCategory(false)}
-                    onChange={(data) =>
-                      onNewCategoryChange(data as TagCategory)
-                    }
-                    onSave={(data) => createCategory(data as TagCategory)}
-                  />
-                )}
-                {isAddingTag && (
-                  <FormModal
-                    errorData={errorDataTag}
-                    form={Form}
-                    header={`Adding new tag on ${
-                      currentCategory?.displayName ?? currentCategory?.name
-                    }`}
-                    initialData={{
-                      name: '',
-                      description: '',
-                      categoryType: '',
-                    }}
-                    onCancel={() => setIsAddingTag(false)}
-                    onChange={(data) => onNewTagChange(data as TagCategory)}
-                    onSave={(data) => createPrimaryTag(data as TagCategory)}
-                  />
-                )}
-                {deleteTags.state && (
-                  <ConfirmationModal
-                    bodyText={`Are you sure you want to delete the tag ${
-                      deleteTags.data?.isCategory ? 'category' : ''
-                    } "${deleteTags.data?.name}"?`}
-                    cancelText="Cancel"
-                    confirmText="Confirm"
-                    header={`Delete Tag ${
-                      deleteTags.data?.isCategory ? 'Category' : ''
-                    }`}
-                    onCancel={() =>
-                      setDeleteTags({ data: undefined, state: false })
-                    }
-                    onConfirm={handleConfirmClick}
-                  />
+  const tableColumn: ColumnsType<Tag> = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string, record: Tag) => (
+          <div className="tw-group tableBody-cell">
+            <div className="cursor-pointer d-flex">
+              <div>
+                {text ? (
+                  <RichTextEditorPreviewer markdown={text} />
+                ) : (
+                  <span className="tw-no-description">
+                    {t('label.no-entity', {
+                      entity: t('label.description'),
+                    })}
+                  </span>
                 )}
               </div>
+
+              {(classificationPermissions.EditDescription ||
+                classificationPermissions.EditAll) && (
+                <button
+                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                  onClick={() => {
+                    setIsEditTag(true);
+                    setEditTag(record);
+                  }}>
+                  <SVGIcons
+                    alt="edit"
+                    data-testid="editTagDescription"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+            <div className="tw-mt-1" data-testid="usage">
+              <span className="tw-text-grey-muted tw-mr-1">
+                {`${t('label.usage')}:`}
+              </span>
+              {record.usageCount ? (
+                <Link
+                  className="link-text tw-align-middle"
+                  data-testid="usage-count"
+                  to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                  {record.usageCount}
+                </Link>
+              ) : (
+                <span className="tw-no-description">{t('label.not-used')}</span>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: t('label.action-plural'),
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 120,
+        align: 'center',
+        render: (_, record: Tag) => (
+          <button
+            className="link-text"
+            data-testid="delete-tag"
+            disabled={
+              record.provider === ProviderType.System ||
+              !classificationPermissions.EditAll
+            }
+            onClick={() => handleActionDeleteTag(record)}>
+            {getDeleteIcon(deleteTags, record.id)}
+          </button>
+        ),
+      },
+    ],
+    [
+      currentClassification,
+      classificationPermissions,
+      deleteTags,
+      tags,
+      deleteTags,
+    ]
+  );
+
+  return (
+    <PageContainerV1>
+      <PageLayoutV1 leftPanel={fetchLeftPanel()}>
+        {isLoading ? (
+          <Loader />
+        ) : error ? (
+          <ErrorPlaceHolder>
+            <p className="tw-text-center tw-m-auto">{error}</p>
+          </ErrorPlaceHolder>
+        ) : (
+          <div className="full-height" data-testid="tags-container">
+            {currentClassification && (
+              <Space className="w-full justify-between" data-testid="header">
+                <Space className="items-center">
+                  {isNameEditing ? (
+                    <Row align="middle" gutter={8}>
+                      <Col>
+                        <Input
+                          className="input-width"
+                          data-testid="current-classification-name"
+                          name="ClassificationName"
+                          value={currentClassificationName}
+                          onChange={handleCategoryNameChange}
+                        />
+                      </Col>
+                      <Col>
+                        <Button
+                          className="icon-buttons"
+                          data-testid="cancelAssociatedTag"
+                          icon={<CloseOutlined />}
+                          size="small"
+                          type="primary"
+                          onMouseDown={handleEditNameCancel}
+                        />
+                        <Button
+                          className="icon-buttons m-l-xss"
+                          data-testid="saveAssociatedTag"
+                          icon={<CheckOutlined />}
+                          size="small"
+                          type="primary"
+                          onMouseDown={handleRenameSave}
+                        />
+                      </Col>
+                    </Row>
+                  ) : (
+                    <Space>
+                      <Typography.Text
+                        className="m-b-0 font-bold text-lg"
+                        data-testid="classification-name">
+                        {getEntityName(currentClassification)}
+                      </Typography.Text>
+                      {currentClassification.provider === ProviderType.User && (
+                        <Tooltip
+                          title={
+                            classificationPermissions.EditAll
+                              ? t('label.edit-entity', {
+                                  entity: t('label.name'),
+                                })
+                              : t('message.no-permission-for-action')
+                          }>
+                          <Button
+                            className="p-0"
+                            data-testid="name-edit-icon"
+                            disabled={!classificationPermissions.EditAll}
+                            size="small"
+                            type="text"
+                            onClick={() => setIsNameEditing(true)}>
+                            <SVGIcons
+                              alt="icon-tag"
+                              className="tw-mx-1"
+                              icon={Icons.EDIT}
+                              width="16"
+                            />
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </Space>
+                  )}
+                </Space>
+                <div className="flex-center">
+                  <Tooltip
+                    title={
+                      createTagPermission || classificationPermissions.EditAll
+                        ? t('label.add-new-entity', {
+                            entity: t('label.tag-lowercase'),
+                          })
+                        : t('message.no-permission-for-action')
+                    }>
+                    <Button
+                      className="add-new-tag-btn"
+                      data-testid="add-new-tag-button"
+                      disabled={
+                        !(
+                          createTagPermission ||
+                          classificationPermissions.EditAll
+                        )
+                      }
+                      size="small"
+                      type="primary"
+                      onClick={() => {
+                        setIsAddingTag((prevState) => !prevState);
+                        setErrorDataTag(undefined);
+                      }}>
+                      {t('label.add-new-entity', {
+                        entity: t('label.tag-lowercase'),
+                      })}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip
+                    title={
+                      !(
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      )
+                        ? t('label.delete-entity', {
+                            entity: t('label.classification'),
+                          })
+                        : t('message.no-permission-for-action')
+                    }>
+                    <Button
+                      className="add-new-tag-btn tw-ml-2"
+                      data-testid="delete-classification-or-tag"
+                      disabled={
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      }
+                      size="small"
+                      onClick={() => deleteTagHandler()}>
+                      {t('label.delete-entity', {
+                        entity: t('label.classification'),
+                      })}
+                    </Button>
+                  </Tooltip>
+                </div>
+              </Space>
             )}
-          </PageLayout>
-        </PageContainerV1>
-      )}
-    </>
+            <div className="m-b-sm m-t-xs" data-testid="description-container">
+              <Description
+                description={currentClassification?.description || ''}
+                entityName={
+                  currentClassification?.displayName ??
+                  currentClassification?.name
+                }
+                hasEditAccess={
+                  classificationPermissions.EditDescription ||
+                  classificationPermissions.EditAll
+                }
+                isEdit={isEditClassification}
+                onCancel={() => setIsEditClassification(false)}
+                onDescriptionEdit={() => setIsEditClassification(true)}
+                onDescriptionUpdate={handleUpdateDescription}
+              />
+            </div>
+            <Table
+              bordered
+              columns={tableColumn}
+              data-testid="table"
+              dataSource={tags}
+              loading={{
+                indicator: (
+                  <Spin indicator={<Loader size="small" />} size="small" />
+                ),
+                spinning: isTagsLoading,
+              }}
+              pagination={false}
+              rowKey="id"
+              size="small"
+            />
+            {paging.total > PAGE_SIZE && (
+              <NextPrevious
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={handlePageChange}
+                totalCount={paging.total}
+              />
+            )}
+
+            <ModalWithMarkdownEditor
+              header={t('label.edit-description-for', {
+                entityName: editTag?.name,
+              })}
+              placeholder={t('label.enter-entity', {
+                entity: t('label.description'),
+              })}
+              value={editTag?.description as string}
+              visible={isEditTag}
+              onCancel={() => {
+                setIsEditTag(false);
+                setEditTag(undefined);
+              }}
+              onSave={updatePrimaryTag}
+            />
+            <FormModal
+              showHiddenFields
+              errorData={errorDataClassification}
+              form={Form}
+              header={t('label.adding-new-classification')}
+              initialData={{
+                name: '',
+                description: '',
+              }}
+              isSaveButtonDisabled={!isEmpty(errorDataClassification)}
+              visible={isAddingClassification}
+              onCancel={() => setIsAddingClassification(false)}
+              onChange={(data) => {
+                setErrorDataClassification({});
+                onNewCategoryChange(data as Classification);
+              }}
+              onSave={(data) => createCategory(data as Classification)}
+            />
+            <FormModal
+              errorData={errorDataTag}
+              form={Form}
+              header={t('message.adding-new-tag', {
+                categoryName:
+                  currentClassification?.displayName ??
+                  currentClassification?.name,
+              })}
+              initialData={{
+                name: '',
+                description: '',
+              }}
+              isSaveButtonDisabled={!isEmpty(errorDataTag)}
+              visible={isAddingTag}
+              onCancel={() => setIsAddingTag(false)}
+              onChange={(data) => {
+                setErrorDataTag({});
+                onNewTagChange(data as Classification);
+              }}
+              onSave={(data) => createPrimaryTag(data as Classification)}
+            />
+
+            <EntityDeleteModal
+              bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+              entityName={deleteTags.data?.name ?? ''}
+              entityType={t('label.classification')}
+              loadingState={deleteStatus}
+              visible={deleteTags.state}
+              onCancel={() => setDeleteTags({ data: undefined, state: false })}
+              onConfirm={handleConfirmClick}
+            />
+          </div>
+        )}
+      </PageLayoutV1>
+    </PageContainerV1>
   );
 };
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,28 +11,16 @@
  *  limitations under the License.
  */
 
+import { Button, Typography } from 'antd';
+import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { LoadingState } from 'Models';
-import React, { ReactNode } from 'react';
-import { Button } from '../../buttons/Button/Button';
-import Loader from '../../Loader/Loader';
-type Props = {
-  className?: string;
-  loadingState?: LoadingState;
-  cancelText: string | ReactNode;
-  confirmText: string | ReactNode;
-  bodyText: string | ReactNode;
-  header: string;
-  headerClassName?: string;
-  bodyClassName?: string;
-  footerClassName?: string;
-  confirmButtonCss?: string;
-  cancelButtonCss?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-};
+import { LOADING_STATE } from 'enums/common.enum';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ConfirmationModalProps } from './ConfirmationModal.interface';
+
 const ConfirmationModal = ({
-  loadingState = 'initial',
+  loadingState = LOADING_STATE.INITIAL,
   cancelText,
   confirmText,
   header,
@@ -45,64 +33,56 @@ const ConfirmationModal = ({
   onCancel,
   bodyText,
   className,
-}: Props) => {
+  visible,
+}: ConfirmationModalProps) => {
+  const { t } = useTranslation();
+
   return (
-    <dialog
-      className={classNames('tw-modal', className)}
-      data-testid="confirmation-modal">
-      <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-w-120">
-        <div className={classNames('tw-modal-header', headerClassName)}>
-          <p className="tw-modal-title" data-testid="modal-header">
-            {header}
-          </p>
+    <Modal
+      centered
+      destroyOnClose
+      className={className}
+      closable={false}
+      data-testid="confirmation-modal"
+      footer={
+        <div className={classNames('justify-end', footerClassName)}>
+          <Button
+            className={classNames('mr-2', cancelButtonCss)}
+            data-testid="cancel"
+            key="remove-edge-btn"
+            type="text"
+            onClick={onCancel}>
+            {cancelText}
+          </Button>
+          <Button
+            className={confirmButtonCss}
+            danger={confirmText === t('label.delete')}
+            data-testid={
+              loadingState === LOADING_STATE.WAITING
+                ? 'loading-button'
+                : 'save-button'
+            }
+            key="save-btn"
+            loading={LOADING_STATE.WAITING === loadingState}
+            type="primary"
+            onClick={onConfirm}>
+            {confirmText}
+          </Button>
         </div>
-        <div
-          className={classNames('tw-modal-body tw-h-28', bodyClassName)}
-          data-testid="body-text">
-          <p>{bodyText}</p>
-        </div>
-        <div
-          className={classNames(
-            'tw-modal-footer tw-justify-end',
-            footerClassName
-          )}>
-          {loadingState === 'waiting' ? (
-            <Button
-              disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              data-testid="loading-button"
-              size="regular"
-              theme="primary"
-              variant="contained">
-              <Loader size="small" type="white" />
-            </Button>
-          ) : (
-            <>
-              <Button
-                className={classNames('tw-mr-2', cancelButtonCss)}
-                data-testid="cancel"
-                size="regular"
-                theme="primary"
-                variant="text"
-                onClick={onCancel}>
-                {cancelText}
-              </Button>
-              <Button
-                className={confirmButtonCss}
-                data-testid="save-button"
-                size="regular"
-                theme="primary"
-                type="submit"
-                variant="contained"
-                onClick={onConfirm}>
-                {confirmText}
-              </Button>
-            </>
-          )}
-        </div>
+      }
+      open={visible}
+      title={
+        <Typography.Text
+          strong
+          className={headerClassName}
+          data-testid="modal-header">
+          {header}
+        </Typography.Text>
+      }>
+      <div className={classNames('h-20', bodyClassName)}>
+        <Typography.Text data-testid="body-text">{bodyText}</Typography.Text>
       </div>
-    </dialog>
+    </Modal>
   );
 };
 

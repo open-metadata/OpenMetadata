@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, queryByText, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedPanel from './ActivityFeedPanel';
@@ -52,18 +52,16 @@ const mockFeedPanelProp = {
 
   postFeed: jest.fn(),
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityField: jest.fn(),
+  getEntityFQN: jest.fn(),
 }));
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
-});
-
-jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
-  return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
 });
 
 jest.mock('./FeedPanelBody', () => {
@@ -77,25 +75,35 @@ jest.mock('./FeedPanelOverlay', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
 });
 
+jest.mock('rest/feedsAPI', () => ({
+  getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
 describe('Test FeedPanel Component', () => {
   it('Check if Feedpanel has all child elements', async () => {
-    const { container } = render(<ActivityFeedPanel {...mockFeedPanelProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container, queryByTestId } = render(
+      <ActivityFeedPanel {...mockFeedPanelProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const FeedPanelOverlay = await findByText(container, /FeedPanelOverlay/i);
     const FeedPanelHeader = await findByText(container, /FeedPanelHeader/i);
     const FeedPanelBody = await findByText(container, /FeedPanelBody/i);
     const FeedPanelEditor = await findByText(container, /ActivityFeedEditor/i);
-    const deleteConfirmationModal = queryByText(
-      container,
-      /DeleteConfirmationModal/i
-    );
+    const DeleteConfirmationModal = queryByTestId('confirmation-modal');
 
     expect(FeedPanelOverlay).toBeInTheDocument();
     expect(FeedPanelHeader).toBeInTheDocument();
     expect(FeedPanelBody).toBeInTheDocument();
     expect(FeedPanelEditor).toBeInTheDocument();
-    expect(deleteConfirmationModal).not.toBeInTheDocument();
+    expect(DeleteConfirmationModal).toBeFalsy();
   });
 });

@@ -1,0 +1,180 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/pipelineService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Service",
+  "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.PipelineService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "pipelineServiceType": {
+      "description": "Type of pipeline service - Airflow or Prefect.",
+      "type": "string",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "enum": [
+        "Airflow",
+        "GluePipeline",
+        "Airbyte",
+        "Fivetran",
+        "Dagster",
+        "Nifi",
+        "DomoPipeline",
+        "CustomPipeline",
+        "DatabricksPipeline"
+      ],
+      "javaEnums": [
+        {
+          "name": "Airflow"
+        },
+        {
+          "name": "GluePipeline"
+        },
+        {
+          "name": "Airbyte"
+        },
+        {
+          "name": "Fivetran"
+        },
+        {
+          "name": "Dagster"
+        },
+        {
+          "name": "Nifi"
+        },
+        {
+          "name": "DomoPipeline"
+        },
+        {
+          "name": "CustomPipeline"
+        },
+        {
+          "name": "DatabricksPipeline"
+        }
+      ]
+    },
+    "pipelineConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.PipelineConnection",
+      "description": "Pipeline Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "./connections/pipeline/airflowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/gluePipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/airbyteConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/fivetranConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dagsterConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/nifiConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/domoPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/customPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/databricksPipelineConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this pipeline service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceType": {
+      "description": "Type of pipeline service such as Airflow or Prefect...",
+      "$ref": "#/definitions/pipelineServiceType"
+    },
+    "description": {
+      "description": "Description of a pipeline service instance.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this pipeline service. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Tags for this Pipeline Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this pipeline service to extract metadata",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "connection": {
+      "$ref": "#/definitions/pipelineConnection"
+    },
+    "owner": {
+      "description": "Owner of this pipeline service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this pipeline service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "serviceType"
+  ],
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,29 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize } from 'lodash';
-import { FormatedTableData } from 'Models';
-import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { Empty } from 'antd';
+import { AxiosError } from 'axios';
+import { PAGE_SIZE } from 'constants/constants';
+import { capitalize, debounce } from 'lodash';
+import { FormattedTableData } from 'Models';
+import React, {
+  FC,
+  HTMLAttributes,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { getSuggestions, searchData } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
-import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -35,7 +44,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const { t } = useTranslation();
+
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
@@ -52,40 +63,88 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
-  useEffect(() => {
-    getSuggestions(
-      searchValue,
-      SearchIndex[entityType as keyof typeof SearchIndex]
-    )
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setData(
-            formatDataResponse(res.data.suggest['metadata-suggest'][0].options)
-          );
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-suggestions-error']
-        );
-      });
-  }, [searchValue]);
+  const getSuggestResults = async (value: string) => {
+    try {
+      const data = await getSuggestions<ExploreSearchIndex>(
+        value,
+        SearchIndex[
+          entityType as keyof typeof SearchIndex
+        ] as ExploreSearchIndex
+      );
+      setData(
+        formatDataResponse(data.data.suggest['metadata-suggest'][0].options)
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
+      );
+    }
+  };
+
+  const getSearchResults = async (value: string) => {
+    try {
+      const data = await searchData<ExploreSearchIndex>(
+        value,
+        1,
+        PAGE_SIZE,
+        '',
+        '',
+        '',
+        SearchIndex[
+          entityType as keyof typeof SearchIndex
+        ] as ExploreSearchIndex
+      );
+      setData(formatDataResponse(data.data.hits.hits));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
+      );
+    }
+  };
+
+  const debouncedOnSearch = useCallback((searchText: string): void => {
+    if (searchText) {
+      getSuggestResults(searchText);
+    } else {
+      getSearchResults(searchText);
+    }
+  }, []);
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [
+    debouncedOnSearch,
+  ]);
+
+  const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
+    const searchText = e.target.value;
+    setSearchValue(searchText);
+    debounceOnSearch(searchText);
+  };
 
   useEffect(() => {
     setIsOpen(data.length > 0);
   }, [data]);
 
+  useEffect(() => {
+    getSearchResults(searchValue);
+  }, []);
+
   return (
-    <div>
+    <div data-testid="suggestion-node">
       <input
         className="tw-form-inputs tw-form-inputs-padding tw-w-full"
-        placeholder={`Search for ${capitalize(entityType)}s...`}
+        data-testid="node-search-box"
+        placeholder={`${t('label.search-for-type', {
+          type: capitalize(entityType),
+        })}s...`}
         type="search"
         value={searchValue}
-        onChange={(e) => setSearchValue(e.target.value)}
+        onChange={handleChange}
       />
       {data.length > 0 && isOpen ? (
         <div
@@ -93,7 +152,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           aria-orientation="vertical"
           className="tw-origin-top-right tw-absolute tw-z-20
           tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none text-body"
           role="menu">
           {data.map((entity) => (
             <div
@@ -126,7 +185,20 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        searchValue && (
+          <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
+            <Empty
+              description={t('label.no-data-found')}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{
+                width: '326px',
+                height: '70px',
+              }}
+            />
+          </div>
+        )
+      )}
     </div>
   );
 };

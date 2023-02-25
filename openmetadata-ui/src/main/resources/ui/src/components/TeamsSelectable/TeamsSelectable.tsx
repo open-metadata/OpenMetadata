@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,78 +11,103 @@
  *  limitations under the License.
  */
 
-import { SelectableOption } from 'Models';
-import React, { useState } from 'react';
-import AsyncSelect from 'react-select/async';
-import { getSuggestedTeams } from '../../axiosAPIs/miscAPI';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { PAGE_SIZE } from '../../constants/constants';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
-import { formatTeamsResponse } from '../../utils/APIUtils';
+import { TreeSelect } from 'antd';
+import { t } from 'i18next';
+import React, { useEffect, useState } from 'react';
+import { getTeamsHierarchy } from 'rest/teamsAPI';
+import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
 import { getEntityName } from '../../utils/CommonUtils';
-import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
-
-interface CustomOption extends SelectableOption {
-  isDisabled: boolean;
-}
+import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 interface Props {
+  showTeamsAlert?: boolean;
   onSelectionChange: (teams: string[]) => void;
+  filterJoinable?: boolean;
+  placeholder?: string;
 }
 
-const TeamsSelectable = ({ onSelectionChange }: Props) => {
-  const [teamSearchText, setTeamSearchText] = useState<string>('');
+const { TreeNode } = TreeSelect;
 
-  const handleSelectionChange = (selectedOptions: SelectableOption[]) => {
-    onSelectionChange(selectedOptions.map((option) => option.value));
+const TeamsSelectable = ({
+  showTeamsAlert,
+  onSelectionChange,
+  filterJoinable,
+  placeholder = t('label.search-for-type', {
+    type: t('label.team-plural-lowercase'),
+  }),
+}: Props) => {
+  const [value, setValue] = useState<Array<string>>();
+  const [noTeam, setNoTeam] = useState<boolean>(false);
+  const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
+
+  const onChange = (newValue: string[]) => {
+    onSelectionChange(newValue);
+    setValue(newValue);
   };
 
-  const loadOptions = (text: string) => {
-    return new Promise<SelectableOption[]>((resolve) => {
-      if (text) {
-        getSuggestedTeams(text).then((res) => {
-          const teams: UserTeams[] = formatTeamsResponse(
-            res.data.suggest['metadata-suggest'][0].options
-          );
-          const options = teams.map((team) => ({
-            label: getEntityName(team),
-            value: team.id,
-          }));
-          resolve(options);
-        });
-      } else {
-        getTeams('', PAGE_SIZE).then((res) => {
-          const teams: UserTeams[] = res.data.data || [];
-          const options = teams.map((team) => ({
-            label: getEntityName(team),
-            value: team.id,
-          }));
-          resolve(options);
-        });
-      }
-    });
+  const loadOptions = () => {
+    getTeamsHierarchy(filterJoinable)
+      .then((res) => {
+        const teams: TeamHierarchy[] = res.data;
+        setTeams(teams);
+        showTeamsAlert && setNoTeam(teams.length === 0);
+      })
+      .catch((error) => {
+        showErrorToast(error);
+      });
   };
+
+  useEffect(() => {
+    loadOptions();
+  }, []);
+
+  const getTreeNodes = (team: TeamHierarchy) => {
+    const teamName = getEntityName(team);
+    const value = team.id;
+    const disabled = filterJoinable ? !team.isJoinable : false;
+
+    return (
+      <TreeNode disabled={disabled} key={value} title={teamName} value={value}>
+        {team.children &&
+          team.children.map((n: TeamHierarchy) => getTreeNodes(n))}
+      </TreeNode>
+    );
+  };
+  const showLeafIcon = false;
 
   return (
-    <AsyncSelect
-      cacheOptions
-      defaultOptions
-      isClearable
-      isMulti
-      aria-label="Select teams"
-      components={{
-        DropdownIndicator: null,
-      }}
-      inputValue={teamSearchText}
-      isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
-      loadOptions={loadOptions}
-      placeholder="Teams..."
-      styles={reactSingleSelectCustomStyle}
-      onChange={(value) => handleSelectionChange(value as SelectableOption[])}
-      onInputChange={(newText) => {
-        setTeamSearchText(newText);
-      }}
-    />
+    <>
+      <TreeSelect
+        allowClear
+        multiple
+        showSearch
+        treeDefaultExpandAll
+        dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        placeholder={placeholder}
+        showCheckedStrategy={TreeSelect.SHOW_ALL}
+        style={{ width: '100%' }}
+        treeLine={{ showLeafIcon }}
+        treeNodeFilterProp="title"
+        value={value}
+        onChange={onChange}>
+        {teams.map((team) => {
+          return getTreeNodes(team);
+        })}
+      </TreeSelect>
+      {noTeam && (
+        <div
+          className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
+          data-testid="toast">
+          <div className="tw-font-semibold tw-flex-shrink-0">
+            <SVGIcons alt="info" icon="info" title="Info" width="16px" />
+          </div>
+          <div className="tw-font-semibold tw-px-1">
+            {t('message.no-data-available')}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

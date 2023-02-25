@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,42 +11,65 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil, isString } from 'lodash';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import {
+  DbtConfigCloud,
+  DbtConfigCloudReq,
   DbtConfigHttp,
   DbtConfigLocal,
-  DbtGCSCreds,
   DbtS3CredsReq,
   DbtSourceTypes,
+  ErrorDbtCloud,
   ErrorDbtGCS,
   ErrorDbtHttp,
   ErrorDbtLocal,
   ErrorDbtS3,
-} from '../components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
+} from 'components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
 import {
-  reqDBTGCSCredsFields,
+  reqDBTCloudFields,
   reqDBTHttpFields,
   reqDBTLocalFields,
   reqDBTS3Fields,
   rulesDBTGCSCredsFields,
   rulesDBTS3CredsFields,
-} from '../components/common/DBTConfigFormBuilder/DBTFormConstants';
+} from 'components/common/DBTConfigFormBuilder/DBTFormConstants';
 import {
   DBT_SOURCES,
   GCS_CONFIG,
-} from '../components/common/DBTConfigFormBuilder/DBTFormEnum';
+} from 'components/common/DBTConfigFormBuilder/DBTFormEnum';
+import { isEmpty, isNil, isString } from 'lodash';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
-} from '../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../generated/metadataIngestion/dbtPipeline';
 import { FormValidationRules } from '../interface/genericForm.interface';
 import jsonData from '../jsons/en';
 import { isValidEmail, isValidUrl } from './CommonUtils';
 
+export const validateDbtCloudConfig = (
+  data: DbtConfig,
+  requiredFields = reqDBTCloudFields
+) => {
+  let isValid = true;
+  const errors = {} as ErrorDbtCloud;
+  for (const field of Object.keys(requiredFields) as Array<
+    keyof DbtConfigCloudReq
+  >) {
+    if (isEmpty(data[field])) {
+      isValid = false;
+      errors[
+        field
+      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+    }
+  }
+
+  return { isValid, errors };
+};
+
 export const validateDbtLocalConfig = (
-  data: DbtConfigSource,
+  data: ModifiedDbtConfig,
   requiredFields = reqDBTLocalFields
 ) => {
   let isValid = true;
@@ -66,7 +89,7 @@ export const validateDbtLocalConfig = (
 };
 
 export const validateDbtHttpConfig = (
-  data: DbtConfigSource,
+  data: ModifiedDbtConfig,
   requiredFields = reqDBTHttpFields
 ) => {
   let isValid = true;
@@ -94,24 +117,6 @@ export const validateDbtS3Config = (
   for (const field of Object.keys(requiredFields) as Array<
     keyof DbtS3CredsReq
   >) {
-    if (isEmpty(data[field])) {
-      isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-export const validateDbtGCSCredsConfig = (
-  data: GCSCredentialsValues,
-  requiredFields = reqDBTGCSCredsFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtGCS;
-  for (const field of Object.keys(requiredFields) as Array<keyof DbtGCSCreds>) {
     if (isEmpty(data[field])) {
       isValid = false;
       errors[
@@ -225,8 +230,8 @@ export const checkDbtGCSCredsConfigRules = (
 };
 
 export const getSourceTypeFromConfig = (
-  data?: DbtConfigSource,
-  defaultSource = '' as DBT_SOURCES
+  data?: ModifiedDbtConfig,
+  defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;
   let gcsType = undefined;
@@ -252,6 +257,12 @@ export const getSourceTypeFromConfig = (
       ).length > 0
     ) {
       sourceType = DBT_SOURCES.local;
+    } else if (
+      Object.keys(reqDBTCloudFields).filter(
+        (field) => !isEmpty(data[field as keyof DbtConfigCloud])
+      ).length > 0
+    ) {
+      sourceType = DBT_SOURCES.cloud;
     }
   }
 

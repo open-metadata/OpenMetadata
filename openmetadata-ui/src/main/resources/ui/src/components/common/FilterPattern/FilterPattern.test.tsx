@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,12 +27,6 @@ const mockFilterPatternProps: FilterPatternProps = {
   getIncludeValue: jest.fn(),
 };
 
-jest.mock('../react-select-component/ReactSelectMultiInput', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ReactSelectMultiInput.component</div>);
-});
-
 describe('Test FilterPattern component', () => {
   it('FilterPattern component should render', async () => {
     const { container } = render(<FilterPattern {...mockFilterPatternProps} />);
@@ -55,6 +49,45 @@ describe('Test FilterPattern component', () => {
       'filter-pattern-excludes-table'
     );
 
+    expect(filterPatternContainer).toBeInTheDocument();
+    expect(checkbox).toBeInTheDocument();
+    expect(fieldContainer).toBeInTheDocument();
+    expect(includeFilterInput).toBeInTheDocument();
+    expect(excludeFilterInput).toBeInTheDocument();
+  });
+
+  it('FilterPattern component should render with filter pattern description', async () => {
+    const { container } = render(<FilterPattern {...mockFilterPatternProps} />);
+
+    const filterPatternContainer = await findByTestId(
+      container,
+      'filter-pattern-container'
+    );
+    const fieldContainer = await findByTestId(container, 'field-container');
+    const checkbox = await findByTestId(
+      container,
+      `${mockFilterPatternProps.type}-filter-pattern-checkbox`
+    );
+
+    const includeFilterInfo = await findByTestId(
+      container,
+      'filter-pattern-include-info'
+    );
+    const excludeFilterInfo = await findByTestId(
+      container,
+      'filter-pattern-exclude-info'
+    );
+    const includeFilterInput = await findByTestId(
+      container,
+      'filter-pattern-includes-table'
+    );
+    const excludeFilterInput = await findByTestId(
+      container,
+      'filter-pattern-excludes-table'
+    );
+
+    expect(includeFilterInfo).toBeInTheDocument();
+    expect(excludeFilterInfo).toBeInTheDocument();
     expect(filterPatternContainer).toBeInTheDocument();
     expect(checkbox).toBeInTheDocument();
     expect(fieldContainer).toBeInTheDocument();

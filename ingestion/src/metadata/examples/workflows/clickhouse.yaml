@@ -1,0 +1,25 @@
+source:
+  type: clickhouse
+  serviceName: local_clickhouse
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: default
+      password: ''
+      hostPort: localhost:8123
+      databaseSchema: default
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      schemaFilterPattern:
+        excludes:
+        - system.*
+        - information_schema.*
+        - INFORMATION_SCHEMA.*
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

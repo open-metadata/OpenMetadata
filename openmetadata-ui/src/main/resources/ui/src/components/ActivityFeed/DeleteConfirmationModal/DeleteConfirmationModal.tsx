@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,29 +12,24 @@
  */
 
 import React, { FC } from 'react';
-import {
-  confirmationBodyText,
-  confirmHeadertext,
-} from '../../../constants/feed.constants';
+import { useTranslation } from 'react-i18next';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-
-interface DeleteConfirmationModalProp {
-  onDiscard: () => void;
-  onDelete: () => void;
-}
+import { DeleteConfirmationModalProp } from './DeleteConfirmationModal.interface';
 
 const DeleteConfirmationModal: FC<DeleteConfirmationModalProp> = ({
   onDiscard,
   onDelete,
+  visible,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <ConfirmationModal
-      bodyClassName="tw-h-18"
-      bodyText={confirmationBodyText}
-      cancelText="Cancel"
-      className="tw-w-auto tw-h-screen"
-      confirmText="Delete"
-      header={confirmHeadertext}
+      bodyText={t('message.confirm-delete-message')}
+      cancelText={t('label.cancel')}
+      confirmText={t('label.delete')}
+      header={t('message.delete-message-question-mark')}
+      visible={visible}
       onCancel={onDiscard}
       onConfirm={onDelete}
     />

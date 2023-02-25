@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import DeployIngestionLoaderModal from './DeployIngestionLoaderModal';
+import { DeployIngestionLoaderModalProps } from './DeployIngestionLoaderModal.interface';
 
 const deployIngestionLoaderModalProps = {
   ingestionName: 'test_metadata',
@@ -22,7 +23,8 @@ const deployIngestionLoaderModalProps = {
   progress: 0,
   isIngestionCreated: false,
   isDeployed: false,
-};
+  visible: true,
+} as DeployIngestionLoaderModalProps;
 
 describe('Test DeployIngestionLoaderModal component', () => {
   it('Component should render properly', async () => {

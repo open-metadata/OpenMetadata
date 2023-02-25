@@ -1,0 +1,17 @@
+{
+  "name": "mostActiveUsers",
+  "fullyQualifiedName": "mostActiveUsers",
+  "displayName": "Most Active Users",
+  "description": "Displays the most active users on the platform based on page views.",
+  "dataIndexType": "web_analytic_user_activity_report_data_index",
+  "dimensions": [
+    {"name": "userName","chartDataType":"STRING"},
+    {"name": "team","chartDataType":"STRING"}
+  ],
+  "metrics": [
+    {"name": "lastSession", "displayName": "Last time the user visited the platform", "chartDataType": "INT"},
+    {"name": "sessions", "displayName": "Total number of sessions", "chartDataType": "INT"},
+    {"name": "avgSessionDuration", "displayName": "The average duration time of a session", "chartDataType": "FLOAT"},
+    {"name": "pageViews", "displayName": "Total number of page view", "chartDataType": "INT"}
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/deltaLakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeltaLakeConnection",
+  "description": "DeltaLake Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
+  "definitions": {
+    "deltaLakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["DeltaLake"],
+      "default": "DeltaLake"
+    },
+    "metastoreHostPortConnection": {
+      "title": "Hive Metastore Service",
+      "type":"object",
+      "properties": {
+        "metastoreHostPort": {
+          "title": "Hive Metastore Service",
+          "description": "Thrift connection to the metastore service. E.g., localhost:9083",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metastoreDbConnection": {
+      "title": "Hive Metastore Database",
+      "type":"object",
+      "properties": {
+        "metastoreDb": {
+          "title": "Hive Metastore Database",
+          "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metastoreFilePathConnection": {
+      "title": "Hive Metastore File Path",
+      "type":"object",
+      "properties": {
+        "metastoreFilePath": {
+          "title": "Hive Metastore File Path",
+          "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/deltaLakeType",
+      "default": "DeltaLake"
+    },
+    "metastoreConnection": {
+      "title": "Hive Metastore Connection",
+      "description": "Hive metastore service, local file path or metastore db.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/metastoreHostPortConnection"
+        },
+        {
+          "$ref": "#/definitions/metastoreDbConnection"
+        },
+        {
+          "$ref": "#/definitions/metastoreFilePathConnection"
+        }
+      ]
+    },
+    "appName": {
+      "title": "Application Name",
+      "description": "pySpark App Name.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "description": "Key-Value pairs that will be used to add configs to the SparkSession.",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["metastoreConnection"]
+}

@@ -14,39 +14,56 @@
 package org.openmetadata.client.gateway;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import feign.RequestInterceptor;
-import io.swagger.client.ApiClient;
-import io.swagger.client.api.CatalogApi;
-import org.openmetadata.catalog.api.CatalogVersion;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import feign.Feign;
+import feign.form.FormEncoder;
+import feign.jackson.JacksonDecoder;
+import feign.jackson.JacksonEncoder;
+import feign.okhttp.OkHttpClient;
+import feign.slf4j.Slf4jLogger;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.client.ApiClient;
+import org.openmetadata.client.api.SystemApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
-import org.openmetadata.core.util.VersionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.schema.api.OpenMetadataServerVersion;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.VersionUtils;
 
+@Slf4j
 public class OpenMetadata {
-  private static final Logger LOG = LoggerFactory.getLogger(OpenMetadata.class);
-  private static final CatalogVersion CATALOG_VERSION_CLIENT;
+  private static final OpenMetadataServerVersion OPENMETADATA_VERSION_CLIENT;
 
   static {
-    CATALOG_VERSION_CLIENT = VersionUtils.getCatalogVersion("/catalog/VERSION");
+    OPENMETADATA_VERSION_CLIENT = VersionUtils.getOpenMetadataServerVersion("/catalog/VERSION");
   }
 
   private ApiClient apiClient;
-  private OpenMetadataServerConnection serverConfig;
-  private String basePath;
-  private final String requestInterceptorKey = "custom";
+  private static final String REQUEST_INTERCEPTOR_KEY = "custom";
 
-  public OpenMetadata(OpenMetadataServerConnection config) {
-    serverConfig = config;
+  public OpenMetadata(OpenMetadataConnection config) {
+    initClient(config);
+    validateVersion();
+  }
+
+  public OpenMetadata(OpenMetadataConnection config, boolean validateVersion) {
+    initClient(config);
+    if (validateVersion) validateVersion();
+  }
+
+  public void initClient(OpenMetadataConnection config) {
     apiClient = new ApiClient();
+    Feign.Builder builder =
+        Feign.builder()
+            .encoder(new FormEncoder(new JacksonEncoder(apiClient.getObjectMapper())))
+            .decoder(new JacksonDecoder(apiClient.getObjectMapper()))
+            .logger(new Slf4jLogger())
+            .client(new OkHttpClient());
+    apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
-    basePath = config.getHostPort() + "/";
+    String basePath = config.getHostPort() + "/";
     apiClient.setBasePath(basePath);
     apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
-    validateVersion();
   }
 
   public <T extends ApiClient.Api> T buildClient(Class<T> clientClass) {
@@ -59,28 +76,19 @@ public class OpenMetadata {
   }
 
   public <K> void updateRequestType(Class<K> requestClass) {
-    if (apiClient.getApiAuthorizations().containsKey(requestInterceptorKey)) {
-      apiClient.getApiAuthorizations().remove(requestInterceptorKey);
-    }
+    apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
     CustomRequestInterceptor<K> newInterceptor =
-        new CustomRequestInterceptor(apiClient.getObjectMapper(), requestClass);
-    apiClient.addAuthorization(requestInterceptorKey, newInterceptor);
-    return;
-  }
-
-  public void addRequestInterceptor(String requestInterceptorKey, RequestInterceptor interceptor) {
-    if (apiClient.getApiAuthorizations().containsKey(requestInterceptorKey)) {
-      LOG.info("Interceptor with this key already exists");
-      return;
-    }
-    apiClient.addAuthorization(requestInterceptorKey, interceptor);
-    return;
+        new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
+    apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);
   }
 
   public void validateVersion() {
-    String clientVersion = getClientVersion();
-    String serverVersion = getServerVersion();
-    if (serverVersion.equals(clientVersion)) {
+    String[] clientVersion = getClientVersion();
+    String[] serverVersion = getServerVersion();
+    // MAJOR MINOR REVISION
+    if (serverVersion[0].equals(clientVersion[0])
+        && serverVersion[1].equals(clientVersion[1])
+        && serverVersion[2].equals(clientVersion[2])) {
       LOG.debug("OpenMetaData Client Initialized successfully.");
     } else {
       LOG.error(
@@ -88,13 +96,13 @@ public class OpenMetadata {
     }
   }
 
-  public String getServerVersion() {
-    CatalogApi api = apiClient.buildClient(CatalogApi.class);
-    io.swagger.client.model.CatalogVersion serverVersion = api.getCatalogVersion();
+  public String[] getServerVersion() {
+    SystemApi api = apiClient.buildClient(SystemApi.class);
+    org.openmetadata.client.model.OpenMetadataServerVersion serverVersion = api.getCatalogVersion();
     return VersionUtils.getVersionFromString(serverVersion.getVersion());
   }
 
-  public String getClientVersion() {
-    return VersionUtils.getVersionFromString(CATALOG_VERSION_CLIENT.getVersion());
+  public String[] getClientVersion() {
+    return VersionUtils.getVersionFromString(OPENMETADATA_VERSION_CLIENT.getVersion());
   }
 }

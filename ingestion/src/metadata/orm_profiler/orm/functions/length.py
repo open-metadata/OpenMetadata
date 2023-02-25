@@ -44,6 +44,8 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Presto)
 @compiles(LenFn, Dialects.BigQuery)
 @compiles(LenFn, Dialects.Oracle)
+@compiles(LenFn, Dialects.IbmDbSa)
+@compiles(LenFn, Dialects.Db2)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
@@ -51,3 +53,9 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
     return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)
+
+
+@compiles(LenFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handles lenght function for ClickHouse"""
+    return "length(%s)" % compiler.process(element.clauses, **kw)

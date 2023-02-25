@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -78,19 +78,19 @@
 
   /* Table css start */
   .tableHead-row {
-    @apply tw-border tw-border-main tw-leading-normal;
+    @apply tw-leading-normal;
   }
   .tableHead-cell {
-    @apply tw-py-3 tw-px-6 tw-font-medium tw-text-left tw-whitespace-nowrap;
+    @apply tw-py-2 tw-px-4 tw-font-medium tw-text-left tw-whitespace-nowrap;
   }
   .tableBody {
     @apply tw-text-grey-body;
   }
   .tableBody-row {
-    @apply tw-border tw-border-main hover:tw-bg-body-hover;
+    @apply tw-border-t tw-border-main hover:tw-bg-body-hover;
   }
   .tableBody-cell {
-    @apply tw-py-3 tw-px-6 tw-text-left;
+    @apply tw-py-2 tw-px-4 tw-text-left;
   }
   /* Table css end */
 
@@ -216,7 +216,7 @@
   }
 
   .tw-form-container {
-    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form;
+    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form tw-w-700;
   }
 
   /* Dropdown CSS start */
@@ -286,9 +286,12 @@
   }
 
   .toggle-switch {
-    @apply tw-w-9 tw-border-2 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full
+    @apply tw-border tw-cursor-pointer tw-flex tw-items-center tw-rounded-full
     tw-mx-2 tw-px-0.5 tw-transition tw-duration-500 tw-ease-in-out
     tw-bg-grey-muted-lite tw-border-grey-muted;
+    width: 35px;
+    height: 19px;
+    border-width: 1.5px;
   }
   .toggle-switch.open {
     @apply tw-bg-primary-lite tw-border-primary;
@@ -299,16 +302,6 @@
   }
   .toggle-switch.open .switch {
     @apply tw-bg-primary tw-translate-x-4;
-  }
-
-  body .content-container h1,
-  body .content-container h2 {
-    @apply tw-text-h3;
-  }
-  body .editor-wrapper ul,
-  body #description ul,
-  body .content-container ul {
-    @apply tw-list-disc;
   }
 
   .signin-box {
@@ -341,7 +334,8 @@
     box-shadow: 0 0 0 0.5px #7147e8;
   }
   .tw-filter-seperator {
-    @apply tw-border-b tw-border-separator tw-mb-4;
+    @apply tw-mb-1;
+    border-bottom: 1px solid #dce3ec80;
   }
 
   /* Cron editor css */
@@ -366,10 +360,6 @@
 
   .column-highlight {
     animation: highlight 3000ms ease-out;
-  }
-
-  .rotate-inverse {
-    transform: rotate(180deg);
   }
 
   .rjsf.no-header #root__title,
@@ -420,7 +410,8 @@
 
   .rjsf .btn.array-item-remove {
     @apply tw-p-3.5;
-    background: url(../assets/svg/ic-delete.svg) center center no-repeat;
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwLjE4NDMgMi44MTI1SDE2LjY2ODdWMi4xMDkzOEMxNi42Njg3IDAuOTQ2MjY2IDE1LjcyMjQgMCAxNC41NTkzIDBIOC45MzQzM0M3Ljc3MTIyIDAgNi44MjQ5NSAwLjk0NjI2NiA2LjgyNDk1IDIuMTA5MzhWMi44MTI1SDMuMzA5MzNDMi4xNDYyMiAyLjgxMjUgMS4xOTk5NSAzLjc1ODc3IDEuMTk5OTUgNC45MjE4OEMxLjE5OTk1IDUuODU2IDEuODEwNSA2LjY0OTczIDIuNjUzMzEgNi45MjYzTDMuOTA3NDUgMjIuMDY1OEMzLjk5Nzc4IDIzLjE1MDQgNC45MjExMiAyNCA2LjAwOTUxIDI0SDE3LjQ4NDFDMTguNTcyNiAyNCAxOS40OTU5IDIzLjE1MDQgMTkuNTg2MyAyMi4wNjU0TDIwLjg0MDMgNi45MjYyNUMyMS42ODMyIDYuNjQ5NzMgMjIuMjkzNyA1Ljg1NiAyMi4yOTM3IDQuOTIxODhDMjIuMjkzNyAzLjc1ODc3IDIxLjM0NzQgMi44MTI1IDIwLjE4NDMgMi44MTI1Wk04LjIzMTIgMi4xMDkzOEM4LjIzMTIgMS43MjE2NyA4LjU0NjYyIDEuNDA2MjUgOC45MzQzMyAxLjQwNjI1SDE0LjU1OTNDMTQuOTQ3IDEuNDA2MjUgMTUuMjYyNSAxLjcyMTY3IDE1LjI2MjUgMi4xMDkzOFYyLjgxMjVIOC4yMzEyVjIuMTA5MzhaTTE4LjE4NDggMjEuOTQ5QzE4LjE1NDcgMjIuMzEwNSAxNy44NDcgMjIuNTkzOCAxNy40ODQxIDIyLjU5MzhINi4wMDk1MUM1LjY0Njc1IDIyLjU5MzggNS4zMzg5NyAyMi4zMTA1IDUuMzA4OTIgMjEuOTQ5NEw0LjA3MzExIDcuMDMxMjVIMTkuNDIwNUwxOC4xODQ4IDIxLjk0OVpNMjAuMTg0MyA1LjYyNUgzLjMwOTMzQzIuOTIxNjIgNS42MjUgMi42MDYyIDUuMzA5NTggMi42MDYyIDQuOTIxODhDMi42MDYyIDQuNTM0MTcgMi45MjE2MiA0LjIxODc1IDMuMzA5MzMgNC4yMTg3NUgyMC4xODQzQzIwLjU3MiA0LjIxODc1IDIwLjg4NzUgNC41MzQxNyAyMC44ODc1IDQuOTIxODhDMjAuODg3NSA1LjMwOTU4IDIwLjU3MiA1LjYyNSAyMC4xODQzIDUuNjI1WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNOS4xODYxOSAyMC40NDA5TDguNDgzMDcgOS4wOTcxNUM4LjQ1OTAyIDguNzA5NTQgOC4xMjM1NCA4LjQxNDc0IDcuNzM3OCA4LjQzODg4QzcuMzUwMiA4LjQ2MjkzIDcuMDU1NDkgOC43OTY1OSA3LjA3OTQ5IDkuMTg0MTVMNy43ODI2MiAyMC41Mjc5QzcuODA1NzMgMjAuOTAwNyA4LjExNTI5IDIxLjE4NzYgOC40ODM3MyAyMS4xODc2QzguODkwOTMgMjEuMTg3NiA5LjIxMTE4IDIwLjg0NDYgOS4xODYxOSAyMC40NDA5WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNMTIgOC40Mzc1QzExLjYxMTcgOC40Mzc1IDExLjI5NjkgOC43NTIzMSAxMS4yOTY5IDkuMTQwNjJWMjAuNDg0NEMxMS4yOTY5IDIwLjg3MjcgMTEuNjExNyAyMS4xODc1IDEyIDIxLjE4NzVDMTIuMzg4MyAyMS4xODc1IDEyLjcwMzEgMjAuODcyNyAxMi43MDMxIDIwLjQ4NDRWOS4xNDA2MkMxMi43MDMxIDguNzUyMzEgMTIuMzg4MyA4LjQzNzUgMTIgOC40Mzc1WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNMTYuMjYyMiA4LjQzODg3QzE1Ljg3NTUgOC40MTQ4MyAxNS41NDEgOC43MDk1MyAxNS41MTcgOS4wOTcxNEwxNC44MTM5IDIwLjQ0MDlDMTQuNzg5OSAyMC44Mjg0IDE1LjA4NDYgMjEuMTYyMSAxNS40NzIyIDIxLjE4NjFDMTUuODYgMjEuMjEwMSAxNi4xOTM0IDIwLjkxNTMgMTYuMjE3NCAyMC41Mjc5TDE2LjkyMDYgOS4xODQxNEMxNi45NDQ2IDguNzk2NTMgMTYuNjQ5OSA4LjQ2Mjg3IDE2LjI2MjIgOC40Mzg4N1oiIGZpbGw9IiMzNzM1MkYiLz4KPC9zdmc+Cg==)
+      center center no-repeat;
     background-size: 50%;
   }
 
@@ -491,5 +482,20 @@
   /* ToastUI Editor style */
   .ProseMirror .placeholder {
     @apply tw-text-grey-muted;
+  }
+
+  /* New Feed Button style */
+  .tw-refreshButton {
+    @apply tw-w-full tw-rounded tw-text-info tw-py-1 tw-bg-feed-background tw-border tw-border-feed hover:tw-bg-feed-hover;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 100ms linear;
+  }
+
+  .tw-max-w-75 {
+    max-width: 75%;
+  }
+
+  .tw-table-container {
+    @apply tw-bg-white tw-border tw-border-main tw-rounded;
   }
 }

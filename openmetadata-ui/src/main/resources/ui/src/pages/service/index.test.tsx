@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,72 +12,59 @@
  */
 
 import {
-  findAllByTestId,
+  act,
   findByTestId,
   findByText,
-  queryByText,
+  queryByTestId,
   render,
+  screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { act } from 'react-test-renderer';
+import { getCurrentServiceTab } from '../../utils/ServiceUtils';
 import ServicePage from './index';
+import {
+  DASHBOARD_DATA,
+  mockData,
+  mockDatabase,
+  mockTabs,
+} from './mocks/servicePage.mock';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: true,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
-const mockData = {
-  description: '',
-  href: 'link',
-  id: 'd3b225a2-e4a2-4f4e-834e-b1c03112f139',
-  jdbc: {
-    connectionUrl:
-      'postgresql+psycopg2://awsuser:focguC-kaqqe5-nepsok@redshift-cluster-1.clot5cqn1cnb.us-west-2.redshift.amazonaws.com:5439/warehouse',
-    driverClass: 'jdbc',
-  },
-  name: 'aws_redshift',
-  serviceType: 'Redshift',
+let mockParams = {
+  serviceFQN: 'bigquery_gcp',
+  serviceType: 'BigQuery',
+  serviceCategory: 'databaseServices',
+  tab: 'databases',
 };
 
-const mockDatabase = {
-  data: [
-    {
-      description: ' ',
-      fullyQualifiedName: 'aws_redshift.information_schema',
-      href: 'http://localhost:8585/api/v1/databases/c86f4fed-f259-43d8-b031-1ce0b7dd4e41',
-      id: 'c86f4fed-f259-43d8-b031-1ce0b7dd4e41',
-      name: 'information_schema',
-      service: {
-        description: '',
-        href: 'http://localhost:8585/api/v1/services/databaseServices/d3b225a2-e4a2-4f4e-834e-b1c03112f139',
-        id: 'd3b225a2-e4a2-4f4e-834e-b1c03112f139',
-        name: 'aws_redshift',
-        type: 'databaseService',
-      },
-      usageSummary: {
-        date: '2021-08-04',
-        dailyStats: { count: 0, percentileRank: 0 },
-        monthlyStats: { count: 0, percentileRank: 0 },
-        weeklyStats: { count: 0, percentileRank: 0 },
-      },
-    },
-  ],
-  paging: {
-    after: null,
-    before: null,
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+  DEFAULT_ENTITY_PERMISSION: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
   },
-};
+}));
 
-jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+
+jest.mock('rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -86,32 +73,68 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
       },
     })
   ),
-  deleteIngestionPipelineById: jest.fn(),
-  addIngestionPipeline: jest.fn(),
-  triggerIngestionPipelineById: jest.fn(),
-  updateIngestionPipeline: jest.fn(),
+  checkAirflowStatus: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  deployIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  deleteIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  enableDisableIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  triggerIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
 }));
 
-jest.mock('../../axiosAPIs/serviceAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
+  fetchAirflowConfig: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('rest/mlModelAPI', () => ({
+  getMlmodels: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('rest/pipelineAPI', () => ({
+  getPipelines: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('rest/topicsAPI', () => ({
+  getTopics: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('rest/dashboardAPI', () => ({
+  getDashboards: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: DASHBOARD_DATA,
+      paging: {
+        after: null,
+        before: null,
+      },
+    })
+  ),
+}));
+
+jest.mock('rest/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockData })),
-  updateService: jest.fn(),
+    .mockImplementation(() => Promise.resolve(mockData)),
+  updateService: jest.fn().mockImplementation(() => Promise.resolve()),
+  TestConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../axiosAPIs/databaseAPI', () => ({
+jest.mock('rest/databaseAPI', () => ({
   getDatabases: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
-  updateService: jest.fn(),
+    .mockImplementation(() => Promise.resolve({ ...mockDatabase })),
 }));
 
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => {
-    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-  }
-);
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -120,15 +143,10 @@ jest.mock('react-router-dom', () => ({
       <span>{children}</span>
     )),
   useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
-    serviceFQN: 'bigquery_gcp',
-    serviceType: 'BigQuery',
-    serviceCategory: 'databaseServices',
-    tab: 'databases',
-  }),
+  useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -137,7 +155,7 @@ jest.mock('../../components/containers/PageContainer', () => {
 });
 
 jest.mock('../../utils/ServiceUtils', () => ({
-  getCurrentServiceTab: jest.fn().mockReturnValue(1),
+  getCurrentServiceTab: jest.fn().mockImplementation(() => 1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
   servicePageTabs: jest.fn().mockReturnValue([
     {
@@ -145,39 +163,100 @@ jest.mock('../../utils/ServiceUtils', () => ({
       path: 'databases',
       field: 'databases',
     },
+    {
+      name: 'Ingestions',
+      path: 'ingestions',
+    },
+    {
+      name: 'Connection',
+      path: 'connection',
+    },
   ]),
+  getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
+  getResourceEntityFromServiceCategory: jest
+    .fn()
+    .mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
+  getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
+  shouldTestConnection: jest.fn().mockReturnValue(true),
+  getCountLabel: jest.fn().mockReturnValue('Dashboards'),
+  getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  'components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
   }
 );
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
 
-jest.mock('../../components/common/TabsPane/TabsPane', () => {
+jest.mock('components/common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<div>TabsPane_component</div>);
 });
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
-      .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
+      .mockReturnValue(<div>ModalWithMarkdownEditor</div>),
   })
 );
 
-jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
-  return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
+jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () =>
+  jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
+);
+
+jest.mock('components/ServiceConfig/ServiceConfig', () => {
+  return jest.fn().mockReturnValue(<div>ServiceConfig</div>);
 });
+
+jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () => {
+  return jest.fn().mockReturnValue(<div>ManageButton</div>);
+});
+jest.mock('components/Ingestion/Ingestion.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="ingestions">Ingestion</div>);
+});
+
+jest.mock(
+  'components/ServiceConnectionDetails/ServiceConnectionDetails.component',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="service-connections">ServiceConnectionDetails</div>
+      );
+  }
+);
+
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);
+});
+
+jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockImplementation(({ name }) => {
+    return <div data-testid={`${name}-profile`}>{name}</div>;
+  });
+});
+
+jest.mock('../../utils/TableUtils', () => ({
+  getEntityLink: jest.fn(),
+  getUsagePercentile: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
@@ -194,33 +273,158 @@ describe('Test ServicePage Component', () => {
       );
       const description = await findByText(container, /Description_component/i);
       const tabPane = await findByText(container, /TabsPane_component/i);
+      const tableContainer = await findByTestId(container, 'table-container');
 
       expect(servicePage).toBeInTheDocument();
       expect(titleBreadcrumb).toBeInTheDocument();
       expect(descriptionContainer).toBeInTheDocument();
       expect(description).toBeInTheDocument();
       expect(tabPane).toBeInTheDocument();
+      expect(tableContainer).toBeInTheDocument();
     });
   });
 
-  it('Table should be visible if data is available', async () => {
-    const { container } = render(<ServicePage />, {
+  it('Should render the service children table rows', async () => {
+    render(<ServicePage />, {
       wrapper: MemoryRouter,
     });
-    const tableContainer = await findByTestId(container, 'table-container');
+    const tableContainer = await screen.findByTestId('service-children-table');
 
     expect(tableContainer).toBeInTheDocument();
-    expect(
-      queryByText(container, /does not have any databases/i)
-    ).not.toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    expect(rows).toHaveLength(1);
   });
 
-  it('Number of column should be same as data received', async () => {
-    const { container } = render(<ServicePage />, {
+  it('Should render the owner name and profile pic if child has owner', async () => {
+    render(<ServicePage />, {
       wrapper: MemoryRouter,
     });
-    const column = await findAllByTestId(container, 'column');
+    const tableContainer = await screen.findByTestId('service-children-table');
 
-    expect(column.length).toBe(1);
+    expect(tableContainer).toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    const firstRow = rows[0];
+
+    const ownerData = await findByTestId(firstRow, 'owner-data');
+
+    expect(ownerData).toBeInTheDocument();
+
+    // owner profile pic
+    expect(
+      await findByTestId(ownerData, 'Compute-profile')
+    ).toBeInTheDocument();
+
+    // owner name
+    expect(
+      await findByTestId(ownerData, 'Compute-owner-name')
+    ).toBeInTheDocument();
+  });
+
+  it('Should render the ingestion component', async () => {
+    mockParams = { ...mockParams, tab: 'ingestions' };
+
+    (getCurrentServiceTab as jest.Mock).mockImplementationOnce(() => 2);
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const ingestionContainer = await screen.findByText(
+      'message.airflow-guide-message'
+    );
+
+    expect(ingestionContainer).toBeInTheDocument();
+  });
+
+  it('Should render the connection component', async () => {
+    mockParams = { ...mockParams, tab: 'connection' };
+
+    (getCurrentServiceTab as jest.Mock).mockImplementationOnce(() => 3);
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const connectionContainer = await screen.findByTestId(
+      'service-connections'
+    );
+
+    const editButton = await screen.findByTestId('edit-connection-button');
+    const testButton = screen.queryByTestId('test-connection-button');
+
+    expect(connectionContainer).toBeInTheDocument();
+
+    expect(editButton).toBeInTheDocument();
+
+    expect(testButton).not.toBeInTheDocument();
+  });
+
+  it('Should render the dashboards and child components', async () => {
+    mockParams = {
+      serviceFQN: 'sample_superset',
+      serviceType: 'Superset',
+      serviceCategory: 'dashboardServices',
+      tab: 'dashboards',
+    };
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const tableContainer = await screen.findByTestId('service-children-table');
+
+    expect(tableContainer).toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    expect(rows).toHaveLength(3);
+
+    const firstRow = rows[0];
+    const secondRow = rows[1];
+
+    // first row test
+    const ownerData = await findByTestId(firstRow, 'owner-data');
+
+    expect(ownerData).toBeInTheDocument();
+
+    // owner profile pic
+    expect(
+      await findByTestId(ownerData, 'Compute-profile')
+    ).toBeInTheDocument();
+
+    // owner name
+    expect(
+      await findByTestId(ownerData, 'Compute-owner-name')
+    ).toBeInTheDocument();
+
+    const tagContainer = await findByTestId(firstRow, 'record-tags');
+
+    expect(tagContainer).toBeInTheDocument();
+
+    // should render tag viewer as it has tags
+    expect(await findByTestId(tagContainer, 'tag-viewer')).toBeInTheDocument();
+
+    // second row test
+
+    const noOwnerData = await findByTestId(secondRow, 'no-owner-text');
+
+    expect(noOwnerData).toBeInTheDocument();
+
+    const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
+
+    expect(secondRowTagContainer).toBeInTheDocument();
+
+    // should not render tag viewer as it does not have tags
+    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 });

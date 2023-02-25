@@ -15,12 +15,12 @@ package org.openmetadata.client.interceptors;
 
 import feign.RequestTemplate;
 import java.util.Base64;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.model.OktaSSOConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 public class OktaAccessTokenRequestInterceptor implements AuthenticationProvider {
-  private OktaSSOConfig securityConfig;
+  private final OktaSSOConfig securityConfig;
   private String base64Credentials;
 
   public OktaAccessTokenRequestInterceptor(OktaSSOConfig config) {
@@ -39,7 +39,7 @@ public class OktaAccessTokenRequestInterceptor implements AuthenticationProvider
   }
 
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
     return new OktaAccessTokenRequestInterceptor((OktaSSOConfig) iConfig.getSecurityConfig());
   }
 
