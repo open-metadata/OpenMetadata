@@ -14,18 +14,10 @@
         "logoLocationType": {
           "description": "Type of Logo Location",
           "type": "string",
-          "enum": ["openmetadata","filePath","url"]
-        },
-        "loginPageLogoAbsoluteFilePath": {
-          "description": "Login Page Absolute File Path For Logo Image",
-          "type": "string"
+          "enum": ["openmetadata","url"]
         },
         "loginPageLogoUrlPath": {
           "description": "Login Page Logo Image Url",
-          "type": "string"
-        },
-        "navBarLogoAbsoluteFilePath": {
-          "description": "Navigation Bar Absolute File Path For Logo Image",
           "type": "string"
         },
         "navBarLogoUrlPath": {
