@@ -8,7 +8,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.EventPublisher;
 import org.openmetadata.service.events.errors.RetriableException;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.ChangeEventResource.ChangeEventList;
 
 @Slf4j
 public abstract class AbstractEventSubscriptionPublisher implements EventPublisher {

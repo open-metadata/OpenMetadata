@@ -17,7 +17,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.resources.events.EventResource;
+import org.openmetadata.service.resources.events.ChangeEventResource;
 
 @Slf4j
 public class EventMonitorPublisher extends AbstractEventPublisher {
@@ -30,7 +30,7 @@ public class EventMonitorPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(EventResource.ChangeEventList events) throws EventPublisherException {
+  public void publish(ChangeEventResource.ChangeEventList events) throws EventPublisherException {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       if (Entity.INGESTION_PIPELINE.equals(entityType)) {

@@ -17,7 +17,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.events.EventResource;
+import org.openmetadata.service.resources.events.ChangeEventResource;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -58,7 +58,7 @@ public class GenericWebhookPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list)
+  public void sendAlert(ChangeEventResource.ChangeEventList list)
       throws IOException, EventPublisherException, InterruptedException {
     long attemptTime = System.currentTimeMillis();
     try {

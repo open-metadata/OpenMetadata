@@ -30,7 +30,7 @@ import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
-import org.openmetadata.service.resources.events.EventResource;
+import org.openmetadata.service.resources.events.ChangeEventResource;
 
 /**
  * SubscriptionPublisher publishes events to the alert ndpoint using POST http requests/ Email. There is one instance of
@@ -137,14 +137,14 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.ChangeEventList list) throws IOException, InterruptedException {}
+  protected void sendAlert(ChangeEventResource.ChangeEventList list) throws IOException, InterruptedException {}
 
   protected void onStartDelegate() {}
 
   protected void onShutdownDelegate() {}
 
   @Override
-  public void publish(EventResource.ChangeEventList list) throws EventPublisherException {
+  public void publish(ChangeEventResource.ChangeEventList list) throws EventPublisherException {
     // Publish to the given Alert Actions
     try {
       LOG.info(

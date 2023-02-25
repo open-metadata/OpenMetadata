@@ -15,7 +15,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.events.EventResource;
+import org.openmetadata.service.resources.events.ChangeEventResource;
 import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -52,7 +52,7 @@ public class SlackWebhookEventPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list) {
+  public void sendAlert(ChangeEventResource.ChangeEventList list) {
     for (ChangeEvent event : list.getData()) {
       long attemptTime = System.currentTimeMillis();
       try {

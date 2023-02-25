@@ -30,6 +30,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -41,12 +42,12 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/events")
-@Api(value = "Events resource", tags = "events")
+@Path("/v1/changeEvents")
+@Api(value = "Change Events resource", tags = "changeEvents")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events")
-public class EventResource {
+@Collection(name = "changeEvents")
+public class ChangeEventResource {
 
   @Getter private final ChangeEventRepository dao;
   private final Authorizer authorizer;
@@ -61,7 +62,7 @@ public class EventResource {
     }
   }
 
-  public EventResource(CollectionDAO dao, Authorizer authorizer) {
+  public ChangeEventResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);
     this.authorizer = authorizer;
@@ -72,7 +73,7 @@ public class EventResource {
   @Operation(
       operationId = "listChangeEvents",
       summary = "Get change events",
-      tags = "events",
+      tags = "changeEvents",
       description = "Get a list of change events matching event types, entity type, from a given date",
       responses = {
         @ApiResponse(
@@ -84,6 +85,7 @@ public class EventResource {
       })
   public ResultList<ChangeEvent> get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description =
                   "List of comma separated entities requested for "
