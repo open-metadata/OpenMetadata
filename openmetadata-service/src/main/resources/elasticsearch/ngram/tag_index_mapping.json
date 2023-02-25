@@ -40,7 +40,7 @@
         "type": "text"
       },
       "name": {
-        "type": "text",
+        "type": "keyword",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -77,9 +77,6 @@
         "type": "text"
       },
       "href": {
-        "type": "text"
-      },
-      "categoryType": {
         "type": "text"
       },
       "deleted": {

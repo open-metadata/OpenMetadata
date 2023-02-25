@@ -15,6 +15,8 @@ Population Standard deviation Metric definition
 
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
+from typing import cast
+
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
@@ -78,6 +80,7 @@ class StdDev(StaticMetric):
 
     @_label
     def fn(self):
+        """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return StdDevFn(column(self.col.name))
 
@@ -88,11 +91,16 @@ class StdDev(StaticMetric):
         return None
 
     @_label
-    def dl_fn(self, data_frame=None):
-        if is_quantifiable(self.col.datatype):
-            return data_frame[self.col.name].std()
+    def df_fn(self, df=None):
+        """pandas function"""
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
+        if is_quantifiable(self.col.type):
+            return df[self.col.name].std()
         logger.debug(
-            f"{self.col.name} has type {self.col.datatype}, which is not listed as quantifiable."
+            f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."
         )
         return 0

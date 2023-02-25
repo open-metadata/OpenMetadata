@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Space, Switch } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
@@ -209,10 +209,12 @@ const AddGlossaryTerm = ({
       }))
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
-    const updatedTerms = relatedTerms.map((term) => ({
-      id: term.id,
-      type: 'tag',
-    }));
+    const updatedTerms = relatedTerms.map(function (term) {
+      return term.fullyQualifiedName || '';
+    });
+    const updatedReviewers = reviewer.map(function (r) {
+      return r.fullyQualifiedName || '';
+    });
 
     if (validateForm(updatedReference)) {
       const updatedName = name.trim();
@@ -220,24 +222,15 @@ const AddGlossaryTerm = ({
         name: updatedName,
         displayName: updatedName,
         description: getDescription(),
-        reviewers: reviewer.map((r) => ({
-          id: r.id,
-          type: r.type,
-        })),
+        reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
         references: updatedReference.length > 0 ? updatedReference : undefined,
         parent: !isUndefined(parentGlossaryData)
-          ? {
-              type: 'glossaryTerm',
-              id: parentGlossaryData.id,
-            }
+          ? parentGlossaryData.fullyQualifiedName
           : undefined,
         synonyms: synonyms ? synonyms.split(',') : undefined,
         mutuallyExclusive,
-        glossary: {
-          id: glossaryData.id,
-          type: 'glossary',
-        },
+        glossary: glossaryData.name,
         tags: tags,
       };
 
@@ -264,7 +257,7 @@ const AddGlossaryTerm = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <FontAwesomeIcon icon="check" />
+            <CheckOutlined />
           </Button>
         ) : (
           <Button
@@ -363,8 +356,11 @@ const AddGlossaryTerm = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
-              <label htmlFor="tags">{t('label.tag-plural')}:</label>
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
+              <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
               <AddTags
                 data-testid="tags"
                 setTags={(tag: EntityTags[]) => setTags(tag)}
@@ -374,7 +370,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              {t('label.synonym-plural')}:
+              {`${t('label.synonyms')}:`}
             </label>
 
             <input
@@ -382,7 +378,7 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder="Enter comma seprated keywords"
+              placeholder={t('message.enter-comma-separated-keywords')}
               type="text"
               value={synonyms}
               onChange={handleValidation}
@@ -414,11 +410,12 @@ const AddGlossaryTerm = ({
                 </label>
                 <Button
                   className="tw-h-5 tw-px-2"
+                  data-testid="add-reference"
                   size="x-small"
                   theme="primary"
                   variant="contained"
                   onClick={addReferenceFields}>
-                  <FontAwesomeIcon icon="plus" />
+                  <PlusOutlined />
                 </Button>
               </Space>
             </Field>
@@ -464,7 +461,7 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt={t('label.valid-url-endpoint')}
+                    alt={t('message.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
                     width="16px"
@@ -484,11 +481,12 @@ const AddGlossaryTerm = ({
               </p>
               <Button
                 className="tw-h-5 tw-px-2"
+                data-testid="add-related-terms"
                 size="x-small"
                 theme="primary"
                 variant="contained"
                 onClick={() => setShowRelatedTermsModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined />
               </Button>
             </div>
             <div className="tw-my-4">
@@ -520,7 +518,7 @@ const AddGlossaryTerm = ({
                 theme="primary"
                 variant="contained"
                 onClick={() => setShowReviewerModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined />
               </Button>
             </div>
             <div className="tw-my-4">

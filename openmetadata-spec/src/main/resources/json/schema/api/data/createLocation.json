@@ -39,7 +39,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the pipeline service where this location is used",
+      "description": "Link to the service where this location is from. Note this could be of multiple storage service types.",
       "$ref": "../../type/entityReference.json"
     }
   },

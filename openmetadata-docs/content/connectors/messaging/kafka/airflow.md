@@ -58,6 +58,7 @@ source:
       schemaRegistryConfig: {}
   sourceConfig:
     config:
+      type: MessagingMetadata
       topicFilterPattern:
         excludes:
           - _confluent.*
@@ -81,6 +82,13 @@ workflowConfig:
 - **schemaRegistryURL**: Confluent Kafka Schema Registry URL. URI format.
 - **consumerConfig**: Confluent Kafka Consumer Config.
 - **schemaRegistryConfig**:Confluent Kafka Schema Registry Config.
+
+
+<Note>
+
+To ingest the topic schema `schemaRegistryURL` must be passed
+
+</Note>
 
 #### Source Configuration - Source Config
 

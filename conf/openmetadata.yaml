@@ -145,12 +145,37 @@ authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  ldapConfiguration:
+    host: ${AUTHENTICATION_LDAP_HOST:-}
+    port: ${AUTHENTICATION_LDAP_PORT:-}
+    dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
+    dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
+    userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
+    mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-}
+    #optional
+    maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
+    sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-}
+    truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll}
+    trustStoreConfig:
+      customTrustManagerConfig:
+        trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-}
+        trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}
+        trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-}
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-}
+      hostNameConfig:
+        allowWildCards: ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-}
+        acceptableHostNames: ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[]}
+      jvmDefaultConfig:
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+      trustAllConfig:
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
@@ -171,9 +196,9 @@ elasticsearch:
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
   indexResolverClassName: ${ELASTICSEARCH_INDEX_RESOLVER_CLASS_NAME:-org.openmetadata.service.elasticsearch.indexresolver.DefaultElasticSearchIndexResolver}
 
-# eventMonitoringConfiguration:
-  # eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
-  # batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+eventMonitoringConfiguration:
+  eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
+  batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -184,17 +209,24 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  hostIp: ${AIRFLOW_HOST_IP:-""}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
+pipelineServiceClientConfiguration:
+  # If we don't need this, set "org.openmetadata.service.clients.pipeline.noop.NoopClient"
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  verifySSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     validate:
-      certificatePath: ${AIRFLOW_SSL_CERT_PATH:-""} # Local path for Airflow
+      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
@@ -233,10 +265,15 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
-slackChat:
-  slackUrl: ${SLACK_CHAT_SLACK_URL:-"https://slack.open-metadata.org/"}
+applicationConfig:
+  logoConfig:
+    logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , based on this specify either '*AbsoluteFilePath' or '*LogoUrlPath' }
+    loginPageLogoAbsoluteFilePath: ${OM_LOGO_LOGIN_LOCATION_FILE_PATH:-""} #login page logo , work in "filePath" mode
+    loginPageLogoUrlPath: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""} #login page logo , work in "url" mode
+    navBarLogoAbsoluteFilePath: ${OM_LOGO_NAVBAR_LOCATION_FILE_PATH:-""} #nav bar logo , work in "filePath" mode
+    navBarLogoUrlPath: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""} #nav bar logo , work in "url" mode
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
-login:
-  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}

@@ -110,7 +110,7 @@ class OMetaPatchMixin(Generic[T]):
 
         if instance.description and not force:
             logger.warning(
-                f"The entity with id [{str(entity_id)}] already has a description."
+                f"The entity with id [{model_str(entity_id)}] already has a description."
                 " To overwrite it, set `force` to True."
             )
             return None
@@ -176,7 +176,7 @@ class OMetaPatchMixin(Generic[T]):
 
         if col.description and not force:
             logger.warning(
-                f"The column '{column_name}' in '{table.displayName}' already has a description."
+                f"The column '{column_name}' in '{table.fullyQualifiedName.__root__}' already has a description."
                 " To overwrite it, set `force` to True."
             )
             return None

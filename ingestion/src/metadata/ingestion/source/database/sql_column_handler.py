@@ -94,6 +94,7 @@ class SqlColumnHandlerMixin:
                 data_type_display = column["type"]
             if col_type == DataType.ARRAY.value and not arr_data_type:
                 arr_data_type = DataType.VARCHAR.value
+            data_type_display = data_type_display or column.get("display_type")
         return data_type_display, arr_data_type, parsed_string
 
     @staticmethod
@@ -219,7 +220,7 @@ class SqlColumnHandlerMixin:
                     precision = ColumnTypeParser.check_col_precision(
                         col_type, column["type"]
                     )
-                    if col_type == "NULL" or col_type is None:
+                    if col_type is None:
                         col_type = DataType.VARCHAR.name
                         data_type_display = col_type.lower()
                         logger.warning(

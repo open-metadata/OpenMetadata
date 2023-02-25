@@ -250,7 +250,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             user_entity: Optional[User] = self.metadata.get_by_id(
                 User,
                 user_id,
-                fields=["*"],
+                fields=["teams"],
             )
         except Exception as exc:
             logger.warning(f"Could not get user details - {exc}")

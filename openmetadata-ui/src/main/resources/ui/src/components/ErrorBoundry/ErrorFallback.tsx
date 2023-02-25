@@ -12,6 +12,7 @@
  */
 
 import { Button, Result } from 'antd';
+import { t } from 'i18next';
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
 import { ERROR500 } from '../../constants/constants';
@@ -27,7 +28,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
           className="ant-btn-primary-custom"
           type="primary"
           onClick={resetErrorBoundary}>
-          Home
+          {t('label.home')}
         </Button>
       }
       status="404"

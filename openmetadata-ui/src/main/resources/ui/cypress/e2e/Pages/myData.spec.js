@@ -135,13 +135,13 @@ describe('MyData page should work', () => {
   it('My data and following section, CTA should work properly', () => {
     cy.get('[data-testid="my-data-container"]')
       .find('[data-testid*="My data"]')
-      .should('have.length', FOLLOWING_MYDATA_COUNT);
+      .should('have.length.at.least', FOLLOWING_MYDATA_COUNT);
     cy.get('[data-testid="following-data-container"]')
       .find('[data-testid*="Following data"]')
-      .should('have.length', FOLLOWING_MYDATA_COUNT);
+      .should('have.length.at.least', FOLLOWING_MYDATA_COUNT);
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=owner.id:*&from=0&size=10&index=*',
+      '/api/v1/search/query?q=*owner.id:*&from=0&size=10&index=*',
       'userDetailsmyDataTab'
     );
     cy.get('[data-testid="my-data-total-count"]').should('be.visible').click();
@@ -150,7 +150,7 @@ describe('MyData page should work', () => {
     cy.clickOnLogo();
     interceptURL(
       'GET',
-      'api/v1/search/query?q=followers:*&from=0&size=10&index=*',
+      'api/v1/search/query?q=*followers:*&from=0&size=10&index=*',
       'userDetailsFollowTab'
     );
     cy.get('[data-testid="following-data-total-count"]')

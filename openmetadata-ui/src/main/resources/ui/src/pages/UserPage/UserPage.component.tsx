@@ -126,12 +126,12 @@ const UserPage = () => {
       setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
+          '',
+          entity.currPage,
+          PAGE_SIZE,
           fetchOwnedEntities
             ? `owner.id:${userData.id}`
             : `followers:${userData.id}`,
-          entity.currPage,
-          PAGE_SIZE,
-          ``,
           '',
           '',
           myDataSearchIndex
@@ -182,10 +182,10 @@ const UserPage = () => {
         className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
         <p className="tw-text-base" data-testid="error-message">
-          No user available with name{' '}
+          {t('message.no-username-available')}
           <span className="tw-font-medium" data-testid="username">
             {username}
-          </span>{' '}
+          </span>
         </p>
       </div>
     );

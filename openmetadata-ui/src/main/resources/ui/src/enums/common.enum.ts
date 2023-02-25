@@ -37,3 +37,14 @@ export enum PROMISE_STATE {
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected',
 }
+
+export enum OPERATION {
+  UPDATE = 'update',
+  DELETE = 'delete',
+  NO_OPERATION = 'no-operation',
+}
+
+export enum SORT_ORDER {
+  ASC = 'asc',
+  DESC = 'desc',
+}

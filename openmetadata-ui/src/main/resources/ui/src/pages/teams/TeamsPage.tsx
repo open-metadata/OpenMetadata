@@ -271,7 +271,7 @@ const TeamsPage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.entity-creation-error', {
-          entity: 'Team',
+          entity: t('label.team'),
         })
       );
     } finally {
@@ -326,7 +326,7 @@ const TeamsPage = () => {
           showErrorToast(
             error,
             t('server.entity-updating-error', {
-              entity: 'Team',
+              entity: t('label.team'),
             })
           );
           reject();
@@ -407,7 +407,7 @@ const TeamsPage = () => {
           showErrorToast(
             error,
             t('server.entity-updating-error', {
-              entity: 'Team',
+              entity: t('label.team'),
             })
           );
         })
@@ -445,7 +445,7 @@ const TeamsPage = () => {
           showErrorToast(
             error,
             t('server.entity-updating-error', {
-              entity: 'Team',
+              entity: t('label.team'),
             })
           );
         })
@@ -500,10 +500,10 @@ const TeamsPage = () => {
 
   const fetchAssets = () => {
     searchData(
-      `owner.id:${selectedTeam.id}`,
+      ``,
       assets.currPage,
       LIST_SIZE,
-      ``,
+      `owner.id:${selectedTeam.id}`,
       '',
       '',
       myDataSearchIndex
@@ -532,7 +532,7 @@ const TeamsPage = () => {
         showErrorToast(
           err,
           t('server.entity-fetch-error', {
-            entity: 'Team Assets',
+            entity: t('label.team-asset-plural'),
           })
         );
       });
@@ -611,7 +611,9 @@ const TeamsPage = () => {
 
       {isAddingUsers && (
         <AddUsersModalV1
-          header={`Adding new users to ${getEntityName(selectedTeam)}`}
+          header={t('message.adding-new-user-to-entity', {
+            entity: getEntityName(selectedTeam),
+          })}
           isVisible={isAddingUsers}
           list={selectedTeam.users || []}
           onCancel={() => setIsAddingUsers(false)}

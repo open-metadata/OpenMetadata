@@ -195,8 +195,8 @@ class CliDBBase(TestCase):
                 self.test_file_path,
             ]
             process_status = subprocess.Popen(args, stderr=subprocess.PIPE)
-            process_status.wait()
-            return process_status.stderr.read().decode("utf-8")
+            _, stderr = process_status.communicate()
+            return stderr.decode("utf-8")
 
         def build_config_file(
             self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
@@ -349,7 +349,9 @@ class CliDBBase(TestCase):
                     "config": {
                         "type": "Profiler",
                         "generateSampleData": True,
-                        "profileSample": 1,
+                        "profileSample": extra_args.get("profileSample", 1)
+                        if extra_args
+                        else 1,
                     }
                 }
                 config_yaml["processor"] = {"type": "orm-profiler", "config": {}}

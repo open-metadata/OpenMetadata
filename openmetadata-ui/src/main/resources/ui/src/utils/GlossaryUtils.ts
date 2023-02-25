@@ -74,20 +74,17 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
-export const parseCSV = (csvData: string) => {
+export const parseCSV = (csvData: string[][]) => {
   const recordList: GlossaryCSVRecord[] = [];
 
-  const lines = csvData.trim().split('\n').filter(Boolean);
+  if (!isEmpty(csvData)) {
+    const headers = csvData[0];
 
-  if (!isEmpty(lines)) {
-    const headers = lines[0].split(',').map((header) => header.trim());
-
-    lines.slice(1).forEach((line) => {
+    csvData.slice(1).forEach((line) => {
       const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-      const lineData = line.split(',');
 
       headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = lineData[index];
+        record[header as keyof GlossaryCSVRecord] = line[index];
       });
 
       recordList.push(record);

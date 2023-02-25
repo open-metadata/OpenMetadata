@@ -51,7 +51,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
@@ -84,6 +83,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -122,7 +122,6 @@ import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
@@ -142,23 +141,24 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
 
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
+    supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
-    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
-    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    DATABASE_REFERENCE = DATABASE.getEntityReference();
+    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getName());
+    DATABASE = databaseResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
     DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
-    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
-    DATABASE_SCHEMA_REFERENCE = DATABASE_SCHEMA.getEntityReference();
+    CreateDatabaseSchema createSchema =
+        databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE.getFullyQualifiedName());
+    DATABASE_SCHEMA = databaseSchemaResourceTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
     COLUMNS =
         Arrays.asList(
@@ -492,12 +492,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void post_tableWithInvalidDatabase_404(TestInfo test) {
-    EntityReference schema = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE_SCHEMA);
-    CreateTable create = createRequest(test).withDatabaseSchema(schema);
+    CreateTable create = createRequest(test).withDatabaseSchema("nonExistentSchema");
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(Entity.DATABASE_SCHEMA, NON_EXISTENT_ENTITY));
+        entityNotFound(Entity.DATABASE_SCHEMA, "nonExistentSchema"));
   }
 
   @Test
@@ -1449,10 +1448,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(3, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1"));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName()));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEquals(1, getGlossaryUsageCount("g2"));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName()));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
@@ -1512,7 +1511,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertEquals(USER1_REF, table.getOwner());
-      assertReference(DATABASE_REFERENCE, table.getDatabase());
+      assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
     // List tables with databaseFQN as filter
@@ -1599,7 +1598,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
     // Column c2 description changed
-    fieldUpdated(change, build("columns", C2, "description"), "c2", "new1");
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
 
     columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
     // Column c3 tags were removed and precision and scale were added
@@ -1638,14 +1637,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void patch_tableColumnTags_200_ok(TestInfo test) throws IOException {
+  void patch_tableColumnsTags_200_ok(TestInfo test) throws IOException {
     Column c1 = getColumn(C1, INT, null);
     CreateTable create = createRequest(test).withColumns(List.of(c1));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add a primary tag and derived tag both. The tag list must include derived tags only once.
     String json = JsonUtils.pojoToJson(table);
-    table.getColumns().get(0).withTags(List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    table
+        .getColumns()
+        .get(0)
+        .withTags(
+            List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
     // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
@@ -1671,7 +1674,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TagLabel piiSensitive =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL)).findAny().orElse(null);
     assertNotNull(piiSensitive);
-    assertEquals(LabelType.DERIVED, piiSensitive.getLabelType());
+    assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
   }
 
   @Test
@@ -1733,18 +1736,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema =
-        schemaTest.createRequest(test).withDatabase(db.getEntityReference()).withOwner(null);
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
     assertEquals(USER1_REF, schema.getOwner()); // Ensure databaseSchema owner is inherited from database
 
     Table table =
         createEntity(
-            createRequest(test).withOwner(null).withDatabaseSchema(schema.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
     assertEquals(USER1_REF, table.getOwner()); // Ensure table owner is inherited from databaseSchema
   }
 
   private void deleteAndCheckLocation(Table table) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
+    WebTarget target = getResource(table.getId()).path("/location");
     TestUtils.delete(target, TestUtils.TEST_AUTH_HEADERS);
     checkLocationDeleted(table.getId(), TestUtils.TEST_AUTH_HEADERS);
   }
@@ -1756,7 +1759,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
+    WebTarget target = getResource(table.getId()).path("/location");
     TestUtils.put(target, locationId, status, authHeaders);
 
     // GET .../tables/{tableId} returns newly added location
@@ -1867,7 +1870,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(expectedColumn.getChildren(), actualColumn.getChildren());
   }
 
-  private static void assertColumns(List<Column> expectedColumns, List<Column> actualColumns)
+  public static void assertColumns(List<Column> expectedColumns, List<Column> actualColumns)
       throws HttpResponseException {
     if (expectedColumns == actualColumns) {
       return;
@@ -1896,100 +1899,95 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     Database database =
         databaseResourceTest.createAndCheckEntity(
-            databaseResourceTest.createRequest(test).withService(reduceEntityReference(service)), ADMIN_AUTH_HEADERS);
+            databaseResourceTest.createRequest(test).withService(service.getName()), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
 
-  public static Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/joins");
+  public Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/joins");
     return TestUtils.put(target, joins, Table.class, OK, authHeaders);
   }
 
-  public static Table putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
+  public Table putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/sampleData");
+    WebTarget target = getResource(tableId).path("/sampleData");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table getSampleData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/sampleData");
+  public Table getSampleData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/sampleData");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static Table putTableProfilerConfig(UUID tableId, TableProfilerConfig data, Map<String, String> authHeaders)
+  public Table putTableProfilerConfig(UUID tableId, TableProfilerConfig data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+    WebTarget target = getResource(tableId).path("/tableProfilerConfig");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table deleteTableProfilerConfig(UUID tableId, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+  public Table deleteTableProfilerConfig(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/tableProfilerConfig");
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  public static Table getLatestTableProfile(String fqn, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile/latest");
+  public Table getLatestTableProfile(String fqn, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + fqn + "/tableProfile/latest");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static Table putTableProfileData(UUID tableId, CreateTableProfile data, Map<String, String> authHeaders)
+  public Table putTableProfileData(UUID tableId, CreateTableProfile data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfile");
+    WebTarget target = getResource(tableId).path("/tableProfile");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static void deleteTableProfile(String fqn, String entityType, Long timestamp, Map<String, String> authHeaders)
+  public void deleteTableProfile(String fqn, String entityType, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target =
-        OpenMetadataApplicationTest.getResource("tables/" + fqn + "/" + entityType + "/" + timestamp + "/profile");
+    WebTarget target = getCollection().path("/" + fqn + "/" + entityType + "/" + timestamp + "/profile");
     TestUtils.delete(target, authHeaders);
   }
 
-  public static ResultList<TableProfile> getTableProfiles(
+  public ResultList<TableProfile> getTableProfiles(
       String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile");
+    WebTarget target = getCollection().path("/" + fqn + "/tableProfile");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.TableProfileList.class, authHeaders);
   }
 
-  public static ResultList<ColumnProfile> getColumnProfiles(
+  public ResultList<ColumnProfile> getColumnProfiles(
       String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/columnProfile");
+    WebTarget target = getCollection().path("/" + fqn + "/columnProfile");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
-  public static Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
+  public Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
+    WebTarget target = getResource(tableId).path("/tableQuery");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
+  public Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/tableQuery");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)
+  public Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/dataModel");
+    WebTarget target = getResource(tableId).path("/dataModel");
     return TestUtils.put(target, dataModel, Table.class, OK, authHeaders);
   }
 
-  public static Table putCustomMetric(UUID tableId, CreateCustomMetric data, Map<String, String> authHeaders)
+  public Table putCustomMetric(UUID tableId, CreateCustomMetric data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/customMetric");
+    WebTarget target = getResource(tableId).path("/customMetric");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table deleteCustomMetric(
-      UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
+  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target =
-        OpenMetadataApplicationTest.getResource("tables/" + tableId + "/customMetric/" + columnName + "/" + metricName);
+    WebTarget target = getResource(tableId).path("/customMetric/" + columnName + "/" + metricName);
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
@@ -2080,7 +2078,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
     return new CreateTable()
         .withName(name)
-        .withDatabaseSchema(getContainer())
+        .withDatabaseSchema(getContainer().getFullyQualifiedName())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));
   }
@@ -2097,7 +2095,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Override
   public EntityReference getContainer() {
-    return DATABASE_SCHEMA_REFERENCE;
+    return DATABASE_SCHEMA.getEntityReference();
   }
 
   @Override

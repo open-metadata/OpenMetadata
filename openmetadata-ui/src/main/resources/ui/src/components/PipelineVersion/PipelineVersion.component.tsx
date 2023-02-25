@@ -15,6 +15,7 @@ import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import PageContainer from 'components/containers/PageContainer';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -61,7 +62,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   );
   const tabs = [
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -132,7 +133,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
     const extraInfo: Array<ExtraInfo> = [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           !isUndefined(ownerDiff.added) ||
           !isUndefined(ownerDiff.deleted) ||
@@ -148,7 +149,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
-        key: 'Tier',
+        key: t('label.tier'),
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
@@ -217,7 +218,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
-        title: 'Task Name',
+        title: t('label.task-name'),
         dataIndex: 'displayName',
         key: 'displayName',
         render: (text, record) => (
@@ -235,18 +236,20 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
           ),
       },
       {
-        title: 'Task Type',
+        title: t('label.task-type'),
         dataIndex: 'taskType',
         key: 'taskType',
       },

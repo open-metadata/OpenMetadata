@@ -35,7 +35,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.databricksPi
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
@@ -106,9 +105,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 displayName=pipeline_details["settings"]["name"],
                 description=pipeline_details["settings"]["name"],
                 tasks=self.get_tasks(pipeline_details),
-                service=EntityReference(
-                    id=self.context.pipeline_service.id.__root__, type="pipelineService"
-                ),
+                service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
 
         except TypeError as err:

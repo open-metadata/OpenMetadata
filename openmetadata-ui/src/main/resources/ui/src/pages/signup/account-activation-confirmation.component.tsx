@@ -13,6 +13,7 @@
 
 import { Alert, Card, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -59,21 +60,23 @@ const AccountActivationConfirmation = () => {
           <Space align="center" direction="vertical">
             <Alert
               showIcon
-              message="User Verified Successfully"
+              message={t('label.user-verified-successfully')}
               type="success"
             />
             <div className="mt-12" onClick={handleBackToLogin}>
-              <Typography.Link underline>back to login</Typography.Link>
+              <Typography.Link underline>
+                {t('label.back-to-login-lowercase')}
+              </Typography.Link>
             </div>
           </Space>
         </div>
       ) : (
         <div className="mt-12 w-16">
           <Space align="center" direction="vertical">
-            <Alert showIcon message="Token Expired" type="error" />
+            <Alert showIcon message={t('label.token-expired')} type="error" />
             <div className="mt-12">
               <Typography.Link underline>
-                Regenerate registration token
+                {t('label.regenerate-registration-token')}
               </Typography.Link>
             </div>
           </Space>

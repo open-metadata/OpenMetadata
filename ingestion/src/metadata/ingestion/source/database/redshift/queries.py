@@ -31,12 +31,19 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           AND starttime < '{end_time}'
           LIMIT {result_limit}
   ),
+  deduped_querytext AS (
+    -- Sometimes rows are duplicated, causing LISTAGG to fail in the full_queries CTE.
+    SELECT DISTINCT qt.*
+    FROM pg_catalog.stl_querytext AS qt
+        INNER JOIN queries AS q
+            ON qt.query = q.query
+  ),
   full_queries AS (
     SELECT
           query,
           LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
             WITHIN GROUP (ORDER BY sequence) AS query_text
-      FROM pg_catalog.stl_querytext
+      FROM deduped_querytext
       WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
     GROUP BY query
   ),
@@ -208,4 +215,20 @@ REDSHIFT_TABLE_COMMENTS = """
       AND pgd.description IS NOT NULL
       AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
+"""
+
+REDSHIFT_GET_DATABASE_NAMES = """
+SELECT datname FROM pg_database
+"""
+
+REDSHIFT_GET_SVV_TABLE_INFO = """
+select * from pg_catalog.svv_table_info limit 10
+"""
+
+REDSHIFT_GET_STL_QUERYTEXT = """
+select * from pg_catalog.stl_querytext limit 10
+"""
+
+REDSHIFT_GET_STL_QUERY = """
+select * from pg_catalog.stl_query limit 10
 """

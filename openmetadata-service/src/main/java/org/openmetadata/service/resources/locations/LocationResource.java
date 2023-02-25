@@ -147,7 +147,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       operationId = "listAllLocationVersion",
       summary = "List location versions",
       tags = "locations",
-      description = "Get a list of all the versions of a location identified by `id`",
+      description = "Get a list of all the versions of a location identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -157,7 +157,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -166,9 +166,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/{id}")
   @Operation(
       operationId = "getLocationByID",
-      summary = "Get a location",
+      summary = "Get a location by Id",
       tags = "locations",
-      description = "Get a location by `id`.",
+      description = "Get a location by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -179,7 +179,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Location get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -253,7 +253,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getLocationByFQN",
-      summary = "Get a location by name",
+      summary = "Get a location by fully qualified name",
       tags = "locations",
       description = "Get a location by fully qualified name.",
       responses = {
@@ -261,7 +261,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
             responseCode = "200",
             description = "The location",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
-        @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Location for instance {fqn} is not found")
       })
   public Location getByName(
       @Context UriInfo uriInfo,
@@ -292,7 +292,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       operationId = "getEntityByLocation",
       summary = "Get a table associated with location",
       tags = "locations",
-      description = "Get a table associated with location by given `id`",
+      description = "Get a table associated with location by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -303,7 +303,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public List<EntityReference> getTableFromLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return dao.getEntityDetails(id.toString());
   }
@@ -314,7 +314,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       operationId = "getSpecificLocationVersion",
       summary = "Get a version of the location",
       tags = "locations",
-      description = "Get a version of the location by given `id`",
+      description = "Get a version of the location by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -327,7 +327,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Location getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "location version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -389,7 +389,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -407,7 +407,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteLocationByFQN",
-      summary = "Delete a location",
+      summary = "Delete a location by fully qualified name",
       tags = "locations",
       description = "Delete a location by `fullyQualifiedName`.",
       responses = {
@@ -421,7 +421,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the location", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      @Parameter(description = "Fully qualified name of the location", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
       throws IOException {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
@@ -430,9 +432,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Path("/{id}")
   @Operation(
       operationId = "deleteLocation",
-      summary = "Delete a location",
+      summary = "Delete a location by Id",
       tags = "locations",
-      description = "Delete a location by `id`.",
+      description = "Delete a location by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
@@ -444,7 +446,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
@@ -507,14 +509,12 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the location", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId)
+          UUID userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   public static Location validateNewLocation(Location location) {

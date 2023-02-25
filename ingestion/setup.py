@@ -34,7 +34,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "great-expectations": "great-expectations~=0.15.0",
-    "grpc-tools": "grpcio-tools==1.47.2",
+    "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas==1.3.5",
@@ -57,7 +57,7 @@ COMMONS = {
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
-        # we use v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
+        # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
         VERSIONS[
             "grpc-tools"
         ],  # grpcio-tools already depends on grpcio. No need to add separately
@@ -84,7 +84,6 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonschema",
     "mypy_extensions>=0.4.3",
-    VERSIONS["pandas"],  # to be removed from base
     "pydantic~=1.10",
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
@@ -93,7 +92,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
-    "sqlalchemy>=1.4.0",
+    "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage==1.0.1",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
@@ -123,7 +122,12 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
         "dagster_graphql~=1.1",
     },
-    "dbt": {"google-cloud", VERSIONS["boto3"], VERSIONS["google-cloud-storage"]},
+    "dbt": {
+        "google-cloud",
+        VERSIONS["boto3"],
+        VERSIONS["google-cloud-storage"],
+        "dbt-artifacts-parser",
+    },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
@@ -160,6 +164,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift>=0.13,<1",
         "sasl~=0.3",
         "thrift-sasl~=0.4",
+        "impyla~=0.18.0",
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
@@ -177,6 +182,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
+    "quicksight": {VERSIONS["boto3"]},
     "redash": {"redash-toolbelt~=0.1"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
@@ -207,24 +213,21 @@ dev = {
 }
 
 test = {
+    # Install Airflow as it's not part of `all` plugin
     VERSIONS["airflow"],
     "coverage",
-    VERSIONS["google-cloud-storage"],
+    # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto==4.0.8",
-    VERSIONS["neo4j"],
-    VERSIONS["pandas"],
-    VERSIONS["pydomo"],
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    VERSIONS["scikit-learn"],
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.13.2.0.dev0",
+    version="1.0.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

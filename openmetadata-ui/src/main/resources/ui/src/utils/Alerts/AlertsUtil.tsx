@@ -56,6 +56,8 @@ export const getFunctionDisplayName = (func: string): string => {
       return i18next.t('label.updated-by');
     case 'matchAnyFieldChange':
       return i18next.t('label.field-change');
+    case 'matchIngestionPipelineState':
+      return i18next.t('label.pipeline-state');
     case 'matchAnySource':
     case 'matchAnyEntityId':
     default:
@@ -127,6 +129,8 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.slack');
     case AlertActionType.MSTeamsWebhook:
       return i18next.t('label.ms-team-plural');
+    case AlertActionType.GChatWebhook:
+      return i18next.t('label.g-chat');
   }
 };
 

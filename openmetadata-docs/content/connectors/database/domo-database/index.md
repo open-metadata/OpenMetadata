@@ -4,6 +4,21 @@ slug: /connectors/database/domo-database
 ---
 
 # DomoDatabase
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ❌       |       ❌      |    ❌    |  ❌  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the DomoDatabase connector.
 
@@ -41,6 +56,13 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+<Note>
+
+For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
+Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+
+</Note>
 
 ## Metadata Ingestion
 

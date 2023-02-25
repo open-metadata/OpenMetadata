@@ -9,7 +9,7 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/open_metadata?style=social)](https://twitter.com/intent/follow?screen_name=open_metadata)
 <a href="https://slack.open-metadata.org/"><img src="https://img.shields.io/badge/slack-join-E01E5A?logo=slack" alt="Join us on Slack" height="22"/></a>
 [![License](https://img.shields.io/github/license/open-metadata/OpenMetadata.svg)](LICENSE)
-
+[![openmetadata](https://img.shields.io/endpoint?url=https://cloud.cypress.io/badge/simple/a9yxci/main&style=social&logo=cypress)](https://cloud.cypress.io/projects/a9yxci/runs)
 </div>
 
 - [What is OpenMetadata?](#what-is-openmetadata )
@@ -47,7 +47,7 @@ Here are some of the supported features in a nutshell:
 
 - **Comprehensive Roles and Policies** - Handles complex access control use cases and hierarchical teams.
 
-- **Webhooks** - Supports webhook integrations. Integrate with Slack, and Microsoft Teams.
+- **Webhooks** - Supports webhook integrations. Integrate with Slack, Microsoft Teams and Google Chat.
 
 - **Connectors** - Supports 55 connectors to various databases, dashboards, pipelines and messaging services.
 

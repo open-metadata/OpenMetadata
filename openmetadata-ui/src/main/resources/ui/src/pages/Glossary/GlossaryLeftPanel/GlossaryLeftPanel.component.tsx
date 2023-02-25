@@ -14,7 +14,7 @@
 import { Button, Col, Menu, MenuProps, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primery.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -109,16 +109,17 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
             <Tooltip
               title={
                 createGlossaryPermission
-                  ? t('label.add-glossary')
+                  ? t('label.add-entity', { entity: t('label.glossary') })
                   : t('message.no-permission-for-action')
               }>
               <Button
-                className="w-full flex-center gap-2 text-primary"
+                block
+                className="text-primary"
                 data-testid="add-glossary"
                 disabled={!createGlossaryPermission}
-                icon={<PlusIcon />}
+                icon={<PlusIcon className="anticon" />}
                 onClick={handleAddGlossaryClick}>
-                {t('label.add-glossary')}
+                {t('label.add-entity', { entity: t('label.glossary') })}
               </Button>
             </Tooltip>
           </Col>

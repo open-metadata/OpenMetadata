@@ -28,7 +28,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -38,7 +38,7 @@ public class PolicyCache {
   private static volatile boolean INITIALIZED = false;
 
   protected static LoadingCache<UUID, List<CompiledRule>> POLICY_CACHE;
-  private static EntityRepository<Policy> POLICY_REPOSITORY;
+  private static PolicyRepository POLICY_REPOSITORY;
   private static Fields FIELDS;
 
   public static PolicyCache getInstance() {
@@ -49,7 +49,7 @@ public class PolicyCache {
   public static void initialize() {
     if (!INITIALIZED) {
       POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
-      POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
+      POLICY_REPOSITORY = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
       FIELDS = POLICY_REPOSITORY.getFields("rules");
       INITIALIZED = true;
     }

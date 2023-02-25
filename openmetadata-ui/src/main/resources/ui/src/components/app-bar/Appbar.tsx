@@ -14,15 +14,22 @@
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import { observer } from 'mobx-react';
+import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
+import { extractDetailsFromToken } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
+import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
+import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
+import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
+import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
 import {
-  getExplorePathWithSearch,
+  getExplorePath,
   getTeamAndUserDetailsPath,
   getUserPath,
   ROUTES,
@@ -61,11 +68,19 @@ const Appbar: React.FC = (): JSX.Element => {
     isTourRoute,
     onLogoutHandler,
   } = useAuthContext();
-  const match = useRouteMatch<{ searchQuery: string }>({
-    path: ROUTES.EXPLORE_WITH_SEARCH,
-  });
-  const searchQuery = match?.params?.searchQuery;
+
+  const parsedQueryString = Qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substr(1)
+      : location.search
+  );
+
+  const searchQuery = isString(parsedQueryString.search)
+    ? parsedQueryString.search
+    : '';
+
   const [searchValue, setSearchValue] = useState(searchQuery);
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>('');
@@ -75,6 +90,8 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleSearchChange = (value: string) => {
+    console.debug(`handleSearchChange value=${value}`);
+
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
   };
@@ -92,11 +109,11 @@ const Appbar: React.FC = (): JSX.Element => {
       isOpenNewTab: true,
       disabled: false,
       icon: (
-        <SVGIcons
-          alt="Version icon"
+        <IconVersionBlack
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon={Icons.VERSION_BLACK}
-          width="12"
+          height={12}
+          name="Version icon"
+          width={12}
         />
       ),
     },
@@ -106,11 +123,11 @@ const Appbar: React.FC = (): JSX.Element => {
       isOpenNewTab: true,
       disabled: false,
       icon: (
-        <SVGIcons
-          alt="Doc icon"
+        <IconDoc
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon={Icons.DOC}
-          width="12"
+          height={12}
+          name="Doc icon"
+          width={12}
         />
       ),
     },
@@ -119,11 +136,11 @@ const Appbar: React.FC = (): JSX.Element => {
       to: ROUTES.SWAGGER,
       disabled: false,
       icon: (
-        <SVGIcons
-          alt="API icon"
+        <IconAPI
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon={Icons.API}
-          width="12"
+          height={12}
+          name="API icon"
+          width={12}
         />
       ),
     },
@@ -133,11 +150,11 @@ const Appbar: React.FC = (): JSX.Element => {
       disabled: false,
       isOpenNewTab: true,
       icon: (
-        <SVGIcons
-          alt="slack icon"
-          className="tw-align-middle tw-mr-0.5"
-          icon={Icons.SLACK_GREY}
-          width="12"
+        <IconSlackGrey
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          height={12}
+          name="slack icon"
+          width={12}
         />
       ),
     },
@@ -242,7 +259,9 @@ const Appbar: React.FC = (): JSX.Element => {
           : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-text-grey-muted tw-text-xs">Teams</span>
+            <span className="tw-text-grey-muted tw-text-xs">
+              {t('label.team-plural')}
+            </span>
             {teams.map((t, i) => (
               <Typography.Paragraph
                 className="ant-typography-ellipsis-custom text-sm"
@@ -279,16 +298,15 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    history.push({
-      pathname: getExplorePathWithSearch(
-        encodeURIComponent(value),
-        // this is for if user is searching from another page
-        location.pathname.startsWith(ROUTES.EXPLORE)
-          ? appState.explorePageTab
-          : 'tables'
-      ),
-      search: location.search,
-    });
+    if (location.pathname.startsWith(ROUTES.EXPLORE)) {
+      // Already on explore page, only push search change
+      history.push({
+        search: Qs.stringify({ ...parsedQueryString, search: value }),
+      });
+    } else {
+      // Outside Explore page
+      history.push(getExplorePath({ search: value }));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -299,7 +317,7 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleOnclick = () => {
-    searchHandler(searchValue ?? '');
+    searchHandler(searchValue);
   };
 
   const fetchOMVersion = () => {
@@ -316,7 +334,7 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   useEffect(() => {
-    setSearchValue(decodeURIComponent(searchQuery || ''));
+    setSearchValue(searchQuery);
   }, [searchQuery]);
 
   useEffect(() => {
@@ -335,6 +353,28 @@ const Appbar: React.FC = (): JSX.Element => {
       }
     }
   }, [appState.userDetails, isAuthDisabled]);
+
+  useEffect(() => {
+    const handleDocumentVisibilityChange = () => {
+      if (
+        isProtectedRoute(location.pathname) &&
+        isTourRoute(location.pathname)
+      ) {
+        return;
+      }
+      const { isExpired, exp } = extractDetailsFromToken();
+      if (!document.hidden && isExpired) {
+        exp && toast.info(t('message.session-expired'));
+        onLogoutHandler();
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, []);
 
   return (
     <>

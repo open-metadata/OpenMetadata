@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
@@ -118,20 +119,26 @@ const FormBuilder: FunctionComponent<Props> = ({
         return (
           <div className="tw-flex">
             <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Testing Connection</span>
+            <span className="tw-ml-2">{t('label.testing-connection')}</span>
           </div>
         );
       case 'success':
         return (
           <div className="tw-flex">
-            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
-            <span className="tw-ml-2">Connection test was successful</span>
+            <SVGIcons
+              alt="success-badge"
+              icon={Icons.SUCCESS_BADGE}
+              width={24}
+            />
+            <span className="tw-ml-2">
+              {t('message.connection-test-successful')}
+            </span>
           </div>
         );
 
       case 'initial':
       default:
-        return 'Test your connections before creating the service';
+        return t('message.test-your-connection-before-creating-service');
     }
   };
 
@@ -165,7 +172,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       {...props}>
       {isEmpty(schema) && (
         <div className="tw-text-grey-muted tw-text-center">
-          No Connection Configs available.
+          {t('message.no-config-available')}
         </div>
       )}
       {!isEmpty(schema) && isAirflowAvailable && (
@@ -173,9 +180,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
           data-testid="ip-address">
           <div className="tw-self-center">
-            OpenMetadata will connect to your resource from the IP {hostIp}.
-            Make sure to allow inbound traffic in your network security
-            settings.
+            {t('message.airflow-host-ip-address', { hostIp })}
           </div>
         </div>
       )}
@@ -192,7 +197,7 @@ const FormBuilder: FunctionComponent<Props> = ({
             theme="primary"
             variant="outlined"
             onClick={handleTestConnection}>
-            Test Connection
+            {t('label.test-connection')}
           </Button>
         </div>
       )}
@@ -222,7 +227,7 @@ const FormBuilder: FunctionComponent<Props> = ({
               size="regular"
               theme="primary"
               variant="contained">
-              <FontAwesomeIcon icon="check" />
+              <CheckOutlined />
             </Button>
           ) : (
             <Button

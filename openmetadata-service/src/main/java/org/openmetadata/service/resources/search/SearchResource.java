@@ -89,7 +89,9 @@ public class SearchResource {
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
+  private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
+  private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
@@ -295,7 +297,7 @@ public class SearchResource {
   @Path("/suggest")
   @Operation(
       operationId = "getSuggestedEntities",
-      summary = "Suggest Entities",
+      summary = "Suggest entities",
       tags = "search",
       description = "Get suggested entities used for auto-completion.",
       responses = {
@@ -369,9 +371,9 @@ public class SearchResource {
   @Path("/aggregate")
   @Operation(
       operationId = "getAggregateFields",
-      summary = "Get Aggregated Fields",
+      summary = "Get aggregated fields",
       tags = "search",
-      description = "Get Aggregated Fields from Entities.",
+      description = "Get aggregated fields from entities.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -605,7 +607,13 @@ public class SearchResource {
       ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
-            indexType, QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
+            indexType,
+            QueryBuilders.queryStringQuery(query)
+                .field(DISPLAY_NAME, 5.0f)
+                .field(DISPLAY_NAME_KEYWORD, 3.0f)
+                .field(NAME, 2.0f)
+                .field(NAME_KEYWORD, 3.0f)
+                .fuzziness(Fuzziness.AUTO));
     return searchBuilder(indexType, queryBuilder, null, from, size);
   }
 
@@ -613,7 +621,13 @@ public class SearchResource {
       ElasticSearchIndexResolver.IndexType indexType, String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         this.indexResolver.customizeQuery(
-            indexType, QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
+            indexType,
+            QueryBuilders.queryStringQuery(query)
+                .field(DISPLAY_NAME, 5.0f)
+                .field(DISPLAY_NAME_KEYWORD, 3.0f)
+                .field(NAME, 2.0f)
+                .field(NAME_KEYWORD, 3.0f)
+                .fuzziness(Fuzziness.AUTO));
     return searchBuilder(indexType, queryBuilder, null, from, size);
   }
 

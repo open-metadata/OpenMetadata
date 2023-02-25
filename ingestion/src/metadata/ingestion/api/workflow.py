@@ -18,6 +18,9 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -301,10 +304,7 @@ class Workflow(WorkflowStatusMixin):
         :param service_type: source workflow service type
         :return:
         """
-        if (
-            service_type is not ServiceType.Metadata
-            and not self.config.source.serviceConnection
-        ):
+        if not self.config.source.serviceConnection:
             service_name = self.config.source.serviceName
             try:
                 service: ServiceWithConnectionType = cast(
@@ -315,10 +315,19 @@ class Workflow(WorkflowStatusMixin):
                     ),
                 )
                 if service:
-                    self.config.source.serviceConnection = service.connection
+                    self.config.source.serviceConnection = ServiceConnection(
+                        __root__=service.connection
+                    )
+                else:
+                    raise InvalidWorkflowJSONException(
+                        "The serviceConnection is not informed and we cannot retrieve it from the API"
+                        f" by searching for the service name [{service_name}]. Does this service exist in OpenMetadata?"
+                    )
+            except InvalidWorkflowJSONException as exc:
+                raise exc
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error getting service connection for service name [{service_name}]"
+                    f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )

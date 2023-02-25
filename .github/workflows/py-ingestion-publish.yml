@@ -26,12 +26,15 @@ jobs:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv antlr4
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install and Publish PyPi packages
         env:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}'
         run: |
+          python3 -m venv env
+          source env/bin/activate
+          sudo make install_antlr_cli
           make install_dev generate install
           cd ingestion; \
             python setup.py install sdist bdist_wheel; \

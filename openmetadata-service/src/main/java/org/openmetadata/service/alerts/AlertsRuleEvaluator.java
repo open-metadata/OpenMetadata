@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELAS
 import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
@@ -14,6 +15,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -36,6 +39,7 @@ public class AlertsRuleEvaluator {
     matchAnyEventType,
     matchTestResult,
     matchUpdatedBy,
+    matchIngestionPipelineState,
     matchAnyFieldChange
   }
 
@@ -195,6 +199,34 @@ public class AlertsRuleEvaluator {
     for (String name : updatedByUserList) {
       if (name.equals(entityUpdatedBy)) {
         return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchIngestionPipelineState",
+      input = "List of comma separated pipeline states",
+      description = "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchIngestionPipelineState('queued', 'success', 'failed', 'running', 'partialSuccess')"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchIngestionPipelineState(String... pipelineState) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(INGESTION_PIPELINE)) {
+      // in case the entity is not ingestion pipeline return since the filter doesn't apply
+      return true;
+    }
+    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+      if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
+        PipelineStatus pipelineStatus = (PipelineStatus) fieldChange.getNewValue();
+        PipelineStatusType status = pipelineStatus.getPipelineState();
+        for (String givenStatus : pipelineState) {
+          if (givenStatus.equals(status.value())) {
+            return true;
+          }
+        }
       }
     }
     return false;

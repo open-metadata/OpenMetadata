@@ -337,7 +337,11 @@ export const editOwnerforCreatedService = (
     'waitForIngestion'
   );
 
-  interceptURL('GET', '/api/v1/config/airflow', 'airflow');
+  interceptURL(
+    'GET',
+    '/api/v1/system/config/pipeline-service-client',
+    'airflow'
+  );
   // click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
@@ -618,7 +622,7 @@ export const restoreUser = (username) => {
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@restoreUser', 200);
-  toastNotification('User restored successfully!');
+  toastNotification('User restored successfully');
 
   // Verifying the restored user
   cy.get('.ant-switch').should('exist').should('be.visible').click();
@@ -985,7 +989,11 @@ export const updateDescriptionForIngestedTables = (
     `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
     'getSelectedService'
   );
-  interceptURL('GET', '/api/v1/config/airflow', 'airflow');
+  interceptURL(
+    'GET',
+    '/api/v1/system/config/pipeline-service-client',
+    'airflow'
+  );
 
   // click on created service
   cy.get(`[data-testid="service-name-${serviceName}"]`)
