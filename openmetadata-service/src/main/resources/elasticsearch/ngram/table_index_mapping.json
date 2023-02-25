@@ -59,9 +59,7 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "ngram_text_analyzer",
-        "norms": false
+        "analyzer": "ngram_text_analyzer"
       },
       "version": {
         "type": "float"
@@ -96,9 +94,7 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "analyzer": "ngram_text_analyzer",
-            "norms": false
+            "analyzer": "ngram_text_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"
