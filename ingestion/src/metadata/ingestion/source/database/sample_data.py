@@ -18,14 +18,10 @@ from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Union
 
-from metadata.generated.schema.entity.data.container import Container
-
-from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
-
-from metadata.generated.schema.entity.services.objectstoreService import ObjectStoreService
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -48,6 +44,7 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -76,6 +73,9 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
@@ -884,7 +884,9 @@ class SampleDataSource(
                 parent_container_fqn = container.get("parent")
                 parent_container = None
                 if parent_container_fqn:
-                    parent_container = self.metadata.get_by_name(entity=Container, fqn=parent_container_fqn)
+                    parent_container = self.metadata.get_by_name(
+                        entity=Container, fqn=parent_container_fqn
+                    )
                     if not parent_container:
                         raise InvalidSampleDataException(
                             f"Cannot find {parent_container_fqn} in Sample Containers"
@@ -894,7 +896,9 @@ class SampleDataSource(
                     name=container["name"],
                     displayName=container["displayName"],
                     description=container["description"],
-                    parent=EntityReference(id=parent_container.id, type="container") if parent_container_fqn else None,
+                    parent=EntityReference(id=parent_container.id, type="container")
+                    if parent_container_fqn
+                    else None,
                     prefix=container["prefix"],
                     dataModel=container.get("dataModel"),
                     numberOfObjects=container.get("numberOfObjects"),

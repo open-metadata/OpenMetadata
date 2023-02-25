@@ -18,8 +18,9 @@ import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from metadata.generated.schema.entity.data.container import Container
-
-from metadata.generated.schema.entity.services.objectstoreService import ObjectStoreService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 
 try:
     from typing import get_args
@@ -325,7 +326,9 @@ class OpenMetadata(
         if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
             return "/users"
 
-        if issubclass(entity, get_args(Union[Container, self.get_create_entity_type(Container)])):
+        if issubclass(
+            entity, get_args(Union[Container, self.get_create_entity_type(Container)])
+        ):
             return "/containers"
 
         # Services Schemas
@@ -388,7 +391,9 @@ class OpenMetadata(
         if issubclass(
             entity,
             get_args(
-                Union[ObjectStoreService, self.get_create_entity_type(ObjectStoreService)]
+                Union[
+                    ObjectStoreService, self.get_create_entity_type(ObjectStoreService)
+                ]
             ),
         ):
             return "/services/objectstoreServices"
