@@ -467,7 +467,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         createRequest(alertName).withSubscriptionConfig(genericWebhook);
     genericWebhookActionRequest.setFilteringRules(
         new FilteringRules()
-            .withResources(List.of("all"))
+            .withResources(List.of(entity))
             .withRules(
                 List.of(
                     new EventFilterRule()
@@ -485,7 +485,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         createRequest(alertName).withSubscriptionConfig(genericWebhook2);
     genericWebhookActionRequest2.setFilteringRules(
         new FilteringRules()
-            .withResources(List.of("all"))
+            .withResources(List.of(entity))
             .withRules(
                 List.of(
                     new EventFilterRule()
@@ -495,23 +495,6 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     createAndCheckEntity(genericWebhookActionRequest2, ADMIN_AUTH_HEADERS);
 
     // TODO entity deleted events
-  }
-
-  public EventSubscription createEventSubscription(
-      String name,
-      FilteringRules rules,
-      boolean isEnabled,
-      CreateEventSubscription.SubscriptionType type,
-      Object subscriptionConfig)
-      throws IOException {
-    CreateEventSubscription alert =
-        new CreateEventSubscription()
-            .withName(name)
-            .withFilteringRules(rules)
-            .withSubscriptionType(type)
-            .withSubscriptionConfig(subscriptionConfig)
-            .withEnabled(isEnabled);
-    return createAndCheckEntity(alert, ADMIN_AUTH_HEADERS);
   }
 
   @Override
