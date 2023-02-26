@@ -582,7 +582,6 @@ class OpenMetadata(
         """
         Return entity by ID or None
         """
-
         return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
