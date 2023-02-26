@@ -27,15 +27,9 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.helpers import find_column_in_table_with_index
 from metadata.utils.logger import ometa_logger
 
-try:
-    from typing import get_args
-except ImportError:
-    from typing_compat import get_args
-
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
-U = TypeVar("U", bound=BaseModel)
 
 OPERATION = "op"
 PATH = "path"
