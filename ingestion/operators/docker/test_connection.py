@@ -12,13 +12,16 @@
 Entrypoint to test the connection to a source
 """
 import os
+from typing import Optional
 
 import yaml
 
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
 )
+from metadata.ingestion.connections.test_connections import TestConnectionResult
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils.constants import UTF_8
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 
@@ -54,7 +57,10 @@ def main():
     test_connection_fn = get_test_connection_fn(
         test_service_connection.connection.config
     )
-    test_connection_fn(connection)
+    results: Optional[TestConnectionResult] = test_connection_fn(connection)
+    if results:
+        with open("/tmp/test_connection_results.json", "w", encoding=UTF_8) as file:
+            file.write(results.json())
 
 
 if __name__ == "__main__":
