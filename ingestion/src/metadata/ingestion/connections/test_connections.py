@@ -65,7 +65,7 @@ class TestConnectionResult(BaseModel):
     warning: List[str] = []
 
 
-def test_connection_steps(steps: List[TestConnectionStep]) -> str:
+def test_connection_steps(steps: List[TestConnectionStep]) -> TestConnectionResult:
     """
     Run all the function steps and raise any errors
     """
@@ -78,7 +78,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> str:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"{step.name}-{exc}")
+            logger.warning(f"{step.name}-{exc}")
             if step.mandatory:
                 test_connection_result.failed.append(
                     f"'{step.name}': This is a mandatory step and we won't be able to extract necessary metadata"
@@ -93,7 +93,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> str:
 
 
 @timeout(seconds=120)
-def test_connection_db_common(connection: Engine, steps=None) -> str:
+def test_connection_db_common(connection: Engine, steps=None) -> TestConnectionResult:
     """
     Default implementation is the engine to test.
 

@@ -28,6 +28,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -93,7 +94,7 @@ def get_connection(connection: HiveConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> str:
+def test_connection(engine: Engine) -> TestConnectionResult:
     """
     Test connection
     """

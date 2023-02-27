@@ -33,6 +33,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -81,7 +82,7 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, service_connection) -> str:
+def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
     """
     Test connection
     """
