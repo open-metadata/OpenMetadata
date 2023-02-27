@@ -267,7 +267,9 @@ const DataInsightPage = () => {
   }, [tab]);
 
   return (
-    <PageLayoutV1 leftPanel={<DataInsightLeftPanel />}>
+    <PageLayoutV1
+      leftPanel={<DataInsightLeftPanel />}
+      pageTitle={t('label.data-insight')}>
       <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
           <Space className="w-full justify-between item-start">

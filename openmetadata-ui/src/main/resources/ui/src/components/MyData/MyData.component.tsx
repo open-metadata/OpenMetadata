@@ -231,7 +231,10 @@ const MyData: React.FC<MyDataProps> = ({
   );
 
   return (
-    <PageLayoutV1 leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+    <PageLayoutV1
+      leftPanel={getLeftPanel()}
+      pageTitle={t('label.my-data')}
+      rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
