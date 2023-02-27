@@ -30,7 +30,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.converter.service.ServiceConverterFactory;
+import org.openmetadata.service.secrets.converter.service.ConnectionConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -53,7 +53,7 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ServiceConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
+      Object newConnectionConfig = ConnectionConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
       return encryptOrDecryptPasswordFields(
           newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), encrypt);
     } catch (Exception e) {

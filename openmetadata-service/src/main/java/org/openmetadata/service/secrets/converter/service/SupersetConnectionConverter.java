@@ -23,12 +23,12 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.service.util.JsonUtils;
 
 /** Factory class to get a `ServiceConverter` based on the service class. */
-public class SupersetServiceConverter extends ServiceConverter {
+public class SupersetConnectionConverter extends ConnectionConverter {
 
   private static final List<Class<?>> CONNECTION_CLASSES =
       List.of(SupersetApiConnection.class, MysqlConnection.class, PostgresConnection.class);
 
-  public SupersetServiceConverter(Class<?> serviceClass) {
+  public SupersetConnectionConverter(Class<?> serviceClass) {
     super(serviceClass);
   }
 

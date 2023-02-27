@@ -22,11 +22,11 @@ import org.openmetadata.service.util.JsonUtils;
  * <p>This abstract class wrap these `JsonUtils.convertValue` adding transformation to those `Object` fields into
  * specific classes.
  */
-public abstract class ServiceConverter {
+public abstract class ConnectionConverter {
 
   protected Class<?> serviceClass;
 
-  public ServiceConverter(Class<?> serviceClass) {
+  public ConnectionConverter(Class<?> serviceClass) {
     this.serviceClass = serviceClass;
   }
 

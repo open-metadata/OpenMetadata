@@ -13,9 +13,19 @@
 
 package org.openmetadata.service.secrets.converter.service;
 
-public class DefaultServiceConverter extends ServiceConverter {
+import java.util.HashMap;
+import java.util.Map;
+import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 
-  public DefaultServiceConverter(Class<?> serviceClass) {
-    super(serviceClass);
+public class ConnectionConverterFactory {
+
+  private static final Map<Class<?>, ConnectionConverter> converterMap = new HashMap<>();
+
+  static {
+    converterMap.put(SupersetConnection.class, new SupersetConnectionConverter(SupersetConnection.class));
+  }
+
+  public static ConnectionConverter getConverter(Class<?> serviceClass) {
+    return converterMap.getOrDefault(serviceClass, new DefaultConnectionConverter(serviceClass));
   }
 }

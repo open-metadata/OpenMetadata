@@ -23,7 +23,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.converter.service.ServiceConverterFactory;
+import org.openmetadata.service.secrets.converter.service.ConnectionConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -48,7 +48,7 @@ public class PasswordEntityMasker extends EntityMasker {
   public Object maskServiceConnectionConfig(Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ServiceConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
+      Object newConnectionConfig = ConnectionConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
       maskPasswordFields(newConnectionConfig);
       return newConnectionConfig;
     } catch (Exception e) {
@@ -82,9 +82,9 @@ public class PasswordEntityMasker extends EntityMasker {
     if (originalConnectionConfig != null && connectionConfig != null) {
       try {
         Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-        Object toUnmaskConfig = ServiceConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
+        Object toUnmaskConfig = ConnectionConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
         Object originalConvertedConfig =
-            ServiceConverterFactory.getConverter(clazz).convertFromJson(originalConnectionConfig);
+            ConnectionConverterFactory.getConverter(clazz).convertFromJson(originalConnectionConfig);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
