@@ -179,6 +179,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         centered
         destroyOnClose
         closable={false}
+        confirmLoading={isTableLoading}
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
         open={isModalOpen}
