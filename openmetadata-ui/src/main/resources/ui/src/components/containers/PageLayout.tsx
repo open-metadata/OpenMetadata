@@ -12,9 +12,8 @@
  */
 
 import classNames from 'classnames';
+import Seo from 'components/Seo/Seo.component';
 import React, { FC, Fragment, ReactNode } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
 import { PageLayoutType } from '../../enums/layout.enum';
 
 interface PageLayoutProp {
@@ -46,8 +45,6 @@ const PageLayout: FC<PageLayoutProp> = ({
   pageTitle,
   classes = '',
 }: PageLayoutProp) => {
-  const { t } = useTranslation();
-
   const getLeftPanel = () => {
     return (
       leftPanel && (
@@ -171,9 +168,7 @@ const PageLayout: FC<PageLayoutProp> = ({
 
   return (
     <Fragment>
-      <Helmet>
-        <title>{`${t('label.open-metadata')} | ${pageTitle}`}</title>
-      </Helmet>
+      <Seo title={pageTitle} />
       {getLayoutByType(layout)}
     </Fragment>
   );

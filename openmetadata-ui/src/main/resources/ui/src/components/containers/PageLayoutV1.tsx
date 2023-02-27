@@ -13,9 +13,8 @@
 
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
+import Seo from 'components/Seo/Seo.component';
 import React, { FC, Fragment, HTMLAttributes, ReactNode } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
@@ -41,13 +40,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   pageTitle,
   center = false,
 }: PageLayoutProp) => {
-  const { t } = useTranslation();
-
   return (
     <Fragment>
-      <Helmet>
-        <title>{`${t('label.open-metadata')} | ${pageTitle}`}</title>
-      </Helmet>
+      <Seo title={pageTitle} />
       <Row
         className={className}
         data-testid="page-layout-v1"
