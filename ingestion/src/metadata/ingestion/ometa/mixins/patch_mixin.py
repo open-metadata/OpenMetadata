@@ -38,6 +38,7 @@ VALUE = "value"
 # Operations
 ADD = "add"
 REPLACE = "replace"
+REMOVE = "remove"
 
 # OM specific description handling
 ENTITY_DESCRIPTION = "/description"
@@ -210,6 +211,7 @@ class OMetaPatchMixin(Generic[T]):
         entity_id: Union[str, basic.Uuid],
         tag_fqn: str,
         from_glossary: bool = False,
+        operation: str = ADD,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the tag.
@@ -229,34 +231,48 @@ class OMetaPatchMixin(Generic[T]):
         if not instance:
             return None
 
-        tag_index = len(instance.tags) if instance.tags else 0
+        tag_index = len(instance.tags) - 1 if instance.tags else 0
 
         try:
-            res = self.client.patch(
-                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
-                data=json.dumps(
-                    [
-                        {
-                            OPERATION: ADD,
-                            PATH: ENTITY_TAG.format(tag_index=tag_index),
-                            VALUE: {
-                                "labelType": LabelType.Automated.value,
-                                "source": TagSource.Tag.value
-                                if not from_glossary
-                                else TagSource.Glossary.value,
-                                "state": State.Confirmed.value,
-                                "tagFQN": tag_fqn,
-                            },
-                        }
-                    ]
-                ),
-            )
-            return entity(**res)
+            res = None
+            if operation == ADD:
+                res = self.client.patch(
+                    path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
+                    data=json.dumps(
+                        [
+                            {
+                                OPERATION: ADD,
+                                PATH: ENTITY_TAG.format(tag_index=tag_index),
+                                VALUE: {
+                                    "labelType": LabelType.Automated.value,
+                                    "source": TagSource.Tag.value
+                                    if not from_glossary
+                                    else TagSource.Glossary.value,
+                                    "state": State.Confirmed.value,
+                                    "tagFQN": tag_fqn,
+                                },
+                            }
+                        ]
+                    ),
+                )
+            elif operation == REMOVE:
+                res = self.client.patch(
+                    path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
+                    data=json.dumps(
+                        [
+                            {
+                                OPERATION: REMOVE,
+                                PATH: ENTITY_TAG.format(tag_index=tag_index),
+                            }
+                        ]
+                    ),
+                )
+            return entity(**res) if res is not None else res
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
+            logger.error(traceback.format_exc())
             logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
+                f"Error trying to PATCH tag for {entity.__class__.__name__} [{entity_id}]: {exc}"
             )
 
         return None
@@ -267,6 +283,7 @@ class OMetaPatchMixin(Generic[T]):
         column_name: str,
         tag_fqn: str,
         from_glossary: bool = False,
+        operation: str = ADD,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
 
@@ -284,7 +301,7 @@ class OMetaPatchMixin(Generic[T]):
         if not table:
             return None
 
-        col_index, _ = find_column_in_table_with_index(
+        col_index, col = find_column_in_table_with_index(
             column_name=column_name, table=table
         )
 
@@ -292,34 +309,51 @@ class OMetaPatchMixin(Generic[T]):
             logger.warning(f"Cannot find column {column_name} in Table.")
             return None
 
-        tag_index = len(table.tags) if table.tags else 0
-
+        tag_index = len(col.tags) - 1 if col.tags else 0
         try:
-            res = self.client.patch(
-                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
-                data=json.dumps(
-                    [
-                        {
-                            OPERATION: ADD,
-                            PATH: COL_TAG.format(index=col_index, tag_index=tag_index),
-                            VALUE: {
-                                "labelType": LabelType.Automated.value,
-                                "source": TagSource.Tag.value
-                                if not from_glossary
-                                else TagSource.Glossary.value,
-                                "state": State.Confirmed.value,
-                                "tagFQN": tag_fqn,
-                            },
-                        }
-                    ]
-                ),
-            )
-            return Table(**res)
+            res = None
+            if operation == ADD:
+                res = self.client.patch(
+                    path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
+                    data=json.dumps(
+                        [
+                            {
+                                OPERATION: ADD,
+                                PATH: COL_TAG.format(
+                                    index=col_index, tag_index=tag_index
+                                ),
+                                VALUE: {
+                                    "labelType": LabelType.Automated.value,
+                                    "source": TagSource.Tag.value
+                                    if not from_glossary
+                                    else TagSource.Glossary.value,
+                                    "state": State.Confirmed.value,
+                                    "tagFQN": tag_fqn,
+                                },
+                            }
+                        ]
+                    ),
+                )
+            elif operation == REMOVE:
+                res = self.client.patch(
+                    path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
+                    data=json.dumps(
+                        [
+                            {
+                                OPERATION: REMOVE,
+                                PATH: COL_TAG.format(
+                                    index=col_index, tag_index=tag_index
+                                ),
+                            }
+                        ]
+                    ),
+                )
+            return Table(**res) if res is not None else res
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to PATCH description for Table Column: {entity_id}, {column_name}: {exc}"
+                f"Error trying to PATCH tags for Table Column: {entity_id}, {column_name}: {exc}"
             )
 
         return None
