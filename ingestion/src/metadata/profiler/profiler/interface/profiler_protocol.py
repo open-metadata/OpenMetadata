@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Optional, Union
 
 from pydantic import BaseModel
 from sqlalchemy import Column, MetaData
@@ -33,23 +33,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.partition import get_partition_details
-
-
-class ProfilerInterfaceArgs(BaseModel):
-    """Profiler Interface Args Model"""
-
-    service_connection_config: Any
-    sqa_metadata_obj: Optional[MetaData]
-    ometa_client: Optional[OpenMetadata]
-    thread_count: Optional[float]
-    table_entity: Optional[Union[Table, Any]]
-    profile_sample_config: Optional[ProfileSampleConfig] = None
-    table_sample_query: Optional[Union[int, str]]
-    table_partition_config: Optional[PartitionProfilerConfig]
-    timeout_seconds: Optional[int]
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class ProfilerProtocol(ABC):
