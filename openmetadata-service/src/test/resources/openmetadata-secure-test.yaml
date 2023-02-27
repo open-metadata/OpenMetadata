@@ -193,9 +193,8 @@ email:
 
 applicationConfig:
   logoConfig:
-    logoLocationType: "openmetadata"
-    loginPageLogoUrlPath: ""
-    navBarLogoUrlPath: ""
+    customLogoUrlPath: ""
+    customMonogramUrlPath: ""
   loginConfig:
     maxLoginFailAttempts: 3
     accessBlockTime: 600
