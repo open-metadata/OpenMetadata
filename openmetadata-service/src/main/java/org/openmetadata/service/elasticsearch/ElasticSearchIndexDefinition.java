@@ -11,6 +11,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -44,7 +45,16 @@ public class ElasticSearchIndexDefinition {
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
+
+  public static final HashMap<String, String> ENTITY_TYPE_TO_INDEX_MAP;
   private final RestHighLevelClient client;
+
+  static {
+    ENTITY_TYPE_TO_INDEX_MAP = new HashMap<>();
+    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+      ENTITY_TYPE_TO_INDEX_MAP.put(elasticSearchIndexType.entityType, elasticSearchIndexType.indexName);
+    }
+  }
 
   public ElasticSearchIndexDefinition(RestHighLevelClient client, CollectionDAO dao) {
     this.dao = dao;
@@ -61,26 +71,33 @@ public class ElasticSearchIndexDefinition {
   }
 
   public enum ElasticSearchIndexType {
-    TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/%s/table_index_mapping.json"),
-    TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/%s/topic_index_mapping.json"),
-    DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/%s/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/%s/pipeline_index_mapping.json"),
-    USER_SEARCH_INDEX("user_search_index", "/elasticsearch/%s/user_index_mapping.json"),
-    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/%s/team_index_mapping.json"),
-    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/%s/glossary_index_mapping.json"),
-    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/%s/mlmodel_index_mapping.json"),
-    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
-    ENTITY_REPORT_DATA_INDEX("entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    TABLE_SEARCH_INDEX(Entity.TABLE, "table_search_index", "/elasticsearch/%s/table_index_mapping.json"),
+    TOPIC_SEARCH_INDEX(Entity.TOPIC, "topic_search_index", "/elasticsearch/%s/topic_index_mapping.json"),
+    DASHBOARD_SEARCH_INDEX(
+        Entity.DASHBOARD, "dashboard_search_index", "/elasticsearch/%s/dashboard_index_mapping.json"),
+    PIPELINE_SEARCH_INDEX(Entity.PIPELINE, "pipeline_search_index", "/elasticsearch/%s/pipeline_index_mapping.json"),
+    USER_SEARCH_INDEX(Entity.USER, "user_search_index", "/elasticsearch/%s/user_index_mapping.json"),
+    TEAM_SEARCH_INDEX(Entity.TEAM, "team_search_index", "/elasticsearch/%s/team_index_mapping.json"),
+    GLOSSARY_SEARCH_INDEX(Entity.GLOSSARY, "glossary_search_index", "/elasticsearch/%s/glossary_index_mapping.json"),
+    MLMODEL_SEARCH_INDEX(Entity.MLMODEL, "mlmodel_search_index", "/elasticsearch/%s/mlmodel_index_mapping.json"),
+    TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
+    ENTITY_REPORT_DATA_INDEX(
+        ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
-        "web_analytic_entity_view_report_data_index", "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
+        Entity.WEB_ANALYTIC_EVENT,
+        "web_analytic_entity_view_report_data_index",
+        "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
     WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
+        WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
         "web_analytic_user_activity_report_data_index",
         "/elasticsearch/web_analytic_user_activity_report_data_index.json");
 
     public final String indexName;
     public final String indexMappingFile;
+    public final String entityType;
 
-    ElasticSearchIndexType(String indexName, String indexMappingFile) {
+    ElasticSearchIndexType(String entityType, String indexName, String indexMappingFile) {
+      this.entityType = entityType;
       this.indexName = indexName;
       this.indexMappingFile = indexMappingFile;
     }
