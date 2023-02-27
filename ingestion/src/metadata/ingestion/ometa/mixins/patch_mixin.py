@@ -320,7 +320,9 @@ class OMetaPatchMixin(Generic[T]):
                         [
                             {
                                 OPERATION: ADD,
-                                PATH: COL_TAG.format(index=col_index, tag_index=tag_index),
+                                PATH: COL_TAG.format(
+                                    index=col_index, tag_index=tag_index
+                                ),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
                                     "source": TagSource.Tag.value
