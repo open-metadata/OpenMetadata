@@ -45,7 +45,9 @@ logger = profiler_interface_registry_logger()
 thread_local = threading.local()
 
 
-class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
+class SQAProfilerInterface(  # pylint: disable=too-many-instance-attributes
+    SQAInterfaceMixin, ProfilerProtocol
+):
     """
     Interface to interact with registry supporting
     sqlalchemy.
