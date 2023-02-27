@@ -13,7 +13,10 @@
 Source connection handler
 """
 import os
+from functools import partial
 
+from google import auth
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
@@ -78,12 +81,39 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> str:
+def test_connection(engine: Engine, service_connection) -> str:
     """
     Test connection
     """
 
+    def get_tags(taxonomies):
+        for taxonomy in taxonomies:
+            policy_tags = PolicyTagManagerClient().list_policy_tags(
+                parent=taxonomy.name
+            )
+            return policy_tags
+
     inspector = inspect(engine)
+
+    def custom_executor():
+        list_project_ids = auth.default()
+        project_id = list_project_ids[1]
+
+        if isinstance(project_id, str):
+            taxonomies = PolicyTagManagerClient().list_taxonomies(
+                parent=f"projects/{project_id}/locations/{service_connection.taxonomyLocation}"
+            )
+            return get_tags(taxonomies)
+
+        if isinstance(project_id, list):
+            taxonomies = PolicyTagManagerClient().list_taxonomies(
+                parent=f"projects/{project_id[0]}/locations/{service_connection.taxonomyLocation}"
+            )
+
+            return get_tags(taxonomies)
+
+        return None
+
     steps = [
         TestConnectionStep(
             function=inspector.get_schema_names,
@@ -96,6 +126,13 @@ def test_connection(engine: Engine) -> str:
         TestConnectionStep(
             function=inspector.get_view_names,
             name="Get Views",
+            mandatory=False,
+        ),
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+            ),
+            name="Get Tags",
             mandatory=False,
         ),
     ]

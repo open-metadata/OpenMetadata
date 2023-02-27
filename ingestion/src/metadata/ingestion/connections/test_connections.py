@@ -12,6 +12,7 @@
 Classes and methods to handle connection testing when
 creating a service
 """
+import traceback
 from typing import Callable, List
 
 from pydantic import BaseModel
@@ -19,7 +20,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
+from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
+
+logger = cli_logger()
 
 
 class SourceConnectionException(Exception):
@@ -72,7 +76,9 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> str:
             step.function()
             test_connection_result.success.append(f"'{step.name}': Pass")
 
-        except Exception:
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"{step.name}-{exc}")
             if step.mandatory:
                 test_connection_result.failed.append(
                     f"'{step.name}': This is a mandatory step and we won't be able to extract necessary metadata"
