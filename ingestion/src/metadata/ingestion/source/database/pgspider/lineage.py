@@ -35,49 +35,32 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, LineageSource):
     for multi-tenant tables and foreign table from PGSpider Source
     """
 
-    # sql_stmt = POSTGRES_SQL_STATEMENT
-    #
-    # filters = """
-    #             AND (
-    #                 s.query ILIKE '%%create table%%as%%select%%'
-    #                 OR s.query ILIKE '%%insert%%'
-    #             )
-    #         """
-    filters = ""
-    database_field = "d.datname"
-    schema_field = ""  # schema filtering not available
-    #
-    # def next_record(self) -> Iterable[AddLineageRequest]:
-    #     """
-    #     Based on the query logs, prepare the lineage
-    #     and send it to the sink
-    #     """
-    #     for table_queries in self.get_table_query():
-    #         for table_query in table_queries.queries:
-    #             lineages = get_lineage_by_query(
-    #                 self.metadata,
-    #                 query=table_query.query,
-    #                 service_name=table_query.serviceName,
-    #                 database_name=table_query.databaseName,
-    #                 schema_name=table_query.databaseSchema,
-    #                 dialect=Dialect.POSTGRES,
-    #             )
-    #
-    #             for lineage_request in lineages or []:
-    #                 yield lineage_request
-
     sql_stmt = POSTGRES_SQL_STATEMENT
 
+    filters = """
+                AND (
+                    s.query ILIKE '%%create table%%as%%select%%'
+                    OR s.query ILIKE '%%insert%%'
+                )
+            """
+    database_field = "d.datname"
+    schema_field = ""  # schema filtering not available
+
     def get_multi_tenant_tables(self) -> Iterable[any]:
+        """
+        Get list of multi tenant tables from PGSpider
+        """
         sql = PGSPIDER_GET_MULTI_TENANT_TABLES
 
-        # multi_tenant_tables_list = []
         with get_connection(self.service_connection).connect() as conn:
             rows = conn.execute(sql)
             logger.info(type(rows))
             return rows
 
     def get_child_tables(self, multi_tenant_table: str) -> Iterable[str]:
+        """
+        Get list of child foreign tables of a multi-tenant table
+        """
         sql = PGSPIDER_GET_CHILD_TABLES.format(multi_tenant_table=multi_tenant_table)
 
         child_tables_list = []
@@ -94,6 +77,27 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, LineageSource):
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
+        """
+        for table_queries in self.get_table_query():
+            for table_query in table_queries.queries:
+                lineages = get_lineage_by_query(
+                    self.metadata,
+                    query=table_query.query,
+                    service_name=table_query.serviceName,
+                    database_name=table_query.databaseName,
+                    schema_name=table_query.databaseSchema,
+                    dialect=Dialect.POSTGRES,
+                )
+
+                for lineage_request in lineages or []:
+                    yield lineage_request
+
+        """
+        For PGSpider, firstly, get list of multi-tenant tables.
+        Next, get child foreign table of each multi-tenant tables.
+        Create the INSERT query which follows the format of Lineage feature,
+        with source table is multi-tenant table, and child table is child
+        foreign table. Prepare the lineage and send it to the sink.
         """
         for multi_tenant_table in self.get_multi_tenant_tables():
             # logger.info(multi_tenant_table)
@@ -113,17 +117,3 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, LineageSource):
 
                 for lineage_request in lineages or []:
                     yield lineage_request
-
-        # for table_queries in self.get_table_query():
-        #     for table_query in table_queries.queries:
-        #         lineages = get_lineage_by_query(
-        #             self.metadata,
-        #             query=table_query.query,
-        #             service_name=table_query.serviceName,
-        #             database_name=table_query.databaseName,
-        #             schema_name=table_query.databaseSchema,
-        #             dialect=Dialect.POSTGRES,
-        #         )
-        #
-        #         for lineage_request in lineages or []:
-        #             yield lineage_request
