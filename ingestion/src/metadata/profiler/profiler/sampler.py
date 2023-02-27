@@ -14,7 +14,7 @@ for the profiler
 """
 from typing import Dict, Optional, Union, cast
 
-from sqlalchemy import column, inspect, text
+from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
@@ -31,7 +31,9 @@ from metadata.profiler.profiler.handle_partition import partition_filter_handler
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
+    get_integer_range_filter,
     get_partition_col_type,
+    get_value_filter,
 )
 
 RANDOM_LABEL = "random"
@@ -165,14 +167,46 @@ class Sampler:
             self.table.__table__.c,
         )
 
-        if not self._partition_details.partitionValues:
-            sample = (
+        if self._partition_details.partitionValues:
+            return aliased(
+                self.table,
+                (
+                    self.session.query(self.table)
+                    .filter(
+                        get_value_filter(
+                            Column(partition_field),
+                            self._partition_details.partitionValues,
+                        )
+                    )
+                    .subquery()
+                )
+            )
+
+        if self._partition_details.partitionIntegerRangeStart:
+            return aliased(
+                self.table,
+                (
+                    self.session.query(self.table)
+                    .filter(
+                        get_integer_range_filter(
+                            Column(partition_field),
+                            self._partition_details.partitionIntegerRangeStart,
+                            self._partition_details.partitionIntegerRangeEnd,
+                        )
+                    )
+                    .subquery()
+                )
+            )
+
+        return aliased(
+            self.table,
+            (
                 self.session.query(self.table)
                 .filter(
                     build_query_filter(
                         [
                             (
-                                column(partition_field),
+                                Column(partition_field),
                                 "ge",
                                 dispatch_to_date_or_datetime(
                                     self._partition_details.partitionInterval,
@@ -188,22 +222,4 @@ class Sampler:
                 )
                 .subquery()
             )
-            return aliased(self.table, sample)
-
-        sample = (
-            self.session.query(self.table)
-            .filter(
-                build_query_filter(
-                    [
-                        (
-                            column(partition_field),
-                            "in",
-                            self._partition_details.partitionValues,
-                        )
-                    ],
-                    False,
-                )
-            )
-            .subquery()
         )
-        return aliased(self.table, sample)

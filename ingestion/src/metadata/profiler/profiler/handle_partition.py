@@ -25,7 +25,9 @@ from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
+    get_integer_range_filter,
     get_partition_col_type,
+    get_value_filter,
 )
 
 RANDOM_LABEL = "random"
@@ -48,9 +50,16 @@ def build_partition_predicate(
     """
     partition_field = partition_details.partitionColumnName
     if partition_details.partitionValues:
-        return build_query_filter(
-            [(Column(partition_field), "in", partition_details.partitionValues)],
-            False,
+        return get_value_filter(
+                Column(partition_field),
+                partition_details.partitionValues,
+            )
+
+    if partition_details.partitionIntegerRangeStart:
+        return get_integer_range_filter(
+            Column(partition_field),
+            partition_details.partitionIntegerRangeStart,
+            partition_details.partitionIntegerRangeEnd,
         )
 
     type_ = get_partition_col_type(

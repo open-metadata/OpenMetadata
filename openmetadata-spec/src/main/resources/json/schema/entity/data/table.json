@@ -618,7 +618,9 @@
           "type": "string",
           "enum": [
             "TIME-UNIT",
-            "INGESTION-TIME"
+            "INTEGER-RANGE",
+            "INGESTION-TIME",
+            "COLUMN-VALUE"
           ]
         },
         "partitionInterval": {
@@ -638,6 +640,16 @@
         "partitionValues": {
           "description": "unit used for the partition interval",
           "type": "array"
+        },
+        "partitionIntegerRangeStart": {
+          "description": "start of the integer range for partitioning",
+          "type": "integer",
+          "default": null
+        },
+        "partitionIntegerRangeEnd": {
+          "description": "end of the integer range for partitioning",
+          "type": "integer",
+          "default": null
         }
       }
     },
