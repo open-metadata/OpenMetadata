@@ -424,6 +424,7 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "age",
+                            "partitionIntervalType": "INTEGER-RANGE",
                             "partitionIntegerRangeStart": 37,
                             "partitionIntegerRangeEnd": 38,
                         },
@@ -463,6 +464,7 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "age",
+                            "partitionIntervalType": "INTEGER-RANGE",
                             "partitionIntegerRangeStart": 37,
                             "partitionIntegerRangeEnd": 38,
                         },
@@ -510,6 +512,7 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "name",
+                            "partitionIntervalType": "COLUMN-VALUE",
                             "partitionValues": ["John"],
                         },
                     }
@@ -549,6 +552,7 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "name",
+                            "partitionIntervalType": "COLUMN-VALUE",
                             "partitionValues": ["John"],
                         },
                     }

@@ -19,6 +19,7 @@ from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
@@ -167,7 +168,10 @@ class Sampler:
             self.table.__table__.c,
         )
 
-        if self._partition_details.partitionValues:
+        if (
+            self._partition_details.partitionIntervalType
+            == PartitionIntervalType.COLUMN_VALUE
+        ):
             return aliased(
                 self.table,
                 (
@@ -182,7 +186,10 @@ class Sampler:
                 ),
             )
 
-        if self._partition_details.partitionIntegerRangeStart:
+        if (
+            self._partition_details.partitionIntervalType
+            == PartitionIntervalType.INTEGER_RANGE
+        ):
             return aliased(
                 self.table,
                 (

@@ -14,7 +14,7 @@ for the profiler
 """
 import math
 import random
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.profiler.api.models import ProfileSampleConfig
@@ -34,7 +34,6 @@ class DatalakeSampler:
         session: Optional[Any],
         table,
         profile_sample_config: Optional[ProfileSampleConfig] = None,
-        partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
         self.profile_sample = None
@@ -44,7 +43,6 @@ class DatalakeSampler:
             self.profile_sample_type = profile_sample_config.profile_sample_type
         self.session = session
         self.table = table
-        self._partition_details = partition_details
         self._profile_sample_query = profile_sample_query
         self.sample_limit = 100
         self._sample_rows = None

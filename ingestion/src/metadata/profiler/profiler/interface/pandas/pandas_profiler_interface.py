@@ -19,6 +19,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
+from pandas import DataFrame
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import DataType, TableData
@@ -31,6 +32,7 @@ from metadata.ingestion.source.database.datalake.metadata import (
     DATALAKE_DATA_TYPES,
     ometa_to_dataframe,
 )
+from metadata.interfaces.datalake.mixins.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.datalake_sampler import DatalakeSampler
@@ -42,7 +44,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn, Type
 logger = profiler_interface_registry_logger()
 
 
-class PandasProfilerInterface(ProfilerProtocol):
+class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -58,6 +60,7 @@ class PandasProfilerInterface(ProfilerProtocol):
         entity,
         profile_sample_config,
         sample_query,
+        table_partition_config=None,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -75,13 +78,15 @@ class PandasProfilerInterface(ProfilerProtocol):
 
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
-        self.partition_details = None
+        self.table_partition_config = table_partition_config
         self._table = entity
-        self.data_frame_list = ometa_to_dataframe(
+        self.dfs = ometa_to_dataframe(
             config_source=self.service_connection_config.configSource,
             client=self.client,
             table=self.table,
         )
+        if self.dfs and self.table_partition_config:
+            self.dfs = [self.get_partitioned_df(df) for df in self.dfs]
 
     @valuedispatch
     def _get_metrics(self, *args, **kwargs):
@@ -96,7 +101,7 @@ class PandasProfilerInterface(ProfilerProtocol):
         self,
         metric_type: str,
         metrics: List[Metrics],
-        data_frame_list,
+        dfs: List[DataFrame],
         *args,
         **kwargs,
     ):
@@ -113,13 +118,9 @@ class PandasProfilerInterface(ProfilerProtocol):
         try:
             row = []
             for metric in metrics:
-                for data_frame in data_frame_list:
+                for df in dfs:
                     row.append(
-                        metric().df_fn(
-                            data_frame.astype(object).where(
-                                pd.notnull(data_frame), None
-                            )
-                        )
+                        metric().df_fn(df.astype(object).where(pd.notnull(df), None))
                     )
             if row:
                 if isinstance(row, list):
@@ -142,7 +143,7 @@ class PandasProfilerInterface(ProfilerProtocol):
         metric_type: str,
         metrics: List[Metrics],
         column,
-        data_frame_list,
+        dfs,
         *args,
         **kwargs,
     ):
@@ -160,12 +161,10 @@ class PandasProfilerInterface(ProfilerProtocol):
         try:
             row = []
             for metric in metrics:
-                for data_frame in data_frame_list:
+                for df in dfs:
                     row.append(
                         metric(column).df_fn(
-                            data_frame.astype(object).where(
-                                pd.notnull(data_frame), None
-                            )
+                            df.astype(object).where(pd.notnull(df), None)
                         )
                     )
             row_dict = {}
@@ -185,7 +184,7 @@ class PandasProfilerInterface(ProfilerProtocol):
         metric_type: str,
         metrics: Metrics,
         column,
-        data_frame_list,
+        dfs,
         *args,
         **kwargs,
     ):
@@ -199,8 +198,8 @@ class PandasProfilerInterface(ProfilerProtocol):
             dictionnary of results
         """
         col_metric = None
-        for data_frame in data_frame_list:
-            col_metric = metrics(column).df_fn(data_frame)
+        for df in dfs:
+            col_metric = metrics(column).df_fn(df)
         if not col_metric:
             return None
         return {metrics.name(): col_metric}
@@ -244,7 +243,7 @@ class PandasProfilerInterface(ProfilerProtocol):
                 metric_type.value,
                 metrics,
                 session=self.client,
-                data_frame_list=self.data_frame_list,
+                dfs=self.dfs,
                 column=column,
             )
         except Exception as exc:
@@ -270,9 +269,8 @@ class PandasProfilerInterface(ProfilerProtocol):
         """
         sampler = DatalakeSampler(
             session=self.client,
-            table=self.data_frame_list,
+            table=self.dfs,
             profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
         return sampler.fetch_dl_sample_data()
@@ -331,8 +329,8 @@ class PandasProfilerInterface(ProfilerProtocol):
         return self._table
 
     def get_columns(self):
-        if self.data_frame_list:
-            df = self.data_frame_list[0]
+        if self.dfs:
+            df = self.dfs[0]
             return [
                 SQALikeColumn(
                     column_name,

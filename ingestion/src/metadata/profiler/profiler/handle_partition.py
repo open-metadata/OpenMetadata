@@ -18,7 +18,10 @@ from typing import List
 
 from sqlalchemy import Column, text
 
-from metadata.generated.schema.entity.data.table import PartitionProfilerConfig
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
+    PartitionProfilerConfig,
+)
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.utils.logger import profiler_logger
@@ -49,13 +52,13 @@ def build_partition_predicate(
         _type_: _description_
     """
     partition_field = partition_details.partitionColumnName
-    if partition_details.partitionValues:
+    if partition_details.partitionIntervalType == PartitionIntervalType.COLUMN_VALUE:
         return get_value_filter(
             Column(partition_field),
             partition_details.partitionValues,
         )
 
-    if partition_details.partitionIntegerRangeStart:
+    if partition_details.partitionIntervalType == PartitionIntervalType.INTEGER_RANGE:
         return get_integer_range_filter(
             Column(partition_field),
             partition_details.partitionIntegerRangeStart,
