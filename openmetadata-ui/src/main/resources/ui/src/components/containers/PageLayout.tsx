@@ -13,6 +13,8 @@
 
 import classNames from 'classnames';
 import React, { FC, Fragment, ReactNode } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { PageLayoutType } from '../../enums/layout.enum';
 
 interface PageLayoutProp {
@@ -22,6 +24,7 @@ interface PageLayoutProp {
   children: ReactNode;
   layout?: PageLayoutType;
   classes?: string;
+  pageTitle: string;
 }
 
 export const leftPanelAntCardStyle = {
@@ -40,8 +43,11 @@ const PageLayout: FC<PageLayoutProp> = ({
   children,
   rightPanel,
   layout = PageLayoutType['3Col'],
+  pageTitle,
   classes = '',
 }: PageLayoutProp) => {
+  const { t } = useTranslation();
+
   const getLeftPanel = () => {
     return (
       leftPanel && (
@@ -163,7 +169,14 @@ const PageLayout: FC<PageLayoutProp> = ({
     }
   };
 
-  return getLayoutByType(layout);
+  return (
+    <Fragment>
+      <Helmet>
+        <title>{`${t('label.open-metadata')} | ${pageTitle}`}</title>
+      </Helmet>
+      {getLayoutByType(layout)}
+    </Fragment>
+  );
 };
 
 export default PageLayout;
