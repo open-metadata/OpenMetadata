@@ -506,16 +506,7 @@
     ]
   },
   {
-    "name" : "alert",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditDescription"
-    ]
-  },
-  {
-    "name" : "alertAction",
+    "name" : "eventSubscription",
     "operations" : [
       "Create",
       "Delete",
