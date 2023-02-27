@@ -194,9 +194,7 @@ email:
 applicationConfig:
   logoConfig:
     logoLocationType: "openmetadata"
-    loginPageLogoAbsoluteFilePath: ""
     loginPageLogoUrlPath: ""
-    navBarLogoAbsoluteFilePath: ""
     navBarLogoUrlPath: ""
   loginConfig:
     maxLoginFailAttempts: 3
