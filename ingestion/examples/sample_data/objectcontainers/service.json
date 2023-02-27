@@ -1,0 +1,17 @@
+{
+  "type": "s3",
+  "serviceName": "s3_object_store_sample",
+  "serviceConnection": {
+    "config": {
+      "type": "S3",
+        "awsConfig": {
+          "awsAccessKeyId": "aws_access_key_id",
+          "awsSecretAccessKey": "aws_secret_access_key",
+          "awsRegion": "awsRegion",
+          "endPointURL": "https://endpoint.com/"
+        }
+    }
+  },
+  "sourceConfig": {
+  }
+}

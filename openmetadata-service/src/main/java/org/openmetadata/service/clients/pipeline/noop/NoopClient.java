@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.clients.pipeline.noop;
 
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
@@ -39,7 +38,7 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
+  public Response testConnection(TestServiceConnection testServiceConnection) {
     return null;
   }
 
@@ -74,7 +73,7 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+  public Response killIngestion(IngestionPipeline ingestionPipeline) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "kill"));
   }
 

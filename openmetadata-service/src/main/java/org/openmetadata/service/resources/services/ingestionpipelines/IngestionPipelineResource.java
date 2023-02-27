@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -501,8 +500,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline);
-    HttpResponse<String> response = pipelineServiceClient.killIngestion(ingestionPipeline);
-    return Response.status(200, response.body()).build();
+    return pipelineServiceClient.killIngestion(ingestionPipeline);
   }
 
   @POST
@@ -525,8 +523,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     testServiceConnection =
         testServiceConnection.withSecretsManagerProvider(
             SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider());
-    HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
-    return Response.status(200, response.body()).build();
+    return pipelineServiceClient.testConnection(testServiceConnection);
   }
 
   @GET
