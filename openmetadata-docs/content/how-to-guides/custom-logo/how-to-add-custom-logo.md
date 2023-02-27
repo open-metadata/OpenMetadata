@@ -17,8 +17,8 @@ To change the Logo for the application, we need to update logo at two locations.
 
 ### Step 1: Get the image size as per the following formats.
 
-- Login Page "Max(150px x 60px)"
-- Navigation Bar "Max(25px x 30px)"
+- Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
+- Logo aspect ratio should be 3:2 and Recommended size should be 150 x 60 px
 
 ### Step 2: Configure 'openmetadata.yaml' or the corresponding environment variables
 
