@@ -179,7 +179,7 @@ class Sampler:
                         )
                     )
                     .subquery()
-                )
+                ),
             )
 
         if self._partition_details.partitionIntegerRangeStart:
@@ -195,7 +195,7 @@ class Sampler:
                         )
                     )
                     .subquery()
-                )
+                ),
             )
 
         return aliased(
@@ -221,5 +221,5 @@ class Sampler:
                     )
                 )
                 .subquery()
-            )
+            ),
         )

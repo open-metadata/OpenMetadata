@@ -68,7 +68,10 @@ def build_query_filter(
         return or_(*list_of_filters)
     return and_(*list_of_filters)
 
-def get_integer_range_filter(partition_field, integer_range_start, integer_range_end) -> Optional[BinaryExpression]:
+
+def get_integer_range_filter(
+    partition_field, integer_range_start, integer_range_end
+) -> Optional[BinaryExpression]:
     """Get the query filter for integer range
 
     Args:
@@ -78,22 +81,23 @@ def get_integer_range_filter(partition_field, integer_range_start, integer_range
 
     Returns:
         Optional[BinaryExpression]
-    """    
+    """
     return build_query_filter(
-            [
-                (
-                    partition_field,
-                    "ge",
-                    integer_range_start,
-                ),
-                (
-                    partition_field,
-                    "le",
-                    integer_range_end,
-                ),
-            ],
-            False,
-        )
+        [
+            (
+                partition_field,
+                "ge",
+                integer_range_start,
+            ),
+            (
+                partition_field,
+                "le",
+                integer_range_end,
+            ),
+        ],
+        False,
+    )
+
 
 def get_value_filter(partition_field, values) -> Optional[BinaryExpression]:
     """Get the query filter for values
@@ -104,17 +108,18 @@ def get_value_filter(partition_field, values) -> Optional[BinaryExpression]:
 
     Returns:
         Optional[BinaryExpression]
-    """    
+    """
     return build_query_filter(
-            [
-                (
-                    partition_field,
-                    "in",
-                    values,
-                )
-            ],
-            False,
-        )
+        [
+            (
+                partition_field,
+                "in",
+                values,
+            )
+        ],
+        False,
+    )
+
 
 def dispatch_to_date_or_datetime(
     partition_interval: int,

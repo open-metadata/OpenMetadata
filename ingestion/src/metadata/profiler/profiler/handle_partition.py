@@ -51,9 +51,9 @@ def build_partition_predicate(
     partition_field = partition_details.partitionColumnName
     if partition_details.partitionValues:
         return get_value_filter(
-                Column(partition_field),
-                partition_details.partitionValues,
-            )
+            Column(partition_field),
+            partition_details.partitionValues,
+        )
 
     if partition_details.partitionIntegerRangeStart:
         return get_integer_range_filter(

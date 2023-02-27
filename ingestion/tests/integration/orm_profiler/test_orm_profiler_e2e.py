@@ -18,11 +18,11 @@ No sample data is required beforehand
 """
 import logging
 from copy import deepcopy
-from unittest import TestCase
 from datetime import datetime, timedelta
-import pytest
+from unittest import TestCase
 
-from sqlalchemy import Column, Integer, String, create_engine, DateTime
+import pytest
+from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
@@ -122,19 +122,53 @@ class ProfilerWorkflowTest(TestCase):
             logger.warning("Table Already exists")
 
         data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30, signedup=datetime.now() - timedelta(days=10)),
-            User(name="Jane", fullname="Jone Doe", nickname=None, age=31, signedup=datetime.now() - timedelta(days=2)),
-            User(name="Joh", fullname="Joh Doe", nickname=None, age=37, signedup=datetime.now() - timedelta(days=1)),
-            User(name="Jae", fullname="Jae Doe", nickname=None, age=38, signedup=datetime.now() - timedelta(days=1)),
+            User(
+                name="John",
+                fullname="John Doe",
+                nickname="johnny b goode",
+                age=30,
+                signedup=datetime.now() - timedelta(days=10),
+            ),
+            User(
+                name="Jane",
+                fullname="Jone Doe",
+                nickname=None,
+                age=31,
+                signedup=datetime.now() - timedelta(days=2),
+            ),
+            User(
+                name="Joh",
+                fullname="Joh Doe",
+                nickname=None,
+                age=37,
+                signedup=datetime.now() - timedelta(days=1),
+            ),
+            User(
+                name="Jae",
+                fullname="Jae Doe",
+                nickname=None,
+                age=38,
+                signedup=datetime.now() - timedelta(days=1),
+            ),
         ]
         cls.session.add_all(data)
         cls.session.commit()
 
         new_user = [
             NewUser(
-                name="John", fullname="John Doe", nickname="johnny b goode", age=30, signedup=datetime.now() - timedelta(days=10)
+                name="John",
+                fullname="John Doe",
+                nickname="johnny b goode",
+                age=30,
+                signedup=datetime.now() - timedelta(days=10),
             ),
-            NewUser(name="Jane", fullname="Jone Doe", nickname=None, age=31, signedup=datetime.now() - timedelta(days=2)),
+            NewUser(
+                name="Jane",
+                fullname="Jone Doe",
+                nickname=None,
+                age=31,
+                signedup=datetime.now() - timedelta(days=2),
+            ),
         ]
         cls.session.add_all(new_user)
         cls.session.commit()
@@ -280,9 +314,8 @@ class ProfilerWorkflowTest(TestCase):
         # up until we split tests and profiling
         assert table.tableProfilerConfig is None
 
-
     def test_workflow_datetime_partition(self):
-        """test workflow with partition"""        
+        """test workflow with partition"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
@@ -302,12 +335,12 @@ class ProfilerWorkflowTest(TestCase):
                         "fullyQualifiedName": "test_sqlite.main.main.users",
                         "profileSample": 100,
                         "partitionConfig": {
-                                "enablePartitioning": "true",
-                                "partitionColumnName": "signedup",
-                                "partitionIntervalType": "TIME-UNIT",
-                                "partitionIntervalUnit": "DAY",
-                                "partitionInterval": 2,   
-                            }
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "signedup",
+                            "partitionIntervalType": "TIME-UNIT",
+                            "partitionIntervalUnit": "DAY",
+                            "partitionInterval": 2,
+                        },
                     }
                 ],
             },
@@ -341,12 +374,12 @@ class ProfilerWorkflowTest(TestCase):
                     {
                         "fullyQualifiedName": "test_sqlite.main.main.users",
                         "partitionConfig": {
-                                "enablePartitioning": "true",
-                                "partitionColumnName": "signedup",
-                                "partitionIntervalType": "TIME-UNIT",
-                                "partitionIntervalUnit": "DAY",
-                                "partitionInterval": 2,   
-                            }
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "signedup",
+                            "partitionIntervalType": "TIME-UNIT",
+                            "partitionIntervalUnit": "DAY",
+                            "partitionInterval": 2,
+                        },
                     }
                 ],
             },
@@ -370,7 +403,7 @@ class ProfilerWorkflowTest(TestCase):
         assert profile.rowCount == 3.0
 
     def test_workflow_integer_range_partition(self):
-        """test workflow with partition"""        
+        """test workflow with partition"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
@@ -391,9 +424,9 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "age",
-                            "partitionIntegerRangeStart":37,
-                            "partitionIntegerRangeEnd":38
-                        }
+                            "partitionIntegerRangeStart": 37,
+                            "partitionIntegerRangeEnd": 38,
+                        },
                     }
                 ],
             },
@@ -430,9 +463,9 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "age",
-                            "partitionIntegerRangeStart":37,
-                            "partitionIntegerRangeEnd":38
-                        }
+                            "partitionIntegerRangeStart": 37,
+                            "partitionIntegerRangeEnd": 38,
+                        },
                     }
                 ],
             },
@@ -456,7 +489,7 @@ class ProfilerWorkflowTest(TestCase):
         assert profile.rowCount == 2.0
 
     def test_workflow_values_partition(self):
-        """test workflow with partition"""        
+        """test workflow with partition"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
@@ -477,8 +510,8 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "name",
-                            "partitionValues": ["John"]
-                        }
+                            "partitionValues": ["John"],
+                        },
                     }
                 ],
             },
@@ -516,8 +549,8 @@ class ProfilerWorkflowTest(TestCase):
                         "partitionConfig": {
                             "enablePartitioning": "true",
                             "partitionColumnName": "name",
-                            "partitionValues": ["John"]
-                        }
+                            "partitionValues": ["John"],
+                        },
                     }
                 ],
             },
