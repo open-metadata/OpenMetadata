@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import Seo from 'components/Seo/Seo.component';
+import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
 import React, { FC, Fragment, HTMLAttributes, ReactNode } from 'react';
 import './../../styles/layout/page-layout.less';
 
@@ -42,7 +42,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
 }: PageLayoutProp) => {
   return (
     <Fragment>
-      <Seo title={pageTitle} />
+      <DocumentTitle title={pageTitle} />
       <Row
         className={className}
         data-testid="page-layout-v1"

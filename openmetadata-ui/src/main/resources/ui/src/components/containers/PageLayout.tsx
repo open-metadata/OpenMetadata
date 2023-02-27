@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import Seo from 'components/Seo/Seo.component';
+import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
 import React, { FC, Fragment, ReactNode } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 
@@ -168,7 +168,7 @@ const PageLayout: FC<PageLayoutProp> = ({
 
   return (
     <Fragment>
-      <Seo title={pageTitle} />
+      <DocumentTitle title={pageTitle} />
       {getLayoutByType(layout)}
     </Fragment>
   );
