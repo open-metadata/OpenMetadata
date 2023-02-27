@@ -642,6 +642,21 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId AND relation = :relation "
+                + "ORDER BY toId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE  json->'pipeline'->>'id' =:fromId AND relation = :relation "
+                + "ORDER BY toId",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findToPipeline(@Bind("fromId") String fromId, @Bind("relation") int relation);
+
     //
     // Find from operations
     //
@@ -663,6 +678,21 @@ public interface CollectionDAO {
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId AND relation = :relation "
+                + "ORDER BY fromId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE  json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "ORDER BY fromId",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(FromRelationshipMapper.class)
+    List<EntityRelationshipRecord> findFromPipleine(@Bind("toId") String toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
     @RegisterRowMapper(FromRelationshipMapper.class)
