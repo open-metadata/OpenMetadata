@@ -1,0 +1,167 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/container.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Container",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the Container entity. A Container is an abstraction for any path(including the top level eg. bucket in S3) storing data in an Object store such as S3, GCP, Azure. It maps a tree-like structure, where each Container can have a parent and a list of sub-folders, and it can be structured - where it contains structured data, or unstructured where no schema for its data is defined.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Container",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "containerDataModel": {
+      "description": "This captures information about how the container's data is modeled, if it has a schema. ",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ContainerDataModel",
+      "properties": {
+        "isPartitioned": {
+          "description": "Whether the data under this container is partitioned by some property, eg. eventTime=yyyy-mm-dd",
+          "type": "boolean",
+          "default": false
+        },
+        "columns": {
+          "description": "Columns belonging to this container's schema",
+          "type": "array",
+          "items": {
+            "$ref": "../data/table.json#/definitions/column"
+          }
+        }
+      },
+      "required": [
+        "columns"
+      ],
+      "additionalProperties": false
+    },
+    "fileFormat": {
+      "javaType": "org.openmetadata.schema.type.ContainerFileFormat",
+      "description": "This schema defines the file formats for the object/files within a container.",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "type": "string",
+      "enum": ["zip", "gz", "zstd", "csv", "tsv", "json", "parquet", "avro"],
+      "javaEnums": [
+        {"name": "Zip"},
+        {"name": "Gz"},
+        {"name": "Zstd"},
+        {"name": "Csv"},
+        {"name": "Tsv"},
+        {"name": "Json"},
+        {"name": "Parquet"},
+        {"name": "Avro"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this container instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the container.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a container in the format 'ServiceName.ContainerName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this container.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the container instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this container.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to the object store service where this container is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "parent": {
+      "description": "Link to the parent container under which this entity sits, if not top level.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "References to child containers residing under this entity.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "dataModel": {
+      "description": "References to the container's data model, if data is structured, or null otherwise",
+      "$ref": "#/definitions/containerDataModel",
+      "default": null
+    },
+    "prefix": {
+      "description": "Optional prefix path defined for this container",
+      "type": "string",
+      "default": null
+    },
+    "numberOfObjects": {
+      "description": "The number of objects/files this container has.",
+      "type": "integer",
+      "default": null
+    },
+    "size": {
+      "description": "The total size in KB this container has.",
+      "type": "integer",
+      "default": null
+    },
+    "fileFormats": {
+      "description": "File & data formats identified for the container:  e.g. dataFormats=[csv, json]. These can be present both when the container has a dataModel or not",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/fileFormat"
+      },
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this container.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this container.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "service"
+  ],
+  "additionalProperties": false
+}

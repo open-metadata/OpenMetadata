@@ -18,6 +18,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -64,6 +65,7 @@ const mockProp = {
   hasAccess: true,
   customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
+  loadingState: LOADING_STATE.INITIAL,
 };
 
 describe('Test CustomField Table Component', () => {
