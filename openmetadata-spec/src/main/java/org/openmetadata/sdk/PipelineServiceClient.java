@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.http.HttpResponse;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -145,7 +144,7 @@ public abstract class PipelineServiceClient {
   public abstract Response getServiceStatus();
 
   /* Test the connection to the service such as database service a pipeline depends on. */
-  public abstract HttpResponse<String> testConnection(TestServiceConnection testServiceConnection);
+  public abstract Response testConnection(TestServiceConnection testServiceConnection);
 
   /* Deploy a pipeline to the pipeline service */
   public abstract String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
@@ -166,7 +165,7 @@ public abstract class PipelineServiceClient {
   public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
+  public abstract Response killIngestion(IngestionPipeline ingestionPipeline);
 
   /*
   Get the Pipeline Service host IP to whitelist in source systems
