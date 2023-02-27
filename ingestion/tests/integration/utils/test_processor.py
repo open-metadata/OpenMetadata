@@ -15,7 +15,7 @@ Test Processor Class
 import datetime
 from unittest import TestCase
 
-from ingestion.processor.pii import NERScanner, PiiProcessor
+from ingestion.src.metadata.ingestion.processor.pii import NERScanner, PiiProcessor
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -692,7 +692,7 @@ UPDATED_TABLE_ENTITY = [
                 ),
                 source="Tag",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             )
         ],
@@ -723,7 +723,7 @@ UPDATED_TABLE_ENTITY = [
                 ),
                 source="Tag",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             )
         ],
@@ -754,7 +754,7 @@ UPDATED_TABLE_ENTITY = [
                 ),
                 source="Tag",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             )
         ],
@@ -785,7 +785,7 @@ UPDATED_TABLE_ENTITY = [
                 ),
                 source="Tag",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             )
         ],
@@ -816,7 +816,7 @@ UPDATED_TABLE_ENTITY = [
                 ),
                 source="Tag",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             )
         ],

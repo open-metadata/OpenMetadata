@@ -67,7 +67,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.processor import PiiProcessor
+from metadata.ingestion.processor.pii import PiiProcessor
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger

@@ -14,6 +14,8 @@ Processor util to fetch pii sensitive columns
 """
 import logging
 import re
+import traceback
+from collections import defaultdict
 from enum import Enum, auto
 from typing import List, Optional
 
@@ -80,27 +82,60 @@ class NERScanner:
             "TIME": PiiTypes.DATE_TIME.value,
             "CARDINAL": PiiTypes.UNSUPPORTED.value,
             "PERSON": PiiTypes.PERSON.value,
+            "FAC": PiiTypes.LOCATION.value,
+            "LOC": PiiTypes.LOCATION.value,
         }
 
         return spacy_to_pii.get(spacy_type, PiiTypes.UNSUPPORTED.value)
 
+    def get_highest_score_label(self, beams, docs, entity_label):
+        highest_score, label = 0, "CARDINAL"
+        for _, beam in zip(docs, beams):
+            entity_scores = defaultdict(float)
+            for score, ents in self.nlp.entity.moves.get_beam_parses(beam):
+                for start, end, label in ents:
+                    entity_scores[(start, end, label)] += score
+                    if score >= highest_score and label == entity_label:
+                        highest_score, label = score, entity_label
+        return highest_score, label
+
     def scan(self, text):
         """Scan the text and return an array of PiiTypes that are found"""
+
         logging.debug("Processing '%s'", text)
-        doc = self.nlp(text)
-        pii_types = f"{PII}.{TagType.NONSENSITIVE.value}"
+        pii_tag = f"{PII}.{TagType.NONSENSITIVE.value}"
+        spacy_label: str
+        text = [str(row) for row in text if row is not None]
+        for row in text:
+            try:
+                doc = self.nlp(row)
+                for ent in list(doc.ents):
+                    logging.debug("Found %s", ent.label_)
+                    spacy_label = ent.label_
+            except Exception as exc:
+                logging.warning(f"Unkown error while processing {row} - {exc}")
+                logging.debug(traceback.format_exc())
+        beam_width = 16
+        beam_density = 0.0001
+        beams = None
+        try:
+            doc = list(self.nlp.pipe(text))
+            beams = self.nlp.entity.beam_parse(
+                doc, beam_width=beam_width, beam_density=beam_density
+            )
+        except Exception as exc:
+            logging.warning(f"Unkown error while processing {text} - {exc}")
 
-        for ent in list(doc.ents):
-            logging.debug("Found %s", ent.label_)
-            label = ent.label_
-            if (
-                self.get_spacy_to_pii_type(spacy_type=label)
-                in ColumnNameScanner.sensitive_regex
-            ):
-                pii_types = f"{PII}.{TagType.SENSITIVE.value}"
-                return pii_types
+        score, label = self.get_highest_score_label(
+            beams=beams, docs=doc, entity_label=spacy_label
+        )
+        if (
+            self.get_spacy_to_pii_type(spacy_type=label)
+            in ColumnNameScanner.sensitive_regex
+        ):
+            pii_tag = f"{PII}.{TagType.SENSITIVE.value}"
 
-        return pii_types
+        return pii_tag, score
 
     def process(self, table_data: TableData, table_entity: Table, client: OpenMetadata):
         len_of_rows = len(table_data.rows[0] if table_data.rows else [])
@@ -110,16 +145,14 @@ class NERScanner:
                 if PII in tag.tagFQN.__root__:
                     idx += 1
                     continue
-            for row in table_data.rows:
-                pii_tag_type = self.scan(str(row[idx]))
-                if pii_tag_type == f"{PII}.{TagType.SENSITIVE.value}":
-                    idx += 1
-                    continue
-            client.patch_column_tag(
-                entity_id=table_entity.id,
-                column_name=table_entity.columns[idx].name.__root__,
-                tag_fqn=pii_tag_type,
-            )
+            pii_tag_type, confidence = self.scan([row[idx] for row in table_data.rows])
+            if confidence >= 0.8:
+                client.patch_column_tag(
+                    entity_id=table_entity.id,
+                    column_name=table_entity.columns[idx].name.__root__,
+                    tag_fqn=pii_tag_type,
+                    is_suggested=True,
+                )
 
 
 class ColumnPIIType(BaseModel):

@@ -1075,6 +1075,7 @@
     "pipeline-trigger-success-message": "Pipeline triggered successfully!",
     "pipeline-will-trigger-manually": "Pipeline will only be triggered manually.",
     "process-pii-sensitive-column-message": "Check column names to auto tag PII Senstive/nonSensitive columns.",
+    "process-pii-sensitive-column-message-profiler": "When enabled, the sample data will be analysed to determine appropriate PII tags for each column",
     "profile-sample-percentage-message": "Set the Profiler value as percentage",
     "profile-sample-row-count-message": " Set the Profiler value as row count",
     "profiler-ingestion-description": "A profiler workflow can be configured and deployed after a metadata ingestion has been set up. Multiple profiler pipelines can be set up for the same database service. The pipeline feeds the Profiler tab of the Table entity, and also runs the tests configured for that entity. Add a Name, FQN, and define the filter pattern to start.",

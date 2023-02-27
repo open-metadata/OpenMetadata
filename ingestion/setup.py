@@ -68,10 +68,10 @@ COMMONS = {
 # required library for pii tagging
 pii_requirements = {
     (
-        "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/"
-        "en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz#egg=en_core_web"
+        "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz"
     ),
-    "spacy==3.5.0",
+    "spacy==2.3.9",
 }
 
 base_requirements = {

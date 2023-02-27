@@ -482,6 +482,25 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getProcessPiiTogglesForProfiler = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>{t('label.process-pii-sensitive-column')}</label>
+          <ToggleSwitchV1
+            checked={processPii}
+            handleCheck={handleProcessPii}
+            testId="include-lineage"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.process-pii-sensitive-column-message-profiler')}
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
   const getDashboardDBServiceName = () => {
     return (
       <Field>
@@ -839,6 +858,7 @@ const ConfigureIngestion = ({
           })
         )}
         {getDebugLogToggle()}
+        {getProcessPiiTogglesForProfiler()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">

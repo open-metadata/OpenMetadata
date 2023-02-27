@@ -422,6 +422,7 @@ const AddIngestion = ({
       tableFilterPattern,
       threadCount,
       timeoutSeconds,
+      processPii,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -460,6 +461,7 @@ const AddIngestion = ({
           profileSampleType: profileSampleType,
           threadCount: threadCount,
           timeoutSeconds: timeoutSeconds,
+          processPiiSensitive: processPii,
         };
       }
 
