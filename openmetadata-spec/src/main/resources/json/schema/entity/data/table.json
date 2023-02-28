@@ -189,7 +189,8 @@
             "TIME-UNIT",
             "INTEGER-RANGE",
             "INGESTION-TIME",
-            "COLUMN-VALUE"
+            "COLUMN-VALUE",
+            "OTHER"
           ]
         },
         "interval": {
