@@ -20,10 +20,10 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
     BigQueryConnection,
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSValues,
     MultipleProjectId,
     SingleProjectId,
 )
+from metadata.generated.schema.security.credentials.gcsValues import GCSValues
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,

@@ -16,9 +16,15 @@ from dataclasses import dataclass
 from functools import singledispatch
 
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    AzureConfig,
     DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection.azureConfig import (
+    AzureConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection.gcsConfig import (
     GCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection.s3Config import (
     S3Config,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException

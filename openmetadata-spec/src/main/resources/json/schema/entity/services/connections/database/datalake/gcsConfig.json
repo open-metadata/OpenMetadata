@@ -11,8 +11,5 @@
       "$ref": "../../../../../security/credentials/gcsCredentials.json"
     }
   },
-  "additionalProperties": false,
-  "required": [
-    "configSource"
-  ]
+  "additionalProperties": false
 }

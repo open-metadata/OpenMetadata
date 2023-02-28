@@ -15,7 +15,7 @@ from unittest import TestCase
 
 from pydantic import SecretStr
 
-from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
+from metadata.generated.schema.security.credentials.gcsValues import GCSValues
 from metadata.utils.credentials import (
     InvalidPrivateKeyException,
     build_google_credentials_dict,

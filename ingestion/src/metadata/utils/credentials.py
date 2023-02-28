@@ -22,8 +22,8 @@ from cryptography.hazmat.primitives import serialization
 from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentials,
     GCSCredentialsPath,
-    GCSValues,
 )
+from metadata.generated.schema.security.credentials.gcsValues import GCSValues
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()

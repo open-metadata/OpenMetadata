@@ -27,13 +27,13 @@
       "description": "Available sources to fetch files.",
       "oneOf": [
         {
-          "$ref": "./datalakeConnection/azureConfig.json"
+          "$ref": "./datalake/azureConfig.json"
         },
         {
-          "$ref": "./datalakeConnection/gcsConfig.json"
+          "$ref": "./datalake/gcsConfig.json"
         },
         {
-          "$ref": "./datalakeConnection/s3Config.json"
+          "$ref": "./datalake/s3Config.json"
         }
       ]
     },

@@ -28,30 +28,18 @@
         }
       ]
     },
-    "connectionType": {
+    "serviceType": {
       "description": "Type of service such as Database, Dashboard, Messaging, etc.",
+      "$ref": "../../../entity/services/serviceType.json"
+    },
+    "connectionType": {
+      "description": "Type of the connection to test such as Snowflake, MySQL, Looker, etc.",
+      "type": "string"
+    },
+    "serviceName": {
+      "description": "Name of the service in case it exists",
       "type": "string",
-      "enum": ["Database", "Dashboard", "Messaging", "Pipeline", "MlModel", "Metadata"],
-      "javaEnums": [
-        {
-          "name": "Database"
-        },
-        {
-          "name": "Dashboard"
-        },
-        {
-          "name": "Messaging"
-        },
-        {
-          "name": "Pipeline"
-        },
-        {
-          "name": "MlModel"
-        },
-        {
-          "name": "Metadata"
-        }
-      ]
+      "default": null
     },
     "secretsManagerProvider": {
       "$ref": "../../../security/secrets/secretsManagerProvider.json",

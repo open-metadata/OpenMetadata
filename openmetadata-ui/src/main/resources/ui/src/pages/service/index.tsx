@@ -607,7 +607,9 @@ const ServicePage: FunctionComponent = () => {
       try {
         const response = await TestConnection(
           connectionDetails,
-          getTestConnectionType(serviceCategory as ServiceCategory)
+          getTestConnectionType(serviceCategory as ServiceCategory),
+          serviceDetails?.serviceType,
+          serviceDetails?.name
         );
         // This api only responds with status 200 on success
         // No data sent on api success
