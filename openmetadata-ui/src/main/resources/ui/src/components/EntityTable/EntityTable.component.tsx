@@ -223,7 +223,7 @@ const EntityTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn) {
+    if (editColumn && editColumn.column.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
         tableCols,
