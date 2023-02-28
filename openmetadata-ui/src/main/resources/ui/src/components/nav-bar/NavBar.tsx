@@ -14,7 +14,6 @@
 import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { CookieStorage } from 'cookie-storage';
-import { LogoLocationType } from 'generated/configuration/applicationConfiguration';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -301,11 +300,7 @@ const NavBar = ({
   );
 
   const brandLogoUrl = useMemo(() => {
-    if (logoConfig?.logoLocationType === LogoLocationType.URL) {
-      return logoConfig?.navBarLogoUrlPath;
-    } else {
-      return Logo;
-    }
+    return logoConfig?.customMonogramUrlPath ?? Logo;
   }, [logoConfig]);
 
   return (

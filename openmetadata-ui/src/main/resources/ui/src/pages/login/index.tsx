@@ -28,7 +28,6 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import Loader from 'components/Loader/Loader';
 import LoginButton from 'components/LoginButton/LoginButton';
-import { LogoLocationType } from 'generated/configuration/applicationConfiguration';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -80,11 +79,7 @@ const SigninPage = () => {
   }, [isAuthDisabled, isAuthenticated]);
 
   const brandLogoUrl = useMemo(() => {
-    if (logoConfig?.logoLocationType === LogoLocationType.URL) {
-      return logoConfig?.loginPageLogoUrlPath;
-    } else {
-      return Logo;
-    }
+    return logoConfig?.customLogoUrlPath ?? Logo;
   }, [logoConfig]);
 
   const isTokenExpired = () => {

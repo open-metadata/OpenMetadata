@@ -19,11 +19,9 @@ import ApplicationConfigProvider, {
 
 const mockApplicationConfig = {
   logoConfig: {
-    logoLocationType: 'openmetadata',
-    loginPageLogoAbsoluteFilePath: '',
-    loginPageLogoUrlPath: '',
-    navBarLogoAbsoluteFilePath: '',
-    navBarLogoUrlPath: '',
+    customLogoUrlPath: 'https://customlink.source',
+
+    customMonogramUrlPath: 'https://customlink.source',
   },
   loginConfig: {
     maxLoginFailAttempts: 3,
@@ -59,7 +57,7 @@ describe('ApplicationConfigProvider', () => {
     function TestComponent() {
       const { logoConfig } = useApplicationConfigProvider();
 
-      return <div>{logoConfig?.logoLocationType}</div>;
+      return <div>{logoConfig?.customLogoUrlPath}</div>;
     }
 
     await act(async () => {
@@ -70,7 +68,9 @@ describe('ApplicationConfigProvider', () => {
       );
     });
 
-    expect(await screen.findByText('openmetadata')).toBeInTheDocument();
+    expect(
+      await screen.findByText('https://customlink.source')
+    ).toBeInTheDocument();
 
     expect(getApplicationConfig).toHaveBeenCalledTimes(1);
   });

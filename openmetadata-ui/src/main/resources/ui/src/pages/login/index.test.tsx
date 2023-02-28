@@ -36,9 +36,9 @@ jest.mock(
   () => ({
     useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
       logoConfig: {
-        logoLocationType: 'url',
-        loginPageLogoUrlPath: 'https://logo.com/logo.png',
-        navBarLogoUrlPath: 'https://logo.com/logo.png',
+        customLogoUrlPath: 'https://customlink.source',
+
+        customMonogramUrlPath: 'https://customlink.source',
       },
     })),
   })
@@ -146,6 +146,6 @@ describe('Test SigninPage Component', () => {
 
     expect(brandLogoImage).toBeInTheDocument();
 
-    expect(logoImage.src).toEqual('https://logo.com/logo.png');
+    expect(logoImage.src).toEqual('https://customlink.source/');
   });
 });
