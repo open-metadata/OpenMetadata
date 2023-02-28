@@ -25,17 +25,14 @@ To change the Logo for the application, we need to update logo at two locations.
 ```yaml
 applicationConfig:
   logoConfig:
-    logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or "url"
-    loginPageLogoUrlPath: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""} #login page logo , work in "url" mode
-    navBarLogoUrlPath: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""} #nav bar logo , work in "url" mode
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
 ```
 
-1. `logoLocationType` set to 'openmetadata'
+1. `customLogoUrlPath`
 
-   - In this case it will take the default OM logo, we don't need to configure anything else.
+   - URL path for the login page logo.
 
-2. `logoLocationType` set to 'url'
+2. `customMonogramUrlPath`
 
-   - In this case it will take the custom logo from the specified url, need to configure following as well.
-     - `loginPageLogoUrlPath` -> This is the url for Login Page Logo Image.
-     - `navBarLogoUrlPath` -> This is the url for Navigation Bar Logo Image.
+   - URL path for the navbar logo.
