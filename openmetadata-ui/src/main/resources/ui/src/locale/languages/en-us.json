@@ -420,6 +420,7 @@
     "lineage-ingestion": "Lineage Ingestion",
     "lineage-lowercase": "lineage",
     "list": "List",
+    "list-entity": "List {{entity}}",
     "loading": "Loading",
     "local-config-source": "Local Config Source",
     "log-plural": "Logs",

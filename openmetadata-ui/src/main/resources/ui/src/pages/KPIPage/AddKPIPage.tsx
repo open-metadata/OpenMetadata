@@ -142,7 +142,7 @@ const AddKPIPage = () => {
 
   const handleChartSelect = (value: string) => {
     const selectedChartValue = dataInsightCharts.find(
-      (chart) => chart.id === value
+      (chart) => chart.fullyQualifiedName === value
     );
     setSelectedChart(selectedChartValue);
   };
@@ -191,7 +191,6 @@ const AddKPIPage = () => {
     const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
     const formData: CreateKpiRequest = {
-      // TODO: this needs to be fullyQualifiedName of the dataInsightChart
       dataInsightChart: values.dataInsightChart,
       description,
       name: kebabCase(`${values.displayName} ${selectedMetric?.name}`),
@@ -256,10 +255,10 @@ const AddKPIPage = () => {
                 data-testid="dataInsightChart"
                 notFoundContent={t('message.all-charts-are-mapped')}
                 placeholder={t('label.select-a-chart')}
-                value={selectedChart?.id}
+                value={selectedChart?.fullyQualifiedName}
                 onChange={handleChartSelect}>
                 {chartOptions.map((chart) => (
-                  <Option key={chart.id}>
+                  <Option key={chart.fullyQualifiedName}>
                     {chart.displayName || chart.name}
                   </Option>
                 ))}
