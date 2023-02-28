@@ -22,6 +22,7 @@ import WebSocketProvider from 'components/web-scoket/web-scoket.provider';
 import WebAnalyticsProvider from 'components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from 'constants/Toasts.constants';
 import React, { FunctionComponent } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
@@ -37,16 +38,18 @@ const App: FunctionComponent = () => {
             <ErrorBoundry>
               <AuthProvider childComponentType={AppRouter}>
                 <ApplicationConfigProvider>
-                  <WebAnalyticsProvider>
-                    <PermissionProvider>
-                      <WebSocketProvider>
-                        <GlobalSearchProvider>
-                          <Appbar />
-                          <AppRouter />
-                        </GlobalSearchProvider>
-                      </WebSocketProvider>
-                    </PermissionProvider>
-                  </WebAnalyticsProvider>
+                  <HelmetProvider>
+                    <WebAnalyticsProvider>
+                      <PermissionProvider>
+                        <WebSocketProvider>
+                          <GlobalSearchProvider>
+                            <Appbar />
+                            <AppRouter />
+                          </GlobalSearchProvider>
+                        </WebSocketProvider>
+                      </PermissionProvider>
+                    </WebAnalyticsProvider>
+                  </HelmetProvider>
                 </ApplicationConfigProvider>
               </AuthProvider>
             </ErrorBoundry>
