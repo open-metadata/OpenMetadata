@@ -132,6 +132,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     fields=["*"],
                 )
 
+                if not entity:
+                    continue
+
                 try:
                     tags = (
                         [tag.tagFQN.__root__ for tag in entity.tags]
