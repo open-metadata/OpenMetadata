@@ -437,7 +437,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                       : t('message.no-permission-for-action')
                   }>
                   <Button
-                    className="rounded-4 tw-w-8 d-flex justify-center manage-dropdown-button"
+                    className="manage-dropdown-button"
                     data-testid="profiler-setting-btn"
                     disabled={!editTest}
                     type="primary"
