@@ -26,6 +26,12 @@ import { EntityFieldThreads } from '../interface/feed.interface';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
 
+const iconsProps = {
+  height: 16,
+  name: 'comments',
+  width: 16,
+};
+
 export const getFieldThreadElement = (
   columnName: string,
   columnField: string,
@@ -70,9 +76,9 @@ export const getFieldThreadElement = (
         trigger="hover">
         <Space align="center" className="w-full h-full" size={4}>
           {isTaskType ? (
-            <IconTaskColor height={16} name="comments" width={16} />
+            <IconTaskColor {...iconsProps} />
           ) : (
-            <IconComments height={16} name="comments" width={16} />
+            <IconComments {...iconsProps} />
           )}
 
           <Typography.Text data-testid="field-thread-count">
@@ -102,7 +108,7 @@ export const getFieldThreadElement = (
             })}
             overlayClassName="ant-popover-request-description"
             trigger="hover">
-            <IconCommentPlus height={16} name="comments" width={16} />
+            <IconCommentPlus {...iconsProps} />
           </Popover>
         </Button>
       ) : null}
