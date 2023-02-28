@@ -23,6 +23,7 @@ from metadata.orm_profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
 from metadata.orm_profiler.registry import TypeRegistry
+from metadata.utils.sqa_like_column import Type
 
 
 class CustomTypes(TypeRegistry):
@@ -68,30 +69,34 @@ class Dialects(Enum):
 # in the profiler.
 # Note that not mapped types are set to NULL by default.
 NOT_COMPUTE = {
-    sqlalchemy.types.NullType,
-    sqlalchemy.ARRAY,
-    sqlalchemy.JSON,
-    sqa_types.SQAMap,
-    sqa_types.SQAStruct,
-    sqa_types.SQASet,
-    sqa_types.SQAUnion,
-    sqa_types.SQASGeography,
+    sqlalchemy.types.NullType.__name__,
+    sqlalchemy.ARRAY.__name__,
+    sqlalchemy.JSON.__name__,
+    sqa_types.SQAMap.__name__,
+    sqa_types.SQAStruct.__name__,
+    sqa_types.SQASet.__name__,
+    sqa_types.SQAUnion.__name__,
+    sqa_types.SQASGeography.__name__,
+    DataType.ARRAY.value,
+    DataType.JSON.value,
 }
 
-NOT_COMPUTE_OM = {
-    DataType.ARRAY,
-    DataType.JSON,
+QUANTIFIABLE_SET = {
+    DataType.INT.value,
+    DataType.BIGINT.value,
+    DataType.SMALLINT.value,
+    DataType.NUMERIC.value,
+    DataType.NUMBER.value,
+    DataType.DECIMAL.value,
+    DataType.FLOAT.value,
+    DataType.TINYINT.value,
+    DataType.DOUBLE.value,
+    DataType.LONG.value,
 }
 
-QUANTIFIABLE_DICT = {
-    DataType.INT,
-    DataType.BIGINT,
-    DataType.SMALLINT,
-    DataType.NUMERIC,
-    DataType.NUMBER,
-}
+CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
 
-CONCATENABLE_DICT = {DataType.STRING, DataType.TEXT}
+DATATIME_SET = {DataType.DATETIME.value}
 
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type
@@ -113,6 +118,8 @@ def is_date_time(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
+    if isinstance(_type, Type):
+        return _type.__class__.__name__ in DATATIME_SET
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
@@ -124,11 +131,9 @@ def is_quantifiable(_type) -> bool:
     """
     Check if sqlalchemy _type is either integer or numeric
     """
-    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
-        is_numeric_dtype,
-    )
-
-    return is_numeric(_type) or is_integer(_type) or is_numeric_dtype(_type)
+    if isinstance(_type, Type):
+        return _type.__class__.__name__ in QUANTIFIABLE_SET
+    return is_numeric(_type) or is_integer(_type)
 
 
 def is_concatenable(_type) -> bool:
@@ -136,8 +141,6 @@ def is_concatenable(_type) -> bool:
     Check if sqlalchemy _type is derived from Concatenable
     e.g., strings or text
     """
-    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
-        is_string_dtype,
-    )
-
-    return issubclass(_type.__class__, Concatenable) or is_string_dtype(_type)
+    if isinstance(_type, Type):
+        return _type.__class__.__name__ in CONCATENABLE_SET
+    return issubclass(_type.__class__, Concatenable)

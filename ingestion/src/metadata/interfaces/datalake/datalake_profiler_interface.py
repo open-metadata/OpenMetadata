@@ -21,10 +21,13 @@ from typing import Dict, List
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import DataType, TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
+from metadata.ingestion.source.database.datalake.metadata import (
+    DATALAKE_DATA_TYPES,
+    ometa_to_dataframe,
+)
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -32,9 +35,9 @@ from metadata.interfaces.profiler_protocol import (
 from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
-from metadata.utils.column_base_model import ColumnBaseModel
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = profiler_interface_registry_logger()
 
@@ -103,7 +106,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             for metric in metrics:
                 for data_frame in data_frame_list:
                     row.append(
-                        metric().dl_fn(
+                        metric().df_fn(
                             data_frame.astype(object).where(
                                 pd.notnull(data_frame), None
                             )
@@ -150,7 +153,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             for metric in metrics:
                 for data_frame in data_frame_list:
                     row.append(
-                        metric(column).dl_fn(
+                        metric(column).df_fn(
                             data_frame.astype(object).where(
                                 pd.notnull(data_frame), None
                             )
@@ -188,7 +191,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         """
         col_metric = None
         for data_frame in data_frame_list:
-            col_metric = metrics(column).dl_query(data_frame)
+            col_metric = metrics(column).df_fn(data_frame)
         if not col_metric:
             return None
         return {metrics.name(): col_metric}
@@ -319,7 +322,18 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         return self._table
 
     def get_columns(self):
-        return ColumnBaseModel.col_base_model_list(self.data_frame_list)
+        if self.data_frame_list:
+            df = self.data_frame_list[0]
+            return [
+                SQALikeColumn(
+                    column_name,
+                    DATALAKE_DATA_TYPES.get(
+                        df[column_name].dtypes.name, DataType.STRING.value
+                    ),
+                )
+                for column_name in df.columns
+            ]
+        return []
 
     def close(self):
         pass

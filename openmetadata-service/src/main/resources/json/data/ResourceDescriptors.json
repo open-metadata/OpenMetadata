@@ -219,6 +219,30 @@
     ]
   },
   {
+    "name" : "container",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "objectStoreService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
+  },
+  {
     "name" : "pipeline",
     "operations" : [
       "Create",

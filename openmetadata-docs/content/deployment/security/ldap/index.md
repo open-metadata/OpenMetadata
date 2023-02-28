@@ -23,18 +23,30 @@ authenticationConfiguration:
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-false}
   ldapConfiguration:
-    "host": ${AUTHENTICATION_LDAP_HOST:-localhost}
-    "port": ${AUTHENTICATION_LDAP_PORT:-10636}
-    "dnAdminPrincipal": ${AUTHENTICATION_LOOKUP_ADMIN_DN:-"cn=admin,dc=example,dc=com"}
-    "dnAdminPassword": ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-"secret"}
-    "userBaseDN": ${AUTHENTICATION_USER_LOOKUP_BASEDN:-"ou=people,dc=example,dc=com"}
-    "mailAttributeName": ${AUTHENTICATION_USER_MAIL_ATTR:-email}
+    host: ${AUTHENTICATION_LDAP_HOST:-localhost}
+    port: ${AUTHENTICATION_LDAP_PORT:-10636}
+    dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-"cn=admin,dc=example,dc=com"}
+    dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-"secret"}
+    userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-"ou=people,dc=example,dc=com"}
+    mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-email}
     # Optional
-    "maxPoolSize": ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
-    "sslEnabled": ${AUTHENTICATION_LDAP_SSL_ENABLED:-true}
-    "truststoreConfigType": ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll} # {CustomTrustStore, HostName, JVMDefault, TrustAll}
-    "trustStoreConfig":
-      "examineValidityDates": ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
+    maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
+    sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-true}
+    truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll} # {CustomTrustStore, HostName, JVMDefault, TrustAll}
+    trustStoreConfig:
+      customTrustManagerConfig:
+        trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-}
+        trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}
+        trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-}
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-}
+      hostNameConfig:
+        allowWildCards: ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-}
+        acceptableHostNames: ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[]}
+      jvmDefaultConfig:
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+      trustAllConfig:
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 ```
 
 For the LDAP auth we need to set:
@@ -76,9 +88,10 @@ Based on the different `truststoreConfigType`, we have following different `trus
 1. **TrustAll**: Provides an SSL trust manager which will blindly trust any certificate that is presented to it, although it may optionally reject certificates that are expired or not yet valid. It can be convenient for testing purposes, but it is recommended that production environments use trust managers that perform stronger validation.
 
 ```yaml
-  "truststoreConfigType": ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll}
-  "trustStoreConfig":
-    "examineValidityDates": ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
+  truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll}
+  trustStoreConfig:
+    trustAllConfig:
+      examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 ```
 
 - `examineValidityDates`: Indicates whether to reject certificates if the current time is outside the validity window for the certificate.
@@ -86,9 +99,10 @@ Based on the different `truststoreConfigType`, we have following different `trus
 2. **JVMDefault**: Provides an implementation of a trust manager that relies on the JVM's default set of trusted issuers.
 
 ```yaml
-  "truststoreConfigType": ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-CustomTrustStore}
-  "trustStoreConfig":
-    "verifyHostname": ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-true}
+  truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-JVMDefault}
+  trustStoreConfig:
+    jvmDefaultConfig:
+      verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-true}
 ```
 
 - `verifyHostname`: Controls using TrustAllSSLSocketVerifier vs HostNameSSLSocketVerifier. In case the certificate contains cn=hostname of the Ldap Server set it to true.
@@ -96,10 +110,11 @@ Based on the different `truststoreConfigType`, we have following different `trus
 3. **HostName**: Provides an SSL trust manager that will only accept certificates whose hostname matches an expected value.
 
 ```yaml
-  "truststoreConfigType": ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-HostName}
-  "trustStoreConfig":
-    "allowWildCards": ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-false}
-    "acceptableHostNames": ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[localhost]}
+  truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-HostName}
+  trustStoreConfig:
+    hostNameConfig:
+      allowWildCards: ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-false}
+      acceptableHostNames: ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[localhost]}
 ```
 
 - `allowWildCards`: Indicates whether to allow wildcard certificates which contain an asterisk as the first component of a CN subject attribute or dNSName subjectAltName extension.
@@ -108,13 +123,14 @@ Based on the different `truststoreConfigType`, we have following different `trus
 4. **CustomTrustStore**: Use the custom Truststore by providing the below details in the config.
 
 ```yaml
-  "truststoreConfigType": ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-CustomTrustStore}
-  "trustStoreConfig":
-    "trustStoreFilePath": ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-/Users/parthpanchal/trusted.ks}
-    "trustStoreFilePassword": ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-secret}
-    "trustStoreFileFormat": ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-JKS}
-    "verifyHostname": ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-true}
-    "examineValidityDates": ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
+  truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-CustomTrustStore}
+  trustStoreConfig:
+    customTrustManagerConfig:
+      trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-/Users/parthpanchal/trusted.ks}
+      trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-secret}
+      trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-JKS}
+      verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-true}
+      examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 ```
 
 - `trustStoreFilePath`: The path to the trust store file to use. It must not be null.

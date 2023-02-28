@@ -19,6 +19,7 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
+import { SORT_ORDER } from 'enums/common.enum';
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -27,10 +28,9 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import AppState from '../../AppState';
-import { PAGE_SIZE } from '../../constants/constants';
+import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
-  INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -47,7 +47,7 @@ const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
 
-  const { searchQuery: searchQueryParam = '', tab } = useParams<UrlParams>();
+  const { tab } = useParams<UrlParams>();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
@@ -57,7 +57,7 @@ const ExplorePage: FunctionComponent = () => {
 
   const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
 
-  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
+  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
@@ -70,6 +70,11 @@ const ExplorePage: FunctionComponent = () => {
           ? location.search.substr(1)
           : location.search
       ),
+    [location.search]
+  );
+
+  const searchQueryParam = useMemo(
+    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
   );
 
@@ -93,17 +98,19 @@ const ExplorePage: FunctionComponent = () => {
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
     nSearchIndex
   ) => {
-    history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
-      search: Qs.stringify({ page: 1 }),
-    });
+    history.push(
+      getExplorePath({
+        tab: tabsInfo[nSearchIndex].path,
+        extraParameters: { page: '1' },
+        isPersistFilters: false,
+      })
+    );
     setAdvancedSearchQueryFilter(undefined);
   };
 
   const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
     (queryFilter) => {
       history.push({
-        pathname: history.location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
@@ -116,7 +123,6 @@ const ExplorePage: FunctionComponent = () => {
     postFilter
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, postFilter, page: 1 }),
     });
   };
@@ -125,7 +131,6 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };

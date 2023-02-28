@@ -18,6 +18,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -64,6 +65,7 @@ const mockProp = {
   hasAccess: true,
   customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
+  loadingState: LOADING_STATE.INITIAL,
 };
 
 describe('Test CustomField Table Component', () => {
@@ -76,10 +78,10 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await findByText('Name');
-    const tableCellType = await findByText('Type');
-    const tableCellDescription = await findByText('Description');
-    const tableCellActions = await findByText('Actions');
+    const tableCellName = await findByText('label.name');
+    const tableCellType = await findByText('label.type');
+    const tableCellDescription = await findByText('label.description');
+    const tableCellActions = await findByText('label.action-plural');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
@@ -99,10 +101,10 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await screen.findByText('Name');
-    const tableCellType = await screen.findByText('Type');
-    const tableCellDescription = await screen.findByText('Description');
-    const tableCellActions = await screen.findByText('Actions');
+    const tableCellName = await screen.findByText('label.name');
+    const tableCellType = await screen.findByText('label.type');
+    const tableCellDescription = await screen.findByText('label.description');
+    const tableCellActions = await screen.findByText('label.action-plural');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
@@ -135,7 +137,7 @@ describe('Test CustomField Table Component', () => {
   });
 
   it('Should render no data row if there is no custom properties', async () => {
-    const { findByTestId, findByText, findAllByRole } = render(
+    const { findByTestId, findAllByRole } = render(
       <CustomPropertyTable {...mockProp} customProperties={[]} />
     );
 
@@ -143,10 +145,10 @@ describe('Test CustomField Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await findByText('Name');
-    const tableCellType = await findByText('Type');
-    const tableCellDescription = await findByText('Description');
-    const tableCellActions = await findByText('Actions');
+    const tableCellName = await screen.findByText('label.name');
+    const tableCellType = await screen.findByText('label.type');
+    const tableCellDescription = await screen.findByText('label.description');
+    const tableCellActions = await screen.findByText('label.action-plural');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();

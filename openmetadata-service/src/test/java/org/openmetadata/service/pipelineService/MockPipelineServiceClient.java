@@ -1,9 +1,9 @@
 package org.openmetadata.service.pipelineService;
 
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -22,17 +22,17 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
+  public Response testConnection(TestServiceConnection testServiceConnection) {
     return null;
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline) {
+  public String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return null;
   }
 
   @Override
-  public String runPipeline(IngestionPipeline ingestionPipeline) {
+  public String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return null;
   }
 
@@ -57,7 +57,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+  public Response killIngestion(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

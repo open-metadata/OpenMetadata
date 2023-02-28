@@ -14,6 +14,8 @@ Distinct Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import cast
+
 from sqlalchemy import column, distinct, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -42,12 +44,16 @@ class DistinctCount(StaticMetric):
         return func.count(distinct(column(self.col.name)))
 
     @_label
-    def dl_fn(self, data_frame=None):
+    def df_fn(self, df=None):
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
+        df = cast(DataFrame, df)
+
         try:
-            return len(set(data_frame[self.col.name].values.tolist()))
+            return len(set(df[self.col.name].values.tolist()))
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.datatype} "
+                f"Don't know how to process type {self.col.type} "
                 f"when computing Distinct Count.\n Error: {err}"
             )
             return 0

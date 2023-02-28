@@ -54,6 +54,16 @@ def test_source_connection(
         )
         test_connection_fn(connection)
 
+        if test_connection_fn(connection):
+            msg = test_connection_fn(connection)
+            if msg.failed:
+                return ApiResponse.error(
+                    status=ApiResponse.STATUS_SERVER_ERROR,
+                    error=msg.json(),
+                )
+            elif msg.success:
+                return ApiResponse.success({"message": msg.json()})
+
     except SourceConnectionException as exc:
         msg = f"Connection error from [{connection}]: {exc}"
         logger.debug(traceback.format_exc())
