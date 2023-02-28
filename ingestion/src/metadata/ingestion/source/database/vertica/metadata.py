@@ -14,7 +14,7 @@ Vertica source implementation.
 import re
 import traceback
 from textwrap import dedent
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
@@ -38,6 +38,7 @@ from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
     VERTICA_LIST_DATABASES,
+    VERTICA_SCHEMA_COMMENTS,
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
@@ -272,6 +273,10 @@ class VerticaSource(CommonDbSourceService):
     Database metadata from Vertica Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__(config, metadata_config)
+        self.schema_desc_map = {}
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -282,10 +287,22 @@ class VerticaSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get(schema_name)
+
+    def set_schema_description_map(self) -> None:
+        results = self.engine.execute(VERTICA_SCHEMA_COMMENTS).all()
+        for row in results:
+            self.schema_desc_map[row.schema_name] = row.comment
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
             self.set_inspector(database_name=configured_db)
+            self.set_schema_description_map()
             yield configured_db
         else:
             results = self.connection.execute(VERTICA_LIST_DATABASES)
@@ -310,6 +327,7 @@ class VerticaSource(CommonDbSourceService):
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.set_schema_description_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
