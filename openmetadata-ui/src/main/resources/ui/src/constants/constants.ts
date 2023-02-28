@@ -533,3 +533,9 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
 };
+
+export const VALIDATE_MESSAGES = {
+  required: t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
+};

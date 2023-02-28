@@ -60,8 +60,10 @@ from metadata.utils.sqlalchemy_utils import (
 )
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+GEOMETRY = create_sqlalchemy_type("GEOMETRY")
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
+ischema_names["GEOMETRY"] = GEOMETRY
 
 logger = ingestion_logger()
 
