@@ -23,6 +23,7 @@ import Loader from 'components/Loader/Loader';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   deployIngestionPipelineById,
@@ -60,6 +61,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
+  const { t } = useTranslation();
   const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
@@ -265,7 +267,11 @@ const EditIngestionPage = () => {
     } else {
       return (
         <div className="self-center">
-          <PageLayoutV1 center>
+          <PageLayoutV1
+            center
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.ingestion'),
+            })}>
             <Space direction="vertical" size="middle">
               <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
               <div className="form-container">

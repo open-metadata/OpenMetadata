@@ -150,7 +150,7 @@ function EditConnectionFormPage() {
         {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     ) : (
-      <PageLayoutV1 center>
+      <PageLayoutV1 center pageTitle={t('label.edit-connection')}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
           <div className="form-container">

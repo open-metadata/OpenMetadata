@@ -184,7 +184,7 @@ const TestSuitePage = () => {
   }
 
   return (
-    <PageLayoutV1>
+    <PageLayoutV1 pageTitle={t('label.test-suite')}>
       <Space align="center" className="w-full justify-between" size={16}>
         <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
         <Tooltip
