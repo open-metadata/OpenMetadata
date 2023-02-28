@@ -13,24 +13,25 @@
 
 package org.openmetadata.service.secrets.converter.service;
 
+import java.util.List;
+import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.services.connections.database.datalakeConnection.GCSConfig;
 import org.openmetadata.service.util.JsonUtils;
 
-/**
- * Currently when an object is converted into a specific class using `JsonUtils.convertValue` there`Object` fields that
- * are not converted into any concrete class which could lead to assign a `LinkedMap` to the `Object` field.
- *
- * <p>This abstract class wrap these `JsonUtils.convertValue` adding transformation to those `Object` fields into
- * specific classes.
- */
-public abstract class ConnectionConverter {
+/** Converter class to get an `DatalakeConnection` object. */
+public class GCSConfigClassConverter extends ClassConverter {
 
-  protected Class<?> serviceClass;
-
-  public ConnectionConverter(Class<?> serviceClass) {
-    this.serviceClass = serviceClass;
+  public GCSConfigClassConverter() {
+    super(GCSConfig.class);
   }
 
-  public Object convertFromJson(Object connectionConfig) {
-    return JsonUtils.convertValue(connectionConfig, this.serviceClass);
+  @Override
+  public Object convert(Object object) {
+    GCSConfig gcsConfig = (GCSConfig) JsonUtils.convertValue(object, this.clazz);
+
+    tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCSCredentials.class))
+        .ifPresent(obj -> gcsConfig.setSecurityConfig((GCSCredentials) obj));
+
+    return gcsConfig;
   }
 }

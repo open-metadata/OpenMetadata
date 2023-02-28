@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalakeConnection/gcsConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GCSConfig",
+  "description": "DataLake GCS storage will ingest metadata of files",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.datalakeConnection.GCSConfig",
+  "properties": {
+    "securityConfig": {
+      "title": "DataLake GCS Security Config",
+      "$ref": "../../../../../security/credentials/gcsCredentials.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "configSource"
+  ]
+}

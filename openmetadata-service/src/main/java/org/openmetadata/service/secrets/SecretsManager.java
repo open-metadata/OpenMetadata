@@ -28,9 +28,10 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.converter.service.ConnectionConverterFactory;
+import org.openmetadata.service.secrets.converter.service.ClassConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -53,11 +54,12 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ConnectionConverterFactory.getConverter(clazz).convertFromJson(connectionConfig);
+      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
       return encryptOrDecryptPasswordFields(
           newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), encrypt);
     } catch (Exception e) {
-      throw new SecretsManagerException(String.format("Failed to encrypt connection instance of %s", connectionType));
+      throw InvalidServiceConnectionException.byMessage(
+          connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
     }
   }
 
@@ -68,7 +70,8 @@ public abstract class SecretsManager {
       try {
         encryptOrDecryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), encrypt);
       } catch (Exception e) {
-        throw new SecretsManagerException(String.format("Failed to encrypt user bot instance [%s]", name));
+        throw InvalidServiceConnectionException.byMessage(
+            name, String.format("Failed to encrypt user bot instance [%s]", name));
       }
     }
   }
@@ -79,7 +82,8 @@ public abstract class SecretsManager {
       encryptOrDecryptPasswordFields(
           ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), encrypt);
     } catch (Exception e) {
-      throw new SecretsManagerException(
+      throw InvalidServiceConnectionException.byMessage(
+          ingestionPipeline.getName(),
           String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
   }

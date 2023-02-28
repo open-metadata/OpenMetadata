@@ -14,46 +14,29 @@
 package org.openmetadata.service.secrets.converter.service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Factory class to get a `ServiceConverter` based on the service class. */
-public class SupersetConnectionConverter extends ConnectionConverter {
+/** Converter class to get an `SupersetConnection` object. */
+public class SupersetConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONNECTION_CLASSES =
       List.of(SupersetApiConnection.class, MysqlConnection.class, PostgresConnection.class);
 
-  public SupersetConnectionConverter(Class<?> serviceClass) {
-    super(serviceClass);
+  public SupersetConnectionClassConverter() {
+    super(SupersetConnection.class);
   }
 
   @Override
-  public Object convertFromJson(Object connectionConfig) {
-    SupersetConnection supersetConnection =
-        (SupersetConnection) JsonUtils.convertValue(connectionConfig, this.serviceClass);
-    if (supersetConnection.getConnection() instanceof Map) {
-      Object connection =
-          CONNECTION_CLASSES.stream()
-              .map(clazz -> convertConnectionFromJson(supersetConnection.getConnection(), clazz))
-              .filter(Objects::nonNull)
-              .findFirst()
-              .orElse(null);
-      supersetConnection.setConnection(connection);
-    }
-    return supersetConnection;
-  }
+  public Object convert(Object object) {
+    SupersetConnection supersetConnection = (SupersetConnection) JsonUtils.convertValue(object, this.clazz);
 
-  private Object convertConnectionFromJson(Object connection, Class<?> clazz) {
-    try {
-      return JsonUtils.convertValue(connection, clazz);
-    } catch (Exception ignore) {
-      // this can be ignored
-      return null;
-    }
+    tryToConvertOrFail(supersetConnection.getConnection(), CONNECTION_CLASSES)
+        .ifPresent(supersetConnection::setConnection);
+
+    return supersetConnection;
   }
 }

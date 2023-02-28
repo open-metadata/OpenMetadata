@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.secrets.converter.service;
 
-public class DefaultConnectionConverter extends ConnectionConverter {
+public class DefaultConnectionClassConverter extends ClassConverter {
 
-  public DefaultConnectionConverter(Class<?> serviceClass) {
-    super(serviceClass);
+  public DefaultConnectionClassConverter(Class<?> clazz) {
+    super(clazz);
   }
 }

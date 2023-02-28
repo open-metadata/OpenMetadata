@@ -13,36 +13,6 @@
         "Datalake"
       ],
       "default": "Datalake"
-    },
-    "GCSConfig": {
-      "title": "DataLake GCS Config Source",
-      "description": "DataLake GCS storage will ingest metadata of files",
-      "properties": {
-        "securityConfig": {
-          "title": "DataLake GCS Security Config",
-          "$ref": "../../../../security/credentials/gcsCredentials.json"
-        }
-      }
-    },
-    "S3Config": {
-      "title": "DataLake S3 Config Source",
-      "description": "DataLake S3 bucket will ingest metadata of files in bucket",
-      "properties": {
-        "securityConfig": {
-          "title": "DataLake S3 Security Config",
-          "$ref": "../../../../security/credentials/awsCredentials.json"
-        }
-      }
-    },
-    "AzureConfig": {
-      "title": "Azure Config Source",
-      "description": "Azure Datalake Storage will ingest files in container",
-      "properties": {
-        "securityConfig": {
-          "title": "Azure Datalake Config Source",
-          "$ref": "../../../../security/credentials/azureCredentials.json"
-        }
-      }
     }
   },
   "properties": {
@@ -57,13 +27,13 @@
       "description": "Available sources to fetch files.",
       "oneOf": [
         {
-          "$ref": "#/definitions/S3Config"
+          "$ref": "./datalakeConnection/azureConfig.json"
         },
         {
-          "$ref": "#/definitions/GCSConfig"
+          "$ref": "./datalakeConnection/gcsConfig.json"
         },
         {
-          "$ref": "#/definitions/AzureConfig"
+          "$ref": "./datalakeConnection/s3Config.json"
         }
       ]
     },

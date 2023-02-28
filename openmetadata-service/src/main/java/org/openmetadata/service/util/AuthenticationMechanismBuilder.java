@@ -19,11 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
-import org.openmetadata.schema.security.client.AzureSSOClientConfig;
-import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
-import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
-import org.openmetadata.schema.security.client.OktaSSOClientConfig;
+import org.openmetadata.service.secrets.converter.service.ClassConverterFactory;
 
 public class AuthenticationMechanismBuilder {
 
@@ -36,30 +32,11 @@ public class AuthenticationMechanismBuilder {
   public static AuthenticationMechanism addDefinedConfig(AuthenticationMechanism authMechanism) {
     if (authMechanism != null) {
       if (JWT.equals(authMechanism.getAuthType())) {
-        authMechanism.setConfig(JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class));
+        authMechanism.setConfig(
+            ClassConverterFactory.getConverter(JWTAuthMechanism.class).convert(authMechanism.getConfig()));
       } else if (SSO.equals(authMechanism.getAuthType())) {
-        SSOAuthMechanism ssoAuth = JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
-        switch (ssoAuth.getSsoServiceType()) {
-          case GOOGLE:
-            ssoAuth.setAuthConfig(JsonUtils.convertValue(ssoAuth.getAuthConfig(), GoogleSSOClientConfig.class));
-            break;
-          case OKTA:
-            ssoAuth.setAuthConfig(JsonUtils.convertValue(ssoAuth.getAuthConfig(), OktaSSOClientConfig.class));
-            break;
-          case AUTH_0:
-            ssoAuth.setAuthConfig(JsonUtils.convertValue(ssoAuth.getAuthConfig(), Auth0SSOClientConfig.class));
-            break;
-          case CUSTOM_OIDC:
-            ssoAuth.setAuthConfig(JsonUtils.convertValue(ssoAuth.getAuthConfig(), CustomOIDCSSOClientConfig.class));
-            break;
-          case AZURE:
-            ssoAuth.setAuthConfig(JsonUtils.convertValue(ssoAuth.getAuthConfig(), AzureSSOClientConfig.class));
-            break;
-          default:
-            throw new IllegalArgumentException(
-                String.format("SSO service type [%s] can not be parsed.", ssoAuth.getSsoServiceType()));
-        }
-        authMechanism.setConfig(ssoAuth);
+        authMechanism.setConfig(
+            ClassConverterFactory.getConverter(SSOAuthMechanism.class).convert(authMechanism.getConfig()));
       }
     }
     return authMechanism;
