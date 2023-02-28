@@ -29,7 +29,6 @@ import React, {
   FunctionComponent,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -74,10 +73,13 @@ import { withLoader } from '../../hoc/withLoader';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
+  customEdges,
   dragHandle,
+  findNodeById,
   findUpstreamDownStreamEdge,
   getAllTracedColumnEdge,
   getAllTracedNodes,
+  getChildMap,
   getClassifiedEdge,
   getColumnType,
   getDeletedLineagePlaceholder,
@@ -88,7 +90,9 @@ import {
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
+  getNewNodes,
   getNodeRemoveButton,
+  getPaginatedChildMap,
   getRemovedNodeData,
   getSelectedEdgeArr,
   getUniqueFlowElements,
@@ -98,6 +102,8 @@ import {
   getUpStreamDownStreamColumnLineageArr,
   isColumnLineageTraced,
   isTracedEdge,
+  MAX_LINEAGE_LENGTH,
+  nodeTypes,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -112,8 +118,6 @@ import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import AddPipeLineModal from './AddPipeLineModal';
 import CustomControlsComponent from './CustomControls.component';
-import { CustomEdge } from './CustomEdge.component';
-import CustomNode from './CustomNode.component';
 import {
   CustomEdgeData,
   CustomElement,
@@ -121,7 +125,9 @@ import {
   EdgeTypeEnum,
   ElementLoadingState,
   EntityLineageProp,
+  EntityReferenceChild,
   ModifiedColumn,
+  NodeIndexMap,
   SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
@@ -186,6 +192,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [paginationData, setPaginationData] = useState({});
+  const [childMap, setChildMap] = useState<EntityReferenceChild>();
 
   /**
    * this state will maintain the updated state and
@@ -193,19 +201,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    */
   const [updatedLineageData, setUpdatedLineageData] =
     useState<EntityLineage>(entityLineage);
-
-  /**
-   * Custom Node Type Object
-   */
-  const nodeTypes = useMemo(
-    () => ({
-      output: CustomNode,
-      input: CustomNode,
-      default: CustomNode,
-    }),
-    []
-  );
-  const customEdges = useMemo(() => ({ buttonedge: CustomEdge }), []);
 
   /**
    * take state and value to set selected node
@@ -223,22 +218,48 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   const handleNodeSelection = (node: Node) => {
-    const selectedNode = [
-      ...(updatedLineageData.nodes || []),
-      updatedLineageData.entity,
-    ].find((n) => node.id.includes(n.id));
+    if (node.type === EntityLineageNodeType.LOAD_MORE) {
+      const { pagination_data, edgeType } = node.data.node;
+      setPaginationData((prevState: any) => {
+        const { parentId, index } = pagination_data;
+        const updatedParentData = prevState[parentId] || {
+          upstream: [],
+          downstream: [],
+        };
+        const updatedIndexList =
+          edgeType === EdgeTypeEnum.DOWN_STREAM
+            ? {
+                upstream: updatedParentData.upstream,
+                downstream: [...updatedParentData.downstream, index],
+              }
+            : {
+                upstream: [...updatedParentData.upstream, index],
+                downstream: updatedParentData.downstream,
+              };
 
-    if (!expandButton.current) {
-      selectNodeHandler(true, {
-        name: selectedNode?.name as string,
-        fqn: selectedNode?.fullyQualifiedName as string,
-        id: node.id,
-        displayName: selectedNode?.displayName,
-        type: selectedNode?.type as string,
-        entityId: selectedNode?.id as string,
+        return {
+          ...prevState,
+          [parentId]: updatedIndexList,
+        };
       });
     } else {
-      expandButton.current = null;
+      const selectedNode = [
+        ...(updatedLineageData.nodes || []),
+        updatedLineageData.entity,
+      ].find((n) => node.id.includes(n.id));
+
+      if (!expandButton.current) {
+        selectNodeHandler(true, {
+          name: selectedNode?.name as string,
+          fqn: selectedNode?.fullyQualifiedName as string,
+          id: node.id,
+          displayName: selectedNode?.displayName,
+          type: selectedNode?.type as string,
+          entityId: selectedNode?.id as string,
+        });
+      } else {
+        expandButton.current = null;
+      }
     }
   };
 
@@ -561,10 +582,35 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const hidePageNodes = (
+    id: string,
+    index: number,
+    direction: EdgeTypeEnum
+  ) => {
+    setPaginationData((prevState: Record<string, NodeIndexMap>) => {
+      const newPaginationData = { ...prevState };
+      const nodePaginationData = newPaginationData[id] || null;
+      if (nodePaginationData) {
+        if (direction === EdgeTypeEnum.UP_STREAM) {
+          nodePaginationData.upstream = nodePaginationData.upstream?.filter(
+            (item: number) => item !== index
+          );
+        } else if (direction === EdgeTypeEnum.DOWN_STREAM) {
+          nodePaginationData.downstream = nodePaginationData.downstream?.filter(
+            (item: number) => item !== index
+          );
+        }
+      }
+
+      return newPaginationData;
+    });
+  };
+
   const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
       const graphElements = getLineageData(
         data,
+        paginationData,
         selectNodeHandler,
         loadNodeHandler,
         lineageLeafNodes,
@@ -577,7 +623,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         addPipelineClick,
         handleColumnClick,
         expandAllColumns,
-        handleNodeExpand
+        handleNodeExpand,
+        hidePageNodes
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -1278,7 +1325,28 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             zoom: MIN_ZOOM_VALUE,
           });
       } else {
-        onPaneClick();
+        const path = findNodeById(value, childMap?.children, []);
+        path?.map((item, index) => {
+          if (!isNil(item.pageIndex)) {
+            const parentId =
+              index === 0 ? childMap?.id || '' : path[index - 1].id;
+
+            setPaginationData((prevState: any) => ({
+              ...prevState,
+              [parentId]: [
+                ...(prevState[parentId] ?? []),
+                Math.ceil((item.pageIndex || 0) / MAX_LINEAGE_LENGTH),
+              ],
+            }));
+          }
+        });
+        setTimeout(() => {
+          if (path) {
+            const lastNode = path[path?.length - 1];
+            onNodeClick(lastNode as Node);
+            // onPaneClick();
+          }
+        }, 2000);
       }
     }
   };
@@ -1322,21 +1390,31 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   useEffect(() => {
     if (!deleted && !isEmpty(updatedLineageData)) {
-      setElementsHandle(updatedLineageData);
+      const childMap: EntityReferenceChild = getChildMap(updatedLineageData);
+      const { nodes: newNodes, edges } = getPaginatedChildMap(
+        updatedLineageData,
+        childMap,
+        paginationData
+      );
+
+      setChildMap(childMap);
+
+      setElementsHandle({
+        ...updatedLineageData,
+        nodes: newNodes,
+        downstreamEdges: [
+          ...(updatedLineageData.downstreamEdges || []),
+          ...edges,
+        ],
+      });
     }
-  }, [isNodeLoading, isEditMode]);
+  }, [isNodeLoading, isEditMode, paginationData]);
 
   useEffect(() => {
-    const newNodes = updatedLineageData.nodes?.filter(
-      (n) =>
-        !isUndefined(
-          updatedLineageData.downstreamEdges?.find((d) => d.toEntity === n.id)
-        ) ||
-        !isUndefined(
-          updatedLineageData.upstreamEdges?.find((u) => u.fromEntity === n.id)
-        )
-    );
-    entityLineageHandler({ ...updatedLineageData, nodes: newNodes });
+    entityLineageHandler({
+      ...updatedLineageData,
+      nodes: getNewNodes(updatedLineageData),
+    });
   }, [isEditMode]);
 
   useEffect(() => {
@@ -1354,17 +1432,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       removeEdgeHandler(selectedEdge, confirmDelete);
     }
   }, [selectedEdge, confirmDelete]);
-
-  useEffect(() => {
-    if (
-      !isEmpty(entityLineage) &&
-      !isUndefined(entityLineage.entity) &&
-      !deleted
-    ) {
-      setUpdatedLineageData(entityLineage);
-      setElementsHandle(entityLineage);
-    }
-  }, [entityLineage]);
 
   useEffect(() => {
     if (pipelineSearchValue) {

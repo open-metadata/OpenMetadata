@@ -11,25 +11,43 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import {
+  CheckOutlined,
+  LeftOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
+import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
+import CustomNode from 'components/EntityLineage/CustomNode.component';
 import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
   EdgeData,
   EdgeTypeEnum,
+  EntityReferenceChild,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
   ModifiedColumn,
+  NodeIndexMap,
   SelectedEdge,
   SelectedNode,
 } from 'components/EntityLineage/EntityLineage.interface';
 import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
+import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -75,6 +93,8 @@ import { isLeafNode } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
+
+export const MAX_LINEAGE_LENGTH = 100;
 
 export const getHeaderLabel = (
   name = '',
@@ -128,7 +148,10 @@ export const dragHandle = (event: ReactMouseEvent) => {
   event.stopPropagation();
 };
 
-const getNodeType = (entityLineage: EntityLineage, id: string) => {
+const getNodeType = (
+  entityLineage: EntityLineage,
+  id: string
+): EntityLineageNodeType => {
   const upStreamEdges = entityLineage.upstreamEdges || [];
   const downStreamEdges = entityLineage.downstreamEdges || [];
 
@@ -172,6 +195,7 @@ export const getColumnType = (edges: Edge[], id: string) => {
 
 export const getLineageData = (
   entityLineage: EntityLineage,
+  paginationData: Record<string, NodeIndexMap>,
   onSelect: (state: boolean, value: SelectedNode) => void,
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
@@ -190,7 +214,8 @@ export const getLineageData = (
   ) => void,
   handleColumnClick?: (value: string) => void,
   isExpanded?: boolean,
-  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void
+  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void,
+  hidePageNodes?: (id: string, index: number, direction: EdgeTypeEnum) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -198,7 +223,6 @@ export const getLineageData = (
     ...(entityLineage.downstreamEdges || []),
     ...(entityLineage.upstreamEdges || []),
   ];
-
   const lineageEdgesV1: Edge[] = [];
   const mainNode = entityLineage['entity'];
 
@@ -269,14 +293,20 @@ export const getLineageData = (
   });
 
   const makeNode = (node: EntityReference) => {
-    const type = getNodeType(entityLineage, node.id);
+    let type = node.type as EntityLineageNodeType;
+    if (type !== EntityLineageNodeType.LOAD_MORE) {
+      type = getNodeType(entityLineage, node.id);
+    }
     const cols: { [key: string]: ModifiedColumn } = {};
     columns[node.id]?.forEach((col) => {
       cols[col.fullyQualifiedName || col.name] = {
         ...col,
-        type: isEditMode
-          ? EntityLineageNodeType.DEFAULT
-          : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
+        type:
+          type === EntityLineageNodeType.LOAD_MORE
+            ? type
+            : isEditMode
+            ? EntityLineageNodeType.DEFAULT
+            : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
       };
     });
 
@@ -284,7 +314,10 @@ export const getLineageData = (
       id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      type: isEditMode ? EntityLineageNodeType.DEFAULT : type,
+      type:
+        type === EntityLineageNodeType.LOAD_MORE || !isEditMode
+          ? type
+          : EntityLineageNodeType.DEFAULT,
       className: 'leaf-node',
       data: {
         label: (
@@ -317,13 +350,29 @@ export const getLineageData = (
                 ) : null}
               </div>
             )}
-
+            <div className="tw-flex tw-flex-col">
+              {hidePageNodes &&
+                paginationData[node.id] != null &&
+                paginationData[node.id].upstream.map((item: number) => (
+                  <MinusCircleOutlined
+                    key={item}
+                    onClick={(e) => {
+                      hidePageNodes(node.id, item, EdgeTypeEnum.UP_STREAM);
+                      e.stopPropagation();
+                    }}
+                  />
+                ))}
+            </div>
             <LineageNodeLabel
               isExpanded={isExpanded}
               node={node}
               onNodeExpand={onNodeExpand}
             />
-
+            {type === EntityLineageNodeType.LOAD_MORE && (
+              <div className="tw-pl-2 tw-self-center tw-cursor-pointer ">
+                <PlusOutlined className="tw-text-primary tw-mr-2" />
+              </div>
+            )}
             {type === EntityLineageNodeType.OUTPUT && (
               <div
                 className="tw-pl-2 tw-self-center tw-cursor-pointer "
@@ -352,6 +401,19 @@ export const getLineageData = (
                 ) : null}
               </div>
             )}
+            <div className="tw-flex tw-flex-col">
+              {hidePageNodes &&
+                paginationData[node.id] != null &&
+                paginationData[node.id].downstream.map((item: number) => (
+                  <MinusCircleOutlined
+                    key={item}
+                    onClick={(e) => {
+                      hidePageNodes(node.id, item, EdgeTypeEnum.DOWN_STREAM);
+                      e.stopPropagation();
+                    }}
+                  />
+                ))}
+            </div>
           </div>
         ),
         entityType: node.type,
@@ -388,11 +450,43 @@ export const getLineageData = (
       className: `leaf-node core`,
       data: {
         label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            node={mainNode}
-            onNodeExpand={onNodeExpand}
-          />
+          <div className="tw-flex">
+            <div className="tw-flex tw-flex-col">
+              {hidePageNodes &&
+                paginationData[mainNode.id] != null &&
+                paginationData[mainNode.id].upstream.map((item: number) => (
+                  <MinusCircleOutlined
+                    key={item}
+                    onClick={(e) => {
+                      hidePageNodes(mainNode.id, item, EdgeTypeEnum.UP_STREAM);
+                      e.stopPropagation();
+                    }}
+                  />
+                ))}
+            </div>
+            <LineageNodeLabel
+              isExpanded={isExpanded}
+              node={mainNode}
+              onNodeExpand={onNodeExpand}
+            />
+            <div className="tw-flex tw-flex-col">
+              {hidePageNodes &&
+                paginationData[mainNode.id] != null &&
+                paginationData[mainNode.id].downstream.map((item: number) => (
+                  <MinusCircleOutlined
+                    key={item}
+                    onClick={(e) => {
+                      hidePageNodes(
+                        mainNode.id,
+                        item,
+                        EdgeTypeEnum.DOWN_STREAM
+                      );
+                      e.stopPropagation();
+                    }}
+                  />
+                ))}
+            </div>
+          </div>
         ),
         isEditMode,
         removeNodeHandler,
@@ -401,7 +495,7 @@ export const getLineageData = (
         isExpanded,
         node: mainNode,
       },
-      position: { x: x, y: y },
+      position: { x, y },
     },
   ];
 
@@ -1116,4 +1210,187 @@ export const getEdgeStyle = (value: boolean) => {
     strokeWidth: value ? 2 : 1,
     stroke: value ? SECONDARY_COLOR : undefined,
   };
+};
+
+export const getChildMap = (obj: EntityLineage) => {
+  const childMap: EntityReferenceChild[] = getChildren(obj, obj.entity.id);
+  const parentMap: EntityReferenceChild[] = getParents(obj, obj.entity.id);
+  const map: EntityReferenceChild = {
+    ...obj.entity,
+    children: childMap,
+    parents: parentMap,
+  };
+
+  return map;
+};
+
+export const getPaginatedChildMap = (
+  obj: EntityLineage,
+  map: EntityReferenceChild,
+  pagination_data: Record<string, NodeIndexMap>
+) => {
+  const nodes = [];
+  const edges: EntityLineageEdge[] = [];
+  nodes.push(obj.entity);
+  flattenObj(obj, map, true, obj.entity.id, nodes, edges, pagination_data);
+  flattenObj(obj, map, false, obj.entity.id, nodes, edges, pagination_data);
+
+  return { nodes, edges };
+};
+
+export const flattenObj = (
+  entityObj: EntityLineage,
+  childMapObj: EntityReferenceChild,
+  downwards: boolean,
+  id: string,
+  nodes: EntityReference[],
+  edges: EntityLineageEdge[],
+  pagination_data: Record<string, NodeIndexMap>
+) => {
+  const children = downwards ? childMapObj.children : childMapObj.parents;
+  if (!children) {
+    return;
+  }
+  const startIndex = 0;
+  const hasMoreThanLimit = children.length > startIndex + MAX_LINEAGE_LENGTH;
+  const endIndex = startIndex + MAX_LINEAGE_LENGTH;
+  const pageCount = Math.ceil(children.length / MAX_LINEAGE_LENGTH);
+  // const node =
+  const currentPages =
+    pagination_data[id]?.[downwards ? 'downstream' : 'upstream'] ?? null;
+
+  if (hasMoreThanLimit) {
+    for (let i = 0; i < pageCount; i++) {
+      if (currentPages != null && currentPages.includes(i)) {
+        children
+          .slice(i * MAX_LINEAGE_LENGTH, i + MAX_LINEAGE_LENGTH)
+          .forEach((item) => {
+            if (item) {
+              flattenObj(
+                entityObj,
+                item,
+                downwards,
+                item.id,
+                nodes,
+                edges,
+                pagination_data
+              );
+              nodes.push(item);
+            }
+          });
+      } else {
+        const newNodeId = `loadmore_${uniqueId('node_')}_${id}_${i}`;
+        const newNode = {
+          description: 'Demo description',
+          displayName: 'Load More',
+          id: newNodeId,
+          type: EntityLineageNodeType.LOAD_MORE,
+          pagination_data: {
+            index: i,
+            parentId: id,
+          },
+          edgeType: downwards
+            ? EdgeTypeEnum.DOWN_STREAM
+            : EdgeTypeEnum.UP_STREAM,
+        };
+        nodes.push(newNode);
+        const newEdge: EntityLineageEdge = {
+          fromEntity: downwards ? id : newNodeId,
+          toEntity: downwards ? newNodeId : id,
+        };
+        edges.push(newEdge);
+      }
+    }
+  } else {
+    children.slice(0, endIndex).forEach((item) => {
+      if (item) {
+        flattenObj(
+          entityObj,
+          item,
+          downwards,
+          item.id,
+          nodes,
+          edges,
+          pagination_data
+        );
+        nodes.push(item);
+      }
+    });
+  }
+};
+
+export const getChildren = (obj: EntityLineage, id: string, index = 0) => {
+  const downStreamEdges = removeDuplicates(obj.downstreamEdges || []);
+
+  return downStreamEdges
+    .filter((edge) => edge.fromEntity === id)
+    .reduce((childMap: EntityReferenceChild[], edge, i) => {
+      const node = obj.nodes?.find((node) => node.id === edge.toEntity);
+      if (node) {
+        const childNodes = getChildren(obj, node.id, i);
+        childMap.push({ ...node, children: childNodes, pageIndex: index + i });
+      }
+
+      return childMap;
+    }, []);
+};
+
+export const getParents = (obj: EntityLineage, id: string, index = 0) => {
+  const upstreamEdges = removeDuplicates(obj.upstreamEdges || []);
+
+  return upstreamEdges
+    .filter((edge) => edge.toEntity === id)
+    .reduce((childMap: EntityReferenceChild[], edge, i) => {
+      const node = obj.nodes?.find((node) => node.id === edge.fromEntity);
+      if (node) {
+        const childNodes = getParents(obj, node.id, i);
+        childMap.push({ ...node, parents: childNodes, pageIndex: index + i });
+      }
+
+      return childMap;
+    }, []);
+};
+
+const removeDuplicates = (arr: EntityLineageEdge[]) => {
+  return uniqWith(arr, isEqual);
+};
+
+export const nodeTypes = {
+  output: CustomNode,
+  input: CustomNode,
+  default: CustomNode,
+  'load-more': LoadMoreNode,
+};
+
+export const customEdges = { buttonedge: CustomEdge };
+
+export const getNewNodes = ({
+  nodes,
+  downstreamEdges,
+  upstreamEdges,
+}: EntityLineage) => {
+  return nodes?.filter(
+    (n) =>
+      !isUndefined(downstreamEdges?.find((d) => d.toEntity === n.id)) ||
+      !isUndefined(upstreamEdges?.find((u) => u.fromEntity === n.id))
+  );
+};
+
+export const findNodeById = (
+  id: string,
+  items: EntityReferenceChild[] = [],
+  path: EntityReferenceChild[] = []
+): EntityReferenceChild[] | undefined => {
+  for (const item of items) {
+    if (item.id === id) {
+      // Return the path to the item, including the item itself
+      return [...path, item];
+    }
+    const found = findNodeById(id, item.children, [...path, item]);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
 };

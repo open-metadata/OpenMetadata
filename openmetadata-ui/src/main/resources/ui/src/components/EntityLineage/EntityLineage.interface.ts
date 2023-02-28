@@ -146,3 +146,18 @@ export interface LoadingNodeState {
   id: string | undefined;
   state: boolean;
 }
+
+export interface EntityReferenceChild extends EntityReference {
+  /**
+   * Children of this entity, if any.
+   */
+  children?: EntityReferenceChild[];
+  parents?: EntityReferenceChild[];
+  pageIndex?: number;
+  edgeType?: EdgeTypeEnum;
+}
+
+export interface NodeIndexMap {
+  upstream: number[];
+  downstream: number[];
+}

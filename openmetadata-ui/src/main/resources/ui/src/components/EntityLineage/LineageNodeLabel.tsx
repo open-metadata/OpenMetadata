@@ -12,6 +12,7 @@
  */
 
 import { Button } from 'antd';
+import { EntityLineageNodeType } from 'enums/entity.enum';
 import React from 'react';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -51,7 +52,10 @@ const LineageNodeLabel = ({
         />
       ) : null}
       <p className="flex items-center m-0 p-y-sm">
-        <span className="m-r-xs">{getEntityIcon(node.type)}</span>
+        {node.type !== EntityLineageNodeType.LOAD_MORE && (
+          <span className="m-r-xs">{getEntityIcon(node.type)}</span>
+        )}
+
         {getDataLabel(
           node.displayName,
           node.fullyQualifiedName,
