@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -97,6 +97,8 @@ const AlertsPage = () => {
         dataIndex: 'description',
         flex: true,
         key: 'description',
+        render: (text: string) =>
+          !isEmpty(text) ? <Typography.Text>{text}</Typography.Text> : '--',
       },
       {
         title: t('label.action-plural'),
