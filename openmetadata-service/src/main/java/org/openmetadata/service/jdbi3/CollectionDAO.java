@@ -73,6 +73,7 @@ import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
@@ -229,6 +230,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LocationDAO locationDAO();
+
+  @CreateSqlObject
+  QueryDao queryDao();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -569,6 +573,21 @@ public interface CollectionDAO {
     }
   }
 
+  class QueryMapper implements RowMapper<QueryList> {
+    @Override
+    public QueryList map(ResultSet rs, StatementContext ctx) throws SQLException {
+      String fqn = rs.getString("fullyQualifiedName");
+      String json = rs.getString("json");
+      Query query;
+      try {
+        query = JsonUtils.readValue(json, Query.class);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return new QueryList(fqn, query);
+    }
+  }
+
   @Getter
   @Builder
   class EntityRelationshipRecord {
@@ -582,6 +601,13 @@ public interface CollectionDAO {
   class ReportDataRow {
     private String rowNum;
     private ReportData reportData;
+  }
+
+  @Getter
+  @Builder
+  class QueryList {
+    private String fqn;
+    private Query query;
   }
 
   interface EntityRelationshipDAO {
@@ -1969,6 +1995,47 @@ public interface CollectionDAO {
         @Bind("servicePrefix") String servicePrefix,
         @Bind("limit") int limit,
         @Bind("after") String after);
+  }
+
+  interface QueryDao extends EntityDAO<Query> {
+    @Override
+    default String getTableName() {
+      return "query_entity";
+    }
+
+    @Override
+    default Class<Query> getEntityClass() {
+      return Query.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @RegisterRowMapper(QueryMapper.class)
+    @SqlQuery(
+        "SELECT query_entity.json, query_entity.fullyQualifiedName FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.fullyQualifiedName > :after order by query_entity.fullyQualifiedName LIMIT :limit")
+    List<QueryList> listAfterQueriesByEntityId(
+        @Bind("id") String id,
+        @Bind("entity") String entity,
+        @Bind("after") String after,
+        @Bind("limit") int limit,
+        @Bind("relation") int relation);
+
+    @RegisterRowMapper(QueryMapper.class)
+    @SqlQuery(
+        "SELECT query_entity.json, query_entity.fullyQualifiedName FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.fullyQualifiedName < :before order by query_entity.fullyQualifiedName LIMIT :limit")
+    List<QueryList> listBeforeQueriesByEntityId(
+        @Bind("id") String id,
+        @Bind("entity") String entity,
+        @Bind("before") String before,
+        @Bind("limit") int limit,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT count(*) FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity")
+    int listQueryCount(@Bind("id") String id, @Bind("entity") String entity, @Bind("relation") int relation);
   }
 
   interface PipelineDAO extends EntityDAO<Pipeline> {

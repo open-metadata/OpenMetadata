@@ -68,3 +68,37 @@ jsonb_build_object('connection',jsonb_build_object(
 )), true)
 where servicetype = 'Superset';
 
+CREATE TABLE IF NOT EXISTS query_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    UNIQUE (fullyQualifiedName)
+);
+
+CREATE TABLE IF NOT EXISTS temp_query_migration (
+    tableId VARCHAR(36) NOT NULL,
+    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    json JSONB NOT NULL
+);
+
+CREATE EXTENSION pgcrypto;
+
+INSERT INTO temp_query_migration(tableId,json)
+SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT('table', '_', checksum),'updatedAt',
+floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
+checksum varchar,duration decimal,queryDate varchar)
+WHERE ee.extension = 'table.tableQueries';
+
+INSERT INTO query_entity(json)
+SELECT json FROM temp_query_migration;
+
+INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
+SELECT tableId,queryId,'table','query',10 FROM temp_query_migration;
+
+DELETE FROM entity_extension WHERE id in
+(SELECT DISTINCT tableId FROM temp_query_migration) AND extension = 'table.tableQueries';
+
+DROP TABLE temp_query_migration;

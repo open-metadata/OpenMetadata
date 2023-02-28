@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createQuery.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateQueryRequest",
+  "description": "Create Query entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateQuery",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "query": {
+      "description": "SQL Query definition.",
+      "type": "string"
+    },
+    "duration": {
+      "description": "How long did the query took to run in seconds.",
+      "type": "number"
+    },
+    "users": {
+      "description": "List of users who ran this query.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "vote": {
+      "description": "Users can vote up to rank the popular queries.",
+      "type": "number",
+      "default": 1
+    },
+    "checksum": {
+      "description": "Checksum to avoid registering duplicate queries.",
+      "type": "string"
+    },
+    "queryDate": {
+      "description": "Date on which the query ran.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "name": {
+      "description": "Name of a entity to which the query belong",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this query.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the query instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "queryUsage": {
+      "description": "list of entities to which the query is joined.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "entityName": {
+      "description": "Name of an entity to which the query belongs, to create fqn for eg: entityName_checksum",
+      "type": "string"
+    }
+  },
+  "required": ["query", "entityName"],
+  "additionalProperties": false
+}
