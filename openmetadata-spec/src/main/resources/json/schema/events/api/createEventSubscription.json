@@ -55,6 +55,6 @@
       "$ref": "../eventSubscription.json#/definitions/subscriptionConfig"
     }
   },
-  "required": ["name", "filteringRules", "alertAction"],
+  "required": ["name", "filteringRules", "subscriptionType", "subscriptionConfig"],
   "additionalProperties": false
 }

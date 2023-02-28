@@ -201,6 +201,6 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "filteringRules"],
+  "required": ["id", "name", "filteringRules", "subscriptionType", "subscriptionConfig"],
   "additionalProperties": false
 }
