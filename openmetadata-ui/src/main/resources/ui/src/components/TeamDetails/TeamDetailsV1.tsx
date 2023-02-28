@@ -1086,7 +1086,7 @@ const TeamDetailsV1 = ({
                 trigger={['click']}
                 onOpenChange={setShowActions}>
                 <Button
-                  className="rounded-4 w-6 manage-dropdown-button d-flex justify-center"
+                  className="manage-dropdown-button"
                   data-testid="teams-dropdown"
                   icon={
                     <IconDropdown className="text-primary self-center manage-dropdown-icon" />

@@ -168,16 +168,16 @@ const EntityTable = ({
 
   const updateColumnDescription = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     description: string
   ) => {
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.description = description;
       } else {
         updateColumnDescription(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           description
         );
       }
@@ -186,7 +186,7 @@ const EntityTable = ({
 
   const updateColumnTags = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     newColumnTags: Array<TagOption>
   ) => {
     const getUpdatedTags = (column: Column) => {
@@ -210,12 +210,12 @@ const EntityTable = ({
     };
 
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           newColumnTags
         );
       }
@@ -223,11 +223,11 @@ const EntityTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn) {
+    if (editColumn && editColumn.column.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
         tableCols,
-        editColumn.column.name,
+        editColumn.column.fullyQualifiedName,
         columnDescription
       );
       await onUpdate?.(tableCols);
@@ -239,18 +239,18 @@ const EntityTable = ({
 
   const handleTagSelection = (
     selectedTags?: Array<EntityTags>,
-    columnName = ''
+    columnFQN = ''
   ) => {
     const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
       (tag) => {
         return { fqn: tag.tagFQN, source: tag.source };
       }
     );
-    if (newSelectedTags && (editColumnTag || columnName)) {
+    if (newSelectedTags && (editColumnTag || columnFQN)) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
         tableCols,
-        editColumnTag?.column.name || columnName,
+        editColumnTag?.column.fullyQualifiedName || columnFQN,
         newSelectedTags
       );
       onUpdate?.(tableCols);
@@ -551,7 +551,7 @@ const EntityTable = ({
                   handleTagSelection();
                 }}
                 onSelectionChange={(selectedTags) => {
-                  handleTagSelection(selectedTags, record?.name);
+                  handleTagSelection(selectedTags, record?.fullyQualifiedName);
                 }}
               />
 
