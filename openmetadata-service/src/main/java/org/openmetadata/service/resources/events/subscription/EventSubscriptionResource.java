@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Event Subscription  collection", tags = "Event Subscription Collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events/subscription") // init after alertAction Resource
+@Collection(name = "events/subscription")
 public class EventSubscriptionResource extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscription";
   public static final String FIELDS = "owner,filteringRules";
@@ -158,7 +158,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                     mediaType = "application/json",
                     schema = @Schema(implementation = EventSubscriptionResource.EventSubscriptionList.class)))
       })
-  public ResultList<EventSubscription> listAlerts(
+  public ResultList<EventSubscription> listEventSubscriptions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -209,7 +209,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                 @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public EventSubscription getAlertById(
+  public EventSubscription getEventsSubscriptionById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
@@ -234,7 +234,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionByName",
       summary = "Get an Event Subscription by name",
-      tags = "eventSubscription",
+      tags = "eventsSubscription",
       description = "Get an Event Subscription by name.",
       responses = {
         @ApiResponse(
@@ -246,7 +246,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
             responseCode = "404",
             description = "Event Subscription for instance {eventSubscriptionName} is not found")
       })
-  public EventSubscription getAlertByName(
+  public EventSubscription getEventsSubscriptionByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
@@ -271,7 +271,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "createEventSubscription",
       summary = "Create a new Event Subscription",
-      tags = "eventSubscription",
+      tags = "eventsSubscription",
       description = "Create a new Event Subscription",
       responses = {
         @ApiResponse(
@@ -296,12 +296,12 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "createOrUpdateEventSubscription",
       summary = "Updated an existing or create a new Event Subscription",
-      tags = "eventSubscription",
-      description = "Updated an existing or create a new alert",
+      tags = "eventsSubscription",
+      description = "Updated an existing or create a new Event Subscription",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "alert",
+            description = "create Event Subscription",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -322,11 +322,11 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "patchEventSubscription",
       summary = "Update an Event Subscriptions",
-      tags = "alerts",
+      tags = "eventsSubscription",
       description = "Update an existing Event Subscriptions using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patchAlert(
+  public Response patchEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
@@ -349,20 +349,21 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllAlertVersion",
-      summary = "List alert versions",
-      tags = "alerts",
-      description = "Get a list of all the versions of an alert identified by `Id`",
+      operationId = "listAllEventSubscriptionVersion",
+      summary = "List Event Subscription versions",
+      tags = "eventsSubscription",
+      description = "Get a list of all the versions of an Event Subscription identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of alert versions",
+            description = "List of Event Subscription versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
-  public EntityHistory listAlertVersions(
+  public EntityHistory listEventSubscriptionVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -370,26 +371,27 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificAlertVersion",
-      summary = "Get a version of the alert",
-      tags = "alerts",
-      description = "Get a version of the alert by given `Id`",
+      operationId = "getSpecificEventSubscriptionVersion",
+      summary = "Get a version of the Event Subscription",
+      tags = "eventsSubscription",
+      description = "Get a version of the Event Subscription by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "alert",
+            description = "Get specific version of Event Subscription",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Alert for instance {id} and version {version} is " + "not found")
+            description = "Event Subscription for instance {id} and version {version} is " + "not found")
       })
-  public EventSubscription getAlertVersion(
+  public EventSubscription getEventSubscriptionVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
-              description = "alert version number in the form `major`.`minor`",
+              description = "Event Subscription version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -403,7 +405,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "deleteEventSubscription",
       summary = "Delete an Event Subscription by Id",
-      tags = "eventSubscription",
+      tags = "eventsSubscription",
       description = "Delete an Event Subscription",
       responses = {
         @ApiResponse(
@@ -416,7 +418,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public Response deleteEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the alert", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, true, true);
     dao.deleteEventSubscriptionPublisher(id);
@@ -428,7 +431,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "deleteEventSubscriptionByName",
       summary = "Delete an Event Subscription by name",
-      tags = "eventSubscription",
+      tags = "eventsSubscription",
       description = "Delete an Event Subscription by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -451,7 +454,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionStatus",
       summary = "Get Event Subscription status",
-      tags = "eventSubscription",
+      tags = "eventsSubscription",
       description = "Get a event Subscription status by given Name",
       responses = {
         @ApiResponse(
@@ -478,7 +481,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionStatusById",
       summary = "Get Event Subscription status by Id",
-      tags = "eventSubscription",
+      tags = "eventsSubscription",
       description = "Get a event Subscription status by given Name",
       responses = {
         @ApiResponse(
@@ -500,11 +503,11 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @GET
   @Path("/functions")
   @Operation(
-      operationId = "listAlertFunctions",
-      summary = "Get list of alert functions used in filtering alert",
-      tags = "alerts",
-      description = "Get list of alert functions used in filtering conditions in alerts")
-  public List<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+      operationId = "listEventSubscriptionFunctions",
+      summary = "Get list of Event Subscription functions used in filtering EventSubscription",
+      tags = "eventsSubscription",
+      description = "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
+  public List<Function> listEventSubscriptionFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
   }
 
@@ -512,9 +515,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Path("/resources")
   @Operation(
       operationId = "listEventSubscriptionResources",
-      summary = "Get list of Event Subscriptions Resources used in filtering alert",
-      tags = "eventSubscription",
-      description = "Get list of alert functions used in filtering conditions in alerts")
+      summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
+      tags = "eventsSubscription",
+      description = "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
   public EventSubResourceDescriptorList listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new EventSubResourceDescriptorList(EventsSubscriptionRegistry.listResourceDescriptors());
@@ -525,7 +528,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "validateCondition",
       summary = "Validate a given condition",
-      tags = "alerts",
+      tags = "eventsSubscription",
       description = "Validate a given condition expression used in filtering rules.",
       responses = {
         @ApiResponse(responseCode = "204", description = "No value is returned"),
