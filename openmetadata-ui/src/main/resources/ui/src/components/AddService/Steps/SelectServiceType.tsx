@@ -97,7 +97,9 @@ const SelectServiceType = ({
         <Col className="m-t-lg" span={24}>
           <Searchbar
             removeMargin
-            placeholder="Search for connector..."
+            placeholder={`${t('label.search-for-type', {
+              type: t('label.connector'),
+            })}...`}
             searchValue={connectorSearchTerm}
             typingInterval={500}
             onSearch={handleConnectorSearchTerm}
@@ -137,7 +139,12 @@ const SelectServiceType = ({
               ))}
             </div>
           </div>
-          {showError && errorMsg('Service is required')}
+          {showError &&
+            errorMsg(
+              t('message.field-text-is-required', {
+                fieldText: t('label.service'),
+              })
+            )}
         </Col>
 
         <Col className="d-flex justify-end mt-12" span={24}>

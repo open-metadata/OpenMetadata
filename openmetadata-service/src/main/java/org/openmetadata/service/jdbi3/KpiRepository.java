@@ -54,12 +54,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
   @Override
   public void prepare(Kpi kpi) throws IOException {
     // validate targetDefinition
-    Entity.getEntityReferenceById(Entity.DATA_INSIGHT_CHART, kpi.getDataInsightChart().getId(), Include.NON_DELETED);
-    DataInsightChartRepository dataInsightChartRepository =
-        (DataInsightChartRepository) Entity.getEntityRepository(DATA_INSIGHT_CHART);
-    DataInsightChart chart =
-        dataInsightChartRepository.get(
-            null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
+    DataInsightChart chart = Entity.getEntity(kpi.getDataInsightChart(), "metrics", Include.NON_DELETED);
+    kpi.setDataInsightChart(chart.getEntityReference());
+
     // Validate here if this chart already has some kpi in progress
     validateKpiTargetDefinition(kpi.getTargetDefinition(), chart.getMetrics());
   }

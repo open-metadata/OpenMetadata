@@ -58,13 +58,13 @@ ENV LD_LIBRARY_PATH=/instantclient
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
-COPY ingestion/operators/docker/main.py .
+COPY ingestion/operators/docker/*.py .
 
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install --upgrade openmetadata-ingestion[airflow]
-RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]
+RUN pip install --upgrade "openmetadata-ingestion[airflow]==0.13.2.1"
+RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.13.2.1"
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error

@@ -13,6 +13,8 @@
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
 import { t } from 'i18next';
+import { isUndefined } from 'lodash';
+import Qs from 'qs';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -74,6 +76,8 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
+export const NO_DATA_PLACEHOLDER = '---';
+export const ELLIPSES = '...';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
@@ -89,7 +93,6 @@ export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
-export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
@@ -158,7 +161,6 @@ export const ROUTES = {
   TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
-  EXPLORE_WITH_SEARCH: `/explore/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SEARCHQUERY}`,
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
@@ -313,13 +315,51 @@ export const getServiceDetailsPath = (
   return path;
 };
 
-export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
-  let path = ROUTES.EXPLORE_WITH_SEARCH;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+export const getExplorePath: (args: {
+  tab?: string;
+  search?: string;
+  extraParameters?: Record<string, unknown>;
+  isPersistFilters?: boolean;
+}) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
+  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? ''
+  );
+  let paramsObject: Record<string, unknown> = Qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substr(1)
+      : location.search
+  );
 
-  return path;
+  const { search: paramSearch } = paramsObject;
+
+  /**
+   * persist the filters if isPersistFilters is true
+   * otherwise only persist the search and passed extra params
+   * */
+  if (isPersistFilters) {
+    if (!isUndefined(search)) {
+      paramsObject = {
+        ...paramsObject,
+        search,
+      };
+    }
+    if (!isUndefined(extraParameters)) {
+      paramsObject = {
+        ...paramsObject,
+        ...extraParameters,
+      };
+    }
+  } else {
+    paramsObject = {
+      search: isUndefined(search) ? paramSearch : search,
+      ...(!isUndefined(extraParameters) ? extraParameters : {}),
+    };
+  }
+
+  const query = Qs.stringify(paramsObject);
+
+  return `${pathname}?${query}`;
 };
 
 export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
@@ -492,4 +532,10 @@ export const ENTITY_PATH: Record<string, string> = {
   dashboards: 'dashboard',
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
+};
+
+export const VALIDATE_MESSAGES = {
+  required: t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
 };

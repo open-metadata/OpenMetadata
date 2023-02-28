@@ -47,7 +47,7 @@ Here are some of the supported features in a nutshell:
 
 - **Comprehensive Roles and Policies** - Handles complex access control use cases and hierarchical teams.
 
-- **Webhooks** - Supports webhook integrations. Integrate with Slack, and Microsoft Teams.
+- **Webhooks** - Supports webhook integrations. Integrate with Slack, Microsoft Teams and Google Chat.
 
 - **Connectors** - Supports 55 connectors to various databases, dashboards, pipelines and messaging services.
 

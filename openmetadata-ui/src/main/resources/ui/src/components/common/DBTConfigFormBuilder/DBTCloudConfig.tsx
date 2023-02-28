@@ -12,6 +12,7 @@
  */
 
 import { Button, Input } from 'antd';
+import { t } from 'i18next';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
@@ -84,10 +85,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-account-id">
-          {requiredField('dbt Cloud Account Id')}
+          {requiredField(t('label.dbt-cloud-account-id'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt cloud account Id.
+          {t('label.dbt-cloud-account-id')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -104,10 +105,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-auth-token">
-          {requiredField('dbt Cloud Authentication Token')}
+          {requiredField(t('label.dbt-cloud-account-auth-token'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt cloud account authentication token.
+          {t('label.dbt-cloud-account-auth-token')}
         </p>
         <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
@@ -124,11 +125,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbtCloudProjectId">
-          dbt Cloud Project Id
+          {t('label.dbt-cloud-project-id')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          In case of multiple projects in a dbt cloud account, specify the
-          project&apos;s id from which you want to extract the dbt run artifacts
+          {t('message.dbt-cloud-project')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -143,11 +143,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
 
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
-          {requiredField('dbt Cloud URL')}
+          {requiredField(t('label.dbt-cloud-url'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          URL to connect to your dbt cloud instance. E.g.,
-          https://cloud.getdbt.com or https://emea.dbt.com/
+          {t('message.unable-to-connect-to-your-dbt-cloud-instance')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"

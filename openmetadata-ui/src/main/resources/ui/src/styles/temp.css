@@ -722,20 +722,6 @@ body .list-option.rdw-option-active {
   color: #008376;
 }
 
-/* status style */
-.tw-bg-status-success {
-  background-color: #07a35a;
-}
-.tw-bg-status-failed {
-  background-color: #e54937;
-}
-.tw-bg-status-running {
-  background-color: #276ef1;
-}
-.tw-bg-status-queued {
-  background-color: #777777;
-}
-
 /* react-slick */
 
 .slick-dots {

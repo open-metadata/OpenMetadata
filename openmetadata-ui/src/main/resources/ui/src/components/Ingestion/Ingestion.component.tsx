@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Button, Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -275,32 +274,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     );
   };
 
-  const getAddIngestionName = (type: PipelineType): string => {
-    let name;
-    switch (type) {
-      case PipelineType.ElasticSearchReindex:
-        name = t('label.add-workflow-ingestion', {
-          workflow: t('label.elastic-search-re-index'),
-        });
-
-        break;
-
-      case PipelineType.Dbt:
-        name = t('label.add-workflow-ingestion', {
-          workflow: t('label.dbt-lowercase'),
-        });
-
-        break;
-
-      default:
-        name = t('label.add-workflow-ingestion', {
-          workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
-        });
-    }
-
-    return name;
-  };
-
   const getAddIngestionDropdown = (types: PipelineType[]) => {
     return (
       <Fragment>
@@ -333,7 +306,9 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
-              name: getAddIngestionName(type),
+              name: t('label.add-workflow-ingestion', {
+                workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
+              }),
               disabled:
                 type === PipelineType.DataInsight
                   ? isDataSightIngestionExists
@@ -399,12 +374,16 @@ const Ingestion: React.FC<IngestionProps> = ({
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
   );
 
+  const getIngestionPermission = (name: string): boolean =>
+    !isRequiredDetailsAvailable || getEditPermission(name);
+
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
       return (
         <>
           <Button
             data-testid="run"
+            disabled={getIngestionPermission(ingestion.name)}
             type="link"
             onClick={() =>
               handleTriggerIngestion(ingestion.id as string, ingestion.name)
@@ -415,9 +394,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
           <Button
             data-testid="re-deploy-btn"
-            disabled={
-              !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
-            }
+            disabled={getIngestionPermission(ingestion.name)}
             type="link"
             onClick={() => handleDeployIngestion(ingestion.id as string)}>
             {getLoadingStatus(currDeployId, ingestion.id, t('label.re-deploy'))}
@@ -428,9 +405,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       return (
         <Button
           data-testid="deploy"
-          disabled={
-            !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
-          }
+          disabled={getIngestionPermission(ingestion.name)}
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
           {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
@@ -529,10 +504,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                   {separator}
                   <Button
                     data-testid="pause"
-                    disabled={
-                      !isRequiredDetailsAvailable ||
-                      getEditPermission(record.name)
-                    }
+                    disabled={getIngestionPermission(record.name)}
                     type="link"
                     onClick={() =>
                       handleEnableDisableIngestion(record.id || '')
@@ -543,10 +515,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               ) : (
                 <Button
                   data-testid="unpause"
-                  disabled={
-                    !isRequiredDetailsAvailable ||
-                    getEditPermission(record.name)
-                  }
+                  disabled={getIngestionPermission(record.name)}
                   type="link"
                   onClick={() => handleEnableDisableIngestion(record.id || '')}>
                   {t('label.unpause')}
@@ -555,9 +524,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="edit"
-                disabled={
-                  !isRequiredDetailsAvailable || getEditPermission(record.name)
-                }
+                disabled={getIngestionPermission(record.name)}
                 type="link"
                 onClick={() => handleUpdate(record)}>
                 {t('label.edit')}
@@ -570,7 +537,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 onClick={() => ConfirmDelete(record.id as string, record.name)}>
                 {deleteSelection.id === record.id ? (
                   deleteSelection.state === 'success' ? (
-                    <FontAwesomeIcon icon="check" />
+                    <CheckOutlined />
                   ) : (
                     <Loader size="small" type="default" />
                   )
@@ -581,7 +548,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="kill"
-                disabled={!isRequiredDetailsAvailable}
+                disabled={getIngestionPermission(record.name)}
                 type="link"
                 onClick={() => {
                   setIsKillModalOpen(true);
@@ -648,7 +615,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <div className="d-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
-              <FontAwesomeIcon icon={faExclamationCircle} />
+              <ExclamationCircleOutlined />
               <p>
                 {t('message.no-service-connection-details-message', {
                   serviceName,

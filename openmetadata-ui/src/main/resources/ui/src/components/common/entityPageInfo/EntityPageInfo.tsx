@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ExclamationCircleOutlined, StarFilled } from '@ant-design/icons';
 import { Button, Popover, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -211,13 +210,13 @@ const EntityPageInfo = ({
             ))}
           </div>
         ) : (
-          <p>{entityName} doesn&#39;t have any followers yet</p>
+          <p>{t('label.entity-does-not-have-followers', { entityName })}</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
           <p
             className="link-text tw-text-sm tw-py-2"
             onClick={() => setIsViewMore(true)}>
-            View more
+            {t('label.view-more')}
           </p>
         )}
       </div>
@@ -241,7 +240,7 @@ const EntityPageInfo = ({
               alt="version icon"
               icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
             />
-            <span>Versions</span>
+            <span>{t('label.version-plural')}</span>
           </span>
           <span
             className={classNames(
@@ -306,7 +305,9 @@ const EntityPageInfo = ({
 
   const getRequestTagsElements = useCallback(() => {
     const hasTags = !isEmpty(tags);
-    const text = hasTags ? 'Update request tags' : 'Request tags';
+    const text = hasTags
+      ? t('label.update-request-tag-plural')
+      : t('label.request-tag-plural');
 
     return onThreadLinkSelect &&
       TASK_ENTITIES.includes(entityType as EntityType) ? (
@@ -389,11 +390,8 @@ const EntityPageInfo = ({
               <div
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
                 data-testid="deleted-badge">
-                <FontAwesomeIcon
-                  className="tw-mr-1"
-                  icon={faExclamationCircle}
-                />
-                Deleted
+                <ExclamationCircleOutlined className="tw-mr-1" />
+                {t('label.deleted')}
               </div>
             </>
           )}
@@ -406,8 +404,7 @@ const EntityPageInfo = ({
                   placement="bottom"
                   title={
                     <p className="tw-text-xs">
-                      Viewing older version <br />
-                      Go to latest to update details
+                      {t('message.viewing-older-version')}
                     </p>
                   }
                   trigger="hover">
@@ -431,17 +428,8 @@ const EntityPageInfo = ({
                 !deleted && followHandler?.();
               }}>
               <Space>
-                {isFollowing ? (
-                  <>
-                    <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
-                    Unfollow
-                  </>
-                ) : (
-                  <>
-                    <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
-                    Follow
-                  </>
-                )}
+                <StarFilled className="tw-text-xs" />
+                {isFollowing ? t('label.un-follow') : t('label.follow')}
                 <Popover content={getFollowers()} trigger="click">
                   <span
                     className={classNames(
@@ -497,7 +485,7 @@ const EntityPageInfo = ({
                 />
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                   <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    |
+                    {t('label.pipe-symbol')}
                   </span>
                 ) : null}
               </span>
@@ -566,7 +554,7 @@ const EntityPageInfo = ({
                           alt="edit"
                           className="tw--mt-3 "
                           icon="icon-edit"
-                          title="Edit"
+                          title={t('label.edit')}
                           width="16px"
                         />
                       </button>
@@ -575,7 +563,9 @@ const EntityPageInfo = ({
                         <Tags
                           className="tw-text-primary"
                           startWith="+ "
-                          tag="Add tag"
+                          tag={t('label.add-entity', {
+                            entity: t('label.tag-lowercase'),
+                          })}
                           type="label"
                         />
                       </span>

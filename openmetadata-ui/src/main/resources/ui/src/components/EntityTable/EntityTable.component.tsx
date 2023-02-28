@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Typography } from 'antd';
+import { Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
@@ -168,16 +168,16 @@ const EntityTable = ({
 
   const updateColumnDescription = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     description: string
   ) => {
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.description = description;
       } else {
         updateColumnDescription(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           description
         );
       }
@@ -186,7 +186,7 @@ const EntityTable = ({
 
   const updateColumnTags = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     newColumnTags: Array<TagOption>
   ) => {
     const getUpdatedTags = (column: Column) => {
@@ -210,12 +210,12 @@ const EntityTable = ({
     };
 
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           newColumnTags
         );
       }
@@ -223,11 +223,11 @@ const EntityTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn) {
+    if (editColumn && editColumn.column.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
         tableCols,
-        editColumn.column.name,
+        editColumn.column.fullyQualifiedName,
         columnDescription
       );
       await onUpdate?.(tableCols);
@@ -239,18 +239,18 @@ const EntityTable = ({
 
   const handleTagSelection = (
     selectedTags?: Array<EntityTags>,
-    columnName = ''
+    columnFQN = ''
   ) => {
     const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
       (tag) => {
         return { fqn: tag.tagFQN, source: tag.source };
       }
     );
-    if (newSelectedTags && (editColumnTag || columnName)) {
+    if (newSelectedTags && (editColumnTag || columnFQN)) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
         tableCols,
-        editColumnTag?.column.name || columnName,
+        editColumnTag?.column.fullyQualifiedName || columnFQN,
         newSelectedTags
       );
       onUpdate?.(tableCols);
@@ -551,7 +551,7 @@ const EntityTable = ({
                   handleTagSelection();
                 }}
                 onSelectionChange={(selectedTags) => {
-                  handleTagSelection(selectedTags, record?.name);
+                  handleTagSelection(selectedTags, record?.fullyQualifiedName);
                 }}
               />
 
@@ -611,10 +611,13 @@ const EntityTable = ({
         accessor: 'name',
         width: 300,
         render: (name: Column['name'], record: Column) => (
-          <div className="d-flex break-word">
+          <Space
+            align="start"
+            className="w-max-90 vertical-align-inherit"
+            size={2}>
             {prepareConstraintIcon(name, record.constraint, tableConstraints)}
-            <span className="m-l-xss">{name}</span>
-          </div>
+            <span className="break-word">{name}</span>
+          </Space>
         ),
       },
       {

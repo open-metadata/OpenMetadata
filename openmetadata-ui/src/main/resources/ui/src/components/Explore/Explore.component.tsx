@@ -12,13 +12,13 @@
  */
 
 import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Col, Row, Tabs } from 'antd';
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+} from '@ant-design/icons';
+import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
+import { SORT_ORDER } from 'enums/common.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
@@ -31,6 +31,7 @@ import {
   toUpper,
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
@@ -76,6 +77,7 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
 }) => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
   const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
 
@@ -95,6 +97,18 @@ const Explore: React.FC<ExploreProps> = ({
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
+
+  const isAscSortOrder = useMemo(
+    () => sortOrder === SORT_ORDER.ASC,
+    [sortOrder]
+  );
+  const sortProps = useMemo(
+    () => ({
+      className: 'text-base text-primary',
+      'data-testid': 'last-updated',
+    }),
+    []
+  );
 
   const tabItems = useMemo(
     () =>
@@ -256,43 +270,35 @@ const Explore: React.FC<ExploreProps> = ({
             />
           </ExploreSkeleton>
         </Card>
-      }>
+      }
+      pageTitle={t('label.explore')}>
       <Tabs
         defaultActiveKey={defaultActiveTab}
         items={tabItems}
         size="small"
         tabBarExtraContent={
-          <div className="tw-flex">
+          <Space align="center" size={4}>
             <SortingDropDown
               fieldList={tabsInfo[searchIndex].sortingFields}
               handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
             />
-
-            <div className="tw-flex">
-              {sortOrder === 'asc' ? (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('desc')}>
-                  <FontAwesomeIcon
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                    icon={faSortAmountUpAlt}
-                  />
-                </button>
+            <Button
+              className="p-0"
+              size="small"
+              type="text"
+              onClick={() =>
+                onChangeSortOder(
+                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                )
+              }>
+              {isAscSortOrder ? (
+                <SortAscendingOutlined {...sortProps} />
               ) : (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('asc')}>
-                  <FontAwesomeIcon
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                    icon={faSortAmountDownAlt}
-                  />
-                </button>
+                <SortDescendingOutlined {...sortProps} />
               )}
-            </div>
-          </div>
+            </Button>
+          </Space>
         }
         onChange={(tab) => {
           tab && onChangeSearchIndex(tab as ExploreSearchIndex);

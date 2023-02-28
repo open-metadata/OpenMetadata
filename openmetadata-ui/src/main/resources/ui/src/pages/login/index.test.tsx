@@ -76,26 +76,27 @@ describe('Test SigninPage Component', () => {
     ['custom-oidc', 'Sign in with sso'],
     ['aws-cognito', 'Sign in with aws cognito'],
     ['unknown-provider', 'SSO Provider unknown-provider is not supported'],
-  ])(
-    'Sign in button should render correctly for %s',
-    async (provider, buttonText) => {
-      mockUseAuthContext.mockReturnValue({
-        isAuthDisabled: false,
-        authConfig: { provider },
-        onLoginHandler: jest.fn(),
-        onLogoutHandler: jest.fn(),
-      });
-      const { container } = render(<SigninPage />, {
-        wrapper: MemoryRouter,
-      });
-      const signinButton = await findByText(
-        container,
-        new RegExp(buttonText, 'i')
-      );
+  ])('Sign in button should render correctly for %s', async (provider) => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider },
+      onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
+    });
+    const { container } = render(<SigninPage />, {
+      wrapper: MemoryRouter,
+    });
+    const isUnknow = provider === 'unknown-provider';
 
-      expect(signinButton).toBeInTheDocument();
-    }
-  );
+    const signinButton = await findByText(
+      container,
+      isUnknow
+        ? /message.sso-provider-not-supported/i
+        : /label.sign-in-with-sso/i
+    );
+
+    expect(signinButton).toBeInTheDocument();
+  });
 
   it('Sign in button should render correctly with custom provider name', async () => {
     mockUseAuthContext.mockReturnValue({
@@ -107,10 +108,7 @@ describe('Test SigninPage Component', () => {
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
     });
-    const signinButton = await findByText(
-      container,
-      /sign in with custom oidc/i
-    );
+    const signinButton = await findByText(container, /label.sign-in-with-sso/i);
 
     expect(signinButton).toBeInTheDocument();
   });

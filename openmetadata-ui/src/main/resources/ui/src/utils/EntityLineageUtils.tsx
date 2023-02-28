@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import {
   CustomEdgeData,
   CustomElement,
@@ -313,10 +309,7 @@ export const getLineageData = (
                 }}>
                 {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
                 !node.id.includes(isNodeLoading.id as string) ? (
-                  <FontAwesomeIcon
-                    className="tw-text-primary tw-mr-2"
-                    icon={faChevronLeft}
-                  />
+                  <LeftOutlined className="tw-text-primary tw-mr-2" />
                 ) : null}
                 {isNodeLoading.state &&
                 node.id.includes(isNodeLoading.id as string) ? (
@@ -351,10 +344,7 @@ export const getLineageData = (
                 }}>
                 {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
                 !node.id.includes(isNodeLoading.id as string) ? (
-                  <FontAwesomeIcon
-                    className="tw-text-primary tw-ml-2"
-                    icon={faChevronRight}
-                  />
+                  <RightOutlined className="tw-text-primary tw-ml-2" />
                 ) : null}
                 {isNodeLoading.state &&
                 node.id.includes(isNodeLoading.id as string) ? (
@@ -928,7 +918,7 @@ export const getLoadingStatusValue = (
   if (loading) {
     return <Loader size="small" type="white" />;
   } else if (status === 'success') {
-    return <FontAwesomeIcon className="text-white" icon="check" />;
+    return <CheckOutlined className="text-white" />;
   } else {
     return defaultState;
   }

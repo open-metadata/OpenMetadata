@@ -56,6 +56,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -163,9 +164,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getChartByID",
-      summary = "Get a Chart",
+      summary = "Get a chart by Id",
       tags = "charts",
-      description = "Get a chart by `id`.",
+      description = "Get a chart by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -232,7 +233,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       operationId = "getSpecificChartVersion",
       summary = "Get a version of the chart",
       tags = "charts",
-      description = "Get a version of the chart by given `id`",
+      description = "Get a version of the chart by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -361,9 +362,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "deleteChart",
-      summary = "Delete a Chart",
+      summary = "Delete a chart by Id",
       tags = "charts",
-      description = "Delete a chart by `id`.",
+      description = "Delete a chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
@@ -384,7 +385,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteChartByFQN",
-      summary = "Delete a Chart",
+      summary = "Delete a chart by fully qualified name",
       tags = "charts",
       description = "Delete a chart by `fullyQualifiedName`.",
       responses = {
@@ -408,7 +409,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted chart.",
+      summary = "Restore a soft deleted chart",
       tags = "charts",
       description = "Restore a soft deleted chart.",
       responses = {
@@ -425,10 +426,10 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   private Chart getChart(CreateChart create, String user) throws IOException {
     return copy(new Chart(), create, user)
-        .withService(create.getService())
+        .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withChartUrl(create.getChartUrl())
-        .withTables(create.getTables())
+        .withTables(getEntityReferences(Entity.TABLE, create.getTables()))
         .withTags(create.getTags());
   }
 }

@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.classification.classification import (
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -60,6 +61,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
@@ -321,6 +325,11 @@ class OpenMetadata(
         if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
             return "/users"
 
+        if issubclass(
+            entity, get_args(Union[Container, self.get_create_entity_type(Container)])
+        ):
+            return "/containers"
+
         # Services Schemas
         if issubclass(
             entity,
@@ -377,6 +386,16 @@ class OpenMetadata(
             ),
         ):
             return "/services/metadataServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    ObjectStoreService, self.get_create_entity_type(ObjectStoreService)
+                ]
+            ),
+        ):
+            return "/services/objectstoreServices"
 
         if issubclass(
             entity,
@@ -563,7 +582,6 @@ class OpenMetadata(
         """
         Return entity by ID or None
         """
-
         return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
@@ -736,7 +754,7 @@ class OpenMetadata(
         """
         Run version api call. Return `true` if response is not None
         """
-        raw_version = self.client.get("/version")["version"]
+        raw_version = self.client.get("/system/version")["version"]
         return raw_version is not None
 
     def close(self):

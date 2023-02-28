@@ -24,9 +24,10 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
@@ -56,6 +57,8 @@ const CustomEntityDetailV1 = () => {
   const [isError, setIsError] = useState<boolean>(false);
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
+
+  const [loadingState, setLoadingState] = useState(LOADING_STATE.INITIAL);
 
   const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
 
@@ -112,13 +115,13 @@ const CustomEntityDetailV1 = () => {
 
     return [
       {
-        name: 'Custom Properties',
+        name: t('label.custom-property-plural'),
         isProtected: false,
         position: 1,
         count: (customProperties || []).length,
       },
       {
-        name: 'Schema',
+        name: t('label.schema'),
         isProtected: false,
         position: 2,
       },
@@ -126,6 +129,7 @@ const CustomEntityDetailV1 = () => {
   }, [selectedEntityTypeDetail]);
 
   const updateEntityType = async (properties: Type['customProperties']) => {
+    setLoadingState(LOADING_STATE.WAITING);
     const patch = compare(selectedEntityTypeDetail, {
       ...selectedEntityTypeDetail,
       customProperties: properties,
@@ -139,6 +143,8 @@ const CustomEntityDetailV1 = () => {
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingState(LOADING_STATE.INITIAL);
     }
   };
 
@@ -275,6 +281,7 @@ const CustomEntityDetailV1 = () => {
                   selectedEntityTypeDetail.customProperties || []
                 }
                 hasAccess={editPermission}
+                loadingState={loadingState}
                 updateEntityType={updateEntityType}
               />
             </div>

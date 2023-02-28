@@ -140,18 +140,14 @@ class TestE2EWorkflow(unittest.TestCase):
         database: Database = cls.metadata.create_or_update(
             CreateDatabaseRequest(
                 name="test_suite_database",
-                service=cls.metadata.get_entity_reference(
-                    entity=DatabaseService, fqn=service.fullyQualifiedName
-                ),
+                service=service.fullyQualifiedName,
             )
         )
 
         database_schema: DatabaseSchema = cls.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="test_suite_database_schema",
-                database=cls.metadata.get_entity_reference(
-                    entity=Database, fqn=database.fullyQualifiedName
-                ),
+                database=database.fullyQualifiedName,
             )
         )
 
@@ -165,9 +161,7 @@ class TestE2EWorkflow(unittest.TestCase):
                     Column(name="nickname", dataType=DataType.STRING),
                     Column(name="age", dataType=DataType.INT),
                 ],
-                databaseSchema=cls.metadata.get_entity_reference(
-                    entity=DatabaseSchema, fqn=database_schema.fullyQualifiedName
-                ),
+                databaseSchema=database_schema.fullyQualifiedName,
             )
         )
         with patch.object(

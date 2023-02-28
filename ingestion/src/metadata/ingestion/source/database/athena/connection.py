@@ -15,6 +15,7 @@ Source connection handler
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
@@ -23,7 +24,10 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionStep,
+    test_connection_db_common,
+)
 
 
 def get_connection_url(connection: AthenaConnection) -> str:
@@ -56,8 +60,24 @@ def get_connection(connection: AthenaConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine) -> str:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+    inspector = inspect(engine)
+    steps = [
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+        ),
+        TestConnectionStep(
+            function=inspector.get_table_names,
+            name="Get Tables",
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+            mandatory=False,
+        ),
+    ]
+    return test_connection_db_common(engine, steps)

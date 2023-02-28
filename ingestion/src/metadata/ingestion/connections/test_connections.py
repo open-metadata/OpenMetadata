@@ -52,22 +52,42 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
+    mandatory: bool = True
 
 
-def test_connection_steps(steps: List[TestConnectionStep]) -> None:
+class TestConnectionResult(BaseModel):
+    failed: List[str] = []
+    success: List[str] = []
+    warning: List[str] = []
+
+
+def test_connection_steps(steps: List[TestConnectionStep]) -> str:
     """
     Run all the function steps and raise any errors
     """
+
+    test_connection_result = TestConnectionResult()
     for step in steps:
         try:
             step.function()
-        except Exception as exc:
-            msg = f"Error validating step [{step.name}] due to: {exc}."
-            raise SourceConnectionException(msg) from exc
+            test_connection_result.success.append(f"'{step.name}': Pass")
+
+        except Exception:
+            if step.mandatory:
+                test_connection_result.failed.append(
+                    f"'{step.name}': This is a mandatory step and we won't be able to extract necessary metadata"
+                )
+
+            else:
+                test_connection_result.warning.append(
+                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected"
+                )
+
+    return test_connection_result
 
 
 @timeout(seconds=120)
-def test_connection_db_common(connection: Engine) -> None:
+def test_connection_db_common(connection: Engine, steps=None) -> str:
     """
     Default implementation is the engine to test.
 
@@ -78,9 +98,15 @@ def test_connection_db_common(connection: Engine) -> None:
     try:
         with connection.connect() as conn:
             conn.execute(ConnTestFn())
+            if steps:
+                return test_connection_steps(steps)
+    except SourceConnectionException as exc:
+        raise exc
     except OperationalError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+    return None

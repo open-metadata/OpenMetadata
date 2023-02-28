@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
 import React, { FC, Fragment, ReactNode } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 
@@ -22,6 +23,7 @@ interface PageLayoutProp {
   children: ReactNode;
   layout?: PageLayoutType;
   classes?: string;
+  pageTitle: string;
 }
 
 export const leftPanelAntCardStyle = {
@@ -40,6 +42,7 @@ const PageLayout: FC<PageLayoutProp> = ({
   children,
   rightPanel,
   layout = PageLayoutType['3Col'],
+  pageTitle,
   classes = '',
 }: PageLayoutProp) => {
   const getLeftPanel = () => {
@@ -163,7 +166,12 @@ const PageLayout: FC<PageLayoutProp> = ({
     }
   };
 
-  return getLayoutByType(layout);
+  return (
+    <Fragment>
+      <DocumentTitle title={pageTitle} />
+      {getLayoutByType(layout)}
+    </Fragment>
+  );
 };
 
 export default PageLayout;

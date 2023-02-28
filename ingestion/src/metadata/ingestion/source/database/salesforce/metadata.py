@@ -38,7 +38,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -48,6 +47,7 @@ from metadata.ingestion.source.database.database_service import (
     SQLSourceStatus,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -95,7 +95,7 @@ class SalesforceSource(DatabaseServiceSource):
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        database_name = "default"
+        database_name = self.service_connection.databaseName or DEFAULT_DATABASE
         yield database_name
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
@@ -105,10 +105,7 @@ class SalesforceSource(DatabaseServiceSource):
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -127,7 +124,7 @@ class SalesforceSource(DatabaseServiceSource):
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -201,10 +198,10 @@ class SalesforceSource(DatabaseServiceSource):
                 description="",
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
+            )
+            self.process_pii_sensitive_column(
+                metadata_config=self.metadata, table_request=table_request
             )
             yield table_request
             self.register_record(table_request=table_request)

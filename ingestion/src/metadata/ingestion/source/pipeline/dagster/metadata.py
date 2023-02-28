@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -162,9 +161,7 @@ class DagsterSource(PipelineServiceSource):
             displayName=pipeline_details["name"],
             description=pipeline_details.get("description", ""),
             tasks=task_list,
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
             tags=self.get_tag_labels(self.context.repository_name),
         )
 

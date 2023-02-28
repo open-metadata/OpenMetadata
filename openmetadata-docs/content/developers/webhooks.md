@@ -24,10 +24,11 @@ OpenMetadata provides out-of-the-box support for webhooks.
 OpenMetadata also allows the user to customise the webhook with a wide range of filters to listen to only selected type of events.
 
 
-## OpenMetadata supports 3 webhook types:
+## OpenMetadata supports 4 webhook types:
 1. **Generic**
 2. **Slack**
 3. **Microsoft Teams**
+4. **Google Chat**
 
 ## How to Set up Generic Type Webhook:
 1. **Name**: Add the name of the webhook
@@ -67,3 +68,14 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
 ![webhook-msteams](https://user-images.githubusercontent.com/83201188/188462667-bd8443ce-a07d-4742-ae5d-42da3fc2d402.png)  
+
+## How to Set up Google Chat Type Webhook:
+1. **Name**: Add the name of the webhook
+2. **Description**: Describe the webhook.
+3. **Endpoint URL**: Enter the GChat endpoint URL.  For more on creating GChat webhooks, see [Create a Webhook](https://developers.google.com/chat/how-tos/webhooks#create_a_webhook).
+4. **Activity Filter**: Can be used to activate or disable the webhook.
+5. **Event Filters**: Filters are provided for all the entities and for all the events.
+   Event data for specific action can be achieved.
+6. **Batch Size**: Enter the batch size.
+7. **Connection Timeout**: Enter the desired connection timeout.
+8. **Secret Key**: Secret key can be used to secure the webhook connection.

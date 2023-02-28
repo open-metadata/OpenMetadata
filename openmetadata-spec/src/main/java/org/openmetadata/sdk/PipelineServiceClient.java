@@ -1,14 +1,22 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.sdk;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +25,12 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
@@ -37,14 +48,30 @@ import org.openmetadata.sdk.exception.PipelineServiceVersionException;
  */
 @Slf4j
 public abstract class PipelineServiceClient {
-  protected final URL serviceURL;
-  protected final String username;
-  protected final String password;
   protected final String hostIp;
-  protected final HttpClient client;
+
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
+
+  public static final Map<String, String> TYPE_TO_TASK =
+      Map.of(
+          PipelineType.METADATA.toString(),
+          "ingestion_task",
+          PipelineType.PROFILER.toString(),
+          "profiler_task",
+          PipelineType.LINEAGE.toString(),
+          "lineage_task",
+          PipelineType.DBT.toString(),
+          "dbt_task",
+          PipelineType.USAGE.toString(),
+          "usage_task",
+          PipelineType.TEST_SUITE.toString(),
+          "test_suite_task",
+          PipelineType.DATA_INSIGHT.toString(),
+          "data_insight_task",
+          PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
+          "elasticsearch_reindex_task");
 
   public static final String SERVER_VERSION;
 
@@ -58,41 +85,21 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
-    try {
-      this.serviceURL = new URL(apiEndpoint);
-    } catch (MalformedURLException e) {
-      throw new PipelineServiceClientException(apiEndpoint + " Malformed.");
-    }
-    this.username = userName;
-    this.password = password;
-    this.hostIp = hostIp;
-    this.client =
-        HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(apiTimeout))
-            .build();
+  public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    this.hostIp = pipelineServiceClientConfiguration.getHostIp();
   }
 
-  public final HttpResponse<String> post(String endpoint, String payload) throws IOException, InterruptedException {
-    return post(endpoint, payload, true);
+  public final URL validateServiceURL(String serviceURL) {
+    try {
+      return new URL(serviceURL);
+    } catch (MalformedURLException e) {
+      throw new PipelineServiceClientException(serviceURL + " Malformed.");
+    }
   }
 
   public final String getBasicAuthenticationHeader(String username, String password) {
     String valueToEncode = username + ":" + password;
     return "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes());
-  }
-
-  public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
-      throws IOException, InterruptedException {
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder(URI.create(endpoint))
-            .header(CONTENT_HEADER, CONTENT_TYPE)
-            .POST(HttpRequest.BodyPublishers.ofString(payload));
-    if (authenticate) {
-      requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
-    }
-    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
 
   public static String getServerVersion() throws IOException {
@@ -129,7 +136,7 @@ public abstract class PipelineServiceClient {
       return Map.of(
           "ip",
           "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
-              + "https://api.my-ip.io/ip reachable from your network.");
+              + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
     }
   }
 
@@ -137,16 +144,16 @@ public abstract class PipelineServiceClient {
   public abstract Response getServiceStatus();
 
   /* Test the connection to the service such as database service a pipeline depends on. */
-  public abstract HttpResponse<String> testConnection(TestServiceConnection testServiceConnection);
+  public abstract Response testConnection(TestServiceConnection testServiceConnection);
 
   /* Deploy a pipeline to the pipeline service */
-  public abstract String deployPipeline(IngestionPipeline ingestionPipeline);
+  public abstract String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Deploy run the pipeline at the pipeline service */
-  public abstract String runPipeline(String pipelineName);
+  public abstract String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Stop and delete a pipeline at the pipeline service */
-  public abstract String deletePipeline(String pipelineName);
+  public abstract String deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
   public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
@@ -158,7 +165,7 @@ public abstract class PipelineServiceClient {
   public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
+  public abstract Response killIngestion(IngestionPipeline ingestionPipeline);
 
   /*
   Get the Pipeline Service host IP to whitelist in source systems

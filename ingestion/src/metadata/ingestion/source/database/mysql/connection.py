@@ -12,7 +12,10 @@
 """
 Source connection handler
 """
+from functools import partial
+
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -22,7 +25,10 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionStep,
+    test_connection_db_common,
+)
 
 
 def get_connection(connection: MysqlConnection) -> Engine:
@@ -36,8 +42,34 @@ def get_connection(connection: MysqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine) -> str:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+    inspector = inspect(engine)
+
+    def custom_executor():
+        schema_name = inspector.get_schema_names()
+        if schema_name:
+            for schema in schema_name:
+                if schema not in ("information_schema", "performance_schema"):
+                    table_name = inspector.get_table_names(schema)
+                    return table_name
+        return None
+
+    steps = [
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+        ),
+        TestConnectionStep(
+            function=partial(custom_executor),
+            name="Get Tables",
+        ),
+        TestConnectionStep(
+            function=inspector.get_view_names,
+            name="Get Views",
+            mandatory=False,
+        ),
+    ]
+    return test_connection_db_common(engine, steps)

@@ -28,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.ChartType;
@@ -45,6 +47,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
@@ -54,24 +57,26 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {METABASE_REFERENCE, LOOKER_REFERENCE};
+    String[] differentServices = {METABASE_REFERENCE.getName(), LOOKER_REFERENCE.getName()};
 
     // Create chart for each service and test APIs
-    for (EntityReference service : differentServices) {
+    for (String service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List charts by filtering on service name and ensure right charts in the response
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("service", service.getName());
+      queryParams.put("service", service);
       ResultList<Chart> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Chart chart : list.getData()) {
-        assertEquals(service.getName(), chart.getService().getName());
+        assertEquals(service, chart.getService().getName());
       }
     }
   }
 
   @Override
+  @Execution(ExecutionMode.CONCURRENT)
   public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     String fields = "";
     chart =
@@ -94,7 +99,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Override
   public CreateChart createRequest(String name) {
-    return new CreateChart().withName(name).withService(getContainer()).withChartType(ChartType.Area);
+    return new CreateChart().withName(name).withService(getContainer().getName()).withChartType(ChartType.Area);
   }
 
   @Override

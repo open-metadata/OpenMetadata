@@ -54,7 +54,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public void prepare(Chart chart) throws IOException {
-    DashboardService dashboardService = Entity.getEntity(chart.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+    DashboardService dashboardService = Entity.getEntity(chart.getService(), "", Include.ALL);
     chart.setService(dashboardService.getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
   }

@@ -78,10 +78,8 @@ const AddRolePage = () => {
     const data = {
       name: trim(name),
       description,
-      policies: selectedPolicies.map((policy) => ({
-        id: policy,
-        type: 'policy',
-      })),
+      // TODO the policies should be names instead of ID
+      policies: selectedPolicies.map((policy) => policy),
     };
 
     try {
@@ -100,7 +98,9 @@ const AddRolePage = () => {
 
   return (
     <div data-testid="add-role-container">
-      <PageLayoutV1 center>
+      <PageLayoutV1
+        center
+        pageTitle={t('label.add-entity', { entity: t('label.role') })}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={breadcrumb} />
           <Card>
@@ -173,7 +173,7 @@ const AddRolePage = () => {
                   value={selectedPolicies}
                   onChange={(values) => setSelectedPolicies(values)}>
                   {policies.map((policy) => (
-                    <Option key={policy.id}>
+                    <Option key={policy.fullyQualifiedName}>
                       {policy.displayName || policy.name}
                     </Option>
                   ))}

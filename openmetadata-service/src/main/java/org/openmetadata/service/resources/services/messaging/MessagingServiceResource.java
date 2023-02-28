@@ -145,9 +145,9 @@ public class MessagingServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getMessagingServiceByID",
-      summary = "Get a messaging service",
+      summary = "Get a messaging service by Id",
       tags = "messagingServices",
-      description = "Get a messaging service by `id`.",
+      description = "Get a messaging service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -254,7 +254,7 @@ public class MessagingServiceResource
       operationId = "getSpecificMessagingServiceVersion",
       summary = "Get a version of the messaging service",
       tags = "messagingServices",
-      description = "Get a version of the messaging service by given `id`",
+      description = "Get a version of the messaging service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -283,7 +283,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createMessagingService",
       summary = "Create a messaging service",
-      tags = "messagingService",
+      tags = "messagingServices",
       description = "Create a new messaging service.",
       responses = {
         @ApiResponse(
@@ -329,7 +329,7 @@ public class MessagingServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "patchMessagingService",
-      summary = "Update a Messaging Service",
+      summary = "Update a messaging service",
       tags = "messagingServices",
       description = "Update an existing messaging service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -355,7 +355,7 @@ public class MessagingServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteMessagingService",
-      summary = "Delete a messaging service",
+      summary = "Delete a messaging service by Id",
       tags = "messagingServices",
       description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
@@ -382,7 +382,7 @@ public class MessagingServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteMessagingServiceByName",
-      summary = "Delete a messaging service",
+      summary = "Delete a messaging service by name",
       tags = "messagingServices",
       description = "Delete a messaging service by `name`. If topics belong the service, it can't be " + "deleted.",
       responses = {
@@ -408,9 +408,9 @@ public class MessagingServiceResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted MessagingService.",
+      summary = "Restore a soft deleted messaging service",
       tags = "messagingServices",
-      description = "Restore a soft deleted MessagingService.",
+      description = "Restore a soft deleted messaging service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

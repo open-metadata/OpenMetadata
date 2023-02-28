@@ -166,12 +166,18 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
 
-airflowConfiguration:
-  apiEndpoint: "http://localhost:8080"
-  username: "admin"
-  password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
+pipelineServiceClientConfiguration:
+  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  metadataApiEndpoint: http://localhost:8585/api
+  apiEndpoint: http://localhost:8080
+  hostIp: ""
+  verifySSL: "no-ssl"
   authProvider: "openmetadata"
+
+  parameters:
+    username: admin
+    password: admin
+    timeout: 10
 
 email:
   enableSmtpServer : false
@@ -185,9 +191,15 @@ email:
   password: ""
   transportationStrategy: "SMTP_TLS"
 
-slackChat:
-  slackUrl: "http://localhost:8080"
-
-login:
-  maxLoginFailAttempts: 3
-  accessBlockTime: 600
+applicationConfig:
+  logoConfig:
+    logoLocationType: "openmetadata"
+    loginPageLogoAbsoluteFilePath: ""
+    loginPageLogoUrlPath: ""
+    navBarLogoAbsoluteFilePath: ""
+    navBarLogoUrlPath: ""
+  loginConfig:
+    maxLoginFailAttempts: 3
+    accessBlockTime: 600
+    jwtTokenExpiryTime: 3600
+  

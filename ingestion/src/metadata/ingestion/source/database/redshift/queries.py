@@ -216,3 +216,19 @@ REDSHIFT_TABLE_COMMENTS = """
       AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
 """
+
+REDSHIFT_GET_DATABASE_NAMES = """
+SELECT datname FROM pg_database
+"""
+
+REDSHIFT_GET_SVV_TABLE_INFO = """
+select * from pg_catalog.svv_table_info limit 10
+"""
+
+REDSHIFT_GET_STL_QUERYTEXT = """
+select * from pg_catalog.stl_querytext limit 10
+"""
+
+REDSHIFT_GET_STL_QUERY = """
+select * from pg_catalog.stl_query limit 10
+"""

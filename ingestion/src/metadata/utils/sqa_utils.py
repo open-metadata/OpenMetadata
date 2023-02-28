@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import sqlalchemy
 from sqlalchemy import Column, and_, or_
 from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.expression import TextClause
 
 from metadata.orm_profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
 from metadata.utils.logger import query_runner_logger
@@ -70,7 +71,7 @@ def build_query_filter(
 
 def dispatch_to_date_or_datetime(
     partition_interval: int,
-    partition_interval_unit: str,
+    partition_interval_unit: TextClause,
     type_,
 ):
     """Dispatch to date or datetime function based on the type
