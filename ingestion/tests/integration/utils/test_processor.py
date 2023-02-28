@@ -54,7 +54,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.processor.pii import NERScanner, PiiProcessor
+from metadata.ingestion.processor.pii import NERScanner
 
 MOCK_TABLE: CreateTableRequest = CreateTableRequest(
     name="DataSet Input",
@@ -855,12 +855,7 @@ class PiiProcessorTest(TestCase):
             ),
         )
         self.metadata = OpenMetadata(server_config)
-        self.processor = PiiProcessor(metadata_config=self.metadata)
         self.nerscanner_processor = NERScanner()
-
-    def test_process(self):
-        self.processor.process(MOCK_TABLE)
-        assert MOCK_TABLE.columns == EXPECTED_COLUMNS
 
     def test_nerscanner_process(self):
         """

@@ -67,7 +67,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.processor.pii import PiiProcessor
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -491,10 +490,3 @@ class DatabaseServiceSource(
                     )
 
                     yield from self.delete_schema_tables(schema_fqn)
-
-    def process_pii_sensitive_column(
-        self, metadata_config: OpenMetadata, table_request: CreateTableRequest
-    ):
-        if self.source_config.processPiiSensitive:
-            processer = PiiProcessor(metadata_config=metadata_config)
-            processer.process(table_request=table_request)

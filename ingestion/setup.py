@@ -72,6 +72,7 @@ pii_requirements = {
         "en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz"
     ),
     "spacy==2.3.9",
+    VERSIONS["pandas"],
 }
 
 base_requirements = {

@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
-from metadata.ingestion.source.database.processor import NERScanner
+from metadata.ingestion.processor.pii import NERScanner
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
@@ -424,22 +424,8 @@ class Profiler(Generic[TMetric]):
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
                 sample_data = self.profiler_interface.fetch_sample_data(self.table)
-                service_details = (
-                    self.profiler_interface.ometa_client.get_ingestion_pipeline_by_name(
-                        name=self.profiler_interface.table_entity.service.name
-                    )
-                )
-                service_details_cli = (
-                    self.profiler_interface.source_config.processPiiSensitive
-                    if hasattr(
-                        self.profiler_interface.source_config, "processPiiSensitive"
-                    )
-                    else False
-                )
-                if (
-                    hasattr(service_details, "sourceConfig")
-                    and service_details.sourceConfig.processPiiSensitive is not True
-                ) or (service_details_cli is not True):
+
+                if self.profiler_interface.source_config.config.processPiiSensitive:
                     entity_scanner = NERScanner()
                     entity_scanner.process(
                         sample_data,

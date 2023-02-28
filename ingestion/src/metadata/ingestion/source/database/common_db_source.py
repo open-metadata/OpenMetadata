@@ -46,7 +46,6 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.processor.pii import PiiProcessor
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
@@ -380,11 +379,6 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
-
-            # Process pii sensitive column and append tags
-            if self.source_config.processPiiSensitive:
-                processor = PiiProcessor(metadata_config=self.metadata)
-                processor.process(table_request)
 
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector

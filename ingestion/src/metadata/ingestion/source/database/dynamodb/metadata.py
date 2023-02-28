@@ -199,9 +199,6 @@ class DynamodbSource(DatabaseServiceSource):
                 tableConstraints=None,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
             )
-            self.process_pii_sensitive_column(
-                metadata_config=self.metadata, table_request=table_request
-            )
             yield table_request
             self.register_record(table_request=table_request)
 
