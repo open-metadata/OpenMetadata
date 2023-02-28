@@ -107,6 +107,11 @@ const GlossaryV1 = ({
     [action]
   );
 
+  const isGlossaryDeletePermission = useMemo(
+    () => glossaryPermission.Delete || glossaryTermPermission.Delete,
+    [glossaryPermission, glossaryTermPermission]
+  );
+
   const fetchGlossaryPermission = async () => {
     try {
       const response = await getEntityPermission(
@@ -324,7 +329,7 @@ const GlossaryV1 = ({
             <Tooltip
               placement="right"
               title={
-                glossaryPermission.Delete || glossaryTermPermission.Delete
+                isGlossaryDeletePermission
                   ? isGlossaryActive
                     ? t('label.manage-entity', { entity: t('label.glossary') })
                     : t('label.manage-entity', {
@@ -335,9 +340,7 @@ const GlossaryV1 = ({
               <Button
                 className="manage-dropdown-button"
                 data-testid="manage-button"
-                disabled={
-                  !(glossaryPermission.Delete || glossaryTermPermission.Delete)
-                }
+                disabled={!isGlossaryDeletePermission}
                 size="small"
                 onClick={() => setShowActions(true)}>
                 <IconDropdown className="anticon text-primary self-center manage-dropdown-icon" />
