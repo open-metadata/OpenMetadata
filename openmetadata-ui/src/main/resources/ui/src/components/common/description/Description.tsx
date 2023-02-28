@@ -13,11 +13,14 @@
 
 import { Button, Popover, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
+import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -25,7 +28,6 @@ import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
@@ -90,9 +92,10 @@ const Description: FC<DescriptionProps> = ({
     const hasDescription = Boolean(description.trim());
 
     return TASK_ENTITIES.includes(entityType as EntityType) ? (
-      <button
-        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
+      <Button
+        className="w-7 h-7 p-0 flex-center"
         data-testid="request-entity-description"
+        type="text"
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
         }>
@@ -106,13 +109,13 @@ const Description: FC<DescriptionProps> = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons
-            alt={t('message.request-description')}
-            icon={Icons.REQUEST}
-            width="16px"
+          <IconRequest
+            height={16}
+            name={t('message.request-description')}
+            width={16}
           />
         </Popover>
-      </button>
+      </Button>
     ) : null;
   };
 
@@ -120,26 +123,27 @@ const Description: FC<DescriptionProps> = ({
     descriptionThread,
   }: {
     descriptionThread?: EntityFieldThreads;
-  }) => {
-    return !isUndefined(descriptionThread) ? (
-      <button
-        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
+  }) =>
+    !isUndefined(descriptionThread) ? (
+      <Button
+        className="w-9 h-7 p-0"
         data-testid="description-thread"
+        type="text"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
-        <span className="tw-flex">
-          <SVGIcons alt="comments" icon={Icons.COMMENT} width="16px" />{' '}
-          <span className="tw-ml-1" data-testid="description-thread-count">
-            {' '}
+        <Space align="center" className="h-full" size={2}>
+          <IconComments height={16} name="tasks" width={16} />
+          <Typography.Text data-testid="description-thread-count">
             {descriptionThread.count}
-          </span>
-        </span>
-      </button>
+          </Typography.Text>
+        </Space>
+      </Button>
     ) : (
       <Fragment>
         {description?.trim() && onThreadLinkSelect ? (
-          <button
-            className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
+          <Button
+            className="w-7 h-7 link-text p-0"
             data-testid="start-description-thread"
+            type="text"
             onClick={() =>
               onThreadLinkSelect?.(
                 getEntityFeedLink(
@@ -149,21 +153,20 @@ const Description: FC<DescriptionProps> = ({
                 )
               )
             }>
-            <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="16px" />
-          </button>
+            <IconCommentPlus height={16} name="comments" width={16} />
+          </Button>
         ) : null}
       </Fragment>
     );
-  };
 
-  const getDescriptionTaskElement = () => {
-    return !isUndefined(tasks) ? (
+  const getDescriptionTaskElement = () =>
+    !isUndefined(tasks) ? (
       <Button
-        className="w-7 h-7 m-r-xs p-0"
+        className="w-9 h-7 p-0"
         data-testid="description-task"
         type="text"
         onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
-        <Space align="center" className="w-full h-full" size={3}>
+        <Space align="center" className="h-full" size={2}>
           <IconTaskColor height={16} name="tasks" width={16} />
           <Typography.Text data-testid="description-tasks-count">
             {tasks.count}
@@ -171,35 +174,34 @@ const Description: FC<DescriptionProps> = ({
         </Space>
       </Button>
     ) : null;
-  };
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex')}>
+      <Space align="end" size={0}>
         {hasEditAccess && (
-          <button
-            className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"
+          <Button
+            className="w-7 h-7 p-0 flex-center"
             data-testid="edit-description"
+            type="text"
             onClick={handleUpdate}>
-            <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
-          </button>
+            <IconEdit height={16} width={16} />
+          </Button>
         )}
         {isTaskSupported(entityType as EntityType) ? (
           <Fragment>
-            {' '}
             <RequestDescriptionEl />
             {getDescriptionTaskElement()}
           </Fragment>
         ) : null}
 
         <DescriptionThreadEl descriptionThread={thread} />
-      </div>
+      </Space>
     ) : null;
   };
 
   return (
     <div className={`schema-description tw-relative ${className}`}>
-      <div className="tw-flex description-inner-main-container tw-items-end">
+      <Space align="end" className="description-inner-main-container" size={4}>
         <div className="tw-relative">
           <div
             className="description tw-h-full tw-overflow-y-scroll tw-relative "
@@ -230,7 +232,7 @@ const Description: FC<DescriptionProps> = ({
           />
         </div>
         <DescriptionActions />
-      </div>
+      </Space>
     </div>
   );
 };
