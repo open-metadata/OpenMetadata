@@ -616,16 +616,8 @@ const AddAlertPage = () => {
                         subHeading={t('message.alerts-filter-description')}
                       />
 
-                      <Form.List
-                        name="filteringRules"
-                        rules={[
-                          {
-                            validator: listLengthValidator(
-                              t('label.filter-plural')
-                            ),
-                          },
-                        ]}>
-                        {(fields, { add, remove }, { errors }) => (
+                      <Form.List name="filteringRules">
+                        {(fields, { add, remove }) => (
                           <>
                             <Form.Item>
                               <Button
@@ -696,7 +688,6 @@ const AddAlertPage = () => {
                                 </div>
                               </div>
                             ))}
-                            <Form.ErrorList errors={errors} />
                           </>
                         )}
                       </Form.List>
