@@ -13,10 +13,10 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Col, Row } from 'antd';
+import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import Loader from '../../Loader/Loader';
 import { ScheduleIntervalProps } from '../addIngestion.interface';
 
 const ScheduleInterval = ({
@@ -54,14 +54,7 @@ const ScheduleInterval = ({
           <span>{t('label.back')}</span>
         </Button>
 
-        {status === 'waiting' ? (
-          <Button
-            disabled
-            className="w-16 opacity-100 p-x-md p-y-xxs"
-            type="primary">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : status === 'success' ? (
+        {status === 'success' ? (
           <Button
             disabled
             className="w-16 opacity-100 p-x-md p-y-xxs"
@@ -72,6 +65,7 @@ const ScheduleInterval = ({
           <Button
             className="font-medium p-x-md p-y-xxs h-auto rounded-6"
             data-testid="deploy-button"
+            loading={status === LOADING_STATE.WAITING}
             type="primary"
             onClick={onDeploy}>
             {submitButtonLabel}

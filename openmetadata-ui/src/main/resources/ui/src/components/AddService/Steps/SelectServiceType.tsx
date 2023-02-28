@@ -80,7 +80,7 @@ const SelectServiceType = ({
       <Row>
         <Col span={24}>
           <Select
-            className="tw-form-inputs"
+            className="w-full"
             data-testid="service-category"
             id="serviceCategory"
             options={map(ServiceCategory, (value) => ({
@@ -97,9 +97,9 @@ const SelectServiceType = ({
         <Col className="m-t-lg" span={24}>
           <Searchbar
             removeMargin
-            placeholder={`${t('label.search-for-type', {
+            placeholder={t('label.search-for-type', {
               type: t('label.connector'),
-            })}...`}
+            })}
             searchValue={connectorSearchTerm}
             typingInterval={500}
             onSearch={handleConnectorSearchTerm}

@@ -50,9 +50,9 @@ describe('Test CronEditor component', () => {
     act(() => {
       userEvent.click(cronSelect);
     });
-    await waitForElement(() => screen.getByText('hour'));
+    await waitForElement(() => screen.getByText('label.hour'));
     await act(async () => {
-      fireEvent.click(screen.getByText('hour'));
+      fireEvent.click(screen.getByText('label.hour'));
     });
 
     expect(
@@ -87,9 +87,9 @@ describe('Test CronEditor component', () => {
     act(() => {
       userEvent.click(cronSelect);
     });
-    await waitForElement(() => screen.getByText('minutes'));
+    await waitForElement(() => screen.getByText('label.minute-plural'));
     await act(async () => {
-      fireEvent.click(screen.getByText('minutes'));
+      fireEvent.click(screen.getByText('label.minute-plural'));
     });
 
     expect(
@@ -124,9 +124,9 @@ describe('Test CronEditor component', () => {
     act(() => {
       userEvent.click(cronSelect);
     });
-    await waitForElement(() => screen.getByText('day'));
+    await waitForElement(() => screen.getByText('label.day'));
     await act(async () => {
-      fireEvent.click(screen.getByText('day'));
+      fireEvent.click(screen.getByText('label.day'));
     });
 
     expect(
@@ -165,9 +165,9 @@ describe('Test CronEditor component', () => {
     act(() => {
       userEvent.click(cronSelect);
     });
-    await waitForElement(() => screen.getByText('week'));
+    await waitForElement(() => screen.getByText('label.week'));
     await act(async () => {
-      fireEvent.click(screen.getByText('week'));
+      fireEvent.click(screen.getByText('label.week'));
     });
 
     expect(
