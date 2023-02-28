@@ -11,6 +11,7 @@
 """
 DBT source methods.
 """
+import functools
 import traceback
 from enum import Enum
 from typing import Iterable, List, Optional, Union
@@ -199,6 +200,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 f"Service with name {self.config.serviceName} not found"
             )
 
+    @functools.lru_cache(maxsize=512)
     def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """
         Returns dbt owner
@@ -233,6 +235,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
         return owner
 
+    @functools.lru_cache(maxsize=512)
     def get_dbt_tag_labels(self, dbt_tags_list):
         return [
             TagLabel(
