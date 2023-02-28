@@ -47,6 +47,7 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_schema_descriptions,
     get_table_comment_wrapper,
 )
 
@@ -294,9 +295,9 @@ class VerticaSource(CommonDbSourceService):
         return self.schema_desc_map.get(schema_name)
 
     def set_schema_description_map(self) -> None:
-        results = self.engine.execute(VERTICA_SCHEMA_COMMENTS).all()
-        for row in results:
-            self.schema_desc_map[row.schema_name] = row.comment
+        self.schema_desc_map = get_schema_descriptions(
+            self.engine, VERTICA_SCHEMA_COMMENTS
+        )
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
