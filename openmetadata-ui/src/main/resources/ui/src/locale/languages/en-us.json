@@ -547,6 +547,7 @@
     "please-enter-value": "Please enter {{name}} value",
     "please-password-type-first": "Please type password first",
     "please-select": "Please Select",
+    "please-select-entity": "Please Select a {{entity}}",
     "plus-symbol": "+",
     "policy": "Policy",
     "policy-lowercase": "policy",
