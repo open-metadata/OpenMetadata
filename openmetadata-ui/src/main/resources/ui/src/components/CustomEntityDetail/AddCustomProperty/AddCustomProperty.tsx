@@ -174,6 +174,9 @@ const AddCustomProperty = () => {
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           layout={PageLayoutType['2ColRTL']}
+          pageTitle={t('label.add-entity', {
+            entity: t('label.custom-property'),
+          })}
           rightPanel={<RightPanel />}>
           <div
             className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded tw-form-container"

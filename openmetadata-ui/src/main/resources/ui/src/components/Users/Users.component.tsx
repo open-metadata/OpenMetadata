@@ -951,7 +951,10 @@ const Users = ({
   );
 
   return (
-    <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1
+      className="tw-h-full"
+      leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.user')}>
       <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}
