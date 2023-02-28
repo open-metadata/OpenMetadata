@@ -507,7 +507,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       summary = "Get list of Event Subscription functions used in filtering EventSubscription",
       tags = "eventsSubscription",
       description = "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
-  public List<Function> listEventSubscriptionFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public List<Function> listEventSubscriptionFunctions(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
   }
 
@@ -553,7 +554,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/eventSubResourceDescriptor.json$");
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/EventSubResourceDescriptor.json$");
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
       return null;
