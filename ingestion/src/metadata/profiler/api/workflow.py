@@ -82,6 +82,8 @@ from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = profiler_logger()
 
+NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
+
 
 class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
@@ -347,7 +349,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             ] = ProfilerProtocol.create(
                 (
                     copied_service_config.__class__.__name__
-                    if isinstance(copied_service_config, DatalakeConnection)
+                    if isinstance(copied_service_config, NON_SQA_DATABASE_CONNECTIONS)
                     else self.config.source.serviceConnection.__root__.__class__.__name__
                 ),
                 entity,
@@ -356,7 +358,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 copied_service_config,
                 create_ometa_client(self.metadata_config),
                 sqa_metadata=sqa_metadata,
-            )
+            )  # type: ignore
             self.create_profiler(entity, profiler_interface)
             self.profiler = cast(Profiler, self.profiler)  # satisfy type checker
             profile: ProfilerResponse = self.profiler.process(
@@ -395,7 +397,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 copied_service_config = self.copy_service_config(database)
                 sqa_metadata = (
                     MetaData()
-                    if not isinstance(copied_service_config, DatalakeConnection)
+                    if not isinstance(
+                        copied_service_config, NON_SQA_DATABASE_CONNECTIONS
+                    )
                     else None
                 )  # we only need this for sqlalchemy based services
                 for entity in self.get_table_entities(database=database):

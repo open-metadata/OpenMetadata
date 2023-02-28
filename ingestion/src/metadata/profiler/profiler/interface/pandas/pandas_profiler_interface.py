@@ -345,4 +345,5 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         return []
 
     def close(self):
+        """Nothing to close with pandas"""
         pass
