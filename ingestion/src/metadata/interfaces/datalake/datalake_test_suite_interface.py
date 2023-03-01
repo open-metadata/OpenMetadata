@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.datalake.mixins.pandas_mixin import PandasInterfaceMixin
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
 from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
@@ -33,7 +34,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class DataLakeTestSuiteInterface(TestSuiteProtocol):
+class DataLakeTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow

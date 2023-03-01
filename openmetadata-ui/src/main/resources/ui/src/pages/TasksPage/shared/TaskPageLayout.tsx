@@ -14,14 +14,19 @@
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import React, { FC, HTMLAttributes } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface Props extends HTMLAttributes<HTMLDivElement> {}
 
 const TaskPageLayout: FC<Props> = ({ children }) => {
+  const { t } = useTranslation();
+
   return (
     <PageContainerV1>
-      <PageLayoutV1 center>{children}</PageLayoutV1>
+      <PageLayoutV1 center pageTitle={t('label.task')}>
+        {children}
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

@@ -29,6 +29,7 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
+import { VALIDATE_MESSAGES } from 'constants/constants';
 import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -534,9 +535,9 @@ const AddAlertPage = () => {
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Typography.Title level={5}>
-            {!isEmpty(fqn)
-              ? t('label.edit-entity', { entity: t('label.alert-plural') })
-              : t('label.create-entity', { entity: t('label.alert-plural') })}
+            {t(!isEmpty(fqn) ? 'label.edit-entity' : 'label.create-entity', {
+              entity: t('label.alert-plural'),
+            })}
           </Typography.Title>
           <Typography.Text>{t('message.alerts-description')}</Typography.Text>
         </Col>
@@ -544,6 +545,7 @@ const AddAlertPage = () => {
           <Form<Alerts>
             className="alerts-notification-form"
             form={form}
+            validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSave}
             onValuesChange={handleChange}>
             <Card loading={loadingCount > 0}>
@@ -557,8 +559,7 @@ const AddAlertPage = () => {
               <Form.Item
                 label={t('label.description')}
                 labelCol={{ span: 24 }}
-                name="description"
-                rules={[{ required: true }]}>
+                name="description">
                 <Input.TextArea />
               </Form.Item>
               <Form.Item>
@@ -615,16 +616,8 @@ const AddAlertPage = () => {
                         subHeading={t('message.alerts-filter-description')}
                       />
 
-                      <Form.List
-                        name="filteringRules"
-                        rules={[
-                          {
-                            validator: listLengthValidator(
-                              t('label.filter-plural')
-                            ),
-                          },
-                        ]}>
-                        {(fields, { add, remove }, { errors }) => (
+                      <Form.List name="filteringRules">
+                        {(fields, { add, remove }) => (
                           <>
                             <Form.Item>
                               <Button
@@ -647,7 +640,20 @@ const AddAlertPage = () => {
                                 )}
                                 <div className="d-flex gap-1">
                                   <div className="flex-1">
-                                    <Form.Item key={key} name={[name, 'name']}>
+                                    <Form.Item
+                                      key={key}
+                                      name={[name, 'name']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'label.please-select-entity',
+                                            {
+                                              entity: t('label.condition'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
                                       <Select
                                         options={functions}
                                         placeholder={t('label.select-field', {
@@ -695,7 +701,6 @@ const AddAlertPage = () => {
                                 </div>
                               </div>
                             ))}
-                            <Form.ErrorList errors={errors} />
                           </>
                         )}
                       </Form.List>
@@ -742,9 +747,19 @@ const AddAlertPage = () => {
                                 <div className="d-flex" style={{ gap: '10px' }}>
                                   <div className="flex-1">
                                     <Form.Item
-                                      required
                                       key={key}
-                                      name={[name, 'alertActionType']}>
+                                      name={[name, 'alertActionType']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'label.please-select-entity',
+                                            {
+                                              entity: t('label.source'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
                                       <Select
                                         data-testid="alert-action-type"
                                         disabled={

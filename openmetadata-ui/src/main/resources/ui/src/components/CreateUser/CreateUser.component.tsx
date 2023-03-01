@@ -700,7 +700,8 @@ const CreateUser = ({
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
-      layout={PageLayoutType['2ColRTL']}>
+      layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
           {t('label.create-entity', {

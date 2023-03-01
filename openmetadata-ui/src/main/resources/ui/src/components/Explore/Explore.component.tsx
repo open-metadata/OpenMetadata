@@ -31,6 +31,7 @@ import {
   toUpper,
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
@@ -74,6 +75,7 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
 }) => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
   const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
 
@@ -263,7 +265,8 @@ const Explore: React.FC<ExploreProps> = ({
             />
           </ExploreSkeleton>
         </Card>
-      }>
+      }
+      pageTitle={t('label.explore')}>
       <Tabs
         defaultActiveKey={defaultActiveTab}
         items={tabItems}
