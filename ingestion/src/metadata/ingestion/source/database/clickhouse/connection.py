@@ -55,7 +55,7 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> TestConnectionResult:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test Clickhouse connection
     """

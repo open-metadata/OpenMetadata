@@ -31,7 +31,7 @@ def get_connection(connection: NifiConnection) -> NifiClient:
     )
 
 
-def test_connection(client: NifiClient) -> None:
+def test_connection(client: NifiClient, _) -> None:
     """
     Test connection
     """

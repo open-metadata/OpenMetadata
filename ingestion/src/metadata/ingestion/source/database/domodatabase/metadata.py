@@ -182,7 +182,7 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.domo_client)
+        test_connection_fn(self.domo_client, self.service_connection)
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass

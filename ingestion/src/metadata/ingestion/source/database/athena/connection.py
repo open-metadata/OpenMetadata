@@ -61,7 +61,7 @@ def get_connection(connection: AthenaConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> TestConnectionResult:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test connection
     """
