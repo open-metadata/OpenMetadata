@@ -133,6 +133,8 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 )
 
                 if not entity:
+                    # If a user visits an entity and then deletes this entity, we will try to get the entity
+                    # object as we will have a reference to it in the web analytics events.
                     continue
 
                 try:
