@@ -19,15 +19,22 @@ services:
   ingestion:
     container_name: openmetadata_ingestion
     image: docker.getcollate.io/openmetadata/ingestion:0.13.2
+    depends_on:
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_started
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
-      DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
-      DB_PORT: ${AIRFLOW_DB_PORT:-3306}
+      DB_HOST: ${AIRFLOW_DB_HOST:-postgresql}
+      DB_PORT: ${AIRFLOW_DB_PORT:-5432}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
-      AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
       DB_USER: ${AIRFLOW_DB_USER:-airflow_user}
+      DB_SCHEME: ${AIRFLOW_DB_SCHEME:-postgresql+psycopg2}
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
     entrypoint: /bin/bash
     command:
@@ -42,7 +49,6 @@ services:
       - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
       - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
-
 
 networks:
   app_net:

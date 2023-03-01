@@ -10,19 +10,12 @@
 #  limitations under the License.
 
 version: "3.9"
-volumes:
-  ingestion-volume-dag-airflow:
-  ingestion-volume-dags:
-  ingestion-volume-tmp:
-  es-data:
 services:  
   openmetadata-server:
-    build:
-      context: ../../.
-      dockerfile: docker/development/Dockerfile
     container_name: openmetadata_server
+    restart: always
+    image: docker.getcollate.io/openmetadata/server:0.13.2
     environment:
-      OPENMETADATA_DEBUG: ${OPENMETADATA_DEBUG:-false}
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
@@ -39,7 +32,7 @@ services:
       AUTHENTICATION_CLIENT_ID: ${AUTHENTICATION_CLIENT_ID:-""}
       AUTHENTICATION_CALLBACK_URL: ${AUTHENTICATION_CALLBACK_URL:-""}
       AUTHENTICATION_JWT_PRINCIPAL_CLAIMS: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
-      AUTHENTICATION_ENABLE_SELF_SIGNUP : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+      AUTHENTICATION_ENABLE_SELF_SIGNUP: ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
       # JWT Configuration
       RSA_PUBLIC_KEY_FILE_PATH: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
       RSA_PRIVATE_KEY_FILE_PATH: ${RSA_PRIVATE_KEY_FILE_PATH:-"./conf/private_key.der"}
@@ -70,19 +63,17 @@ services:
     expose:
       - 8585
       - 8586
-      - 5005
     ports:
       - "8585:8585"
       - "8586:8586"
-      - "5005:5005"
     networks:
-      - local_app_net
+      - app_net
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
+
 networks:
-  local_app_net:
-    name: ometa_network
+  app_net:
     ipam:
       driver: default
       config:
-        - subnet: "172.16.239.0/24"
+        - subnet: "172.16.240.0/24"
