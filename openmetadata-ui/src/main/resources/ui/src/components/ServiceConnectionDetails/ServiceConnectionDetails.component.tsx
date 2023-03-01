@@ -220,7 +220,7 @@ const ServiceConnectionDetails = ({
         setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
 
         break;
-      case EntityType.OBJECT_STORE_SERVICES:
+      case EntityType.OBJECT_STORE_SERVICE:
         setSchema(
           getObjectStoreConfig(serviceFQN as ObjectStoreServiceType).schema
         );
