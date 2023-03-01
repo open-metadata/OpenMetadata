@@ -26,12 +26,14 @@ import {
   getMonthDaysOptions,
   getMonthOptions,
   getPeriodOptions,
+  SELECTED_PERIOD_OPTIONS,
   toDisplay,
 } from './CronEditor.constant';
 import {
   Combination,
   CronEditorProp,
   CronOption,
+  CronType,
   CronValue,
   SelectedDayOption,
   SelectedHourOption,
@@ -95,9 +97,8 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     stateVal.selectedPeriod = cronType || stateVal.selectedPeriod;
 
     if (!isEmpty(cronType)) {
-      const stateIndex = `${t('label.selected-lowercase')}${cronType
-        ?.charAt(0)
-        .toUpperCase()}${cronType?.substring(1)}${t('label.option')}`;
+      const stateIndex =
+        SELECTED_PERIOD_OPTIONS[(cronType as CronType) || 'hour'];
       const selectedPeriodObj = stateVal[
         stateIndex as keyof StateValue
       ] as SelectedYearOption;
