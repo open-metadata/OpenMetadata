@@ -115,7 +115,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void populateDatabase(DatabaseSchema schema) throws IOException {
-    Database database = Entity.getEntity(schema.getDatabase(), "owner,tags", ALL);
+    Database database = Entity.getEntity(schema.getDatabase(), "owner", ALL);
     schema
         .withDatabase(database.getEntityReference())
         .withService(database.getService())
@@ -123,10 +123,5 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
     // Carry forward ownership from database, if necessary
     schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
-
-    // Carry forward tags from database
-    if (schema.getTags() == null && database.getTags() != null) {
-      schema.setTags(database.getTags());
-    }
   }
 }
