@@ -63,7 +63,6 @@ class CountInSet(StaticMetric):
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None
 
-    @_label
     def df_fn(self, df):
         """pandas function"""
         if not hasattr(self, "values"):
