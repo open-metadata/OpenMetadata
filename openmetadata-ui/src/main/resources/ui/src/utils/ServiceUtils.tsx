@@ -807,6 +807,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.metadata'))
       );
 
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.container'))
+      );
+
     default:
       return;
   }
@@ -827,6 +833,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
+  }
+  if (type === 'objectstoreServices') {
+    return GlobalSettingOptions.OBJECT_STORES;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -859,6 +868,10 @@ export const getResourceEntityFromServiceCategory = (
     case 'metadata':
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
+
+    case 'objectstores':
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return ResourceEntity.OBJECT_STORE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -874,6 +887,8 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return 'Pipelines';
     case ServiceCategory.ML_MODEL_SERVICES:
       return 'Models';
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return 'Containers';
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return 'Databases';

@@ -172,7 +172,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
-  objectStoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+  objectstoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -183,7 +183,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
-  'objectStoreServices',
+  'objectstoreServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -203,7 +203,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
-  objectStoreServices: 'objectstores',
+  objectstoreServices: 'objectstores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -225,7 +225,7 @@ export const servicesDisplayName: { [key: string]: string } = {
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
   }),
-  objectStoreServices: i18n.t('label.entity-service', {
+  objectstoreServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.object-store'),
   }),
 };

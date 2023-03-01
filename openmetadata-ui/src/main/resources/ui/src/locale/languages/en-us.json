@@ -138,6 +138,7 @@
     "connection-entity": "Connection {{entity}}",
     "connection-timeout-plural": "Connection Timeout",
     "connector": "Connector",
+    "container": "Container",
     "conversation": "Conversation",
     "conversation-lowercase": "conversation",
     "conversation-plural": "Conversations",
