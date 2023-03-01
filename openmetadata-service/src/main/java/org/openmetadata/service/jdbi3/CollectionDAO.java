@@ -85,6 +85,7 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
@@ -243,6 +244,9 @@ public interface CollectionDAO {
   TestDefinitionDAO testDefinitionDAO();
 
   @CreateSqlObject
+  TestConnectionDefinitionDAO testConnectionDefinitionDAO();
+
+  @CreateSqlObject
   AlertActionDAO alertActionDAO();
 
   @CreateSqlObject
@@ -360,6 +364,23 @@ public interface CollectionDAO {
     @Override
     default Class<MetadataService> getEntityClass() {
       return MetadataService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface TestConnectionDefinitionDAO extends EntityDAO<TestConnectionDefinition> {
+    @Override
+    default String getTableName() {
+      return "test_connection_definition";
+    }
+
+    @Override
+    default Class<TestConnectionDefinition> getEntityClass() {
+      return TestConnectionDefinition.class;
     }
 
     @Override

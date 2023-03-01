@@ -50,4 +50,12 @@ CREATE TABLE IF NOT EXISTS objectstore_container_entity (
     UNIQUE (fullyQualifiedName)
 );
 
-
+CREATE TABLE IF NOT EXISTS test_connection_definition (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    UNIQUE (name)
+);
