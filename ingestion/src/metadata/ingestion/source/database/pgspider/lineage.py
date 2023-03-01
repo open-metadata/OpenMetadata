@@ -26,6 +26,13 @@ from metadata.ingestion.source.database.postgres.lineage import (
     PostgresLineageSource,
 )
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -67,8 +74,7 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
-        for record in PostgresLineageSource.next_record(self):
-            yield record
+        yield from PostgresLineageSource.next_record(self)
 
         """
         For PGSpider, firstly, get list of multi-tenant tables.
@@ -78,20 +84,51 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
         foreign table. Prepare the lineage and send it to the sink.
         """
         for multi_tenant_table in self.get_multi_tenant_tables():
-            # logger.info(multi_tenant_table)
             multi_tenant_table = dict(multi_tenant_table)
-            for child_table in self.get_child_tables(multi_tenant_table["relname"]):
-                logger.info(child_table)
-                sql = "INSERT INTO " + multi_tenant_table["relname"] + " SELECT * FROM " + child_table + ";"
-                logger.info(sql)
-                lineages = get_lineage_by_query(
-                    self.metadata,
-                    query=sql,
+            target_table = multi_tenant_table["relname"]
+
+            for source_table in self.get_child_tables(target_table):
+                target_table_entities = search_table_entities(
+                    metadata=self.metadata,
                     service_name=self.config.serviceName,
-                    database_name=multi_tenant_table["database"],
-                    schema_name=multi_tenant_table["nspname"],
-                    dialect=Dialect.POSTGRES
+                    database=multi_tenant_table["database"],
+                    database_schema=multi_tenant_table["nspname"],
+                    table=target_table,
+                )
+                source_table_entities = search_table_entities(
+                    metadata=self.metadata,
+                    service_name=self.config.serviceName,
+                    database=multi_tenant_table["database"],
+                    database_schema=multi_tenant_table["nspname"],
+                    table=source_table,
                 )
 
-                for lineage_request in lineages or []:
-                    yield lineage_request
+                for source in source_table_entities or []:
+                    for target in target_table_entities or []:
+                        """
+                        Loop through all columns of source and target,
+                        get the matching pair to create column lineage
+                        """
+                        column_lineages = []
+                        for source_column in source.columns:
+                            for target_column in target.columns:
+                                if source_column.name == target_column.name:
+                                    logger.info(source_column.fullyQualifiedName)
+                                    logger.info(target_column.fullyQualifiedName)
+                                    column_lineage = ColumnLineage(
+                                        fromColumns=[source_column.fullyQualifiedName.__root__],
+                                        toColumn=target_column.fullyQualifiedName.__root__
+                                    )
+                                    column_lineages.append(column_lineage)
+
+                        lineage_details = LineageDetails(
+                            columnsLineage=column_lineages,
+                        )
+                        yield AddLineageRequest(
+                            description="Lineage Request: source = " + source_table + ", target = " + target_table,
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(id=source.id, type="table"),
+                                toEntity=EntityReference(id=target.id, type="table"),
+                                lineageDetails=lineage_details
+                            ),
+                        )
