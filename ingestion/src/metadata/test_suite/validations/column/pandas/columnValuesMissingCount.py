@@ -15,7 +15,7 @@ Validator for column value missing count to be equal test case
 
 from typing import Optional
 
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,
 )
