@@ -3,6 +3,8 @@ title: How to change the Login Page and Nav Bar Logo
 slug: /how-to-guides/custom-logo/how-to-add-custom-logo
 ---
 
+# How to add a custom logo for the application
+
 To change the Logo for the application, we need to update logo at two locations.
 
 1. Login Page
@@ -13,36 +15,24 @@ To change the Logo for the application, we need to update logo at two locations.
 
 <Image src="/images/how-to-guides/custom-logo/nav-Bar-Logo.png" alt="navBar-image"/>
 
-# How to add a custom logo for the application
-
 ### Step 1: Get the image size as per the following formats.
 
-- Login Page (1 px x 2px)
-- Navigation Bar (1 px x 2px)
+- Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
+- Logo aspect ratio should be 5:2 and Recommended size should be 150 x 60 px
 
 ### Step 2: Configure 'openmetadata.yaml' or the corresponding environment variables
 
 ```yaml
 applicationConfig:
   logoConfig:
-    logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , based on this specify either '*AbsoluteFilePath' or '*LogoUrlPath' }
-    loginPageLogoAbsoluteFilePath: ${OM_LOGO_LOGIN_LOCATION_FILE_PATH:-""} #login page logo , work in "filePath" mode
-    loginPageLogoUrlPath: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""} #login page logo , work in "url" mode
-    navBarLogoAbsoluteFilePath: ${OM_LOGO_NAVBAR_LOCATION_FILE_PATH:-""} #nav bar logo , work in "filePath" mode
-    navBarLogoUrlPath: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""} #nav bar logo , work in "url" mode
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
 ```
-1. `logoLocationType` set to 'openmetadata'
 
-   - In this case it will take the default OM logo, we don't need to configure anything else.
+1. `customLogoUrlPath`
 
-2. `logoLocationType` set to 'filePath'
+   - URL path for the login page logo.
 
-   - In this case it will take the custom logo from the specified absolute paths, need to configure following as well.
-     - `loginPageLogoAbsoluteFilePath` -> This is the path for Login Page Logo Image.
-     - `navBarLogoAbsoluteFilePath` -> This is the path for Navigation Bar Logo Image.
+2. `customMonogramUrlPath`
 
-3. `logoLocationType` set to 'url'
-
-   - In this case it will take the custom logo from the specified url, need to configure following as well.
-     - `loginPageLogoUrlPath` -> This is the url for Login Page Logo Image.
-     - `navBarLogoUrlPath` -> This is the url for Navigation Bar Logo Image.
+   - URL path for the navbar logo.

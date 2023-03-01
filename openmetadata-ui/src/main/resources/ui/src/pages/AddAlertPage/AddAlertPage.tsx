@@ -640,7 +640,20 @@ const AddAlertPage = () => {
                                 )}
                                 <div className="d-flex gap-1">
                                   <div className="flex-1">
-                                    <Form.Item key={key} name={[name, 'name']}>
+                                    <Form.Item
+                                      key={key}
+                                      name={[name, 'name']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'label.please-select-entity',
+                                            {
+                                              entity: t('label.condition'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
                                       <Select
                                         options={functions}
                                         placeholder={t('label.select-field', {
@@ -734,9 +747,19 @@ const AddAlertPage = () => {
                                 <div className="d-flex" style={{ gap: '10px' }}>
                                   <div className="flex-1">
                                     <Form.Item
-                                      required
                                       key={key}
-                                      name={[name, 'alertActionType']}>
+                                      name={[name, 'alertActionType']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'label.please-select-entity',
+                                            {
+                                              entity: t('label.source'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
                                       <Select
                                         data-testid="alert-action-type"
                                         disabled={

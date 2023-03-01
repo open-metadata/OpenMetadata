@@ -51,7 +51,8 @@ global:
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"
-    publicKeys: 
+    publicKeys:
+    - "http://openmetadata:8585/api/v1/config/jwks"
     - "{IssuerUrl}/certs"
     authority: "{IssuerUrl}"
     clientId: "{client id}"

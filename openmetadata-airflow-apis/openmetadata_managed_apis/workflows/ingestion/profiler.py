@@ -28,7 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 
 def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
