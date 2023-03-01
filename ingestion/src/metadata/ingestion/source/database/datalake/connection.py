@@ -15,17 +15,17 @@ Source connection handler
 from dataclasses import dataclass
 from functools import singledispatch
 
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection.azureConfig import (
+from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection.gcsConfig import (
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
     GCSConfig,
 )
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection.s3Config import (
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.utils.credentials import set_google_credentials
