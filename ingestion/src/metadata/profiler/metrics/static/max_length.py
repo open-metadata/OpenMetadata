@@ -58,7 +58,6 @@ class MaxLength(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    @_label
     def df_fn(self, df=None):
         """dataframe function"""
         import pandas as pd

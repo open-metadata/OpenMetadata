@@ -74,7 +74,6 @@ class Mean(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    @_label
     def df_fn(self, df=None):
         """dataframe function"""
         from numpy import vectorize
