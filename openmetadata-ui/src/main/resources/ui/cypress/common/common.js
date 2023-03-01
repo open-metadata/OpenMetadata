@@ -124,7 +124,7 @@ export const scheduleIngestion = () => {
   // Schedule & Deploy
   cy.contains('Schedule for Ingestion').should('be.visible');
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
-  cy.get('.ant-select-item-option-content').contains('hour').click();
+  cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success

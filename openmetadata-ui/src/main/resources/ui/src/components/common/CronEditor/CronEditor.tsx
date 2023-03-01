@@ -226,7 +226,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   };
 
   const getTextComp = (str: string) => {
-    return <div>{str}</div>;
+    return <div data-testid="schedule-description">{str}</div>;
   };
 
   const findHourOption = (hour: number) => {
@@ -252,6 +252,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         className="w-full"
         data-testid="hour-options"
         disabled={disabled}
+        id="hour-select"
         options={hourOptions.map(getOptionComponent())}
         value={selectedOption.hour}
         onChange={onChangeCB}
@@ -269,6 +270,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         className="w-full"
         data-testid="minute-options"
         disabled={disabled}
+        id="minute-select"
         options={minuteOptions.map(getOptionComponent())}
         value={selectedOption.min}
         onChange={onChangeCB}
@@ -285,6 +287,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         className="w-full"
         data-testid="minute-segment-options"
         disabled={props.disabled}
+        id="minute-segment-select"
         options={minuteSegmentOptions.map(getOptionComponent())}
         value={selectedOption.min}
         onChange={onChangeCB}
