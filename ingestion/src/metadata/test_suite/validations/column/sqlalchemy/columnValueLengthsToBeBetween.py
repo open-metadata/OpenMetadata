@@ -18,7 +18,7 @@ from typing import Optional
 
 from sqlalchemy import Column, inspect
 
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.column.base.columnValueLengthsToBeBetween import (
     BaseColumnValueLengthsToBeBetweenValidator,
 )

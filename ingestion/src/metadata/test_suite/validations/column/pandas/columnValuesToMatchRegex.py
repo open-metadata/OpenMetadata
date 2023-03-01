@@ -15,7 +15,7 @@ Validator for column values to match regex test case
 
 from typing import Optional
 
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
 )

@@ -27,12 +27,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.metrics.core import add_props
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.orm.functions.sum import SumFn
-from metadata.orm_profiler.profiler.core import Profiler
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.profiler.core import Profiler
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 Base = declarative_base()
 
@@ -84,12 +85,14 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             cls.sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=cls.sqlite_conn,
-                    table_entity=cls.table_entity,
-                    ometa_client=None,
-                    thread_count=1,
-                )
+                cls.sqlite_conn,
+                None,
+                cls.table_entity,
+                None,
+                None,
+                None,
+                None,
+                thread_count=1,
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
 
@@ -704,11 +707,13 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    ometa_client=None,
-                )
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                None,
+                None,
+                None,
+                None,
             )
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
