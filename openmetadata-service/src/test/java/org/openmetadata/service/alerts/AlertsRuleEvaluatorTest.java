@@ -2,6 +2,7 @@ package org.openmetadata.service.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
@@ -29,7 +30,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
+class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
   private static TableResourceTest tableResourceTest;
 
   @BeforeAll
@@ -52,7 +53,7 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
   @Test
   void test_matchAnyOwnerName(TestInfo test) throws IOException {
     // Create Table Entity
-    List<Column> columns = List.of(TableResourceTest.getColumn("c1", ColumnDataType.INT, null));
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
     CreateTable create =
         tableResourceTest.createRequest(test).withColumns(columns).withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -73,7 +74,7 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
   @Test
   void test_matchAnyEntityFqn(TestInfo test) throws IOException {
     // Create Table Entity
-    List<Column> columns = List.of(TableResourceTest.getColumn("c1", ColumnDataType.INT, null));
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
     CreateTable create = tableResourceTest.createRequest(test).withColumns(columns);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -93,7 +94,7 @@ class AlertsRuleEvaluatorTest extends OpenMetadataApplicationTest {
   @Test
   void test_matchAnyEntityId(TestInfo test) throws IOException {
     // Create Table Entity
-    List<Column> columns = List.of(TableResourceTest.getColumn("c1", ColumnDataType.INT, null));
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
     CreateTable create = tableResourceTest.createRequest(test).withColumns(columns);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 

@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalakeConnection/azureConfig.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalake/azureConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AzureConfig",
   "description": "Azure Datalake Storage will ingest files in container",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.database.datalakeConnection.AzureConfig",
+  "javaType": "org.openmetadata.schema.services.connections.database.datalake.AzureConfig",
   "properties": {
     "securityConfig": {
       "title": "Azure Datalake Config Source",

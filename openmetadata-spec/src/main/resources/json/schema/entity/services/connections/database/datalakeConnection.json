@@ -25,15 +25,16 @@
     "configSource": {
       "title": "DataLake Configuration Source",
       "description": "Available sources to fetch files.",
+      "type": "object",
       "oneOf": [
         {
-          "$ref": "./datalake/azureConfig.json"
+          "$ref": "datalake/azureConfig.json"
         },
         {
-          "$ref": "./datalake/gcsConfig.json"
+          "$ref": "datalake/gcsConfig.json"
         },
         {
-          "$ref": "./datalake/s3Config.json"
+          "$ref": "datalake/s3Config.json"
         }
       ]
     },
