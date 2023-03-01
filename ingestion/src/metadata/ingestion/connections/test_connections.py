@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 
-from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
+from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.timeout import timeout
 
 

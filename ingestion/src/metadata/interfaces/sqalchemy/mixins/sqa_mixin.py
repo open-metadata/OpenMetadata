@@ -27,16 +27,11 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
-from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter import ometa_to_sqa_orm
 
 
 class SQAInterfaceMixin:
     """SQLAlchemy inteface mixin grouping shared methods between sequential and threaded executor"""
-
-    @property
-    def table(self):
-        """OM Table entity"""
-        return self._table
 
     def _get_engine(self):
         """Get engine for database
