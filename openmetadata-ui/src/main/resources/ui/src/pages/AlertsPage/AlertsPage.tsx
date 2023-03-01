@@ -15,6 +15,10 @@ import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal'
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
+import {
+  EventSubscription,
+  ProviderType,
+} from 'generated/events/eventSubscription';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,9 +30,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Alerts, ProviderType } from '../../generated/alerts/alerts';
 import { Paging } from '../../generated/type/paging';
-import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -36,12 +38,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AlertsPage = () => {
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
-  const [alerts, setAlerts] = useState<Alerts[]>([]);
+  const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
   } as Paging);
   const [currentPage, setCurrentPage] = useState(0);
-  const [selectedAlert, setSelectedAlert] = useState<Alerts>();
+  const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
 
   const fetchAlerts = useCallback(async (after?: string) => {
     setLoading(true);
@@ -81,16 +83,18 @@ const AlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: Alerts) => {
+        render: (name: string, record: EventSubscription) => {
           return <Link to={`alert/${record.id}`}>{name}</Link>;
         },
       },
       {
         title: t('label.trigger'),
-        dataIndex: ['triggerConfig', 'type'],
+        dataIndex: ['filteringRules', 'resources'],
         width: '200px',
-        key: 'triggerConfig.type',
-        render: getDisplayNameForTriggerType,
+        key: 'FilteringRules.resources',
+        render: (resources: string[]) => {
+          return resources?.join(', ') || '--';
+        },
       },
       {
         title: t('label.description'),
@@ -103,7 +107,7 @@ const AlertsPage = () => {
         dataIndex: 'id',
         width: 120,
         key: 'id',
-        render: (id: string, record: Alerts) => {
+        render: (id: string, record: EventSubscription) => {
           return (
             <>
               <Tooltip placement="bottom" title={t('label.edit')}>
