@@ -554,6 +554,13 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
+      case ServiceCategory.OBJECT_STORE_SERVICES:
+        /**
+         * Update this when containers details page is ready
+         */
+
+        return '';
+
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return `/database/${fqn}`;
