@@ -15,7 +15,7 @@ package org.openmetadata.service.secrets.converter.service;
 
 import java.util.List;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
-import org.openmetadata.schema.services.connections.database.datalakeConnection.GCSConfig;
+import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.service.util.JsonUtils;
 
 /** Converter class to get an `DatalakeConnection` object. */

@@ -15,9 +15,9 @@ package org.openmetadata.service.secrets.converter.service;
 
 import java.util.List;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.datalakeConnection.AzureConfig;
-import org.openmetadata.schema.services.connections.database.datalakeConnection.GCSConfig;
-import org.openmetadata.schema.services.connections.database.datalakeConnection.S3Config;
+import org.openmetadata.schema.services.connections.database.datalake.AzureConfig;
+import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.datalake.S3Config;
 import org.openmetadata.service.util.JsonUtils;
 
 /** Converter class to get an `DatalakeConnection` object. */

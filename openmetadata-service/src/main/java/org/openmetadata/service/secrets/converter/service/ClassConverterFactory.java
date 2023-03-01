@@ -21,7 +21,7 @@ import org.openmetadata.schema.security.credentials.GCSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.datalakeConnection.GCSConfig;
+import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.objectstore.GcsConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
