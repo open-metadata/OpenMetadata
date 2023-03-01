@@ -25,14 +25,14 @@ const teamSearchTerm = 'Applications';
 
 describe('Alerts page should work properly', () => {
   beforeEach(() => {
-    interceptURL('POST', '/api/v1/alerts', 'createAlert');
+    interceptURL('POST', '/api/v1/events/subscription', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .and('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/alerts', 'alertsPage');
+    interceptURL('GET', '/api/v1/events/subscription', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()
@@ -50,13 +50,13 @@ describe('Alerts page should work properly', () => {
     // Enter description
     cy.get('#description').should('be.visible').type(description);
     // Click on all data assets
-    cy.get('[data-testid="triggerConfig-type"]').should('be.visible').click();
-    cy.get('.ant-select-item-option-content')
-      .contains('All Data Assets')
-      .click();
+    cy.get('[data-testid="triggerConfig-type"]')
+      .contains('All')
+      .should('be.visible');
+
     // Select filters
     cy.get('[data-testid="add-filters"]').should('exist').click();
-    cy.get('#filteringRules_0_name').invoke('show').click();
+    cy.get('#filteringRules_rules_0_name').invoke('show').click();
     // Select owner
     cy.get('[title="Owner"]').should('be.visible').click();
     cy.get('[data-testid="matchAnyOwnerName-select"]')
@@ -71,12 +71,11 @@ describe('Alerts page should work properly', () => {
     cy.get('[title="Include"]').eq(1).click();
 
     // Select Destination
-    cy.get('[data-testid="add=destination"]').should('exist').click();
-    cy.get('#alertActions_0_alertActionType').click();
+    cy.get('[data-testid="alert-action-type"]').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
     // Enter email
-    cy.get('#alertActions_0_alertActionConfig_receivers')
+    cy.get('#subscriptionConfig_receivers')
       .click()
       .type('testuser@openmetadata.org');
     // Click save
@@ -110,11 +109,8 @@ describe('Alerts page should work properly', () => {
     cy.get('.ant-modal-header')
       .should('be.visible')
       .should('contain', `Delete ${alertForAllAssets}`);
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-    interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
-    cy.get('[data-testid="confirm-button"]')
+    interceptURL('DELETE', 'api/v1/events/subscription/*', 'deleteAlert');
+    cy.get('[data-testid="save-button"]')
       .should('be.visible')
       .should('not.disabled')
       .click();

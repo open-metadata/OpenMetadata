@@ -110,11 +110,3 @@ export const getResourceFunctions = async () => {
 
   return response.data;
 };
-
-export const getAlertActionForAlerts = async (id: string) => {
-  const response = await axiosClient.get<EventSubscription[]>(
-    `${BASE_URL}/allAlertAction/${id}`
-  );
-
-  return response.data;
-};

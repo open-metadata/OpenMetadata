@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Table, Tooltip } from 'antd';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   EventSubscription,
   ProviderType,
@@ -23,17 +24,16 @@ import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAllAlerts } from 'rest/alertsAPI';
+import { deleteAlert, getAllAlerts } from 'rest/alertsAPI';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { Paging } from '../../generated/type/paging';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AlertsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -66,8 +66,17 @@ const AlertsPage = () => {
   }, []);
 
   const handleAlertDelete = useCallback(async () => {
-    fetchAlerts();
-  }, []);
+    try {
+      await deleteAlert(selectedAlert?.id || '');
+      setSelectedAlert(undefined);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: t('label.alert') })
+      );
+      fetchAlerts();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [selectedAlert]);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
     if (after) {
@@ -185,16 +194,20 @@ const AlertsPage = () => {
             />
           )}
 
-          <DeleteWidgetModal
-            afterDeleteAction={handleAlertDelete}
-            allowSoftDelete={false}
-            entityId={selectedAlert?.id || ''}
-            entityName={selectedAlert?.name || ''}
-            entityType={EntityType.ALERT}
+          <ConfirmationModal
+            bodyText={t('message.delete-entity-permanently', {
+              entityType: selectedAlert?.name || '',
+            })}
+            cancelText={t('label.cancel')}
+            confirmText={t('label.delete')}
+            header={t('label.delete-entity', {
+              entity: selectedAlert?.name || '',
+            })}
             visible={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);
             }}
+            onConfirm={handleAlertDelete}
           />
         </Col>
       </Row>

@@ -317,7 +317,7 @@ const AddAlertPage = () => {
   const functions = useMemo(() => {
     if (entityFunctions) {
       const exitingFunctions = filters?.map((f) => f.name) ?? [];
-      console.log({ exitingFunctions, filters });
+
       const supportedFunctions: string[][] =
         entitySelected?.map((entity: string) => {
           const resource = entityFunctions.find((data) => data.name === entity);
