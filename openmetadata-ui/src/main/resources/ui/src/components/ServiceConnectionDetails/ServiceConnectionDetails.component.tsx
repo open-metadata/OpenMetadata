@@ -17,8 +17,10 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
+import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
+import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
@@ -218,6 +220,10 @@ const ServiceConnectionDetails = ({
         setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
 
         break;
+      case EntityType.OBJECT_STORE_SERVICES:
+        setSchema(
+          getObjectStoreConfig(serviceFQN as ObjectStoreServiceType).schema
+        );
     }
   }, [serviceCategory, serviceFQN]);
 
