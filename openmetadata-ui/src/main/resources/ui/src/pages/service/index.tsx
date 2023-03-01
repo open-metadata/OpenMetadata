@@ -32,6 +32,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -48,6 +49,7 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlmodels } from 'rest/mlModelAPI';
+import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
@@ -106,7 +108,13 @@ import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
-export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
+export type ServicePageData =
+  | Database
+  | Topic
+  | Dashboard
+  | Mlmodel
+  | Pipeline
+  | Container;
 
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -475,6 +483,26 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchContainers = async (paging?: string) => {
+    setIsLoading(true);
+    try {
+      const response = await getContainers(
+        serviceFQN,
+        ['owner', 'tags'],
+        paging
+      );
+
+      setData(response.data);
+      setPaging(response.paging);
+      setInstanceCount(response.paging.total);
+      setIsLoading(false);
+    } catch (error) {
+      setData([]);
+      setPaging(pagingObject);
+      setIsLoading(false);
+    }
+  };
+
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -499,6 +527,11 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
         fetchMlModal(paging);
+
+        break;
+      }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        fetchContainers(paging);
 
         break;
       }
