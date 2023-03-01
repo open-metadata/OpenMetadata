@@ -45,6 +45,16 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test Add Role Page', () => {
   it('Should Render the Add Role page component', async () => {
     render(<AddRolePage />, { wrapper: MemoryRouter });

@@ -773,7 +773,9 @@ const TagsPage = () => {
 
   return (
     <PageContainerV1>
-      <PageLayoutV1 leftPanel={fetchLeftPanel()}>
+      <PageLayoutV1
+        leftPanel={fetchLeftPanel()}
+        pageTitle={t('label.tag-plural')}>
         {isLoading ? (
           <Loader />
         ) : error ? (

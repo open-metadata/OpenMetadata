@@ -155,6 +155,7 @@ const AddGlossary = ({
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', { entity: t('label.glossary') })}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
         <Typography.Title data-testid="form-heading" level={5}>

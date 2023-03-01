@@ -276,6 +276,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         />
       }
       leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.bot-detail')}
       rightPanel={
         <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="right-panel">

@@ -26,14 +26,24 @@
   border: none;
   background-color: @manage-dropdown-bg-primary;
   padding: 0;
+  border-radius: 4px;
+  width: 24px;
+  display: flex;
+  justify-content: center;
 
   .ant-btn {
-    padding: 0 8px 0 8px;
+    padding: 0 4px;
   }
 }
 
 .manage-dropdown-button:hover,
 .manage-dropdown-button:focus {
+  .ant-btn {
+    .manage-dropdown-icon {
+      color: @manage-button-bg-primary;
+      opacity: 0.5;
+    }
+  }
   .manage-dropdown-icon {
     color: @white;
     font-weight: 600;
