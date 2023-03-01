@@ -71,7 +71,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", evaluationContext));
   }
 
-  @Test
+  // issue: https://github.com/open-metadata/OpenMetadata/issues/10376
   void test_matchAnyEntityFqn(TestInfo test) throws IOException {
     // Create Table Entity
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
