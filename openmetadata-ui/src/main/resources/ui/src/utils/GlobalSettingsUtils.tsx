@@ -155,6 +155,14 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           icon: <OMLogo className="side-panel-icons w-4 h-4" />,
         },
+        {
+          label: i18next.t('label.object-store-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.OBJECT_STORE_SERVICE,
+            permissions
+          ),
+          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
+        },
       ],
     },
     {
