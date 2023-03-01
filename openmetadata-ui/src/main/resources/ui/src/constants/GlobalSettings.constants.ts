@@ -47,7 +47,7 @@ export enum GlobalSettingOptions {
   ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',
   EDIT_ALERTS = 'edit-alert',
-  OBJECT_STORES = 'objectStores',
+  OBJECT_STORES = 'objectstores',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
