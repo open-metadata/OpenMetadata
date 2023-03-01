@@ -68,7 +68,7 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -282,6 +282,9 @@ class OpenMetadata(
 
         if issubclass(entity, Report):
             return "/reports"
+
+        if issubclass(entity, AuthenticationMechanism):
+            return "/users/auth-mechanism"
 
         if issubclass(
             entity,
