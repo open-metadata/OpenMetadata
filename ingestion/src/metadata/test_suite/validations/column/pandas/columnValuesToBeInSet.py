@@ -15,7 +15,7 @@ Validator for column value to be in set test case
 
 from typing import Optional
 
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.column.base.columnValuesToBeInSet import (
     BaseColumnValuesToBeInSetValidator,
 )

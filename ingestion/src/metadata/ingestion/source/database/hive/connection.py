@@ -25,6 +25,7 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_options_dict,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
     TestConnectionStep,
@@ -37,11 +38,10 @@ def get_connection_url(connection: HiveConnection) -> str:
     Build the URL handling auth requirements
     """
     url = f"{connection.scheme.value}://"
-    connection_arguments = get_connection_args_common(connection)
     if (
         connection.username
-        and connection_arguments.get("auth")
-        and connection_arguments["auth"] in ("LDAP", "CUSTOM")
+        and connection.auth
+        and connection.auth in ("LDAP", "CUSTOM")
     ):
         url += quote_plus(connection.username)
         if not connection.password:
@@ -73,6 +73,19 @@ def get_connection(connection: HiveConnection) -> Engine:
     """
     Create connection
     """
+
+    if connection.auth:
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.__root__["auth"] = connection.auth
+
+    if connection.kerberosServiceName:
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.__root__[
+            "kerberos_service_name"
+        ] = connection.kerberosServiceName
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

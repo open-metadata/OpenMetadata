@@ -21,7 +21,7 @@ from sqlalchemy import Column, and_, or_
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import TextClause
 
-from metadata.orm_profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from metadata.profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
 from metadata.utils.logger import query_runner_logger
 
 logger = query_runner_logger()
@@ -67,6 +67,58 @@ def build_query_filter(
     if or_filter:
         return or_(*list_of_filters)
     return and_(*list_of_filters)
+
+
+def get_integer_range_filter(
+    partition_field, integer_range_start, integer_range_end
+) -> Optional[BinaryExpression]:
+    """Get the query filter for integer range
+
+    Args:
+        partition_field (str): partition field
+        integer_range_start (int): integer range start
+        integer_range_end (int): integer range end
+
+    Returns:
+        Optional[BinaryExpression]
+    """
+    return build_query_filter(
+        [
+            (
+                partition_field,
+                "ge",
+                integer_range_start,
+            ),
+            (
+                partition_field,
+                "le",
+                integer_range_end,
+            ),
+        ],
+        False,
+    )
+
+
+def get_value_filter(partition_field, values) -> Optional[BinaryExpression]:
+    """Get the query filter for values
+
+    Args:
+        partition_field (str): partition field
+        values (list): list of values to partition by
+
+    Returns:
+        Optional[BinaryExpression]
+    """
+    return build_query_filter(
+        [
+            (
+                partition_field,
+                "in",
+                values,
+            )
+        ],
+        False,
+    )
 
 
 def dispatch_to_date_or_datetime(
