@@ -18,7 +18,7 @@ from typing import Optional
 from sqlalchemy import Column, inspect
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )

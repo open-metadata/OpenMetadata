@@ -122,6 +122,19 @@ jest.mock('./AuthMechanismForm', () =>
     )
 );
 
+jest.mock('../containers/PageLayout', () =>
+  jest
+    .fn()
+    .mockImplementation(({ children, leftPanel, rightPanel, header }) => (
+      <div>
+        {header}
+        <div>{leftPanel}</div>
+        {children}
+        <div>{rightPanel}</div>
+      </div>
+    ))
+);
+
 describe('Test BotsDetail Component', () => {
   it('Should render all child elements', async () => {
     const { container } = render(<BotDetails {...mockProp} />, {

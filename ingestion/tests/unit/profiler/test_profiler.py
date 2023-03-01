@@ -40,12 +40,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.metrics.core import add_props
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
-from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.profiler.core import MissingMetricException, Profiler
+from metadata.profiler.profiler.default import DefaultProfiler
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 Base = declarative_base()
 
@@ -86,11 +87,13 @@ class ProfilerTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            profiler_interface_args=ProfilerInterfaceArgs(
-                service_connection_config=sqlite_conn,
-                table_entity=table_entity,
-                ometa_client=None,
-            )
+            sqlite_conn,
+            None,
+            table_entity,
+            None,
+            None,
+            None,
+            None,
         )
 
     @classmethod
@@ -238,12 +241,14 @@ class ProfilerTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    ometa_client=None,
-                    timeout_seconds=0,
-                )
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                None,
+                None,
+                None,
+                None,
+                timeout_seconds=0,
             )
 
         simple = DefaultProfiler(
