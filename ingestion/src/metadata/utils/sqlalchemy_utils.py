@@ -15,7 +15,7 @@ Module for sqlalchmey dialect utils
 
 from typing import Dict, Tuple
 
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Engine, reflection
 
 
 @reflection.cache
@@ -58,3 +58,11 @@ def get_view_definition_wrapper(self, connection, query, table_name, schema=None
     ):
         self.get_all_view_definitions(connection, query)
     return self.all_view_definitions.get((table_name, schema), "")
+
+
+def get_schema_descriptions(engine: Engine, query: str):
+    results = engine.execute(query).all()
+    schema_desc_map = {}
+    for row in results:
+        schema_desc_map[row.schema_name] = row.comment
+    return schema_desc_map
