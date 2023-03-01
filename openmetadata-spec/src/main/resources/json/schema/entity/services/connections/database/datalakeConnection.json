@@ -25,7 +25,6 @@
     "configSource": {
       "title": "DataLake Configuration Source",
       "description": "Available sources to fetch files.",
-      "type": "object",
       "oneOf": [
         {
           "$ref": "datalake/azureConfig.json"

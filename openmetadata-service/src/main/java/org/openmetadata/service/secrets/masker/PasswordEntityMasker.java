@@ -23,7 +23,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.converter.service.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;

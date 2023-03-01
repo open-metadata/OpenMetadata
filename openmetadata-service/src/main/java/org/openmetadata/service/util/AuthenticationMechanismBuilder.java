@@ -19,7 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.service.secrets.converter.service.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
 public class AuthenticationMechanismBuilder {
 

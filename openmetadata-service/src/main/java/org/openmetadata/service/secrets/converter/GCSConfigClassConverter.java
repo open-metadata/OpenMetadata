@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.secrets.converter.service;
+package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
-import org.openmetadata.schema.services.connections.objectstore.GcsConnection;
+import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `SupersetConnection` object. */
-public class GcsConnectionClassConverter extends ClassConverter {
+/** Converter class to get an `DatalakeConnection` object. */
+public class GCSConfigClassConverter extends ClassConverter {
 
-  public GcsConnectionClassConverter() {
-    super(GcsConnection.class);
+  public GCSConfigClassConverter() {
+    super(GCSConfig.class);
   }
 
   @Override
   public Object convert(Object object) {
-    GcsConnection gcsConnection = (GcsConnection) JsonUtils.convertValue(object, this.clazz);
+    GCSConfig gcsConfig = (GCSConfig) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(gcsConnection.getCredentials(), List.of(GCSCredentials.class))
-        .ifPresent(obj -> gcsConnection.setCredentials((GCSCredentials) obj));
+    tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCSCredentials.class))
+        .ifPresent(obj -> gcsConfig.setSecurityConfig((GCSCredentials) obj));
 
-    return gcsConnection;
+    return gcsConfig;
   }
 }

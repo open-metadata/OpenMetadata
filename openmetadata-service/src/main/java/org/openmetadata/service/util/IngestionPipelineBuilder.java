@@ -18,7 +18,7 @@ import static org.openmetadata.schema.entity.services.ingestionPipelines.Pipelin
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import org.openmetadata.service.secrets.converter.service.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
 public class IngestionPipelineBuilder {
 

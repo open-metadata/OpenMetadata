@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.secrets.converter.service;
+package org.openmetadata.service.secrets.converter;
 
 public class DefaultConnectionClassConverter extends ClassConverter {
 

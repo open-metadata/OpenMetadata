@@ -11,27 +11,32 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.secrets.converter.service;
+package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.datalake.AzureConfig;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.datalake.S3Config;
 import org.openmetadata.service.util.JsonUtils;
 
 /** Converter class to get an `DatalakeConnection` object. */
-public class GCSConfigClassConverter extends ClassConverter {
+public class DatalakeConnectionClassConverter extends ClassConverter {
 
-  public GCSConfigClassConverter() {
-    super(GCSConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(GCSConfig.class, S3Config.class, AzureConfig.class);
+
+  public DatalakeConnectionClassConverter() {
+    super(DatalakeConnection.class);
   }
 
   @Override
   public Object convert(Object object) {
-    GCSConfig gcsConfig = (GCSConfig) JsonUtils.convertValue(object, this.clazz);
+    DatalakeConnection datalakeConnection = (DatalakeConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCSCredentials.class))
-        .ifPresent(obj -> gcsConfig.setSecurityConfig((GCSCredentials) obj));
+    tryToConvertOrFail(datalakeConnection.getConfigSource(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(datalakeConnection::setConfigSource);
 
-    return gcsConfig;
+    return datalakeConnection;
   }
 }
