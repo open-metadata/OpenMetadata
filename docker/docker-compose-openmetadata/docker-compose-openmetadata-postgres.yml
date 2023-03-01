@@ -10,46 +10,7 @@
 #  limitations under the License.
 
 version: "3.9"
-volumes:
-  ingestion-volume-dag-airflow:
-  ingestion-volume-dags:
-  ingestion-volume-tmp:
-  es-data:
-services:
-  mysql:
-    container_name: openmetadata_mysql
-    image: docker.getcollate.io/openmetadata/db:0.13.2
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-    expose:
-      - 3306
-    ports:
-      - "3306:3306"
-    volumes:
-     - ./docker-volume/db-data:/var/lib/mysql
-    networks:
-      - app_net
-    healthcheck:
-      test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
-      interval: 15s
-      timeout: 10s
-      retries: 10
-
-  elasticsearch:
-    container_name: openmetadata_elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
-    networks:
-      - app_net
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-    volumes:
-      - es-data:/usr/share/elasticsearch/data
-
+services:  
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
@@ -82,14 +43,14 @@ services:
       SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://openmetadata-server:8585/api}
       PIPELINE_SERVICE_CLIENT_VERIFY_SSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"}
       PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""}
-      # Database configuration for MySQL
-      DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
-      DB_SCHEME: ${DB_SCHEME:-mysql}
+      #Database configuration for postgresql
+      DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
+      DB_SCHEME: ${DB_SCHEME:-postgresql}
       DB_USE_SSL: ${DB_USE_SSL:-false}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
-      DB_HOST: ${DB_HOST:-mysql}
-      DB_PORT: ${DB_PORT:-3306}
+      DB_HOST: ${DB_HOST:-postgresql}
+      DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # ElasticSearch Configurations
       ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
@@ -99,57 +60,16 @@ services:
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
-
     expose:
       - 8585
       - 8586
     ports:
       - "8585:8585"
       - "8586:8586"
-    depends_on:
-      elasticsearch:
-        condition: service_started
-      mysql:
-        condition: service_healthy
     networks:
       - app_net
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
-
-  ingestion:
-    container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:0.13.2
-    depends_on:
-      elasticsearch:
-        condition: service_started
-      mysql:
-        condition: service_healthy
-      openmetadata-server:
-        condition: service_started
-    environment:
-      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
-      DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
-      DB_PORT: ${AIRFLOW_DB_PORT:-3306}
-      AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
-      AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
-      DB_USER: ${AIRFLOW_DB_USER:-airflow_user}
-      DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
-    entrypoint: /bin/bash
-    command:
-      - "/opt/airflow/ingestion_dependency.sh"
-    expose:
-      - 8080
-    ports:
-      - "8080:8080"
-    networks:
-      - app_net
-    volumes:
-      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
-      - ingestion-volume-dags:/opt/airflow/dags
-      - ingestion-volume-tmp:/tmp
-
 
 networks:
   app_net:
