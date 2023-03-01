@@ -13,12 +13,13 @@
 
 import { Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
-import { map, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   excludedService,
   serviceTypes,
+  SERVICE_CATEGORY_OPTIONS,
 } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
@@ -83,10 +84,7 @@ const SelectServiceType = ({
             className="w-full"
             data-testid="service-category"
             id="serviceCategory"
-            options={map(ServiceCategory, (value) => ({
-              label: startCase(value),
-              value,
-            }))}
+            options={SERVICE_CATEGORY_OPTIONS}
             value={category}
             onChange={(value) => {
               setConnectorSearchTerm('');

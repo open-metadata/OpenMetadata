@@ -94,7 +94,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
 
     stateVal.selectedPeriod = cronType || stateVal.selectedPeriod;
 
-    if (!isEmpty(t)) {
+    if (!isEmpty(cronType)) {
       const stateIndex = `${t('label.selected-lowercase')}${cronType
         ?.charAt(0)
         .toUpperCase()}${cronType?.substring(1)}${t('label.option')}`;
@@ -300,34 +300,28 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     value: number,
     substrVal: number,
     onClick: (value: number) => void
-  ) => {
-    const { disabled } = props;
-    const optionComps: JSX.Element[] = [];
-
-    options.forEach((o, i) => {
-      let strVal = o.label;
+  ) =>
+    options.map(({ label, value: optionValue }, index) => {
+      let strVal = label;
 
       if (substrVal) {
         strVal = strVal.substr(0, substrVal);
       }
-      const comp = (
+
+      return (
         <span
-          className={`cron-badge-option ${o.value === value ? 'active' : ''} ${
-            disabled || !onClick ? 'disabled' : ''
-          }`}
-          data-value={o.value}
-          key={i}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onClick={(e: any) => onClick?.(Number(e.target.dataset.value) ?? '')}>
+          className={`cron-badge-option ${
+            optionValue === value ? 'active' : ''
+          } ${props.disabled || !onClick ? 'disabled' : ''}`}
+          data-value={optionValue}
+          key={index}
+          onClick={() => {
+            onClick?.(Number(optionValue));
+          }}>
           {strVal}
         </span>
       );
-
-      optionComps.push(comp);
     });
-
-    return optionComps;
-  };
 
   const getMinuteComponent = (cronPeriodString: string) => {
     const { selectedMinOption } = state;
