@@ -11,29 +11,15 @@
       "type": "object",
       "javaType": "org.openmetadata.api.configuration.LogoConfiguration",
       "properties": {
-        "logoLocationType": {
-          "description": "Type of Logo Location",
-          "type": "string",
-          "enum": ["openmetadata","filePath","url"]
-        },
-        "loginPageLogoAbsoluteFilePath": {
-          "description": "Login Page Absolute File Path For Logo Image",
-          "type": "string"
-        },
-        "loginPageLogoUrlPath": {
+        "customLogoUrlPath": {
           "description": "Login Page Logo Image Url",
           "type": "string"
         },
-        "navBarLogoAbsoluteFilePath": {
-          "description": "Navigation Bar Absolute File Path For Logo Image",
-          "type": "string"
-        },
-        "navBarLogoUrlPath": {
+        "customMonogramUrlPath": {
           "description": "Navigation Bar Logo Image Url",
           "type": "string"
         }
       },
-      "required": ["logoLocationType"],
       "additionalProperties": false
     },
     "loginConfiguration": {
