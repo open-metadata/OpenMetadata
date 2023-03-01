@@ -80,7 +80,7 @@ class DataModelLink(BaseModel):
     Tmp model to handle data model ingestion
     """
 
-    fqn: FullyQualifiedEntityName
+    table_entity: Table
     datamodel: DataModel
 
 

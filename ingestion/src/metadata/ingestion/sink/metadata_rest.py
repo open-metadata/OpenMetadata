@@ -159,7 +159,7 @@ class MetadataRestSink(Sink[Entity]):
         :param datamodel_link: Table ID + Data Model
         """
 
-        table: Table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
+        table: Table = datamodel_link.table_entity
 
         if table:
             self.metadata.ingest_table_data_model(
@@ -169,10 +169,7 @@ class MetadataRestSink(Sink[Entity]):
                 f"Successfully ingested DataModel for {table.fullyQualifiedName.__root__}"
             )
         else:
-            logger.warning(
-                f"The table [{datamodel_link.fqn.__root__}] from the manifest file is not found in OM. "
-                f"Please, check if the table has been ingested previously."
-            )
+            logger.warning("Unable to ingest datamodel")
 
     def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
         """
