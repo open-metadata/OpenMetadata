@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-version: "3.9"
+version: '3.9'
 volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
@@ -25,9 +25,9 @@ services:
     expose:
       - 3306
     ports:
-      - "3306:3306"
+      - '3306:3306'
     volumes:
-     - ./docker-volume/db-data:/var/lib/mysql
+      - ./docker-volume/db-data:/var/lib/mysql
     networks:
       - app_net
     healthcheck:
@@ -45,8 +45,8 @@ services:
     networks:
       - app_net
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - '9200:9200'
+      - '9300:9300'
     volumes:
       - es-data:/usr/share/elasticsearch/data
 
@@ -100,9 +100,8 @@ services:
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
       # Application Config
-      OM_LOGO_LOCATION_TYPE: ${OM_LOGO_LOCATION_TYPE:-openmetadata}
-      OM_LOGO_LOGIN_LOCATION_URL_PATH: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""}
-      OM_LOGO_NAVBAR_LOCATION_URL_PATH: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""}
+      CUSTOM_LOGO_URL_PATH: ${CUSTOM_LOGO_URL_PATH:-""}
+      CUSTOM_MONOGRAM_URL_PATH: ${CUSTOM_MONOGRAM_URL_PATH:-""}
       OM_MAX_FAILED_LOGIN_ATTEMPTS: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
       OM_LOGIN_ACCESS_BLOCK_TIME: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
       OM_JWT_EXPIRY_TIME: ${OM_JWT_EXPIRY_TIME:-3600}
@@ -111,8 +110,8 @@ services:
       - 8585
       - 8586
     ports:
-      - "8585:8585"
-      - "8586:8586"
+      - '8585:8585'
+      - '8586:8586'
     depends_on:
       elasticsearch:
         condition: service_started
@@ -121,7 +120,7 @@ services:
     networks:
       - app_net
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8586/healthcheck']
 
   ingestion:
     container_name: openmetadata_ingestion
@@ -134,9 +133,9 @@ services:
       openmetadata-server:
         condition: service_started
     environment:
-      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: '/opt/airflow/dag_generated_configs'
       DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
       DB_PORT: ${AIRFLOW_DB_PORT:-3306}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
@@ -145,11 +144,11 @@ services:
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
     entrypoint: /bin/bash
     command:
-      - "/opt/airflow/ingestion_dependency.sh"
+      - '/opt/airflow/ingestion_dependency.sh'
     expose:
       - 8080
     ports:
-      - "8080:8080"
+      - '8080:8080'
     networks:
       - app_net
     volumes:
@@ -157,10 +156,9 @@ services:
       - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
 
-
 networks:
   app_net:
     ipam:
       driver: default
       config:
-        - subnet: "172.16.240.0/24"
+        - subnet: '172.16.240.0/24'
