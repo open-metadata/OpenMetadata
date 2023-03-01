@@ -131,6 +131,7 @@ const TestSuiteIngestionPage = () => {
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           header={<TitleBreadcrumb titleLinks={slashedBreadCrumb} />}
           layout={PageLayoutType['2ColRTL']}
+          pageTitle={t('label.test-suite-ingestion')}
           rightPanel={<RightPanel data={INGESTION_DATA} />}>
           <TestSuiteIngestion
             ingestionPipeline={ingestionPipeline}

@@ -991,6 +991,7 @@ describe('Glossary page should work properly', () => {
   it('Delete glossary should work properly', () => {
     [NEW_GLOSSARY.name, NEW_GLOSSARY_1.name].forEach((glossary) => {
       verifyResponseStatusCode('@fetchGlossaries', 200);
+      cy.wait(200);
       cy.get('[data-testid="header"]')
         .should('be.visible')
         .contains(glossary)

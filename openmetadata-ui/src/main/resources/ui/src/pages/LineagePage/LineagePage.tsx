@@ -26,6 +26,7 @@ import {
   LoadingNodeState,
 } from 'components/EntityLineage/EntityLineage.interface';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
@@ -65,6 +66,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './lineagePage.style.less';
 
 const LineagePage = () => {
+  const { t } = useTranslation();
   const { entityType, entityFQN } =
     useParams<{ entityType: EntityType; entityFQN: string }>();
   const history = useHistory();
@@ -336,7 +338,7 @@ const LineagePage = () => {
 
   return (
     <PageContainerV1>
-      <PageLayoutV1 className="p-x-lg">
+      <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
         <div className="lineage-page-container">
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
           <Card className="h-full" size="default">

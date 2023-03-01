@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,29 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React, { FC } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 
-export enum PIPELINE_DETAILS_TABS {
-  Tasks = 'tasks',
-  ActivityFeedsAndTasks = 'activity_feed',
-  Executions = 'executions',
-  Lineage = 'lineage',
-  CustomProperties = 'custom-properties',
+interface DocumentTitleProps {
+  title: string;
 }
 
-export enum PIPELINE_TASK_TABS {
-  LIST_VIEW = 'List',
-  DAG_VIEW = 'Dag',
-}
+const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
+  const { t } = useTranslation();
 
-export enum PIPELINE_EXECUTION_TABS {
-  LIST_VIEW = 'List',
-  TREE_VIEW = 'Tree',
-}
-
-export const PIPELINE_INGESTION_RUN_STATUS = {
-  queued: '#777777',
-  success: '#07a35a',
-  failed: '#e54937',
-  running: '#276ef1',
-  partialSuccess: '#439897',
+  return (
+    <Helmet>
+      <title>{`${title} | ${t('label.open-metadata')}`}</title>
+    </Helmet>
+  );
 };
+
+export default DocumentTitle;

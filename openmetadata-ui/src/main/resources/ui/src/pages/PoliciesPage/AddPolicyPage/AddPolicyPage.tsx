@@ -103,7 +103,9 @@ const AddPolicyPage = () => {
 
   return (
     <div data-testid="add-policy-container">
-      <PageLayoutV1 center>
+      <PageLayoutV1
+        center
+        pageTitle={t('label.add-entity', { entity: t('label.policy') })}>
         <Row>
           <Col span={16}>
             <Space className="w-full" direction="vertical" size="middle">

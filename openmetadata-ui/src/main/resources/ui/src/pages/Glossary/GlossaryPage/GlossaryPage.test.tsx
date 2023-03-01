@@ -74,6 +74,16 @@ jest.mock('rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test GlossaryComponent page', () => {
   it('GlossaryComponent Page Should render', async () => {
     render(<GlossaryPage />);
