@@ -45,10 +45,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentialsPath,
-    GCSValues,
     MultipleProjectId,
     SingleProjectId,
 )
+from metadata.generated.schema.security.credentials.gcsValues import GCSValues
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
