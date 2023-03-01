@@ -242,7 +242,7 @@ secretsManagerConfiguration:
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
 security:
-  alwaysMaskPasswords: true
+  alwaysMaskPasswordsUI: ${ENABLE_MASK_PASSWORDS_UI:-false}
 
 health:
   delayedShutdownHandlerEnabled: true

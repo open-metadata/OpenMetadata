@@ -50,6 +50,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -65,6 +66,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -529,6 +531,35 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
+    if (testServiceConnection.getServiceName() != null && testServiceConnection.getConnection() != null) {
+      try {
+        EntityRepository<? extends EntityInterface> serviceRepository =
+            Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
+        ServiceEntityInterface originalService =
+            (ServiceEntityInterface)
+                serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), "", Include.NON_DELETED);
+        Object testConnectionConfig = ((Map<?, ?>) testServiceConnection.getConnection()).get("config");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> connectionMap = (Map<String, Object>) testServiceConnection.getConnection();
+        if (originalService != null && originalService.getConnection() != null && testConnectionConfig != null) {
+          connectionMap.put(
+              "config",
+              EntityMaskerFactory.getEntityMasker()
+                  .unmaskServiceConnectionConfig(
+                      testConnectionConfig,
+                      originalService.getConnection().getConfig(),
+                      testServiceConnection.getConnectionType(),
+                      testServiceConnection.getServiceType()));
+          testServiceConnection.setConnection(connectionMap);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            String.format(
+                "Cannot test connection for service [%s] because of [%s]",
+                testServiceConnection.getServiceName(), e.getMessage()),
+            e);
+      }
+    }
     testServiceConnection =
         testServiceConnection.withSecretsManagerProvider(
             SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider());

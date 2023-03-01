@@ -109,6 +109,8 @@ services:
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
+      # Mask passwords values in UI
+      ENABLE_MASK_PASSWORDS_UI: ${ENABLE_MASK_PASSWORDS_UI:-false}
     expose:
       - 8585
       - 8586

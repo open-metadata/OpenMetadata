@@ -28,7 +28,7 @@ public class EntityMaskerFactory {
     if (entityMasker != null) {
       return entityMasker;
     }
-    if (config.isAlwaysMaskPasswords()) {
+    if (config.isAlwaysMaskPasswordsUI()) {
       entityMasker = PasswordEntityMasker.getInstance();
     } else {
       entityMasker = NoopEntityMasker.getInstance();
