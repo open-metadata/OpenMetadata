@@ -1,0 +1,21 @@
+{
+  "name": "Tableau",
+  "fullyQualifiedName": "Tableau",
+  "displayName": "Tableau Test Connection",
+  "description": "This Test Connection validates the access against the server and basic metadata extraction of workbooks and views.",
+  "steps": [
+    {
+      "name": "ServerInfo",
+      "mandatory": true
+    },
+    {
+      "name": "GetWorkbooks",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "mandatory": false
+    }
+  ]
+}
+

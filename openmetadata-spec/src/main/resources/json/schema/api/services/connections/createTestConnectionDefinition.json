@@ -9,11 +9,15 @@
   "properties": {
     "name": {
       "description": "Name of the Test Connection Definition. It should be the `type` of the service being tested, e.g., Mysql, or Snowflake.",
-      "type": "string"
+      "$ref": "../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test definition.",
       "type": "string"
+    },
+    "description": {
+      "description": "Description of the test connection def.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
     },
     "steps": {
       "description": "Steps to test the connection. Order matters.",

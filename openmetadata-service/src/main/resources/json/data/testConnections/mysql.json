@@ -1,0 +1,21 @@
+{
+  "name": "Mysql",
+  "fullyQualifiedName": "Mysql",
+  "displayName": "Mysql Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+  "steps": [
+    {
+      "name": "GetSchemas",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "mandatory": false
+    }
+  ]
+}
+
