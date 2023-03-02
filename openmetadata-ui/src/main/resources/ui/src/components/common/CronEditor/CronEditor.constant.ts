@@ -196,3 +196,10 @@ export const getMonthCron = (value: any) => {
 export const getYearCron = (value: any) => {
   return `${value.min} ${value.hour} ${value.dom} ${value.mon} *`;
 };
+
+export const SELECTED_PERIOD_OPTIONS = {
+  hour: 'selectedHourOption',
+  day: 'selectedDayOption',
+  week: 'selectedWeekOption',
+  minute: 'selectedMinuteOption',
+};
