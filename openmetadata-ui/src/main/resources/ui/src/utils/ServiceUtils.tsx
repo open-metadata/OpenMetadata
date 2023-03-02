@@ -869,7 +869,7 @@ export const getResourceEntityFromServiceCategory = (
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
 
-    case 'objectstores':
+    case 'objectStores':
     case ServiceCategory.OBJECT_STORE_SERVICES:
       return ResourceEntity.OBJECT_STORE_SERVICE;
   }
