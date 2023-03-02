@@ -252,7 +252,9 @@ const GlossaryPage = () => {
 
   return (
     <PageContainerV1>
-      <PageLayoutV1 leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}>
+      <PageLayoutV1
+        leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
+        pageTitle={t('label.glossary')}>
         {isRightPanelLoading ? (
           // Loader for right panel data
           <Loader />

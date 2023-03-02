@@ -98,6 +98,10 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => {
   };
 });
 
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 describe('Test ProfilerDashboardPage component', () => {
   beforeEach(() => cleanup());
 
@@ -107,7 +111,7 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-layout-v1');
+
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
@@ -116,7 +120,6 @@ describe('Test ProfilerDashboardPage component', () => {
     );
     const DataQualityTab = screen.queryByText('DataQualityTab component');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(ProfilerTab).toBeInTheDocument();
@@ -134,7 +137,7 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-layout-v1');
+
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = screen.queryByText('ProfilerTab component');
@@ -144,7 +147,6 @@ describe('Test ProfilerDashboardPage component', () => {
     );
     const statusDropdown = await screen.findByText('label.status');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(DataQualityTab).toBeInTheDocument();
@@ -163,7 +165,7 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-layout-v1');
+
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
@@ -172,7 +174,6 @@ describe('Test ProfilerDashboardPage component', () => {
     );
     const DataQualityTab = screen.queryByText('DataQualityTab component');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(ProfilerTab).toBeInTheDocument();
@@ -231,10 +232,8 @@ describe('Test ProfilerDashboardPage component', () => {
       });
     });
 
-    const pageContainer = await screen.findByTestId('page-layout-v1');
     const addTest = await screen.findByTestId('add-test');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(addTest).toBeInTheDocument();
 
     await act(async () => {

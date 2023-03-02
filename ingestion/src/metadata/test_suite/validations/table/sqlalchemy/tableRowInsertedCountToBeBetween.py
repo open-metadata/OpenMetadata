@@ -15,7 +15,7 @@ Validator for table row inserted count to be between test case
 
 from sqlalchemy import Column, text
 
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.registry import Metrics
 from metadata.test_suite.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
 from metadata.test_suite.validations.table.base.tableRowInsertedCountToBeBetween import (
     BaseTableRowInsertedCountToBeBetweenValidator,

@@ -1,0 +1,7 @@
+contact_links:
+  - name: Read the docs & troubleshoot
+    url: https://docs.open-metadata.org/
+    about: You can find information on anything related to OpenMetadata.
+  - name: Chat on Slack
+    url: https://slack.open-metadata.org/
+    about: And get help from the community

@@ -233,6 +233,8 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    # install dbt dependency
+    "dbt-artifacts-parser",
 }
 
 build_options = {"includes": ["_cffi_backend"]}

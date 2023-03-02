@@ -38,16 +38,17 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.metrics.core import (
+from metadata.profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
 )
-from metadata.orm_profiler.metrics.static.row_count import RowCount
-from metadata.orm_profiler.profiler.default import get_default_metrics
+from metadata.profiler.metrics.static.row_count import RowCount
+from metadata.profiler.profiler.default import get_default_metrics
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 
 class User(declarative_base()):
@@ -79,11 +80,13 @@ class SQAInterfaceTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             self.sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=sqlite_conn,
-                    table_entity=table_entity,
-                    ometa_client=None,
-                )
+                sqlite_conn,
+                None,
+                table_entity,
+                None,
+                None,
+                None,
+                None,
             )
         self.table = User
 
@@ -117,11 +120,13 @@ class SQAInterfaceTestMultiThread(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            profiler_interface_args=ProfilerInterfaceArgs(
-                service_connection_config=sqlite_conn,
-                table_entity=table_entity,
-                ometa_client=None,
-            )
+            sqlite_conn,
+            None,
+            table_entity,
+            None,
+            None,
+            None,
+            None,
         )
 
     @classmethod

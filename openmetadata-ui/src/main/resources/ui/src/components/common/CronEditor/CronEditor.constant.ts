@@ -18,27 +18,27 @@ import { Combination, ToDisplay } from './CronEditor.interface';
 export const getPeriodOptions = () => {
   return [
     {
-      label: i18n.t('label.none-lowercase'),
+      label: i18n.t('label.none'),
       value: '',
       prep: '',
     },
     {
-      label: i18n.t('label.minute-plural-lowercase'),
+      label: i18n.t('label.minute-plural'),
       value: 'minute',
       prep: '',
     },
     {
-      label: i18n.t('label.hour-lowercase'),
+      label: i18n.t('label.hour'),
       value: 'hour',
       prep: 'at',
     },
     {
-      label: i18n.t('label.day-lowercase'),
+      label: i18n.t('label.day'),
       value: 'day',
       prep: 'at',
     },
     {
-      label: i18n.t('label.week-lowercase'),
+      label: i18n.t('label.week'),
       value: 'week',
       prep: 'on',
     } /* ,
@@ -195,4 +195,11 @@ export const getMonthCron = (value: any) => {
 
 export const getYearCron = (value: any) => {
   return `${value.min} ${value.hour} ${value.dom} ${value.mon} *`;
+};
+
+export const SELECTED_PERIOD_OPTIONS = {
+  hour: 'selectedHourOption',
+  day: 'selectedDayOption',
+  week: 'selectedWeekOption',
+  minute: 'selectedMinuteOption',
 };
