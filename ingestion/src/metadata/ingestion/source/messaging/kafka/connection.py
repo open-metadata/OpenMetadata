@@ -92,7 +92,7 @@ def get_connection(
     )
 
 
-def test_connection(client: KafkaClient) -> None:
+def test_connection(client: KafkaClient, _) -> None:
     """
     Test connection
     """

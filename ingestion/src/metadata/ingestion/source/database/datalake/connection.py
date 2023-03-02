@@ -97,7 +97,7 @@ def get_connection(connection: DatalakeConnection) -> DatalakeClient:
     )
 
 
-def test_connection(connection: DatalakeClient) -> None:
+def test_connection(connection: DatalakeClient, _) -> None:
     """
     Test that we can connect to the source using the given aws resource
     :param engine: boto service resource to test

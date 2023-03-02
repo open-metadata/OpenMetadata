@@ -26,7 +26,7 @@ def get_connection(connection: ModeConnection) -> ModeApiClient:
     return ModeApiClient(connection)
 
 
-def test_connection(client: ModeApiClient) -> None:
+def test_connection(client: ModeApiClient, _) -> None:
     """
     Test connection
     """
