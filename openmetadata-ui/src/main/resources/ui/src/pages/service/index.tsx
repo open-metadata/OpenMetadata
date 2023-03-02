@@ -636,6 +636,20 @@ const ServicePage: FunctionComponent = () => {
           '--'
         );
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        const container = data as Container;
+
+        return container.tags && container.tags?.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={container.tags}
+            type="border"
+          />
+        ) : (
+          '--'
+        );
+      }
       default:
         return <></>;
     }
