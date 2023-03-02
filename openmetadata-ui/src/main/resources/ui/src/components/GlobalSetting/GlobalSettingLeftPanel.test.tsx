@@ -456,12 +456,6 @@ describe('GlobalSettingLeftPanel', () => {
 
     expect(screen.getByText('label.service-plural')).toBeInTheDocument();
     expect(screen.getByText('label.object-store-plural')).toBeInTheDocument();
-
-    userEvent.click(screen.getByText('label.team-plural'));
-
-    waitForElement(() =>
-      expect(window.location.pathname).toEqual('/teams/organizations')
-    );
   });
 
   it('Should change the location path on user click', () => {
