@@ -454,6 +454,14 @@
     ]
   },
   {
+    "name" : "testConnectionDefinition",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
     "name" : "type",
     "operations" : [
       "Create",
