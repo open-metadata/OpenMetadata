@@ -67,12 +67,13 @@ COMMONS = {
 
 # required library for pii tagging
 pii_requirements = {
+    "spacy==3.5.0",
     (
-        "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/"
-        "en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz"
+        "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_lg-3.5.0/en_core_web_lg-3.5.0-py3-none-any.whl"
     ),
-    "spacy==2.3.9",
     VERSIONS["pandas"],
+    "presidio-analyzer==2.2.32",
 }
 
 base_requirements = {

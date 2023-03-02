@@ -463,25 +463,6 @@ const ConfigureIngestion = ({
     );
   };
 
-  const getProcessPiiToggles = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.process-pii-sensitive-column')}</label>
-          <ToggleSwitchV1
-            checked={processPii}
-            handleCheck={handleProcessPii}
-            testId="include-lineage"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.process-pii-sensitive-column-message')}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
-  };
-
   const getProcessPiiTogglesForProfiler = () => {
     return (
       <Field>
@@ -573,7 +554,6 @@ const ConfigureIngestion = ({
             {getFilterPatterns()}
             {getSeparator('')}
             {getFqnForFilteringToggles()}
-            {getProcessPiiToggles()}
             {getDatabaseFieldToggles()}
           </Fragment>
         );

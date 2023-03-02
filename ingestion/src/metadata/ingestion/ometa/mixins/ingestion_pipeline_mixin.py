@@ -112,7 +112,7 @@ class OMetaIngestionPipelineMixin:
         params: Optional[Dict[str, str]] = None,
     ) -> Optional[IngestionPipeline]:
         """
-        Get pipeline statues based on name
+        Get ingestion pipeline statues based on name
 
         Args:
             name (str): Ingestion Pipeline Name

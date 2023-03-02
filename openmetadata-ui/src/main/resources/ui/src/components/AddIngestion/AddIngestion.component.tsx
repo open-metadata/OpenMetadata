@@ -328,7 +328,6 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
-      processPii,
     } = state;
 
     switch (serviceCategory) {
@@ -337,7 +336,6 @@ const AddIngestion = ({
           useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
           includeTags: includeTags,
-          processPiiSensitive: processPii,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
             showDatabaseFilter

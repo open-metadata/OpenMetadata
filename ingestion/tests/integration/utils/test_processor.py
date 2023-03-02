@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
+    DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
@@ -390,7 +391,7 @@ table_data = TableData(
         ColumnName(__root__="first_name"),
         ColumnName(__root__="last_name"),
         ColumnName(__root__="first_order"),
-        ColumnName(__root__="most_recent_order"),
+        ColumnName(__root__="customer_email"),
         ColumnName(__root__="number_of_orders"),
     ],
     rows=[
@@ -399,34 +400,34 @@ table_data = TableData(
             "Christina",
             "W.",
             datetime.date(2018, 3, 2),
-            datetime.date(2018, 3, 14),
+            "christina@hotmail.com",
             2,
         ],
-        [73, "Alan", "B.", None, None, None],
-        [71, "Gerald", "C.", datetime.date(2018, 1, 18), datetime.date(2018, 2, 24), 3],
-        [35, "Sara", "T.", datetime.date(2018, 2, 21), datetime.date(2018, 3, 21), 2],
-        [22, "Sean", "H.", datetime.date(2018, 1, 26), datetime.date(2018, 3, 1), 3],
-        [50, "Billy", "L.", datetime.date(2018, 1, 5), datetime.date(2018, 2, 20), 2],
+        [73, "Alan", "B.", None, "joshua.alan@yahoo.com", None],
+        [71, "Gerald", "C.", datetime.date(2018, 1, 18), "geraldc@gmail.com", 3],
+        [35, "Sara", "T.", datetime.date(2018, 2, 21), "saratimithi@godesign.com", 2],
+        [22, "Sean", "H.", datetime.date(2018, 1, 26), "heroldsean@google.com", 3],
+        [50, "Billy", "L.", datetime.date(2018, 1, 5), "bliam@random.com", 2],
         [
             76,
             "Barbara",
             "W.",
             datetime.date(2018, 3, 23),
-            datetime.date(2018, 3, 23),
+            "bmwastin@gmail.co.in",
             1,
         ],
         [5, "Katherine", "R.", None, None, None],
-        [31, "Jane", "G.", datetime.date(2018, 2, 17), datetime.date(2018, 2, 17), 1],
+        [31, "Jane", "G.", datetime.date(2018, 2, 17), "gg34jane@hammer.com", 1],
         [45, "Scott", "B.", None, None, None],
-        [21, "Willie", "H.", datetime.date(2018, 3, 28), datetime.date(2018, 3, 28), 1],
-        [18, "Johnny", "K.", datetime.date(2018, 2, 27), datetime.date(2018, 2, 27), 1],
-        [6, "Sarah", "R.", datetime.date(2018, 2, 19), datetime.date(2018, 2, 19), 1],
+        [21, "Willie", "H.", datetime.date(2018, 3, 28), "12hwilliejose@gmail.com", 1],
+        [18, "Johnny", "K.", datetime.date(2018, 2, 27), "johnnykk@dexter.com", 1],
+        [6, "Sarah", "R.", datetime.date(2018, 2, 19), "rrsarah@britinia.com", 1],
         [56, "Joshua", "K.", None, None, None],
-        [79, "Jack", "R.", datetime.date(2018, 2, 28), datetime.date(2018, 3, 11), 2],
-        [94, "Gregory", "H.", datetime.date(2018, 1, 4), datetime.date(2018, 1, 29), 2],
+        [79, "Jack", "R.", datetime.date(2018, 2, 28), "jack.mm@people.co.in", 2],
+        [94, "Gregory", "H.", datetime.date(2018, 1, 4), "peter.gregory@japer.com", 2],
         [83, "Virginia", "R.", None, None, None],
         [17, "Kimberly", "R.", None, None, None],
-        [2, "Shawn", "M.", datetime.date(2018, 1, 11), datetime.date(2018, 1, 11), 1],
+        [2, "Shawn", "M.", datetime.date(2018, 1, 11), "shawn344@gmail.com", 1],
         [60, "Norma", "W.", None, None, None],
         [87, "Phillip", "B.", None, None, None],
     ],
@@ -537,7 +538,7 @@ TABLE_ENTITY = Table(
             profile=None,
         ),
         Column(
-            name=ColumnName(__root__="most_recent_order"),
+            name=ColumnName(__root__="customer_email"),
             displayName=None,
             dataType="DATE",
             arrayDataType=None,
@@ -546,7 +547,7 @@ TABLE_ENTITY = Table(
             scale=None,
             dataTypeDisplay="date",
             description=None,
-            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.most_recent_order",
+            fullyQualifiedName="aws_redshift1.dev.dbt_jaffle.customers.customer_email",
             tags=None,
             constraint="NULL",
             ordinalPosition=None,
@@ -685,10 +686,12 @@ UPDATED_TABLE_ENTITY = [
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_name",
         tags=[
             TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=(
-                    "PII which is easily accessible from public sources and can include zip code, race, "
-                    "gender, and date of birth."
+                    (
+                        "PII which if lost, compromised, or disclosed without authorization, could result in "
+                        "substantial harm, embarrassment, inconvenience, or unfairness to an individual."
+                    )
                 ),
                 source="Tag",
                 labelType="Automated",
@@ -714,19 +717,7 @@ UPDATED_TABLE_ENTITY = [
         dataTypeDisplay="varchar",
         description=None,
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.last_name",
-        tags=[
-            TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
-                description=(
-                    "PII which is easily accessible from public sources and can "
-                    "include zip code, race, gender, and date of birth."
-                ),
-                source="Tag",
-                labelType="Automated",
-                state="Suggested",
-                href=None,
-            )
-        ],
+        tags=[],
         constraint=None,
         ordinalPosition=None,
         jsonSchema=None,
@@ -766,22 +757,24 @@ UPDATED_TABLE_ENTITY = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="most_recent_order"),
+        name=ColumnName(__root__="customer_email"),
         displayName=None,
-        dataType="DATE",
+        dataType="VARCHAR",
         arrayDataType=None,
-        dataLength=None,
+        dataLength=20,
         precision=None,
         scale=None,
         dataTypeDisplay="date",
         description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.most_recent_order",
+        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.customer_email",
         tags=[
             TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=(
-                    "PII which is easily accessible from public sources and can include zip code, "
-                    "race, gender, and date of birth."
+                    (
+                        "PII which if lost, compromised, or disclosed without authorization, could result in"
+                        " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
+                    )
                 ),
                 source="Tag",
                 labelType="Automated",
@@ -807,19 +800,7 @@ UPDATED_TABLE_ENTITY = [
         dataTypeDisplay="bigint",
         description=None,
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.number_of_orders",
-        tags=[
-            TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
-                description=(
-                    "PII which is easily accessible from public sources and can include zip code, "
-                    "race, gender, and date of birth."
-                ),
-                source="Tag",
-                labelType="Automated",
-                state="Suggested",
-                href=None,
-            )
-        ],
+        tags=[],
         constraint=None,
         ordinalPosition=None,
         jsonSchema=None,
@@ -895,13 +876,14 @@ class PiiProcessorTest(TestCase):
                 Column(name="first_name", dataType=DataType.VARCHAR, dataLength=20),
                 Column(name="last_name", dataType=DataType.VARCHAR, dataLength=20),
                 Column(name="first_order", dataType=DataType.DATE),
-                Column(name="most_recent_order", dataType=DataType.DATE),
+                Column(name="customer_email", dataType=DataType.VARCHAR, dataLength=20),
                 Column(name="number_of_orders", dataType=DataType.BIGINT),
             ],
             databaseSchema=create_schema_entity.fullyQualifiedName,
         )
         table_entity = self.metadata.create_or_update(data=created_table)
         TABLE_ENTITY.id = table_entity.id
+
         self.nerscanner_processor.process(
             table_data=table_data, table_entity=TABLE_ENTITY, client=self.metadata
         )
@@ -912,3 +894,10 @@ class PiiProcessorTest(TestCase):
             zip(UPDATED_TABLE_ENTITY, updated_table_entity.columns)
         ):
             self.assertEqual(expected.tags, original.tags)
+
+        self.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
+        )
