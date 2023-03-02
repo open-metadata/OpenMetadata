@@ -836,7 +836,7 @@ class PiiProcessorTest(TestCase):
             ),
         )
         self.metadata = OpenMetadata(server_config)
-        self.nerscanner_processor = NERScanner()
+        self.nerscanner_processor = NERScanner(self.metadata)
 
     def test_nerscanner_process(self):
         """
