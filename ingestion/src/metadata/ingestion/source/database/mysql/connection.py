@@ -27,6 +27,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_options,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -53,7 +54,7 @@ def get_connection(connection: MysqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> str:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test connection
     """

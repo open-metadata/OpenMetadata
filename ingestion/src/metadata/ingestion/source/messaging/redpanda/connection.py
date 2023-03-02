@@ -34,8 +34,8 @@ def get_connection(connection: RedpandaConnection) -> KafkaClient:
     return get_kafka_connection(connection)
 
 
-def test_connection(client: KafkaClient) -> None:
+def test_connection(client: KafkaClient, _) -> None:
     """
     Test connection
     """
-    test_kafka_connection(client)
+    test_kafka_connection(client, _)

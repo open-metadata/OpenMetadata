@@ -26,7 +26,7 @@ def get_connection(connection: PowerBIConnection) -> PowerBiApiClient:
     return PowerBiApiClient(connection)
 
 
-def test_connection(client: PowerBiApiClient) -> None:
+def test_connection(client: PowerBiApiClient, _) -> None:
     """
     Test connection
     """
