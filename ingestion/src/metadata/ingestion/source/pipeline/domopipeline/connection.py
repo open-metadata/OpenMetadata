@@ -32,7 +32,7 @@ def get_connection(connection: DomoPipelineConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(connection: Domo) -> None:
+def test_connection(connection: Domo, _) -> None:
     """
     Test connection
     """

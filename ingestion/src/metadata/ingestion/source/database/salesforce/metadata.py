@@ -263,4 +263,4 @@ class SalesforceSource(DatabaseServiceSource):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.client)
+        test_connection_fn(self.client, self.service_connection)

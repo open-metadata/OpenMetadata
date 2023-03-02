@@ -464,7 +464,7 @@ class CommonDbSourceService(
         can properly reach the source
         """
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine)
+        test_connection_fn(self.engine, self.service_connection)
 
     @property
     def connection(self) -> Connection:
