@@ -773,7 +773,59 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
+        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 31
+
+    def test_first_quartile(self):
+        """
+        Check first quartile
+        """
+
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        res = (
+            Profiler(
+                first_quartile,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30
+
+    def test_third_quartile(self):
+        """
+        Check third quartile
+        """
+
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        res = (
+            Profiler(
+                third_quartile,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 31
+
+    def test_iqr(self):
+        """Check IQR metric"""
+        iqr = Metrics.IQR.value
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        res = (
+            Profiler(
+                first_quartile,
+                third_quartile,
+                iqr,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.IQR.name] == 1
 
     def test_sum_function(self):
         """Check overwritten sum function"""
