@@ -345,7 +345,11 @@ class Profiler(Generic[TMetric]):
         column_metrics_for_thread_pool = [
             *[
                 (
-                    self.get_col_metrics(self.static_metrics, column),
+                    [
+                        metric
+                        for metric in self.get_col_metrics(self.static_metrics, column)
+                        if not metric.is_window_metric()
+                    ],
                     MetricTypes.Static,
                     column,
                     self.table,
@@ -364,17 +368,16 @@ class Profiler(Generic[TMetric]):
             ],
             *[
                 (
-                    metric,
+                    [
+                        metric
+                        for metric in self.get_col_metrics(self.static_metrics, column)
+                        if metric.is_window_metric()
+                    ],
                     MetricTypes.Window,
                     column,
                     self.table,
                 )
                 for column in self.columns
-                for metric in [
-                    metric
-                    for metric in self.get_col_metrics(self.static_metrics, column)
-                    if metric.is_window_metric()
-                ]
             ],
         ]
 

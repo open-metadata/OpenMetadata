@@ -32,6 +32,8 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         add_props(table=table)(Metrics.SYSTEM.value),
         # Column Metrics
         Metrics.MEDIAN.value,
+        Metrics.FIRST_QUARTILE.value,
+        Metrics.THIRD_QUARTILE.value,
         Metrics.MEAN.value,
         Metrics.COUNT.value,
         Metrics.DISTINCT_COUNT.value,
@@ -46,6 +48,7 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         Metrics.SUM.value,
         Metrics.UNIQUE_COUNT.value,
         Metrics.UNIQUE_RATIO.value,
+        Metrics.IQR.value,
         # Metrics.HISTOGRAM.value,  # TODO: enable it back after #4368
     ]
 

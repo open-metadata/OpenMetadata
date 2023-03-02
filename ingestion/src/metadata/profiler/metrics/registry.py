@@ -21,6 +21,7 @@ having the verbosely pass .value all the time...
 from metadata.profiler.metrics.composed.distinct_ratio import DistinctRatio
 from metadata.profiler.metrics.composed.duplicate_count import DuplicateCount
 from metadata.profiler.metrics.composed.ilike_ratio import ILikeRatio
+from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.profiler.metrics.composed.null_ratio import NullRatio
 from metadata.profiler.metrics.composed.unique_ratio import UniqueRatio
@@ -46,7 +47,9 @@ from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.metrics.static.unique_count import UniqueCount
 from metadata.profiler.metrics.system.system import System
+from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.median import Median
+from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
 from metadata.profiler.registry import MetricRegistry
 
 
@@ -59,7 +62,6 @@ class Metrics(MetricRegistry):
 
     # Static Metrics
     MEAN = Mean
-    MEDIAN = Median
     COUNT = Count
     COUNT_IN_SET = CountInSet
     COLUMN_COUNT = ColumnCount
@@ -88,6 +90,12 @@ class Metrics(MetricRegistry):
     ILIKE_RATIO = ILikeRatio
     LIKE_RATIO = LikeRatio
     NULL_RATIO = NullRatio
+    IQR = InterQuartileRange
+
+    # Window Metrics
+    MEDIAN = Median
+    FIRST_QUARTILE = FirstQuartile
+    THIRD_QUARTILE = ThirdQuartile
 
     # System Metrics
     SYSTEM = System

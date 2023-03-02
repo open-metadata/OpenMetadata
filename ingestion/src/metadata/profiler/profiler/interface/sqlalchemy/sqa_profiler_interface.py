@@ -231,7 +231,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     def _(
         self,
         metric_type: str,
-        metric: Metrics,
+        metrics: List[Metrics],
         runner: QueryRunner,
         session,
         column: Column,
@@ -248,9 +248,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             dictionnary of results
         """
         try:
-            row = runner.select_first_from_sample(metric(column).fn())
-            if not isinstance(row, Row):
-                return {metric.name(): row}
+            row = runner.select_first_from_sample(
+                *[metric(column).fn() for metric in metrics]
+            )
             return dict(row)
         except Exception as exc:
             logger.debug(traceback.format_exc())

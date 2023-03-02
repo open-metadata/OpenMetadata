@@ -26,18 +26,18 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-class Median(StaticMetric):
+class FirstQuartile(StaticMetric):
     """
-    Median Metric
+    First Quartile Metric
 
-    Given a column, return the Median value.
+    Given a column, return the first quartile value.
 
-    - For a quantifiable value, return the usual Median
+    - For a quantifiable value, return first quartile value
     """
 
     @classmethod
     def name(cls):
-        return "median"
+        return "firstQuartile"
 
     @classmethod
     def is_window_metric(cls):
@@ -51,23 +51,25 @@ class Median(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return MedianFn(column(self.col.name), self.col.table.name, 0.5)
+            return MedianFn(column(self.col.name), self.col.table.name, 0.25)
 
         logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Median"
+            f"Don't know how to process type {self.col.type} when computing First Quartile"
         )
         return None
 
     @_label
     def df_fn(self, df=None):
         """Dataframe function"""
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        import numpy as np
+        from pandas import DataFrame
 
         df = cast(DataFrame, df)
 
         if is_quantifiable(self.col.type):
-            return df[self.col.name].median()
+            return np.percentile(df[self.col.name], 25)
         logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Median"
+            f"Don't know how to process type {self.col.type} when computing First Quartile"
         )
         return None
