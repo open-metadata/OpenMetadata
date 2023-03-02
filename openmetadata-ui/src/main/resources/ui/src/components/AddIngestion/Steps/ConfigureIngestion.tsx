@@ -156,16 +156,10 @@ const ConfigureIngestion = ({
     handleProfileSample(undefined);
   };
 
-  const handleDashBoardServiceNames = (inputValue: string) => {
-    const separator = ',';
-
-    const databaseNames = inputValue.includes(separator)
-      ? inputValue.split(separator)
-      : Array(inputValue);
-
-    if (databaseNames) {
+  const handleDashBoardServiceNames = (inputValue: string[]) => {
+    if (inputValue) {
       onChange({
-        databaseServiceNames: databaseNames,
+        databaseServiceNames: inputValue,
       });
     }
   };
@@ -490,14 +484,17 @@ const ConfigureIngestion = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.database-service-name-message')}
         </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
+        <Select
+          allowClear
           data-testid="name"
           id="name"
-          name="name"
-          type="text"
+          mode="tags"
+          placeholder={t('label.add-entity', {
+            entity: t('label.database-service-name'),
+          })}
+          style={{ width: '100%' }}
           value={databaseServiceNames}
-          onChange={(e) => handleDashBoardServiceNames(e.target.value)}
+          onChange={(value) => handleDashBoardServiceNames(value)}
         />
         {getSeparator('')}
       </Field>
