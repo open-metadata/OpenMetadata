@@ -19,7 +19,6 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from pandas import DataFrame
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import DataType, TableData
@@ -101,7 +100,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: List[Metrics],
-        dfs: List[DataFrame],
+        dfs: List,
         *args,
         **kwargs,
     ):

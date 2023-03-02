@@ -16,8 +16,6 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional
 
-from pandas import DataFrame
-
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -46,7 +44,7 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
         ometa_client: OpenMetadata = None,
         service_connection_config: DatalakeConnection = None,
         table_entity=None,
-        df: DataFrame = None,
+        df=None,
     ):
         self.table_entity = table_entity
         self.df = df
