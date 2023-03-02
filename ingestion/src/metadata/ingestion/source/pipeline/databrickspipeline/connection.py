@@ -26,7 +26,7 @@ def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient
     return DatabricksClient(connection)
 
 
-def test_connection(client: DatabricksClient) -> None:
+def test_connection(client: DatabricksClient, _) -> None:
     """
     Test connection
     """

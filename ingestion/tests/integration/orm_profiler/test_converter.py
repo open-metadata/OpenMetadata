@@ -43,7 +43,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter import ometa_to_sqa_orm
 
 
 class ProfilerWorkflowTest(TestCase):

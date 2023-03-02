@@ -16,8 +16,6 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional
 
-from pandas import DataFrame
-
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -25,6 +23,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.datalake.mixins.pandas_mixin import PandasInterfaceMixin
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
 from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
@@ -33,7 +32,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class DataLakeTestSuiteInterface(TestSuiteProtocol):
+class DataLakeTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
@@ -45,7 +44,7 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         ometa_client: OpenMetadata = None,
         service_connection_config: DatalakeConnection = None,
         table_entity=None,
-        df: DataFrame = None,
+        df=None,
     ):
         self.table_entity = table_entity
         self.df = df

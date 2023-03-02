@@ -59,6 +59,11 @@
       "type": "boolean",
       "default": false
     },
+    "sslMode": {
+      "title": "SSL Mode",
+      "description": "SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

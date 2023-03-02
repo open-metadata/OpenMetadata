@@ -73,6 +73,7 @@ global:
   authentication:
     provider: "auth0"
     publicKeys: 
+    - "http://openmetadata:8585/api/v1/config/jwks"
     - "{Auth0 Domain Name}/.well-known/jwks.json"
     authority: "https://parth-panchal.us.auth0.com/"
     clientId: "{Client ID}"

@@ -24,8 +24,10 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -38,6 +40,14 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     """
     Create Clickhouse connection
     """
+    if connection.secure or connection.keyfile:
+        if connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        if connection.secure:
+            connection.connectionArguments.__root__["secure"] = connection.secure
+        if connection.keyfile:
+            connection.connectionArguments.__root__["keyfile"] = connection.keyfile
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
@@ -45,7 +55,7 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> str:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test Clickhouse connection
     """
