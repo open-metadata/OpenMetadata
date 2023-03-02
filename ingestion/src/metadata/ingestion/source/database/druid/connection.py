@@ -41,7 +41,7 @@ def get_connection(connection: DruidConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine, _) -> None:
     """
     Test connection
     """

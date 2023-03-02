@@ -36,7 +36,7 @@ def get_connection(connection: DomoDatabaseConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(domo: Domo) -> None:
+def test_connection(domo: Domo, _) -> None:
     """
     Test connection
     """

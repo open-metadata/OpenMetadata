@@ -97,7 +97,7 @@ class BigqueryUnitTest(TestCase):
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
     )
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.test_connection"
     )
     def __init__(
         self,
