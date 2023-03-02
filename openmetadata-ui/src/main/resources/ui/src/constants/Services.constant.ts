@@ -193,7 +193,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
-  objectstores: ServiceCategory.OBJECT_STORE_SERVICES,
+  objectStores: ServiceCategory.OBJECT_STORE_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -203,7 +203,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
-  objectstoreServices: 'objectstores',
+  objectstoreServices: 'objectStores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
