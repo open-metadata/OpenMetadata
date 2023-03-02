@@ -953,6 +953,9 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.ML_MODEL_SERVICES: {
         return [t('label.model-name'), t('label.tag-plural')];
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        return [t('label.model-name'), t('label.tag-plural')];
+      }
       default:
         return [];
     }
