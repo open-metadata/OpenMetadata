@@ -30,8 +30,6 @@ from metadata.generated.schema.type.entityReference import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickhouse.usage import ClickhouseUsageSource
-from metadata.ingestion.source.database.mssql.usage import MssqlUsageSource
-from metadata.ingestion.source.database.redshift.usage import RedshiftUsageSource
 
 T = TypeVar("T", bound=BaseModel)
 
