@@ -494,7 +494,7 @@ const ConfigureIngestion = ({
           })}
           style={{ width: '100%' }}
           value={databaseServiceNames}
-          onChange={(value) => handleDashBoardServiceNames(value)}
+          onChange={handleDashBoardServiceNames}
         />
         {getSeparator('')}
       </Field>
