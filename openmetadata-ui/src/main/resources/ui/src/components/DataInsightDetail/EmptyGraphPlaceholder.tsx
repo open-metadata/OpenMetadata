@@ -12,7 +12,7 @@
  */
 
 import { DATA_INSIGHT_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -25,6 +25,7 @@ export const EmptyGraphPlaceholder = () => {
       classes="m-t-lg"
       doc={DATA_INSIGHT_DOCS}
       heading={t('label.data-insight')}
+      size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.ADD}
     />
   );
