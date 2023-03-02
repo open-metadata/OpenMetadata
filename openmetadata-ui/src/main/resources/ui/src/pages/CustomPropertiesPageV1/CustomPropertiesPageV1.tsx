@@ -24,7 +24,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { LOADING_STATE } from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
@@ -245,10 +245,11 @@ const CustomEntityDetailV1 = () => {
                     </Button>
                   </Tooltip>
                 }
+                classes="mt-24"
                 dataTestId="custom-properties-no-data"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading="Property"
-                type="ADD_DATA"
+                type={ERROR_PLACEHOLDER_TYPE.ADD}
               />
             </div>
           ) : (
