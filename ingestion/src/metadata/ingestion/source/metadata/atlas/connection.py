@@ -26,7 +26,7 @@ def get_connection(connection: AtlasConnection) -> AtlasClient:
     return AtlasClient(connection)
 
 
-def test_connection(client: AtlasClient) -> None:
+def test_connection(client: AtlasClient, _) -> None:
     """
     Test connection
     """
