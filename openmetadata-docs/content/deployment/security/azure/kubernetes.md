@@ -64,7 +64,8 @@ global:
   authentication:
     provider: "azure"
     publicKeys:
-      - "https://login.microsoftonline.com/common/discovery/keys"
+    - "http://openmetadata:8585/api/v1/config/jwks"
+    - "https://login.microsoftonline.com/common/discovery/keys"
     authority: "https://login.microsoftonline.com/{Tenant ID}"
     clientId: "{Client ID}" # Azure Application
     callbackUrl: "http://localhost:8585/callback"

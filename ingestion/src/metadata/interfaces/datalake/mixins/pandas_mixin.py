@@ -13,9 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-
-from pandas import DataFrame
-
 from metadata.generated.schema.entity.data.table import PartitionIntervalType
 from metadata.test_suite.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -25,7 +22,7 @@ from metadata.test_suite.validations.table.pandas.tableRowInsertedCountToBeBetwe
 class PandasInterfaceMixin:
     """Interface mixin grouping shared methods between test suite and profiler interfaces"""
 
-    def get_partitioned_df(self, df: DataFrame) -> DataFrame:
+    def get_partitioned_df(self, df):
         """Get partitioned dataframe
 
         Returns:

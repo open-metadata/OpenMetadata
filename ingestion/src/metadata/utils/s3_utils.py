@@ -87,12 +87,21 @@ def read_parquet_from_s3(client: Any, key: str, bucket_name: str):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
-    s3_fs = s3fs.S3FileSystem()
+    client_kwargs = {}
+    if client.endPointURL:
+        client_kwargs["endpoint_url"] = client.endPointURL
+
+    if client.awsRegion:
+        client_kwargs["region_name"] = client.awsRegion
+
+    s3_fs = s3fs.S3FileSystem(client_kwargs=client_kwargs)
+
     if client.awsAccessKeyId and client.awsSecretAccessKey:
         s3_fs = s3fs.S3FileSystem(
             key=client.awsAccessKeyId,
             secret=client.awsSecretAccessKey.get_secret_value(),
             token=client.awsSessionToken,
+            client_kwargs=client_kwargs,
         )
     bucket_uri = f"s3://{bucket_name}/{key}"
     dataset = pq.ParquetDataset(bucket_uri, filesystem=s3_fs)
