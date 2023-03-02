@@ -199,7 +199,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 f"Service with name {self.config.serviceName} not found"
             )
 
-    def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
+    def get_dbt_owner(
+        self, manifest_node: dict, catalog_node: Optional[dict]
+    ) -> Optional[str]:
         """
         Returns dbt owner
         """
