@@ -32,7 +32,7 @@ public class PasswordEntityMasker extends EntityMasker {
 
   private static PasswordEntityMasker INSTANCE;
 
-  private static final String PASSWORD_MASK = "*********";
+  protected static final String PASSWORD_MASK = "*********";
 
   private static final String NEW_KEY = "";
 

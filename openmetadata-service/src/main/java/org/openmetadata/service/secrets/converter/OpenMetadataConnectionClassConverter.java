@@ -24,7 +24,7 @@ import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `DatalakeConnection` object. */
+/** Converter class to get an `OpenMetadataConnection` object. */
 public class OpenMetadataConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> SECURITY_CONFIG_CLASSES =

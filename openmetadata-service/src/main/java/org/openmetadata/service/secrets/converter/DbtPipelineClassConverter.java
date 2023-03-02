@@ -22,7 +22,7 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `SourceConfig` object. */
+/** Converter class to get an `DbtPipeline` object. */
 public class DbtPipelineClassConverter extends ClassConverter {
 
   private static final List<Class<?>> DBT_CONFIG_CLASSES =

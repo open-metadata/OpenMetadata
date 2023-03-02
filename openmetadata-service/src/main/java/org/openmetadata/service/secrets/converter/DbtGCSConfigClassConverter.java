@@ -14,24 +14,24 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
-import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `GCSConfig` object. */
-public class GCSConfigClassConverter extends ClassConverter {
+/** Converter class to get an `DbtGCSConfig` object. */
+public class DbtGCSConfigClassConverter extends ClassConverter {
 
-  public GCSConfigClassConverter() {
-    super(GCSConfig.class);
+  public DbtGCSConfigClassConverter() {
+    super(DbtGCSConfig.class);
   }
 
   @Override
   public Object convert(Object object) {
-    GCSConfig gcsConfig = (GCSConfig) JsonUtils.convertValue(object, this.clazz);
+    DbtGCSConfig dbtGCSConfig = (DbtGCSConfig) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCSCredentials.class))
-        .ifPresent(obj -> gcsConfig.setSecurityConfig((GCSCredentials) obj));
+    tryToConvertOrFail(dbtGCSConfig.getDbtSecurityConfig(), List.of(GCSCredentials.class))
+        .ifPresent(obj -> dbtGCSConfig.setDbtSecurityConfig((GCSCredentials) obj));
 
-    return gcsConfig;
+    return dbtGCSConfig;
   }
 }

@@ -18,7 +18,7 @@ import org.openmetadata.schema.security.credentials.GCSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `SupersetConnection` object. */
+/** Converter class to get an `DbtGCSConfig` object. */
 public class BigQueryConnectionClassConverter extends ClassConverter {
 
   public BigQueryConnectionClassConverter() {

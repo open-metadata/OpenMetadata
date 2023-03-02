@@ -18,7 +18,7 @@ import org.openmetadata.schema.security.credentials.GCSCredentials;
 import org.openmetadata.schema.services.connections.objectstore.GcsConnection;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `SupersetConnection` object. */
+/** Converter class to get an `GcsConnection` object. */
 public class GcsConnectionClassConverter extends ClassConverter {
 
   public GcsConnectionClassConverter() {

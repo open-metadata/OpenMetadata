@@ -13,10 +13,13 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -29,19 +32,26 @@ import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 /** Factory class to get a `ClassConverter` based on the service class. */
 public class ClassConverterFactory {
 
-  private static final Map<Class<?>, ClassConverter> converterMap = new HashMap<>();
+  @Getter private static final Map<Class<?>, ClassConverter> converterMap;
 
   static {
-    converterMap.put(AirflowConnection.class, new AirflowConnectionClassConverter());
-    converterMap.put(DatalakeConnection.class, new DatalakeConnectionClassConverter());
-    converterMap.put(DbtPipeline.class, new DbtPipelineClassConverter());
-    converterMap.put(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter());
-    converterMap.put(SupersetConnection.class, new SupersetConnectionClassConverter());
-    converterMap.put(GCSCredentials.class, new GcsCredentialsClassConverter());
-    converterMap.put(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter());
-    converterMap.put(GcsConnection.class, new GcsConnectionClassConverter());
-    converterMap.put(GCSConfig.class, new GCSConfigClassConverter());
-    converterMap.put(BigQueryConnection.class, new BigQueryConnectionClassConverter());
+    converterMap =
+        Collections.unmodifiableMap(
+            new HashMap<>() {
+              {
+                put(AirflowConnection.class, new AirflowConnectionClassConverter());
+                put(DatalakeConnection.class, new DatalakeConnectionClassConverter());
+                put(DbtPipeline.class, new DbtPipelineClassConverter());
+                put(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter());
+                put(SupersetConnection.class, new SupersetConnectionClassConverter());
+                put(GCSCredentials.class, new GcsCredentialsClassConverter());
+                put(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter());
+                put(GcsConnection.class, new GcsConnectionClassConverter());
+                put(GCSConfig.class, new GCSConfigClassConverter());
+                put(BigQueryConnection.class, new BigQueryConnectionClassConverter());
+                put(DbtGCSConfig.class, new DbtGCSConfigClassConverter());
+              }
+            });
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
