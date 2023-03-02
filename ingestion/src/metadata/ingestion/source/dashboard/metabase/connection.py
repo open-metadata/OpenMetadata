@@ -50,7 +50,7 @@ def get_connection(connection: MetabaseConnection) -> Dict[str, Any]:
         raise SourceConnectionException(msg) from exc
 
 
-def test_connection(client) -> None:
+def test_connection(client, _) -> None:
     """
     Test connection
     """

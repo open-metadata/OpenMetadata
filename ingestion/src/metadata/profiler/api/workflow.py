@@ -514,4 +514,4 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         self.engine = get_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)
-        test_connection_fn(self.engine)
+        test_connection_fn(self.engine, service_config)
