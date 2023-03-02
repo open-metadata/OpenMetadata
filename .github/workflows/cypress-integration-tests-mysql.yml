@@ -103,7 +103,6 @@ jobs:
       - name: Start Server and Ingest Sample Data
         env:
           INGESTION_DEPENDENCY: "all"
-          ENABLE_MASK_PASSWORDS_UI: true
         run: ./docker/run_local_docker.sh -d mysql
         timeout-minutes: 30
 

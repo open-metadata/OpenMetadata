@@ -92,7 +92,6 @@ jobs:
       uses: nick-fields/retry@v2.8.3
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
-        ENABLE_MASK_PASSWORDS_UI: true
       with:
         timeout_minutes: 30
         max_attempts: 2

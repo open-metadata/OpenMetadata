@@ -48,7 +48,9 @@ from metadata.generated.schema.security.credentials.gcsCredentials import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.security.credentials.gcsValues import GCSValues
+from metadata.generated.schema.security.credentials.gcsValues import (
+    GcsCredentialsValues,
+)
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -220,7 +222,9 @@ class BigquerySource(CommonDbSourceService):
 
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
-        if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
+        if isinstance(
+            self.service_connection.credentials.gcsConfig, GcsCredentialsValues
+        ):
             self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
                 __root__=database_name
             )

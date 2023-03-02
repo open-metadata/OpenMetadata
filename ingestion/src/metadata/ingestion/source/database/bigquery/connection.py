@@ -23,7 +23,9 @@ from metadata.generated.schema.security.credentials.gcsCredentials import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.security.credentials.gcsValues import GCSValues
+from metadata.generated.schema.security.credentials.gcsValues import (
+    GcsCredentialsValues,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -38,7 +40,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     environment variable when needed
     """
 
-    if isinstance(connection.credentials.gcsConfig, GCSValues):
+    if isinstance(connection.credentials.gcsConfig, GcsCredentialsValues):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcsConfig.projectId, SingleProjectId
         ):
