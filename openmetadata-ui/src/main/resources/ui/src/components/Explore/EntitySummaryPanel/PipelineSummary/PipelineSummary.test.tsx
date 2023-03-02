@@ -46,7 +46,6 @@ describe('PipelineSummary component tests', () => {
       'pipeline-url-label',
       'label.pipeline label.url-uppercase-value',
       'label.service-label',
-      'label.owner-label',
       'label.tier-label',
     ];
 
@@ -72,6 +71,7 @@ describe('PipelineSummary component tests', () => {
 
     const viewerContainer = screen.getByTestId('viewer-container');
     const summaryList = screen.getByTestId('SummaryList');
+    const ownerLabel = screen.queryByTestId('label.owner-label');
 
     labels.forEach((label) =>
       expect(screen.getByTestId(label)).toBeInTheDocument()
@@ -79,6 +79,8 @@ describe('PipelineSummary component tests', () => {
     values.forEach((value) =>
       expect(screen.getByTestId(value)).toBeInTheDocument()
     );
+
+    expect(ownerLabel).not.toBeInTheDocument();
 
     expect(schemaHeader[0]).toBeInTheDocument();
     expect(tags).toBeInTheDocument();

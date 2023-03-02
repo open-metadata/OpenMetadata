@@ -89,7 +89,13 @@ const EntityInfoDrawer = ({
       }
       case EntityType.PIPELINE: {
         setIsLoading(true);
-        getPipelineByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
+        getPipelineByFqn(getEncodedFqn(selectedNode.fqn), [
+          'tags',
+          'owner',
+          'followers',
+          'tasks',
+          'tier',
+        ])
           .then((res) => {
             setEntityDetail(res);
             setIsLoading(false);

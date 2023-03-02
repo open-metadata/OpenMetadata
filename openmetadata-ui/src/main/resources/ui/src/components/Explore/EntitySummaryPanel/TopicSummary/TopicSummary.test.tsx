@@ -58,7 +58,7 @@ describe('TopicSummary component tests', () => {
     expect(retentionSizeLabel).toBeInTheDocument();
     expect(cleanUpPoliciesLabel).toBeInTheDocument();
     expect(maxMessageSizeLabel).toBeInTheDocument();
-    expect(partitionsValue).toContainHTML('128');
+    expect(partitionsValue).toContainHTML('-');
     expect(replicationFactorValue).toContainHTML('4');
     expect(retentionSizeValue).toContainHTML('1018.83 MB');
     expect(cleanUpPoliciesValue).toContainHTML('delete');

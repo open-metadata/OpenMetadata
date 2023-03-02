@@ -13,6 +13,7 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -95,15 +96,23 @@ function DashboardSummary({
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
             <Row>
-              {entityInfo.map((info) =>
-                info.visible?.includes(componentType) ? (
+              {entityInfo.map((info) => {
+                const isOwner = info.name === t('label.owner');
+
+                return info.visible?.includes(componentType) ? (
                   <Col key={info.name} span={24}>
-                    <Row gutter={[16, 32]}>
-                      <Col data-testid={`${info.name}-label`} span={8}>
-                        <Typography.Text className="text-grey-muted">
-                          {info.name}
-                        </Typography.Text>
-                      </Col>
+                    <Row
+                      className={classNames('', {
+                        'p-b-md': isOwner,
+                      })}
+                      gutter={[16, 32]}>
+                      {!isOwner ? (
+                        <Col data-testid={`${info.name}-label`} span={8}>
+                          <Typography.Text className="text-grey-muted">
+                            {info.name}
+                          </Typography.Text>
+                        </Col>
+                      ) : null}
                       <Col data-testid="dashboard-url-value" span={16}>
                         {info.isLink ? (
                           <Link
@@ -125,13 +134,18 @@ function DashboardSummary({
                             ) : null}
                           </Link>
                         ) : (
-                          info.value
+                          <Typography.Text
+                            className={classNames('text-grey-muted', {
+                              'text-grey-body': !isOwner,
+                            })}>
+                            {info.value}
+                          </Typography.Text>
                         )}
                       </Col>
                     </Row>
                   </Col>
-                ) : null
-              )}
+                ) : null;
+              })}
             </Row>
           </Col>
         </Row>

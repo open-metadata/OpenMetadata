@@ -14,11 +14,16 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { getTeamAndUserDetailsPath } from 'constants/constants';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getOwnerNameWithProfilePic,
+} from 'utils/EntityUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
@@ -51,21 +56,32 @@ function TopicSummary({
     [componentType]
   );
   const topicConfig = useMemo(() => {
-    const configs = getConfigObject(topicDetails);
+    const combined = { ...topicDetails, ...entityDetails };
+    const configs = getConfigObject(combined);
 
     return {
       ...configs,
       'Retention Size': bytesToSize(configs['Retention Size'] ?? 0),
       'Max Message Size': bytesToSize(configs['Max Message Size'] ?? 0),
     };
-  }, [topicDetails]);
+  }, [entityDetails, topicDetails]);
+
+  const ownerDetails = useMemo(() => {
+    const owner = entityDetails.owner;
+
+    return {
+      value: getOwnerNameWithProfilePic(owner) || t('label.no-owner'),
+      url: getTeamAndUserDetailsPath(owner?.name || ''),
+      isLink: owner?.name ? true : false,
+    };
+  }, [entityDetails, topicDetails]);
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(
-        entityDetails.fullyQualifiedName ?? '',
-        ''
-      );
+      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', [
+        'tags',
+        'owner',
+      ]);
 
       const { partitions, messageSchema } = res;
 
@@ -90,13 +106,30 @@ function TopicSummary({
   );
 
   useEffect(() => {
-    isExplore && fetchExtraTopicInfo();
+    if (entityDetails.service?.type === 'messagingService') {
+      fetchExtraTopicInfo();
+    }
   }, [entityDetails, componentType]);
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
         <Row className="m-md" gutter={[0, 4]}>
+          {!isExplore ? (
+            <Col className="p-b-md" span={24}>
+              {ownerDetails.isLink ? (
+                <Link
+                  component={Typography.Link}
+                  to={{ pathname: ownerDetails.url }}>
+                  {ownerDetails.value}
+                </Link>
+              ) : (
+                <Typography.Text className="text-grey-muted">
+                  {ownerDetails.value}
+                </Typography.Text>
+              )}
+            </Col>
+          ) : null}
           <Col span={24}>
             <Row>
               {Object.keys(topicConfig).map((fieldName) => {

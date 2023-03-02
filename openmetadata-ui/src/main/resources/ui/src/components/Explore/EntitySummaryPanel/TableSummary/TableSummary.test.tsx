@@ -77,7 +77,6 @@ describe('TableSummary component tests', () => {
       'label.type-label',
       'label.database-label',
       'label.schema-label',
-      'label.owner-label',
       'label.query-plural-label',
       'label.column-plural-label',
     ];
@@ -108,7 +107,11 @@ describe('TableSummary component tests', () => {
     const noProfilerPlaceholder = screen.getByTestId(
       'no-profiler-enabled-message'
     );
+    const ownerLabel = screen.queryByTestId('label.owner-label');
+
     const summaryList = screen.getByTestId('SummaryList');
+
+    expect(ownerLabel).not.toBeInTheDocument();
 
     labels.forEach((label) =>
       expect(screen.getByTestId(label)).toBeInTheDocument()

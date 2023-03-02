@@ -39,8 +39,8 @@ describe('DashboardSummary component tests', () => {
       });
     });
 
-    const dashboardUrlLabel = screen.getByTestId(
-      'label.dashboard label.url-uppercase-label'
+    const dashboardUrlLabel = screen.getByText(
+      'label.dashboard label.url-uppercase'
     );
     const dashboardUrlValue = screen.getByTestId('dashboard-url-value');
     const dashboardLinkName = screen.getByTestId('dashboard-link-name');
@@ -55,12 +55,7 @@ describe('DashboardSummary component tests', () => {
   });
 
   it('Component should render properly, when loaded in the Lineage page.', async () => {
-    const labels = [
-      'label.dashboard label.url-uppercase-label',
-      'label.service-label',
-      'label.owner-label',
-      'label.tier-label',
-    ];
+    const labels = ['label.service-label', 'label.tier-label'];
 
     await act(async () => {
       const { debug } = render(
@@ -76,9 +71,10 @@ describe('DashboardSummary component tests', () => {
       debug();
     });
 
-    const dashboardUrlLabel = screen.getByTestId(
-      'label.dashboard label.url-uppercase-label'
+    const dashboardUrlLabel = screen.getByText(
+      'label.dashboard label.url-uppercase'
     );
+    const ownerLabel = screen.queryByTestId('label.owner-label');
 
     const dashboardUrl = screen.getAllByTestId('dashboard-url-value');
 
@@ -91,6 +87,8 @@ describe('DashboardSummary component tests', () => {
     labels.forEach((label) =>
       expect(screen.getByTestId(label)).toBeInTheDocument()
     );
+
+    expect(ownerLabel).not.toBeInTheDocument();
 
     expect(dashboardUrl[0]).toBeInTheDocument();
     expect(dashboardLink[0]).toBeInTheDocument();

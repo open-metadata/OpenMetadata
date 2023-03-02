@@ -33,7 +33,6 @@ import {
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
-  getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -54,6 +53,7 @@ import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   getEntityName,
+  getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
@@ -147,9 +147,17 @@ export const getEntityOverview = (
         ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
         : '-';
 
-      const queries = usageSummary?.weeklyStats?.count.toLocaleString() || '-';
+      const queries = usageSummary?.weeklyStats?.count.toLocaleString() || '0';
 
       const overview = [
+        {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
         {
           name: i18next.t('label.type'),
           value: tableType || TableType.Regular,
@@ -193,13 +201,6 @@ export const getEntityOverview = (
             )
           ),
           isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.owner'),
-          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
-          url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: owner ? owner.type === 'team' : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
@@ -250,6 +251,14 @@ export const getEntityOverview = (
 
       const overview = [
         {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+        {
           name: `${i18next.t('label.pipeline')} ${i18next.t(
             'label.url-uppercase'
           )}`,
@@ -275,13 +284,6 @@ export const getEntityOverview = (
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
-          name: i18next.t('label.owner'),
-          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
-          url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: owner ? owner.type === 'team' : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
           isLink: false,
@@ -297,6 +299,14 @@ export const getEntityOverview = (
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
+        {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
         {
           name: `${i18next.t('label.dashboard')} ${i18next.t(
             'label.url-uppercase'
@@ -321,13 +331,7 @@ export const getEntityOverview = (
           isLink: true,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
-        {
-          name: i18next.t('label.owner'),
-          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
-          url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: owner ? owner.type === 'team' : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
+
         {
           name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
@@ -345,6 +349,14 @@ export const getEntityOverview = (
         entityDetail as Mlmodel;
 
       const overview = [
+        {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
         {
           name: i18next.t('label.algorithm'),
           value: algorithm || NO_DATA,
@@ -386,13 +398,6 @@ export const getEntityOverview = (
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
           ],
-        },
-        {
-          name: i18next.t('label.owner'),
-          value: getOwnerNameWithProfilePic(owner) || NO_DATA,
-          url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: owner ? owner.type === 'team' : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 
