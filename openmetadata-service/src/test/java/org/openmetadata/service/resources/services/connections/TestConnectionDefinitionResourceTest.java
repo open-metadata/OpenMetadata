@@ -51,9 +51,7 @@ public class TestConnectionDefinitionResourceTest
     return new CreateTestConnectionDefinition()
         .withName(name)
         .withDescription(name)
-        .withSteps(List.of(
-            new TestConnectionStep().withName("StepName").withMandatory(true)
-        ));
+        .withSteps(List.of(new TestConnectionStep().withName("StepName").withMandatory(true)));
   }
 
   @Override
