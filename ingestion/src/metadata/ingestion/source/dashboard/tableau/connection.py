@@ -84,7 +84,7 @@ def get_connection(connection: TableauConnection) -> TableauServerConnection:
         )
 
 
-def test_connection(client: TableauServerConnection) -> None:
+def test_connection(client: TableauServerConnection, _) -> None:
     """
     Test connection
     """
