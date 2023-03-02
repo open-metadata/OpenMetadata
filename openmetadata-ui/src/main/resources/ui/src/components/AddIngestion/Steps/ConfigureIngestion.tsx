@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, InputNumber, Select, Typography } from 'antd';
+import { Button, Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { Fragment, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,6 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { ProfileSampleType } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
-import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
@@ -891,22 +890,19 @@ const ConfigureIngestion = ({
       layout="vertical">
       {getIngestionPipelineFields()}
 
-      <Field className="tw-flex tw-justify-end">
+      <Field className="d-flex justify-end">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
           <span>{t('label.cancel')}</span>
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="next-button"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={handleNext}>
           <span>{t('label.next')}</span>
         </Button>

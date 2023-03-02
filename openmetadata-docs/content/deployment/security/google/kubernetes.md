@@ -24,7 +24,8 @@ global:
   authentication:
     provider: "google"
     publicKeys:
-      - "https://www.googleapis.com/oauth2/v3/certs"
+    - "http://openmetadata:8585/api/v1/config/jwks"
+    - "https://www.googleapis.com/oauth2/v3/certs"
     authority: "https://accounts.google.com"
     clientId: "{client id}"
     callbackUrl: "http://localhost:8585/callback"

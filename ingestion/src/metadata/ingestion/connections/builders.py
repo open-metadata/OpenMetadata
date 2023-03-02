@@ -24,6 +24,7 @@ from sqlalchemy.pool import QueuePool
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
+    ConnectionOptions,
 )
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
@@ -101,6 +102,19 @@ def init_empty_connection_arguments() -> ConnectionArguments:
     we can pass new keys easily as `connectionArguments.__root__["key"] = "value"`
     """
     return ConnectionArguments(__root__={})
+
+
+def init_empty_connection_options() -> ConnectionOptions:
+    """
+    Initialize a ConnectionOptions model with an empty dictionary.
+    This helps set keys without further validations.
+
+    Running `ConnectionOptions()` returns `ConnectionOptions(__root__=None)`.
+
+    Instead, we want `ConnectionOptions(__root__={}})` so that
+    we can pass new keys easily as `ConnectionOptions.__root__["key"] = "value"`
+    """
+    return ConnectionOptions(__root__={})
 
 
 def get_connection_url_common(connection):

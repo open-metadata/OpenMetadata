@@ -30,14 +30,18 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.profiler.api.models import ProfilerProcessorConfig
+from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.profiler.default import DefaultProfiler
+from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 TABLE = Table(
     id=uuid.uuid4(),
@@ -52,9 +56,9 @@ TABLE = Table(
     ],
     database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
     tableProfilerConfig=TableProfilerConfig(
-        profilerCo=80.0,
-    ),
-)
+        profileSample=80.0,
+    ),  # type: ignore
+)  # type: ignore
 
 config = {
     "source": {
@@ -214,14 +218,20 @@ def test_profile_def(mocked_method, mocked_orm):
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
-    profiler_interface = profile_workflow.create_profiler_interface(
+
+    profiler_interface: SQAProfilerInterface = ProfilerProtocol.create(
+        _profiler_type=DatabaseConnection.__name__,
+        entity=TABLE,
+        entity_config=profile_workflow.get_config_for_entity(TABLE),
+        source_config=profile_workflow.source_config,
         service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
-        table_entity=TABLE,
-        sqa_metadata_obj=MetaData(),
+        ometa_client=None,
+        sqa_metadata=MetaData(),
     )
-    profile_workflow.create_profiler_obj(TABLE, profiler_interface)
+
+    profile_workflow.create_profiler(TABLE, profiler_interface)
     profiler_obj_metrics = [
-        metric.name() for metric in profile_workflow.profiler_obj.metrics
+        metric.name() for metric in profile_workflow.profiler.metrics
     ]
 
     assert profile_workflow.profiler_config.profiler
@@ -247,15 +257,20 @@ def test_default_profile_def(mocked_method, mocked_orm):
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    profiler_interface = profile_workflow.create_profiler_interface(
+    profiler_interface: SQAProfilerInterface = ProfilerProtocol.create(
+        _profiler_type=DatabaseConnection.__name__,
+        entity=TABLE,
+        entity_config=profile_workflow.get_config_for_entity(TABLE),
+        source_config=profile_workflow.source_config,
         service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
-        table_entity=TABLE,
-        sqa_metadata_obj=MetaData(),
+        ometa_client=None,
+        sqa_metadata=MetaData(),
     )
-    profile_workflow.create_profiler_obj(TABLE, profiler_interface)
+
+    profile_workflow.create_profiler(TABLE, profiler_interface)
 
     assert isinstance(
-        profile_workflow.profiler_obj,
+        profile_workflow.profiler,
         DefaultProfiler,
     )
 

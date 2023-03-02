@@ -52,7 +52,8 @@ global:
   authentication:
     provider: "custom-oidc"
     publicKeys:
-      - "http://localhost:8080/realms/myrealm/protocol/openid-connect/certs"
+    - "http://openmetadata:8585/api/v1/config/jwks"
+    - "http://localhost:8080/realms/myrealm/protocol/openid-connect/certs"
     authority: "http://localhost:8080/realms/myrealm"
     clientId: "{Client ID}"
     callbackUrl: "http://localhost:8585/callback"

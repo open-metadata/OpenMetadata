@@ -40,7 +40,7 @@ def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
     return dagster_connection
 
 
-def test_connection(client: DagsterGraphQLClient) -> None:
+def test_connection(client: DagsterGraphQLClient, _) -> None:
     """
     Test connection
     """
