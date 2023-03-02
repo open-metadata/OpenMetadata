@@ -12,6 +12,9 @@
 """
 OpenMetadata high-level API Table test
 """
+import logging
+import time
+from typing import Union
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -22,6 +25,10 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -34,9 +41,13 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
 
@@ -49,6 +60,16 @@ class OMetaTableTest(TestCase):
 
     service_entity_id = None
     entity_id = None
+    db_entity_id: Union[str, basic.Uuid] = None
+    db_schema_entity_id: Union[str, basic.Uuid] = None
+    user_1: User = None
+    user_2: User = None
+    team_1: Team = None
+    team_2: Team = None
+    owner_user_1: EntityReference = None
+    owner_user_2: EntityReference = None
+    owner_team_1: EntityReference = None
+    owner_team_2: EntityReference = None
 
     server_config = OpenMetadataConnection(
         hostPort="http://localhost:8585/api",
@@ -75,6 +96,25 @@ class OMetaTableTest(TestCase):
     service_type = "databaseService"
 
     @classmethod
+    def check_es_index(cls) -> None:
+        """
+        Wait until the index has been updated with the test user.
+        """
+        logging.info("Checking ES index status...")
+        tries = 0
+
+        res = None
+        while not res and tries <= 5:  # Kill in 5 seconds
+
+            res = cls.metadata.es_search_from_fqn(
+                entity_type=User,
+                fqn_search_string="Levy",
+            )
+            if not res:
+                tries += 1
+                time.sleep(1)
+
+    @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare ingredients
@@ -88,6 +128,7 @@ class OMetaTableTest(TestCase):
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
+        cls.db_entity_id = create_db_entity.id
 
         create_schema = CreateDatabaseSchemaRequest(
             name="test-schema",
@@ -95,6 +136,7 @@ class OMetaTableTest(TestCase):
         )
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+        cls.db_schema_entity_id = create_schema_entity.id
 
         cls.create = CreateTableRequest(
             name="test",
@@ -107,6 +149,38 @@ class OMetaTableTest(TestCase):
 
         res: Table = cls.metadata.create_or_update(data=cls.create)
         cls.entity_id = res.id
+
+        cls.user_1 = cls.metadata.create_or_update(
+            data=CreateUserRequest(
+                name="random.user", email="random.user@getcollate.io"
+            ),
+        )
+
+        cls.user_2 = cls.metadata.create_or_update(
+            data=CreateUserRequest(name="Levy", email="user2.1234@getcollate.io"),
+        )
+
+        cls.team_1 = cls.metadata.create_or_update(
+            data=CreateTeamRequest(
+                name="Team 1",
+                teamType="Group",
+                users=[cls.user_1.id, cls.user_2.id],
+            )
+        )
+
+        cls.team_2 = cls.metadata.create_or_update(
+            data=CreateTeamRequest(
+                name="Team 2", teamType="Group", users=[cls.user_2.id]
+            )
+        )
+
+        cls.owner_user_1 = EntityReference(id=cls.user_1.id, type="user")
+        cls.owner_user_2 = EntityReference(id=cls.user_2.id, type="user")
+        cls.owner_team_1 = EntityReference(id=cls.team_1.id, type="team")
+        cls.owner_team_2 = EntityReference(id=cls.team_2.id, type="team")
+
+        # Leave some time for indexes to get updated, otherwise this happens too fast
+        cls.check_es_index()
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -124,6 +198,30 @@ class OMetaTableTest(TestCase):
             entity=DatabaseService,
             entity_id=service_id,
             recursive=True,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=User,
+            entity_id=cls.user_1.id,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=User,
+            entity_id=cls.user_2.id,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=Team,
+            entity_id=cls.team_1.id,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=Team,
+            entity_id=cls.team_2.id,
             hard_delete=True,
         )
 
@@ -226,3 +324,153 @@ class OMetaTableTest(TestCase):
 
         assert updated_again_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
         assert updated_again_col.tags[1].tagFQN.__root__ == "Tier.Tier2"
+
+    def test_patch_owner(self):
+        """
+        Update owner
+        """
+        # Database, no existing owner, owner is a User -> Modified
+        updated: Database = self.metadata.patch_owner(
+            entity=Database,
+            entity_id=self.db_entity_id,
+            owner=self.owner_user_1,
+        )
+        assert updated is not None
+        assert updated.owner.id == self.owner_user_1.id
+
+        # Database, existing owner, owner is a User, no force -> Unmodified
+        updated: Database = self.metadata.patch_owner(
+            entity=Database,
+            entity_id=self.db_entity_id,
+            owner=self.owner_user_2,
+        )
+        assert updated is None
+
+        # Database, existing owner, owner is a User, force -> Modified
+        updated: Database = self.metadata.patch_owner(
+            entity=Database,
+            entity_id=self.db_entity_id,
+            owner=self.owner_user_2,
+            force=True,
+        )
+        assert updated is not None
+        assert updated.owner.id == self.owner_user_2.id
+
+        # Database, existing owner, no owner, no force -> Unmodified
+        updated: Database = self.metadata.patch_owner(
+            entity=Database,
+            entity_id=self.db_entity_id,
+        )
+        assert updated is None
+
+        # Database, existing owner, no owner, force -> Modified
+        updated: Database = self.metadata.patch_owner(
+            entity=Database,
+            entity_id=self.db_entity_id,
+            force=True,
+        )
+        assert updated is not None
+        assert updated.owner is None
+
+        # DatabaseSchema, no existing owner, owner is Team -> Modified
+        updated: DatabaseSchema = self.metadata.patch_owner(
+            entity=DatabaseSchema,
+            entity_id=self.db_schema_entity_id,
+            owner=self.owner_team_1,
+        )
+        assert updated is not None
+        assert updated.owner.id == self.owner_team_1.id
+
+        # DatabaseSchema, existing owner, owner is Team, no force -> Unmodified
+        updated: DatabaseSchema = self.metadata.patch_owner(
+            entity=DatabaseSchema,
+            entity_id=self.db_schema_entity_id,
+            owner=self.owner_team_2,
+        )
+        assert updated is None
+
+        # DatabaseSchema, existing owner, owner is Team, force -> Modified
+        updated: DatabaseSchema = self.metadata.patch_owner(
+            entity=DatabaseSchema,
+            entity_id=self.db_schema_entity_id,
+            owner=self.owner_team_2,
+            force=True,
+        )
+        assert updated is not None
+        assert updated.owner.id == self.owner_team_2.id
+
+        # DatabaseSchema, existing owner, no owner, no force -> Unmodified
+        updated: DatabaseSchema = self.metadata.patch_owner(
+            entity=DatabaseSchema,
+            entity_id=self.db_schema_entity_id,
+        )
+        assert updated is None
+
+        # DatabaseSchema, existing owner, no owner, force -> Modified
+        updated: DatabaseSchema = self.metadata.patch_owner(
+            entity=DatabaseSchema,
+            entity_id=self.db_schema_entity_id,
+            force=True,
+        )
+        assert updated is not None
+        assert updated.owner is None
+
+        # Table, no existing owner, owner is a Team -> Modified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id=self.entity_id,
+            owner=self.owner_team_1,
+        )
+        assert updated is not None
+        assert updated.owner.id == self.owner_team_1.id
+
+        # Table, existing owner, owner is a Team, no force -> Unmodified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id=self.entity_id,
+            owner=self.owner_team_2,
+        )
+        assert updated is None
+
+        # Table, existing owner, owner is a Team, force -> Modified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id=self.entity_id,
+            owner=self.owner_team_2,
+            force=True,
+        )
+        assert updated is not None
+        assert updated.owner.id == self.owner_team_2.id
+
+        # Table, existing owner, no owner, no force -> Unmodified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id=self.entity_id,
+        )
+        assert updated is None
+
+        # Table, existing owner, no owner, no force -> Modified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id=self.entity_id,
+            force=True,
+        )
+        assert updated is not None
+        assert updated.owner is None
+
+        # Table with non-existent id, force -> Unmodified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id="9facb7b3-1dee-4017-8fca-1254b700afef",
+            force=True,
+        )
+        assert updated is None
+
+        # Table, no owner, invalid owner type -> Unmodified
+        updated: Table = self.metadata.patch_owner(
+            entity=Table,
+            entity_id=self.entity_id,
+            owner=EntityReference(id=self.entity_id, type="table"),
+            force=True,
+        )
+        assert updated is None
