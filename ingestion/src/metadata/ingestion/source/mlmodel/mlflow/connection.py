@@ -30,7 +30,7 @@ def get_connection(connection: MlflowConnection) -> MlflowClient:
     )
 
 
-def test_connection(client: MlflowClient) -> None:
+def test_connection(client: MlflowClient, _) -> None:
     """
     Test connection
     """
