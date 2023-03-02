@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Select, Space } from 'antd';
+import { Button, Select, Space } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { isEmpty } from 'lodash';
@@ -28,7 +28,6 @@ import React, {
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
-import { Button } from '../../buttons/Button/Button';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
@@ -166,22 +165,20 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         <Space
           className={classNames('', buttonContainerClass)}
           data-testid="buttons"
-          size={8}>
+          size={4}>
           <Button
-            className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+            className="h-8"
             data-testid="cancelAssociatedTag"
-            size="custom"
-            theme="primary"
-            variant="contained"
+            size="small"
+            type="primary"
             onMouseDown={handleCancel}>
             <CloseOutlined />
           </Button>
           <Button
-            className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+            className="h-8"
             data-testid="saveAssociatedTag"
-            size="custom"
-            theme="primary"
-            variant="contained"
+            size="small"
+            type="primary"
             onMouseDown={handleSave}>
             <CheckOutlined />
           </Button>

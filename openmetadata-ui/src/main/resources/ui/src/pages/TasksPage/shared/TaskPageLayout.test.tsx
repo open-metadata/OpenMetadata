@@ -18,6 +18,16 @@ const mockProps = {
   children: <div data-testid="children" />,
 };
 
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test TaskPageLayout Component', () => {
   it('Should render the component', async () => {
     render(<TaskPageLayout {...mockProps} />);

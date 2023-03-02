@@ -148,7 +148,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams(
-        ['defaultRoles', 'userCount', 'childrenCount', 'owns'],
+        ['defaultRoles', 'userCount', 'childrenCount', 'owns', 'parents'],
         {
           parentTeam: parentTeam ?? 'organization',
           include: 'all',

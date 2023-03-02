@@ -57,6 +57,10 @@ jest.mock('./EntitySummaryPanel/EntitySummaryPanel.component', () =>
 
 const mockFunction = jest.fn();
 
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(

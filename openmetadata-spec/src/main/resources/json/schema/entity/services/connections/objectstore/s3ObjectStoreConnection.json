@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/objectstore/s3StoreConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "S3 StoreConnection",
+  "description": "S3 Store Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.objectstore.S3Connection",
+  "definitions": {
+    "s3Type": {
+      "description": "S3 service type",
+      "type": "string",
+      "enum": ["S3"],
+      "default": "S3"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/s3Type",
+      "default": "S3"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "awsConfig"
+  ]
+}

@@ -16,15 +16,15 @@ global:
     className: "org.openmetadata.service.security.DefaultAuthorizer"
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
-      - "user1"
-      - "user2"
+      - "admin"
     principalDomain: "open-metadata.org"
   authentication:
-    provider: "google"
+    provider: "aws-cognito"
     publicKeys:
-      - "https://www.googleapis.com/oauth2/v3/certs"
-    authority: "https://accounts.google.com"
-    clientId: "{client id}"
+      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "{Cognito Domain}/{User Pool ID}/.well-known/jwks.json" # Update with your Cognito Domain and User Pool ID
+    authority: "{Cognito Domain}/{User Pool ID}" # Update with your Cognito Domain and User Pool ID as follows - https://cognito-idp.us-west-1.amazonaws.com/us-west-1_DL8xfTzj8
+    clientId: "{Client ID}" # Update with your Client ID
     callbackUrl: "http://localhost:8585/callback"
 ```
 
