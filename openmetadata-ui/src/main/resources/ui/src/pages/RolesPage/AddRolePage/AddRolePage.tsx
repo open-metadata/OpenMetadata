@@ -98,7 +98,9 @@ const AddRolePage = () => {
 
   return (
     <div data-testid="add-role-container">
-      <PageLayoutV1 center>
+      <PageLayoutV1
+        center
+        pageTitle={t('label.add-entity', { entity: t('label.role') })}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={breadcrumb} />
           <Card>

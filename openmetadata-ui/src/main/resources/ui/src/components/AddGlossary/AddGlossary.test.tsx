@@ -16,6 +16,10 @@ import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
+jest.mock('../containers/PageLayout', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });

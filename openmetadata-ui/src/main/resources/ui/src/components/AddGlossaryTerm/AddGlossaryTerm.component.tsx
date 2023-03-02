@@ -296,6 +296,7 @@ const AddGlossaryTerm = ({
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', { entity: t('label.glossary-term') })}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
@@ -461,7 +462,7 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt={t('label.valid-url-endpoint')}
+                    alt={t('message.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
                     width="16px"

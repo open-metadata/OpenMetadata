@@ -265,10 +265,12 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
-slackChat:
-  slackUrl: ${SLACK_CHAT_SLACK_URL:-"https://slack.open-metadata.org/"}
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
-login:
-  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}

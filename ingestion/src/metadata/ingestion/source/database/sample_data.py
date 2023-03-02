@@ -21,6 +21,7 @@ from typing import Any, Dict, Iterable, List, Union
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -43,6 +44,7 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -71,6 +73,9 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
@@ -183,13 +188,14 @@ class SampleDataSourceStatus(SourceStatus):
 
 class SampleDataSource(
     Source[Entity]
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        # pylint: disable=too-many-statements
         super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
@@ -400,6 +406,20 @@ class SampleDataSource(
             entity=MlModelService,
             config=WorkflowSource(**self.model_service_json),
         )
+
+        self.object_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/objectcontainers/service.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
+
+        self.object_store_service = self.metadata.get_service_or_create(
+            entity=ObjectStoreService,
+            config=WorkflowSource(**self.object_service_json),
+        )
+
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/models.json",
@@ -407,6 +427,15 @@ class SampleDataSource(
                 encoding="utf-8",
             )
         )
+
+        self.containers = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/objectcontainers/containers.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
+
         self.user_entity = {}
         self.table_tests = json.load(
             open(  # pylint: disable=consider-using-with
@@ -471,6 +500,7 @@ class SampleDataSource(
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
+        yield from self.ingest_containers()
         yield from self.ingest_profiles()
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
@@ -842,6 +872,45 @@ class SampleDataSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
+
+    def ingest_containers(self) -> Iterable[CreateContainerRequest]:
+        """
+        Convert sample containers data into a Container Entity
+        to feed the metastore
+        """
+
+        for container in self.containers:
+            try:
+                # Fetch linked dashboard ID from name
+                parent_container_fqn = container.get("parent")
+                parent_container = None
+                if parent_container_fqn:
+                    parent_container = self.metadata.get_by_name(
+                        entity=Container, fqn=parent_container_fqn
+                    )
+                    if not parent_container:
+                        raise InvalidSampleDataException(
+                            f"Cannot find {parent_container_fqn} in Sample Containers"
+                        )
+
+                container_request = CreateContainerRequest(
+                    name=container["name"],
+                    displayName=container["displayName"],
+                    description=container["description"],
+                    parent=EntityReference(id=parent_container.id, type="container")
+                    if parent_container_fqn
+                    else None,
+                    prefix=container["prefix"],
+                    dataModel=container.get("dataModel"),
+                    numberOfObjects=container.get("numberOfObjects"),
+                    size=container.get("size"),
+                    fileFormats=container.get("fileFormats"),
+                    service=self.object_store_service.fullyQualifiedName,
+                )
+                yield container_request
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error ingesting Container [{container}]: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         """

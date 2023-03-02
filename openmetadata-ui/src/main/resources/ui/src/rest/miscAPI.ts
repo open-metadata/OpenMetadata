@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -71,6 +72,13 @@ export const fetchAuthenticationConfig = async () => {
 
   return response.data;
 };
+export const getApplicationConfig = async () => {
+  const response = await APIClient.get<ApplicationConfiguration>(
+    '/system/config/applicationConfig'
+  );
+
+  return response.data;
+};
 
 export const fetchAuthorizerConfig = async () => {
   const response = await APIClient.get<AuthorizerConfiguration>(
@@ -86,10 +94,6 @@ export const fetchSandboxConfig = async () => {
   );
 
   return response.data;
-};
-
-export const fetchSlackConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/system/config/slackChat');
 };
 
 export const fetchAirflowConfig = async () => {

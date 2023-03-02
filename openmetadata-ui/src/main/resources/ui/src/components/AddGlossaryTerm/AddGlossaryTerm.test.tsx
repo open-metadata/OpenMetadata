@@ -53,6 +53,10 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
+jest.mock('../containers/PageLayout', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 

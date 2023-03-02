@@ -18,9 +18,9 @@ from typing import Any, List, Optional
 from sqlalchemy import Column
 from sqlalchemy.exc import SQLAlchemyError
 
-from metadata.orm_profiler.metrics.core import add_props
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 

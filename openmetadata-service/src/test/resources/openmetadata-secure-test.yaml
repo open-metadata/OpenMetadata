@@ -191,9 +191,12 @@ email:
   password: ""
   transportationStrategy: "SMTP_TLS"
 
-slackChat:
-  slackUrl: "http://localhost:8080"
-
-login:
-  maxLoginFailAttempts: 3
-  accessBlockTime: 600
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ""
+    customMonogramUrlPath: ""
+  loginConfig:
+    maxLoginFailAttempts: 3
+    accessBlockTime: 600
+    jwtTokenExpiryTime: 3600
+  

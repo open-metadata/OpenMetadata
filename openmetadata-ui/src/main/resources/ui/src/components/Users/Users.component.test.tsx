@@ -124,6 +124,16 @@ jest.mock('rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test User Component', () => {
   it('Should render user component', async () => {
     const { container } = render(
