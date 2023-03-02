@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { map, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
@@ -240,3 +241,8 @@ export const COMMON_UI_SCHEMA = {
 
 export const OPENMETADATA = 'OpenMetadata';
 export const JWT_CONFIG = 'openMetadataJWTClientConfig';
+
+export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
+  label: startCase(value),
+  value,
+}));

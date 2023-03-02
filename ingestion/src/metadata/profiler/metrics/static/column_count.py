@@ -82,7 +82,6 @@ class ColumnCount(StaticMetric):
             )
         return ColunCountFn(literal(len(inspect(self.table).c)))
 
-    @_label
     def df_fn(self, df=None):
         """dataframe function"""
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
