@@ -15,133 +15,101 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 
 You can check the latest release [here](/overview/releases).
 
-## 0.13.1 Release - Dec 22nd, 2022
+
+## 1.0 Release - April 6th, 2023
 
 <TileContainer>
-  <Tile
-    title="Lineage"
-    text=""
-    background="purple-70"
-    bordercolor="purple-70"
-    link=""
-    size="half"
-  >
-    <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
-  </Tile>
- <Tile
-    title="Data Quality"
-    text=""
-    background="yellow-70"
-    bordercolor="blue-70"
-  >
-    <li>Freshness based on the partition key</li>
-    <li>TestCase versioning and results applying to a specific version so that UI can show the results as per the test case version</li>
-  </Tile>
    <Tile
-    title="Notifications"
-    text=""
-    background="green-70"
-    bordercolor="green-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/5803"
-    size="half"
-  >
-    <li>Improved workflow to build Alerts and filtering mechanisms</li>
-    <li>Admins can now configure email templates. </li>
-    <li>Admins can set up an email notification for an event, such as a schema change notification, etc..</li>
-  </Tile>
-  <Tile
-    title="Glossary"
-    text=""
-    background="purple-70"
-    bordercolor="purple-70"
-    link=""
-    size="half"
-  >
-    <li>Bulk upload of Glossary Terms</li>
-    <li>Glossary Review Workflow. Owners and Reviewers can approve or deny a Glossary Term to be used. When a user adds a GlossaryTerm, it will open a task and assign it to the owner and reviewers.</li>
-    <li>Propagate tags at the root of glossary terms to its children</li>
-    <li>Propagate tags/glossary by tagging at the database/schema level and applying them to all the schemas/tables underneath them.</li>
-  </Tile>
-   <Tile
-    title="Messaging - Kafka & Redpanda"
-    text=""
-    background="purple-70"
-    bordercolor="blue-70"
-  >
-    <li>AVRO/Protobuf schema parsing and showing them in the topic entity view; currently, we show it as one payload</li>
-    <li>Users will be able to add descriptions/tags at the field level</li>
-    <li>Users can search based on fields in a schema of a topic.</li>
-  </Tile>
-
-</TileContainer>
-
-
-
-## 1.0 Release - March 14th, 2023
-
-<TileContainer>
-  <Tile
-    title="APIs & Schemas"
+    title="APIs & Schema"
     text=""
     background="yellow-70"
     bordercolor="yellow-70"
     link=""
   >
-    <li>Entity Schema specification versioning</li>
-    <li>Defining API backward compatability</li>
+    <li>Stabilization and Improvements to Schemas and APIs</li>
+    <li>Backward compatability of the APIs </li>
   </Tile>
-  <Tile
-    title="Lineage"
+    <Tile
+    title="Ingestion"
     text=""
-    background="purple-70"
-    bordercolor="purple-70"
-    link=""
-    size="half"
+    background="green-70"
+    bordercolor="green-70"
   >
-    <li>Overhaul of lineage query parsing and improved new library</li>
-    <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
+  	 <li> Improved UI/UX for Connector Deployment</li>
+  	 <li> Test Connection will provide clear status on what are all the required permissions we need to extract metadat, lineage, profiler etc.. </li>
+    <li> Performance Improvements in fetching description, tags </li>
+    <li> finite control over the ingesting ownership, tags </li>
+    <li> dbt performance improvements </li>
+    <li> Support for Tableau & PowerBI data models </li>
+    <li> SSO Service accounts for ingestion will be deprecated. JWT token based authentication will be preferred </li>
   </Tile>
-  <Tile
-    title="Collaboration"
-    text=""
-    background="pink-70"
-    bordercolor="pink-70"
-  >
-    <li>Improvements Task & Activity Feed</li>
-  </Tile>
+
   <Tile
     title="Entities"
     text=""
+    background="purple-70"
+    bordercolor="purple-70"
+    link=""
+  >
+    <li>Object Store service, to extract the objects from storage services such as S3</li>
+    <li>ElasticSearch Connector</li>
+    <li>Query as Entity, Overhaul of queries UI</li>
+    <li>Support for Long Entity Names such as S3 paths</li>
+    <li>Import/Export support at all entities </li>
+    <li>Tag Propgation using Import/Export </li>
+    <li>Data Models for Dashboards </li>
+  </Tile>
+    <Tile
+    title="Glossary"
+    text=""
     background="green-70"
     bordercolor="green-70"
   >
-    <li> Add support for NoSQL/Json-based documents as entities. This will help integrate Cassandra/ElasticSearch etc.. services.</li>
-    <li>Storage Services such as S3 and showcase buckets as independent entities</li>
+  	 <li> Glossary & Tags Search enabled at global search</li>
+    <li> Drag & Drop, Glossary Terms with-in Glossary and Across Glossaries </li>    
+    <li> Add Assets to a Glossary Term from Glossary Term page </li>
   </Tile>
+  
   <Tile
-    title="Data Quality"
+    title="Security"
+    text=""
+    background="red-70"
+    bordercolor="red-70"
+    link=""
+  >
+    <li>SAML support</li>
+    <li>User Personal Access Token to access APIs as a user</li>
+  </Tile>
+    <Tile
+    title="Glossary"
+    text=""
+    background="green-70"
+    bordercolor="green-70"
+  >
+  	 <li> Glossary Import & Export</li>
+    <li> Improved Glossary UI </li>
+  </Tile>
+
+  <Tile
+    title="Auto Classification"
     text=""
     background="yellow-70"
     bordercolor="yellow-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/4652"
   >
-    <li>Complex types</li>
-    <li>Add support for computing completeness</li>
-    <li>Improvements to Auto Classification of entities by ML</li>
+    <li>PII auto classifcation using ML and NLP.</li>
   </Tile>
   <Tile
-    title="Security"
+    title="Localization"
     text=""
     background="purple-70"
     bordercolor="purple-70"
   >
-    <li>Search results integration for roles and policies</li>
-    <li>Domain based restriction and domain only view</li>
-    <li>Policy improvements based on community feedback</li>
+    <li>Full support for localization in the UI</li>
+    <li>Support for English, French, Spanish and Chinese</li>
   </Tile>
 </TileContainer>
 
-## 1.1 Release - April 18th 2023
+## 1.1 Release - May 18th 2023
 
 <TileContainer>
   <Tile
@@ -191,11 +159,4 @@ You can check the latest release [here](/overview/releases).
   <li> Add support for Notebook Entity </li>
   <li> Add support for Report Entity </li>
   </Tile>
-  <Tile
-    title="Reverse Metadata **beta**"
-    text=""
-    background="yellow-70"
-    bordercolor="blue-70"
-  >
-  </Tile>
-</TileContainer>
+ </TileContainer>
