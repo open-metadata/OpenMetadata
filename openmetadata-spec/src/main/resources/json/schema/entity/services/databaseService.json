@@ -143,7 +143,7 @@
         {
           "name": "Dbt"
         },
-	      {
+        {
           "name": "PGSpider"
         }
       ]
@@ -245,7 +245,7 @@
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
             },
-	          {
+            {
               "$ref": "./connections/database/pgspiderConnection.json"
             }
           ]
