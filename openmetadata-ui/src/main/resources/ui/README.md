@@ -100,14 +100,12 @@ export const getInitOptions = (): InitOptions => {
 +     'fr-FR': { translation: frFR },
     },
     fallbackLng: ['en-US'],
-    interpolation: {
-
 ```
 
 ### Test the language translation
 
-To test the language translation update the language code in the `i18n.changeLanguage` function call.
+To test the language translation, update the language code in the `i18n.changeLanguage` function call.
 
 ```shell
-i18n.changeLanguage('fr-FR');
+i18n.changeLanguage('fr-FR')
 ```
