@@ -98,6 +98,7 @@ class ProfilerProtocol(ABC):
             ometa_client=ometa_client,
             thread_count=thread_count,
             entity=entity,
+            source_config=source_config,
             profile_sample_config=profile_sample_config,
             sample_query=sample_query,
             table_partition_config=table_partition_config,

@@ -156,16 +156,10 @@ const ConfigureIngestion = ({
     handleProfileSample(undefined);
   };
 
-  const handleDashBoardServiceNames = (inputValue: string) => {
-    const separator = ',';
-
-    const databaseNames = inputValue.includes(separator)
-      ? inputValue.split(separator)
-      : Array(inputValue);
-
-    if (databaseNames) {
+  const handleDashBoardServiceNames = (inputValue: string[]) => {
+    if (inputValue) {
       onChange({
-        databaseServiceNames: databaseNames,
+        databaseServiceNames: inputValue,
       });
     }
   };
@@ -462,7 +456,7 @@ const ConfigureIngestion = ({
     );
   };
 
-  const getProcessPiiToggles = () => {
+  const getProcessPiiTogglesForProfiler = () => {
     return (
       <Field>
         <div className="tw-flex tw-gap-1">
@@ -474,7 +468,7 @@ const ConfigureIngestion = ({
           />
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.process-pii-sensitive-column-message')}
+          {t('message.process-pii-sensitive-column-message-profiler')}
         </p>
         {getSeparator('')}
       </Field>
@@ -490,14 +484,17 @@ const ConfigureIngestion = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.database-service-name-message')}
         </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
+        <Select
+          allowClear
           data-testid="name"
           id="name"
-          name="name"
-          type="text"
+          mode="tags"
+          placeholder={t('label.add-entity', {
+            entity: t('label.database-service-name'),
+          })}
+          style={{ width: '100%' }}
           value={databaseServiceNames}
-          onChange={(e) => handleDashBoardServiceNames(e.target.value)}
+          onChange={handleDashBoardServiceNames}
         />
         {getSeparator('')}
       </Field>
@@ -553,7 +550,6 @@ const ConfigureIngestion = ({
             {getFilterPatterns()}
             {getSeparator('')}
             {getFqnForFilteringToggles()}
-            {getProcessPiiToggles()}
             {getDatabaseFieldToggles()}
           </Fragment>
         );
@@ -838,6 +834,7 @@ const ConfigureIngestion = ({
           })
         )}
         {getDebugLogToggle()}
+        {getProcessPiiTogglesForProfiler()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">

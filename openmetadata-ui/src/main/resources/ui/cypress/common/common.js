@@ -158,7 +158,7 @@ export const testServiceCreationAndIngestion = (
     'api/v1/services/ingestionPipelines/*',
     'getIngestionPipelineStatus'
   );
-  cy.get('[data-testid="next-button"]').click();
+  cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // Connection Details in step 3
   cy.get('[data-testid="add-new-service-container"]')

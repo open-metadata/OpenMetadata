@@ -74,7 +74,16 @@ config = {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
             "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                "jwtToken": (
+                    "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1"
+                    "QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib"
+                    "3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blb"
+                    "m1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREk"
+                    "qVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq"
+                    "91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMe"
+                    "QaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133i"
+                    "ikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                )
             },
         }
     },
@@ -102,7 +111,7 @@ class User(Base):
     "_validate_service_name",
     return_value=True,
 )
-def test_init_workflow(mocked_method, mocked_orm):
+def test_init_workflow(mocked_method, mocked_orm):  # pylint: disable=unused-argument
     """
     We can initialise the workflow from a config
     """
@@ -204,7 +213,7 @@ def test_filter_entities(mocked_method):
     "_validate_service_name",
     return_value=True,
 )
-def test_profile_def(mocked_method, mocked_orm):
+def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argument
     """
     Validate the definitions of the profile in the JSON
     """
@@ -248,7 +257,9 @@ def test_profile_def(mocked_method, mocked_orm):
     "_validate_service_name",
     return_value=True,
 )
-def test_default_profile_def(mocked_method, mocked_orm):
+def test_default_profile_def(
+    mocked_method, mocked_orm  # pylint: disable=unused-argument
+):
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler

@@ -51,9 +51,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   };
 
   return (
-    <Card
-      className="tw-rounded-md tw-border"
-      data-testid="profiler-details-card-container">
+    <Card data-testid="profiler-details-card-container">
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <ProfilerLatestValue
