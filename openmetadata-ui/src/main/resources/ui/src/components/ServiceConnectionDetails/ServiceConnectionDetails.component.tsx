@@ -76,19 +76,11 @@ const ServiceConnectionDetails = ({
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'credentials'
         ) {
-          if (isObject(value.gcsConfig)) {
-            // Condition for GCS Credentials value
-            const newSchemaPropertyObject =
-              schemaPropertyObject[key].definitions.GCSValues.properties;
+          // Condition for GCS Credentials path
+          const newSchemaPropertyObject =
+            schemaPropertyObject[key].definitions.GCSCredentialsPath;
 
-            return getKeyValues(value.gcsConfig, newSchemaPropertyObject);
-          } else {
-            // Condition for GCS Credentials path
-            const newSchemaPropertyObject =
-              schemaPropertyObject[key].definitions.GCSCredentialsPath;
-
-            return getKeyValues(value, newSchemaPropertyObject);
-          }
+          return getKeyValues(value, newSchemaPropertyObject);
         } else if (
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'configSource'

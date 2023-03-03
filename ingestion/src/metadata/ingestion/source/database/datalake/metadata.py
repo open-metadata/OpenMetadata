@@ -28,11 +28,17 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableType,
 )
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
-    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
     GCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,

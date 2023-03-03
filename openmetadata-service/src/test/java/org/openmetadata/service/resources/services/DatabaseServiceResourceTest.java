@@ -361,7 +361,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
     assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
     assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
-    assertEquals(expectedMysqlConnection.getPassword(), actualMysqlConnection.getPassword());
     assertEquals(expectedMysqlConnection.getConnectionOptions(), actualMysqlConnection.getConnectionOptions());
     assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
   }

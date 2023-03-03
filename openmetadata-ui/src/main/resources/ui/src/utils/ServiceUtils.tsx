@@ -96,7 +96,6 @@ import {
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { ConnectionTypeEnum } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -118,6 +117,7 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
@@ -602,14 +602,14 @@ export const shouldTestConnection = (serviceType: string) => {
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
   switch (serviceCat) {
     case ServiceCategory.MESSAGING_SERVICES:
-      return ConnectionTypeEnum.Messaging;
+      return ServiceType.Messaging;
     case ServiceCategory.DASHBOARD_SERVICES:
-      return ConnectionTypeEnum.Dashboard;
+      return ServiceType.Dashboard;
     case ServiceCategory.PIPELINE_SERVICES:
-      return ConnectionTypeEnum.Pipeline;
+      return ServiceType.Pipeline;
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return ConnectionTypeEnum.Database;
+      return ServiceType.Database;
   }
 };
 
