@@ -45,8 +45,8 @@ def test_connection(connection: Domo, _) -> TestConnectionResult:
     """
 
     def custom_executor():
-        reult = connection.get_pipelines()
-        return list(reult)
+        result = connection.get_pipelines()
+        return list(result)
 
     steps = [
         TestConnectionStep(

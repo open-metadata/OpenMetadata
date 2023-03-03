@@ -49,8 +49,8 @@ def test_connection(domo: Domo, _) -> TestConnectionResult:
     """
 
     def custom_executor():
-        reult = domo.page_list()
-        return list(reult)
+        result = domo.page_list()
+        return list(result)
 
     steps = [
         TestConnectionStep(
