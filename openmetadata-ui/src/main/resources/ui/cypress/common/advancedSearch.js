@@ -180,6 +180,8 @@ export const goToAdvanceSearch = () => {
     cy.get('[data-testid="advance-search-button"]')
       .should('be.visible')
       .click();
+
+    cy.get('.ant-btn').contains('Reset').should('be.visible').click();
   });
 };
 
@@ -442,24 +444,22 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
-    }
-  });
 
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_1}"]`).length
-    ) {
-      cy.get(`[title = '${searchCriteria_1}']`)
+      verifyResponseStatusCode('@suggestApi', 200);
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[title="${searchCriteria_1}"]`)
         .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
     }
   });
+
   // To close the dropdown for anyin and notin condition
   cy.get('.ant-modal-header').click();
 
@@ -497,37 +497,25 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-    }
-  });
+      verifyResponseStatusCode('@suggestApi', 200);
 
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length &&
-      searchCriteria_2 === 'Tier.Tier2'
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
-        .eq(1)
-        .contains(searchCriteria_2)
-        .click({ force: true });
-    } else if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
-        .contains(searchCriteria_2)
-        .click();
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[title="${searchCriteria_2}"]`)
+        .should('be.visible')
+        .trigger('mouseover')
+        .trigger('click');
     }
   });
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
-      searchCriteria_1
-    )}*${filter_2}*${encodeURI(response_2)}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${searchCriteria_1}*&sort_field=_score&sort_order=desc`,
     'search'
   );
 
@@ -578,24 +566,22 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
-    }
-  });
 
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_1}"]`).length
-    ) {
+      verifyResponseStatusCode('@suggestApi', 200);
+
       cy.get(`[title = '${searchCriteria_1}']`)
         .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
     }
   });
+
   // To close the dropdown for anyin and notin condition
   cy.get('.ant-modal-header').click();
 
@@ -629,27 +615,18 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-    }
-  });
 
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length &&
-      searchCriteria_2 === 'Tier.Tier2'
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
-        .eq(1)
-        .contains(searchCriteria_2)
-        .click({ force: true });
-    } else if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
+      verifyResponseStatusCode('@suggestApi', 200);
+
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[title="${searchCriteria_2}"]`)
+        .should('be.visible')
         .contains(searchCriteria_2)
         .click();
     }
