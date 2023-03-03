@@ -14,11 +14,11 @@ PGSpider lineage module
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.pgspider.queries import PGSPIDER_GET_MULTI_TENANT_TABLES, \
+from metadata.ingestion.source.database.pgspider.queries import (
+    PGSPIDER_GET_MULTI_TENANT_TABLES,
     PGSPIDER_GET_CHILD_TABLES
+)
 from metadata.ingestion.source.database.pgspider.query_parser import (
     PGSpiderQueryParserSource,
 )
@@ -37,7 +37,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-
 class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, LineageSource):
     """
     Implements the necessary methods to extract Lineage information
@@ -51,23 +50,17 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
 
         with get_connection(self.service_connection).connect() as conn:
             rows = conn.execute(sql)
-            logger.info(type(rows))
             return rows
 
-    def get_child_tables(self, multi_tenant_table: str) -> Iterable[str]:
+    def get_child_tables(self, multi_tenant_table: str) -> Iterable[any]:
         """
         Get list of child foreign tables of a multi-tenant table
         """
         sql = PGSPIDER_GET_CHILD_TABLES.format(multi_tenant_table=multi_tenant_table)
 
-        child_tables_list = []
         with get_connection(self.service_connection).connect() as conn:
             rows = conn.execute(sql)
-            for row in rows:
-                row = dict(row)
-                child_tables_list.append(row["relname"])
-
-        return child_tables_list
+            return rows
 
     def next_record(self) -> Iterable[AddLineageRequest]:
         """
@@ -78,48 +71,49 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
 
         """
         For PGSpider, firstly, get list of multi-tenant tables.
-        Next, get child foreign table of each multi-tenant tables.
-        Create the INSERT query which follows the format of Lineage feature,
-        with source table is multi-tenant table, and child table is child
-        foreign table. Prepare the lineage and send it to the sink.
+        Next, get child foreign tables of each multi-tenant tables.
+        Get entities of source and target table to create Lineage request.
+        For column level lineage, find all pairs of columns which have
+        the same name and create LineageDetails.
         """
         for multi_tenant_table in self.get_multi_tenant_tables():
             multi_tenant_table = dict(multi_tenant_table)
             target_table = multi_tenant_table["relname"]
+            database = multi_tenant_table["database"]
+            schema = multi_tenant_table["nspname"]
 
-            for source_table in self.get_child_tables(target_table):
-                target_table_entities = search_table_entities(
-                    metadata=self.metadata,
-                    service_name=self.config.serviceName,
-                    database=multi_tenant_table["database"],
-                    database_schema=multi_tenant_table["nspname"],
-                    table=target_table,
-                )
+            target_table_entities = search_table_entities(
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+                database=database,
+                database_schema=schema,
+                table=target_table,
+            )
+
+            for child_foreign_table in self.get_child_tables(target_table):
+                child_foreign_table = dict(child_foreign_table)
+                source_table = child_foreign_table["relname"]
                 source_table_entities = search_table_entities(
                     metadata=self.metadata,
                     service_name=self.config.serviceName,
-                    database=multi_tenant_table["database"],
-                    database_schema=multi_tenant_table["nspname"],
+                    database=database,
+                    database_schema=schema,
                     table=source_table,
                 )
 
-                for source in source_table_entities or []:
-                    for target in target_table_entities or []:
-                        """
-                        Loop through all columns of source and target,
-                        get the matching pair to create column lineage
-                        """
+                for source_entity in source_table_entities or []:
+                    for target_entity in target_table_entities or []:
                         column_lineages = []
-                        for source_column in source.columns:
-                            for target_column in target.columns:
+                        for source_column in source_entity.columns:
+                            for target_column in target_entity.columns:
+                                """ Find that matching pair of column """
                                 if source_column.name == target_column.name:
-                                    logger.info(source_column.fullyQualifiedName)
-                                    logger.info(target_column.fullyQualifiedName)
-                                    column_lineage = ColumnLineage(
-                                        fromColumns=[source_column.fullyQualifiedName.__root__],
-                                        toColumn=target_column.fullyQualifiedName.__root__
+                                    column_lineages.append(
+                                        ColumnLineage(
+                                            fromColumns=[source_column.fullyQualifiedName.__root__],
+                                            toColumn=target_column.fullyQualifiedName.__root__
+                                        )
                                     )
-                                    column_lineages.append(column_lineage)
 
                         lineage_details = LineageDetails(
                             columnsLineage=column_lineages,
@@ -127,8 +121,8 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
                         yield AddLineageRequest(
                             description="Lineage Request: source = " + source_table + ", target = " + target_table,
                             edge=EntitiesEdge(
-                                fromEntity=EntityReference(id=source.id, type="table"),
-                                toEntity=EntityReference(id=target.id, type="table"),
+                                fromEntity=EntityReference(id=source_entity.id, type="table"),
+                                toEntity=EntityReference(id=target_entity.id, type="table"),
                                 lineageDetails=lineage_details
-                            ),
+                            )
                         )
