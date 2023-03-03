@@ -24,6 +24,7 @@ import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
+  Edge as InterfaceEdge,
   EdgeData,
   EdgeTypeEnum,
   EntityReferenceChild,
@@ -40,7 +41,9 @@ import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
+import jsonData from 'jsons/en';
 import {
+  cloneDeep,
   isEmpty,
   isEqual,
   isNil,
@@ -60,6 +63,7 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {
@@ -93,6 +97,7 @@ import { isLeafNode } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
+import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 100;
 
@@ -352,7 +357,7 @@ export const getLineageData = (
             )}
             <div className="tw-flex tw-flex-col">
               {hidePageNodes &&
-                paginationData[node.id] != null &&
+                !isNil(paginationData[node.id]) &&
                 paginationData[node.id].upstream.map((item: number) => (
                   <MinusCircleOutlined
                     key={item}
@@ -403,7 +408,7 @@ export const getLineageData = (
             )}
             <div className="tw-flex tw-flex-col">
               {hidePageNodes &&
-                paginationData[node.id] != null &&
+                !isNil(paginationData[node.id]) &&
                 paginationData[node.id].downstream.map((item: number) => (
                   <MinusCircleOutlined
                     key={item}
@@ -453,7 +458,7 @@ export const getLineageData = (
           <div className="tw-flex">
             <div className="tw-flex tw-flex-col">
               {hidePageNodes &&
-                paginationData[mainNode.id] != null &&
+                !isNil(paginationData[mainNode.id]) &&
                 paginationData[mainNode.id].upstream.map((item: number) => (
                   <MinusCircleOutlined
                     key={item}
@@ -471,7 +476,7 @@ export const getLineageData = (
             />
             <div className="tw-flex tw-flex-col">
               {hidePageNodes &&
-                paginationData[mainNode.id] != null &&
+                !isNil(paginationData[mainNode.id]) &&
                 paginationData[mainNode.id].downstream.map((item: number) => (
                   <MinusCircleOutlined
                     key={item}
@@ -547,16 +552,18 @@ export const getDeletedLineagePlaceholder = () => {
   );
 };
 
-const dagreGraph = new dagre.graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
-
 export const getLayoutedElements = (
   elements: CustomElement,
   direction = EntityLineageDirection.LEFT_RIGHT
 ) => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
   const { node, edge } = elements;
   const isHorizontal = direction === EntityLineageDirection.LEFT_RIGHT;
   dagreGraph.setGraph({ rankdir: direction });
+
+  const nodeIds = node.map((item) => item.id);
 
   node.forEach((el) => {
     const isExpanded = el.data.isExpanded;
@@ -567,7 +574,12 @@ export const getLayoutedElements = (
   });
 
   edge.forEach((el) => {
-    dagreGraph.setEdge(el.source, el.target);
+    if (
+      nodeIds.indexOf(el.source) !== -1 &&
+      nodeIds.indexOf(el.target) !== -1
+    ) {
+      dagreGraph.setEdge(el.source, el.target);
+    }
   });
 
   dagre.layout(dagreGraph);
@@ -1213,12 +1225,28 @@ export const getEdgeStyle = (value: boolean) => {
 };
 
 export const getChildMap = (obj: EntityLineage) => {
-  const childMap: EntityReferenceChild[] = getChildren(obj, obj.entity.id);
-  const parentMap: EntityReferenceChild[] = getParents(obj, obj.entity.id);
+  const nodeSet = new Set<string>();
+  nodeSet.add(obj.entity.id);
+  const newData = cloneDeep(obj);
+  newData.downstreamEdges = removeDuplicates(newData.downstreamEdges || []);
+  newData.upstreamEdges = removeDuplicates(newData.upstreamEdges || []);
+
+  const childMap: EntityReferenceChild[] = getChildren(
+    newData,
+    nodeSet,
+    obj.entity.id
+  );
+
+  const parentsMap: EntityReferenceChild[] = getParents(
+    newData,
+    nodeSet,
+    obj.entity.id
+  );
+
   const map: EntityReferenceChild = {
     ...obj.entity,
     children: childMap,
-    parents: parentMap,
+    parents: parentsMap,
   };
 
   return map;
@@ -1226,14 +1254,16 @@ export const getChildMap = (obj: EntityLineage) => {
 
 export const getPaginatedChildMap = (
   obj: EntityLineage,
-  map: EntityReferenceChild,
+  map: EntityReferenceChild | undefined,
   pagination_data: Record<string, NodeIndexMap>
 ) => {
   const nodes = [];
   const edges: EntityLineageEdge[] = [];
   nodes.push(obj.entity);
-  flattenObj(obj, map, true, obj.entity.id, nodes, edges, pagination_data);
-  flattenObj(obj, map, false, obj.entity.id, nodes, edges, pagination_data);
+  if (map) {
+    flattenObj(obj, map, true, obj.entity.id, nodes, edges, pagination_data);
+    flattenObj(obj, map, false, obj.entity.id, nodes, edges, pagination_data);
+  }
 
   return { nodes, edges };
 };
@@ -1261,9 +1291,12 @@ export const flattenObj = (
 
   if (hasMoreThanLimit) {
     for (let i = 0; i < pageCount; i++) {
-      if (currentPages != null && currentPages.includes(i)) {
+      if (!isNil(currentPages) && currentPages.includes(i)) {
         children
-          .slice(i * MAX_LINEAGE_LENGTH, i + MAX_LINEAGE_LENGTH)
+          .slice(
+            i * MAX_LINEAGE_LENGTH,
+            i * MAX_LINEAGE_LENGTH + MAX_LINEAGE_LENGTH - 1
+          )
           .forEach((item) => {
             if (item) {
               flattenObj(
@@ -1319,31 +1352,42 @@ export const flattenObj = (
   }
 };
 
-export const getChildren = (obj: EntityLineage, id: string, index = 0) => {
-  const downStreamEdges = removeDuplicates(obj.downstreamEdges || []);
+export const getChildren = (
+  obj: EntityLineage,
+  nodeSet: Set<string>,
+  id: string,
+  index = 0
+) => {
+  const downStreamEdges = obj.downstreamEdges || [];
+  const filtered = downStreamEdges.filter((edge) => edge.fromEntity === id);
 
-  return downStreamEdges
-    .filter((edge) => edge.fromEntity === id)
-    .reduce((childMap: EntityReferenceChild[], edge, i) => {
-      const node = obj.nodes?.find((node) => node.id === edge.toEntity);
-      if (node) {
-        const childNodes = getChildren(obj, node.id, i);
-        childMap.push({ ...node, children: childNodes, pageIndex: index + i });
-      }
+  return filtered.reduce((childMap: EntityReferenceChild[], edge, i) => {
+    const node = obj.nodes?.find((node) => node.id === edge.toEntity);
+    if (node && !nodeSet.has(node.id)) {
+      nodeSet.add(node.id);
+      const childNodes = getChildren(obj, nodeSet, node.id, i);
+      childMap.push({ ...node, children: childNodes, pageIndex: index + i });
+    }
 
-      return childMap;
-    }, []);
+    return childMap;
+  }, []);
 };
 
-export const getParents = (obj: EntityLineage, id: string, index = 0) => {
-  const upstreamEdges = removeDuplicates(obj.upstreamEdges || []);
+export const getParents = (
+  obj: EntityLineage,
+  nodeSet: Set<string>,
+  id: string,
+  index = 0
+) => {
+  const upstreamEdges = obj.upstreamEdges || [];
 
   return upstreamEdges
     .filter((edge) => edge.toEntity === id)
     .reduce((childMap: EntityReferenceChild[], edge, i) => {
       const node = obj.nodes?.find((node) => node.id === edge.fromEntity);
-      if (node) {
-        const childNodes = getParents(obj, node.id, i);
+      if (node && !nodeSet.has(node.id)) {
+        nodeSet.add(node.id);
+        const childNodes = getParents(obj, nodeSet, node.id, i);
         childMap.push({ ...node, parents: childNodes, pageIndex: index + i });
       }
 
@@ -1351,7 +1395,7 @@ export const getParents = (obj: EntityLineage, id: string, index = 0) => {
     }, []);
 };
 
-const removeDuplicates = (arr: EntityLineageEdge[]) => {
+export const removeDuplicates = (arr: EntityLineageEdge[]) => {
   return uniqWith(arr, isEqual);
 };
 
@@ -1393,4 +1437,29 @@ export const findNodeById = (
   }
 
   return undefined;
+};
+
+export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
+  try {
+    await addLineage(edge);
+  } catch (err: any) {
+    showErrorToast(err, jsonData['api-error-messages']['add-lineage-error']);
+
+    throw err;
+  }
+};
+
+export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
+  try {
+    await deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    );
+  } catch (err: any) {
+    showErrorToast(err, jsonData['api-error-messages']['delete-lineage-error']);
+
+    throw err;
+  }
 };

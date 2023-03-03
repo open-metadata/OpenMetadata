@@ -15,13 +15,6 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -36,8 +29,6 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
   getLatestTableProfileByFqn,
@@ -68,7 +59,6 @@ import {
   UsageDetails,
 } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -88,7 +78,7 @@ import {
   defaultFields,
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
-import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -100,7 +90,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
   const [isTableQueriesLoading, setIsTableQueriesLoading] =
@@ -136,18 +125,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const { datasetFQN, tab } = useParams() as Record<string, string>;
   const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
-  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
-    {} as EntityLineage
-  );
-  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [usageSummary, setUsageSummary] = useState<UsageDetails>(
     {} as UsageDetails
   );
   const [currentVersion, setCurrentVersion] = useState<string>();
-  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
-    id: undefined,
-    state: false,
-  });
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromTableFQN(
       datasetFQN,
@@ -187,27 +168,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         ),
       });
     }
-  };
-
-  const getLineageData = () => {
-    setIsLineageLoading(true);
-    getLineageByFQN(tableFQN, EntityType.TABLE)
-      .then((res) => {
-        if (res) {
-          setEntityLineage(res);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
   };
 
   const getFeedData = (
@@ -436,14 +396,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       }
 
       case TabSpecificField.LINEAGE: {
-        if (!deleted) {
-          if (isEmpty(entityLineage)) {
-            getLineageData();
-          }
-
-          break;
-        }
-
         break;
       }
 
@@ -650,79 +602,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
-    if (pos === 'to' && val.downstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
-      }));
-    }
-    if (pos === 'from' && val.upstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
-      }));
-    }
-  };
-
-  const entityLineageHandler = (lineage: EntityLineage) => {
-    setEntityLineage(lineage);
-  };
-
-  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
-    setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
-      .then((res) => {
-        if (res) {
-          setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-node-error']
-          );
-        }
-        setTimeout(() => {
-          setNodeLoading((prev) => ({ ...prev, state: false }));
-        }, 500);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-node-error']
-        );
-      });
-  };
-
-  const addLineageHandler = (edge: Edge): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      addLineage(edge)
-        .then(() => {
-          resolve();
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['add-lineage-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(
-      data.fromEntity,
-      data.fromId,
-      data.toEntity,
-      data.toId
-    ).catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['delete-lineage-error']
-      );
-    });
-  };
-
   const postFeedHandler = (value: string, id: string) => {
     const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
 
@@ -837,7 +716,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         FQN_SEPARATOR_CHAR
       )
     );
-    setEntityLineage({} as EntityLineage);
   }, [datasetFQN]);
 
   return (
@@ -853,7 +731,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           {tablePermissions.ViewAll || tablePermissions.ViewBasic ? (
             <DatasetDetails
               activeTab={activeTab}
-              addLineageHandler={addLineageHandler}
               columns={columns}
               columnsUpdateHandler={columnsUpdateHandler}
               createThread={createThread}
@@ -865,8 +742,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               descriptionUpdateHandler={descriptionUpdateHandler}
               entityFieldTaskCount={entityFieldTaskCount}
               entityFieldThreadCount={entityFieldThreadCount}
-              entityLineage={entityLineage}
-              entityLineageHandler={entityLineageHandler}
               entityName={name}
               entityThread={entityThread}
               feedCount={feedCount}
@@ -874,19 +749,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
               followTableHandler={followTable}
               followers={followers}
               handleExtensionUpdate={handleExtentionUpdate}
-              isLineageLoading={isLineageLoading}
-              isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}
               isSampleDataLoading={isSampleDataLoading}
               isTableProfileLoading={isTableProfileLoading}
               isentityThreadLoading={isentityThreadLoading}
               joins={joins}
-              lineageLeafNodes={leafNodes}
-              loadNodeHandler={loadNodeHandler}
               owner={owner as EntityReference}
               paging={paging}
               postFeedHandler={postFeedHandler}
-              removeLineageHandler={removeLineageHandler}
               sampleData={sampleData}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}

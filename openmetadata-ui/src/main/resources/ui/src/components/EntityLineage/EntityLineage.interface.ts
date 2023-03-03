@@ -29,18 +29,10 @@ export interface SelectedNode {
 }
 
 export interface EntityLineageProp {
-  isNodeLoading: LoadingNodeState;
-  lineageLeafNodes: LeafNodes;
-  entityLineage: EntityLineage;
   entityType: EntityType;
   deleted?: boolean;
   hasEditAccess?: boolean;
   isLoading?: boolean;
-  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-  addLineageHandler: (edge: Edge) => Promise<void>;
-  removeLineageHandler: (data: EdgeData) => void;
-  entityLineageHandler: (lineage: EntityLineage) => void;
-  onFullScreenClick?: () => void;
   onExitFullScreenViewClick?: () => void;
 }
 
