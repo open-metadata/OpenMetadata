@@ -33,7 +33,7 @@ class Histogram(HybridMetric):
     """
     AVG Metric
 
-    Given a column, return the AVG value.
+    Given a column, return the Histogram value.
 
     - For a quantifiable value, return the usual AVG
     - For a concatenable (str, text...) return the AVG length
