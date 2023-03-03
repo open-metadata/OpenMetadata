@@ -14,7 +14,6 @@ Redshift usage module
 from abc import ABC
 from datetime import datetime
 
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -55,6 +54,6 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.filters,
             result_limit=self.source_config.resultLimit,
         )

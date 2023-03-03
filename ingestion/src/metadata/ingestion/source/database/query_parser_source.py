@@ -16,7 +16,6 @@ from datetime import datetime
 from typing import Iterator, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -100,7 +99,7 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.filters,
             result_limit=self.source_config.resultLimit,
         )
 
