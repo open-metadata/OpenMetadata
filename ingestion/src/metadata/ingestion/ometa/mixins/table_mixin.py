@@ -20,6 +20,7 @@ from typing import List, Optional, Type, TypeVar
 from pydantic import BaseModel
 from requests.utils import quote
 
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -27,7 +28,6 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
-    SqlQuery,
     Table,
     TableData,
     TableJoins,
@@ -35,12 +35,15 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import convert_obj_list_to_json_str, model_str
 from metadata.utils.logger import ometa_logger
-from metadata.utils.lru_cache import LRUCache
 from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
@@ -169,7 +172,7 @@ class OMetaTableMixin:
         return Table(**resp)
 
     def ingest_table_queries_data(
-        self, table: Table, table_queries: List[SqlQuery]
+        self, table: Table, table_queries: List[CreateQueryRequest]
     ) -> None:
         """
         PUT table queries for a table
@@ -177,14 +180,22 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_queries: SqlQuery to add
         """
-        seen_queries = LRUCache(LRU_CACHE_SIZE)
-        for query in table_queries:
-            if query.query not in seen_queries:
-                self.client.put(
-                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                    data=query.json(),
+
+        table_reference = EntityReferenceList(
+            __root__=[
+                EntityReference(
+                    id=table.id.__root__,
+                    type="table",
+                    name=table.name.__root__,
+                    fullyQualifiedName=table.fullyQualifiedName.__root__,
                 )
-                seen_queries.put(query.query, None)
+            ]
+        )
+
+        for query in table_queries:
+            query.queryUsage = table_reference
+
+        self.client.put("/query/bulk", data=convert_obj_list_to_json_str(table_queries))
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest

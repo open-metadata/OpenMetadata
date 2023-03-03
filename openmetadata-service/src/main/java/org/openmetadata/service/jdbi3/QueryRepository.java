@@ -46,7 +46,7 @@ public class QueryRepository extends EntityRepository<Query> {
     }
     List<EntityReference> queryUsage = new ArrayList<>();
     List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(entity.getId(), Entity.QUERY, Relationship.HAS, entity.getEntityName());
+        findFrom(entity.getId(), Entity.QUERY, Relationship.HAS, entity.getEntityType());
     for (CollectionDAO.EntityRelationshipRecord record : records) {
       EntityReference entityReference = new EntityReference();
       entityReference.setId(record.getId());

@@ -36,15 +36,15 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   /**
-   * @param name
+   * @param type
    * @return
    */
   @Override
-  public CreateQuery createRequest(String name) {
+  public CreateQuery createRequest(String type) {
     List<EntityReference> queryUsage = new ArrayList<>();
     return new CreateQuery()
-        .withName(name)
-        .withEntityName(name)
+        .withName(type)
+        .withEntityType(type)
         .withQuery("select * from sales")
         .withDuration(0.0)
         .withQueryDate(1673857635064L)
@@ -118,7 +118,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(1673857635064L)
             .withVote(1.0)
-            .withEntityName(getEntityName(test));
+            .withEntityType(getEntityName(test));
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
   }

@@ -85,11 +85,11 @@
       "description": "list of entities to which the query is joined.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
-    "entityName": {
-      "description": "Name of an entity to which the query belongs, to create fqn for eg: checksum.entityName",
+    "entityType": {
+      "description": "Type of an entity to which the query belongs, for e.g. table, dashboard etc.",
       "type": "string"
     }
   },
-  "required": ["query", "entityName"],
+  "required": ["query", "entityType"],
   "additionalProperties": false
 }

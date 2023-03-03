@@ -19,7 +19,7 @@ import shutil
 import traceback
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import SqlQuery
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -95,20 +95,22 @@ class TableUsageStage(Stage[QueryParserData]):
     def _add_sql_query(self, record, table):
         if self.table_queries.get((table, record.date)):
             self.table_queries[(table, record.date)].append(
-                SqlQuery(
+                CreateQueryRequest(
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,
+                    entityType="table",
                 )
             )
         else:
             self.table_queries[(table, record.date)] = [
-                SqlQuery(
+                CreateQueryRequest(
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,
+                    entityType="table",
                 )
             ]
 
