@@ -476,7 +476,9 @@ const Users = ({
                 <Select
                   allowClear
                   showSearch
-                  aria-label={t('label.select-team-plural')}
+                  aria-label={t('label.select-field', {
+                    field: t('label.team-plural-lowercase'),
+                  })}
                   className="w-full"
                   loading={isTeamsLoading}
                   mode="multiple"

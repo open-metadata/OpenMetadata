@@ -68,7 +68,7 @@ const ErrorPlaceHolder = ({
               <Paragraph>
                 {t('label.refer-to-our')}{' '}
                 <Link href={doc} target="_blank">
-                  {t('label.docs')}
+                  {t('label.docs-plural')}
                 </Link>{' '}
                 {t('label.for-more-info')}
               </Paragraph>
@@ -108,7 +108,7 @@ const ErrorPlaceHolder = ({
             <Typography.Text className="tw-text-sm">
               {t('label.refer-to-our')}{' '}
               <Typography.Link href={doc} target="_blank">
-                {t('label.docs')}
+                {t('label.docs-plural')}
               </Typography.Link>{' '}
               {t('label.for-more-info')}
             </Typography.Text>

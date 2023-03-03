@@ -832,8 +832,8 @@ const DashboardDetails = ({
       </div>
       {editChart && (
         <ModalWithMarkdownEditor
-          header={t('label.edit-chart', {
-            chartName: editChart.chart.displayName,
+          header={t('label.edit-chart-name', {
+            name: editChart.chart.displayName,
           })}
           placeholder={t('label.enter-field-description', {
             field: t('label.chart'),

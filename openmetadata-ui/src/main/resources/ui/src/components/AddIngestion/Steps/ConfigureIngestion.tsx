@@ -466,7 +466,7 @@ const ConfigureIngestion = ({
     return (
       <Field>
         <div className="tw-flex tw-gap-1">
-          <label>{t('label.process-pii-sensitive-column')}</label>
+          <label>{t('label.auto-tag-pii-uppercase')}</label>
           <ToggleSwitchV1
             checked={processPii}
             handleCheck={handleProcessPii}

@@ -197,7 +197,7 @@ const FormBuilder: FunctionComponent<Props> = ({
             theme="primary"
             variant="outlined"
             onClick={handleTestConnection}>
-            {t('label.test-connection')}
+            {t('label.test-entity', { entity: 'label.connection' })}
           </Button>
         </div>
       )}

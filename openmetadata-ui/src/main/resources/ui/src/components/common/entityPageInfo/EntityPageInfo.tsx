@@ -210,7 +210,7 @@ const EntityPageInfo = ({
             ))}
           </div>
         ) : (
-          <p>{t('label.entity-does-not-have-followers', { entityName })}</p>
+          <p>{t('message.entity-does-not-have-followers', { entityName })}</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
           <p

@@ -128,7 +128,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         },
       },
       {
-        title: t('label.synonym-plural'),
+        title: t('label.synonym-lowercase-plural'),
         dataIndex: 'synonyms',
         key: 'synonyms',
         render: (synonyms: GlossaryCSVRecord['synonyms']) => {
