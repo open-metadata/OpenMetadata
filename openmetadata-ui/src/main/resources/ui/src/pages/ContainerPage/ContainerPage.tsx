@@ -16,6 +16,7 @@ import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
+import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -294,7 +295,7 @@ const ContainerPage = () => {
               </Col>
               <Col span={24}>
                 {containerData?.dataModel ? (
-                  <></>
+                  <ContainerDataModel dataModel={containerData.dataModel} />
                 ) : (
                   <ErrorPlaceHolder>
                     {t('message.no-entity-data-available', {
