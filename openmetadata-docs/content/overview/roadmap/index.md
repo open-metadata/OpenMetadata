@@ -58,7 +58,6 @@ You can check the latest release [here](/overview/releases).
     <li>Import/Export support at all entities </li>
     <li>Tag Propgation using Import/Export </li>
     <li>Data Models for Dashboards </li>
-    <li>
   </Tile>
     <Tile
     title="Glossary"
