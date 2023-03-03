@@ -12,10 +12,11 @@
 Module containing AWS Client
 """
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import boto3
 from boto3 import Session
+from pydantic import BaseModel
 
 from metadata.utils.logger import utils_logger
 
@@ -28,6 +29,48 @@ class AWSServices(Enum):
     SAGEMAKER = "sagemaker"
     KINESIS = "kinesis"
     QUICKSIGHT = "quicksight"
+
+
+class AWSAssumeRoleException(Exception):
+    """
+    Exception class to handle assume role related issues
+    """
+
+
+class AWSAssumeRoleCredentialWrapper(BaseModel):
+
+    accessKeyId: str
+    # expected type here is CustomSecretStr but importing 
+    # it here wil result in circular import error!
+    secretAccessKey: Any
+    sessionToken: Optional[str]
+
+
+def get_assume_role_config(
+    config,
+) -> Optional[AWSAssumeRoleCredentialWrapper]:
+    sts_client = boto3.client("sts")
+    resp = None
+    from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+    if config.assumeRoleSourceIdentity:
+        resp = sts_client.assume_role(
+            RoleArn=config.assumeRoleArn,
+            RoleSessionName=config.assumeRoleSessionName,
+            SourceIdentity=config.assumeRoleSourceIdentity,
+        )
+    else:
+        resp = sts_client.assume_role(
+            RoleArn=config.assumeRoleArn,
+            RoleSessionName=config.assumeRoleSessionName,
+        )
+
+    if resp:
+        credentials = resp.get("Credentials", {})
+        return AWSAssumeRoleCredentialWrapper(
+            accessKeyId=credentials.get("AccessKeyId"),
+            secretAccessKey=CustomSecretStr(credentials.get("SecretAccessKey")),
+            sessionToken=credentials.get("SessionToken"),
+        )
 
 
 class AWSClient:
@@ -48,6 +91,13 @@ class AWSClient:
         )
 
     def _get_session(self) -> Session:
+        if self.config.assumeRoleArn:
+            assume_configs = get_assume_role_config(self.config.awsConfig)
+            if assume_configs:
+                self.config.awsAccessKeyId = assume_configs.accessKeyId
+                self.config.awsSecretAccessKey = assume_configs.secretAccessKey
+                self.config.awsSessionToken = assume_configs.sessionToken
+
         if (
             self.config.awsAccessKeyId
             and self.config.awsSecretAccessKey

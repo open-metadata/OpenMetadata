@@ -17,6 +17,7 @@ from urllib.parse import quote_plus
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.clients.aws_client import get_assume_role_config
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -32,6 +33,13 @@ from metadata.ingestion.connections.test_connections import (
 
 
 def get_connection_url(connection: AthenaConnection) -> str:
+    if connection.awsConfig.assumeRoleArn:
+        assume_configs = get_assume_role_config(connection.awsConfig)
+        if assume_configs:
+            connection.awsConfig.awsAccessKeyId = assume_configs.accessKeyId
+            connection.awsConfig.awsSecretAccessKey = assume_configs.secretAccessKey
+            connection.awsConfig.awsSessionToken = assume_configs.sessionToken
+
     url = f"{connection.scheme.value}://"
     if connection.awsConfig.awsAccessKeyId:
         url += connection.awsConfig.awsAccessKeyId
