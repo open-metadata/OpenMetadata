@@ -573,7 +573,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           <Col span={24}>
             <DataQualityTab
               deletedTable={showDeletedTest}
-              hasAccess={tablePermissions.EditAll}
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
               onTestUpdate={handleTestUpdate}

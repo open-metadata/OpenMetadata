@@ -18,6 +18,7 @@ from pyspark.sql import SparkSession
 
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
+    MetastoreDbConnection,
 )
 from metadata.ingestion.connections.builders import get_connection_args_common
 from metadata.ingestion.connections.test_connections import SourceConnectionException
@@ -50,14 +51,32 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
             f"thrift://{connection.metastoreConnection.metastoreHostPort}",
         )
 
-    if (
-        hasattr(connection.metastoreConnection, "metastoreDb")
-        and connection.metastoreConnection.metastoreDb
-    ):
-        builder.config(
-            "spark.hadoop.javax.jdo.option.ConnectionURL",
-            connection.metastoreConnection.metastoreDb,
-        )
+    if isinstance(connection.metastoreConnection, MetastoreDbConnection):
+        if connection.metastoreConnection.metastoreDb:
+            builder.config(
+                "spark.hadoop.javax.jdo.option.ConnectionURL",
+                connection.metastoreConnection.metastoreDb,
+            )
+        if connection.metastoreConnection.jdbcDriverClassPath:
+            builder.config(
+                "sparks.driver.extraClassPath",
+                connection.metastoreConnection.jdbcDriverClassPath,
+            )
+        if connection.metastoreConnection.username:
+            builder.config(
+                "spark.hadoop.javax.jdo.option.ConnectionUserName",
+                connection.metastoreConnection.metastoreDb,
+            )
+        if connection.metastoreConnection.password:
+            builder.config(
+                "spark.hadoop.javax.jdo.option.ConnectionPassword",
+                connection.metastoreConnection.password.get_secret_value(),
+            )
+        if connection.metastoreConnection.driverName:
+            builder.config(
+                "spark.hadoop.javax.jdo.option.ConnectionDriverName",
+                connection.metastoreConnection.driverName,
+            )
 
     if (
         hasattr(connection.metastoreConnection, "metastoreFilePath")
@@ -78,7 +97,7 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
     return configure_spark_with_delta_pip(builder).getOrCreate()
 
 
-def test_connection(spark: SparkSession) -> None:
+def test_connection(spark: SparkSession, _) -> None:
     """
     Test connection
     """

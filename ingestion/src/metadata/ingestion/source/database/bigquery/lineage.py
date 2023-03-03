@@ -29,7 +29,3 @@ class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
     filters = """
         AND statement_type IN ("INSERT", "MERGE", "CREATE_TABLE_AS_SELECT", "UPDATE")
     """
-
-    database_field = "project_id"
-
-    schema_field = ""  # schema filtering not available
