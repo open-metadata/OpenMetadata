@@ -92,14 +92,17 @@ class StdDev(StaticMetric):
 
     def df_fn(self, df=None):
         """pandas function"""
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
-        df = cast(DataFrame, df)
+        df = cast(pd.DataFrame, df)
 
         if is_quantifiable(self.col.type):
-            return df[self.col.name].std()
+            stddev = df[self.col.name].std()
+            if pd.isnull(stddev):
+                return None
+            return stddev
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."
         )
-        return 0
+        return None

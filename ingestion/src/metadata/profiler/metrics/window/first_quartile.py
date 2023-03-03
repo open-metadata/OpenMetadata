@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Median Metric definition
+First Quartile definition
 """
 # pylint: disable=duplicate-code
 
@@ -26,18 +26,18 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-class Median(StaticMetric):
+class FirstQuartile(StaticMetric):
     """
-    Median Metric
+    First Quartile Metric
 
-    Given a column, return the Median value.
+    Given a column, return the first quartile value.
 
-    - For a quantifiable value, return the usual Median
+    - For a quantifiable value, return first quartile value
     """
 
     @classmethod
     def name(cls):
-        return "median"
+        return "firstQuartile"
 
     @classmethod
     def is_window_metric(cls):
@@ -51,35 +51,35 @@ class Median(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return MedianFn(column(self.col.name), self.col.table.name, 0.5)
+            return MedianFn(column(self.col.name), self.col.table.name, 0.25)
 
         logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Median"
+            f"Don't know how to process type {self.col.type} when computing First Quartile"
         )
         return None
 
     def df_fn(self, dfs=None):
         """Dataframe function"""
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        import numpy as np
+        import pandas as pd
 
-        dfs = cast(List[pd.DataFrame], dfs)
+        df = cast(List[pd.DataFrame], dfs)
 
         if is_quantifiable(self.col.type):
-            # we can't compute the median unless we have
+            # we can't compute the first quartile unless we have
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
-                df = (
-                    pd.concat(dfs) if isinstance(dfs, list) else dfs
-                )  # workaround should be removed once #10351 is fixed
+                df = pd.concat(dfs)
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return df[self.col.name].median()
+            return np.percentile(df[self.col.name], 25)
         logger.debug(
-            f"Don't know how to process type {self.col.type} when computing Median"
+            f"Don't know how to process type {self.col.type} when computing First Quartile"
         )
         return None

@@ -256,7 +256,7 @@ def _(
         query_text = row_insert.query_text
         operation = next(
             (
-                token.value
+                token.value.upper()
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML
                 and token.value.upper()
@@ -277,7 +277,7 @@ def _(
         query_text = row_deleted.query_text
         operation = next(
             (
-                token.value
+                token.value.upper()
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML and token.value != "UPDATE"
             ),
