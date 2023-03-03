@@ -49,7 +49,8 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         Metrics.UNIQUE_COUNT.value,
         Metrics.UNIQUE_RATIO.value,
         Metrics.IQR.value,
-        # Metrics.HISTOGRAM.value,  # TODO: enable it back after #4368
+        Metrics.HISTOGRAM.value,
+        Metrics.NON_PARAMETRIC_SKEW.value,
     ]
 
 

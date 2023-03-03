@@ -23,14 +23,15 @@ from metadata.profiler.metrics.composed.duplicate_count import DuplicateCount
 from metadata.profiler.metrics.composed.ilike_ratio import ILikeRatio
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.composed.like_ratio import LikeRatio
+from metadata.profiler.metrics.composed.non_parametric_skew import NonParametricSkew
 from metadata.profiler.metrics.composed.null_ratio import NullRatio
 from metadata.profiler.metrics.composed.unique_ratio import UniqueRatio
+from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.static.column_count import ColumnCount
 from metadata.profiler.metrics.static.column_names import ColumnNames
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.count_in_set import CountInSet
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
-from metadata.profiler.metrics.static.histogram import Histogram
 from metadata.profiler.metrics.static.ilike_count import ILikeCount
 from metadata.profiler.metrics.static.like_count import LikeCount
 from metadata.profiler.metrics.static.max import Max
@@ -67,7 +68,6 @@ class Metrics(MetricRegistry):
     COLUMN_COUNT = ColumnCount
     DISTINCT_COUNT = DistinctCount
     DISTINCT_RATIO = DistinctRatio
-    HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount
     NOT_LIKE_COUNT = NotLikeCount
@@ -91,6 +91,7 @@ class Metrics(MetricRegistry):
     LIKE_RATIO = LikeRatio
     NULL_RATIO = NullRatio
     IQR = InterQuartileRange
+    NON_PARAMETRIC_SKEW = NonParametricSkew
 
     # Window Metrics
     MEDIAN = Median
@@ -99,3 +100,6 @@ class Metrics(MetricRegistry):
 
     # System Metrics
     SYSTEM = System
+
+    # Hybrid Metrics
+    HISTOGRAM = Histogram

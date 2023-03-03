@@ -335,21 +335,36 @@ class MetricsTest(TestCase):
         Check histogram computation
         """
 
-        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+        hist = Metrics.HISTOGRAM.value
+        count = Metrics.COUNT.value
+        min = Metrics.MIN.value
+        max = Metrics.MAX.value
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        iqr = Metrics.IQR.value
+
         res = (
             Profiler(
                 hist,
+                count,
+                min,
+                max,
+                first_quartile,
+                third_quartile,
+                iqr,
                 profiler_interface=self.sqa_profiler_interface,
             )
             .compute_metrics()
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.HISTOGRAM.name]
-        assert (
-            len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"])
-            == 3  # Too little values. Counts nulls
-        )
+        age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
+        id_histogram = res.get(User.id.name)[Metrics.HISTOGRAM.name]
+
+        assert age_histogram
+        assert len(age_histogram["frequencies"]) == 1
+        assert id_histogram
+        assert len(id_histogram["frequencies"]) == 2
 
     def test_like_count(self):
         """
@@ -716,7 +731,7 @@ class MetricsTest(TestCase):
                 None,
             )
 
-        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+        hist = (Metrics.HISTOGRAM.value)
         res = (
             Profiler(
                 hist,
@@ -773,7 +788,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 31
+        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
 
     def test_first_quartile(self):
         """

@@ -30,8 +30,8 @@ class MedianFn(FunctionElement):
 
 @compiles(MedianFn)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = compiler.process(elements.clauses.clauses[0].name)
-    percentile = compiler.process(elements.clauses.clauses[2].value)
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
     return "percentile_cont(%.1f) WITHIN GROUP (ORDER BY %s ASC)" % (percentile, col)
 
 
@@ -91,7 +91,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 @compiles(MedianFn, Dialects.SQLite)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = elements.clauses.clauses[0].name
+    col = compiler.process(elements.clauses.clauses[0])
     table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
@@ -105,6 +105,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     OFFSET (
             SELECT ROUND(COUNT(*) * {percentile} -1)
             FROM {table}
+            WHERE {col} IS NOT NULL
         )
     )
     """.format(

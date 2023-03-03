@@ -22,7 +22,6 @@ from datetime import datetime, timezone
 from typing import Dict, List
 
 from sqlalchemy import Column
-from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -31,7 +30,7 @@ from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.source.connections import get_connection
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.metrics.core import Metric, MetricTypes
+from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.profiler.runner import QueryRunner
@@ -247,6 +246,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
+        if not metrics:
+            return None
         try:
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics]
@@ -453,6 +454,34 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         """
         try:
             return metric(column).fn(column_results)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            self.session.rollback()
+            return None
+
+    def get_hybrid_metrics(
+        self, table, column: Column, metric: Metrics, column_results: Dict
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        sampler = Sampler(
+            session=self.session,
+            table=table,
+            profile_sample_config=self.profile_sample_config,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
+        )
+        sample = sampler.random_sample()
+        try:
+            return metric(column).fn(sample, column_results, self.session)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception computing metrics: {exc}")

@@ -36,6 +36,7 @@ from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
+    HybridMetric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
@@ -220,6 +221,10 @@ class Profiler(Generic[TMetric]):
     def system_metrics(self) -> List[Type[SystemMetric]]:
         return self._filter_metrics(SystemMetric)
 
+    @property
+    def hybrid_metric(self) -> List[Type[HybridMetric]]:
+        return self._filter_metrics(HybridMetric)
+
     def get_col_metrics(
         self, metrics: List[Type[TMetric]], column: Optional[Column] = None
     ) -> List[Type[TMetric]]:
@@ -293,6 +298,30 @@ class Profiler(Generic[TMetric]):
             self._column_results[col.name][
                 metric.name()
             ] = self.profiler_interface.get_composed_metrics(
+                col,
+                metric,
+                current_col_results,
+            )
+
+    def run_hybrid_metrics(self, col: Column):
+        """Run hybrid metrics
+
+        Args:
+            col (Column): column to run distribution metrics on
+        """
+        logger.debug("Running distribution metrics...")
+        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
+        if not current_col_results:
+            logger.error(
+                "We do not have any results to base our Composed Metrics. Stopping!"
+            )
+            return
+        for metric in self.get_col_metrics(self.hybrid_metric):
+            logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
+            self._column_results[col.name][
+                metric.name()
+            ] = self.profiler_interface.get_hybrid_metrics(
+                self.table,
                 col,
                 metric,
                 current_col_results,
@@ -406,6 +435,7 @@ class Profiler(Generic[TMetric]):
         self.profile_entity()
         for column in self.columns:
             self.run_composed_metrics(column)
+            self.run_hybrid_metrics(column)
 
         return self
 

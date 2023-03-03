@@ -217,6 +217,13 @@ class ProfilerProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_hybrid_metrics(
+        self, table, column: Column, metric: Metrics, column_results: Dict
+    ) -> dict:
+        """run profiler metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
     def fetch_sample_data(self, table) -> dict:
         """run profiler metrics"""
         raise NotImplementedError

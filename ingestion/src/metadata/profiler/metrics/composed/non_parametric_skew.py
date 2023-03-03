@@ -17,22 +17,23 @@ Inter Quartile Range Composed Metric definition
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.profiler.metrics.core import ComposedMetric
-from metadata.profiler.metrics.window.first_quartile import FirstQuartile
-from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
+from metadata.profiler.metrics.static.mean import Mean
+from metadata.profiler.metrics.static.stddev import StdDev
+from metadata.profiler.metrics.window.median import Median
 
 
-class InterQuartileRange(ComposedMetric):
+class NonParametricSkew(ComposedMetric):
     """
-    Given the first and third quartile compute the IQR,
+    Return the non parametric skew of a column
     """
 
     @classmethod
     def name(cls):
-        return "interQuartileRange"
+        return "nonParametricSkew"
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:
-        return FirstQuartile.name(), ThirdQuartile.name()
+        return Mean.name(), StdDev.name(), Median.name()
 
     @property
     def metric_type(self):
@@ -47,10 +48,11 @@ class InterQuartileRange(ComposedMetric):
         Safely compute null ratio based on the profiler
         results of other Metrics
         """
-        res_first_quartile = res.get(FirstQuartile.name())
-        res_third_quartile = res.get(ThirdQuartile.name())
+        res_mean = res.get(Mean.name())
+        res_stddev = res.get(StdDev.name())
+        res_median = res.get(Median.name())
 
-        if res_first_quartile is not None and res_third_quartile is not None:
-            return res_third_quartile - res_first_quartile
+        if res_mean is not None and res_stddev is not None and res_median is not None:
+            return (res_mean - float(res_median)) / res_stddev
 
         return None

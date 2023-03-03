@@ -199,6 +199,28 @@ class QueryMetric(Metric, ABC):
         """
 
 
+class HybridMetric(Metric, ABC):
+    """
+    Metric that needs to execute a fully fledged
+    query and might need existing metrics to compute
+    some part of the metric.
+    """
+
+    @abstractmethod
+    def fn(
+        self,
+        sample: Optional[DeclarativeMeta],
+        res: Dict[str, Any],
+        session: Optional[Session] = None,
+    ):
+        """
+        Function implementing the metric computation.
+
+        These metrics will require result from other metrics
+        and a session to execute the query.
+        """
+
+
 class CustomMetric(Metric, ABC):
     """
     Custom metric definition
