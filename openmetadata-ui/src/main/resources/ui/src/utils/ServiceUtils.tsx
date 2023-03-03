@@ -880,18 +880,18 @@ export const getResourceEntityFromServiceCategory = (
 export const getCountLabel = (serviceName: ServiceTypes) => {
   switch (serviceName) {
     case ServiceCategory.DASHBOARD_SERVICES:
-      return 'Dashboards';
+      return t('label.dashboard-plural');
     case ServiceCategory.MESSAGING_SERVICES:
-      return 'Topics';
+      return t('label.topic-plural');
     case ServiceCategory.PIPELINE_SERVICES:
-      return 'Pipelines';
+      return t('label.pipeline-plural');
     case ServiceCategory.ML_MODEL_SERVICES:
-      return 'Models';
+      return t('label.ml-model-plural');
     case ServiceCategory.OBJECT_STORE_SERVICES:
-      return 'Containers';
+      return t('label.container-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return 'Databases';
+      return t('label.database-plural');
   }
 };
 

@@ -139,6 +139,7 @@
     "connection-timeout-plural": "Connection Timeout",
     "connector": "Connector",
     "container": "Container",
+    "container-plural": "Containers",
     "conversation": "Conversation",
     "conversation-lowercase": "conversation",
     "conversation-plural": "Conversations",

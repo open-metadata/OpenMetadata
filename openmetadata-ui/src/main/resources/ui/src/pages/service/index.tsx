@@ -135,7 +135,6 @@ const ServicePage: FunctionComponent = () => {
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [instanceCount, setInstanceCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(
     getCurrentServiceTab(tab, serviceName)
   );
@@ -182,11 +181,11 @@ const ServicePage: FunctionComponent = () => {
     () =>
       getServicePageTabs(
         serviceName,
-        instanceCount,
+        paging.total,
         ingestions,
         servicePermission
       ),
-    [serviceName, instanceCount, ingestions, servicePermission]
+    [serviceName, paging, ingestions, servicePermission]
   );
 
   const extraInfo: Array<ExtraInfo> = [
@@ -390,7 +389,6 @@ const ServicePage: FunctionComponent = () => {
           setServiceSchemaCount(res.data, setSchemaCount);
           setServiceTableCount(res.data, setTableCount);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -410,7 +408,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -430,7 +427,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -450,7 +446,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -470,7 +465,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -494,7 +488,6 @@ const ServicePage: FunctionComponent = () => {
 
       setData(response.data);
       setPaging(response.paging);
-      setInstanceCount(response.paging.total);
       setIsLoading(false);
     } catch (error) {
       setData([]);
@@ -1092,7 +1085,7 @@ const ServicePage: FunctionComponent = () => {
                     allowSoftDelete={false}
                     deleteMessage={getDeleteEntityMessage(
                       serviceName || '',
-                      instanceCount,
+                      paging.total,
                       schemaCount,
                       tableCount
                     )}
