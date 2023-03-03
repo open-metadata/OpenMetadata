@@ -50,3 +50,63 @@ Once the node and yarn are installed in the system, you can perform the followin
 ```
 
 **Step 3**: Visit [localhost:3000](http://localhost:3000/) to access the OpenMetadata UI.
+
+## How to Add Language Support
+
+To add support for a new language in our internationalization setup using `react-i18next` and `i18next`, please follow the steps below:
+
+### Create a Language JSON File
+
+First, create a new JSON file for the language you want to add in the `openmetadata-ui/src/main/resources/ui/src/locale/languages` directory.
+For example, if you want to add support for the `French` language, you can create a file called `fr-fr.json` in the languages directory:
+
+```shell
+# Navigate to the ui/src/locale/languages directory
+cd openmetadata-ui/src/main/resources/ui/src/locale/languages
+
+# Create the French language file
+touch fr-fr.json
+
+```
+
+### Sync the Language File with the Primary Language
+
+Since we use `en-us` as our primary language, if you have added a new language file, you need to sync the newly added language file with the primary language. You can use the `i18n` script to achieve this.
+
+```shell
+npm run i18n
+
+#OR
+
+yarn run i18n
+```
+
+### Update the `i18nextUtil.ts`
+
+Now add the newly added language in `i18nextUtil.ts` , so that `i18next` can have the translation resource available.
+
+```diff
+import { InitOptions } from 'i18next';
+import { map } from 'lodash';
+import enUS from '../../locale/languages/en-us.json';
++ import frFR from '../../locale/languages/fr-fr.json';
+
+export const getInitOptions = (): InitOptions => {
+  return {
++   supportedLngs: ['en-US', 'fr-FR'],
+    resources: {
+      'en-US': { translation: enUS },
++     'fr-FR': { translation: frFR },
+    },
+    fallbackLng: ['en-US'],
+    interpolation: {
+
+```
+
+### Test the language translation
+
+To test the language translation update the language code in the `i18n.changeLanguage` function call.
+
+```shell
+i18n.changeLanguage('fr-FR');
+```
