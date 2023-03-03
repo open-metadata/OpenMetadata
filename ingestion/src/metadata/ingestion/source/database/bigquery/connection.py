@@ -23,12 +23,10 @@ from sqlalchemy.inspection import inspect
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    MultipleProjectId,
-    SingleProjectId,
-)
 from metadata.generated.schema.security.credentials.gcsValues import (
     GcsCredentialsValues,
+    MultipleProjectId,
+    SingleProjectId,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
