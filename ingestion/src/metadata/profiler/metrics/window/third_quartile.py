@@ -58,7 +58,6 @@ class ThirdQuartile(StaticMetric):
         )
         return None
 
-    @_label
     def df_fn(self, dfs=None):
         """Dataframe function"""
         # pylint: disable=import-outside-toplevel
