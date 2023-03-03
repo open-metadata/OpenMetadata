@@ -81,13 +81,14 @@ You can check the latest release [here](/overview/releases).
     <li>User Personal Access Token to access APIs as a user</li>
   </Tile>
     <Tile
-    title="Glossary"
+    title="Lineage"
     text=""
     background="green-70"
     bordercolor="green-70"
   >
-  	 <li> Glossary Import & Export</li>
-    <li> Improved Glossary UI </li>
+  	 <li> Support for displaying large no.of nodes(1000+) in Lineage UI</li>
+    <li> Improved Lineage UI to navigate </li>
+    <li> Continued improvements to SQL Parser to handle queries </li>
   </Tile>
 
   <Tile
