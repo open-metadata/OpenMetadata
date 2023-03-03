@@ -914,7 +914,7 @@
     "data-asset-has-been-action-type": "Data Asset has been {{actionType}}",
     "data-insight-page-views": "Displays the number of times a dataset type was viewed.",
     "data-insight-subtitle": "Get a single pane view of the health of all your data assets over time.",
-    "database-service-name-message": "Database Service Name for creation of lineage.",
+    "database-service-name-message": "Add the database service names to create lineage.",
     "dbt-catalog-file-extract-path": " dbt catalog file to extract dbt models with their column schemas.",
     "dbt-cloud-project": "In case of multiple projects in a dbt cloud account, specify the project's id from which you want to extract the dbt run artifacts",
     "dbt-ingestion-description": "A dbt workflow can be configured and deployed after a metadata ingestion has been set up. Multiple dbt pipelines can be set up for the same database service. The pipeline feeds the dbt tab of the Table entity, creates lineage from dbt nodes and adds tests from dbt. Add the source configuration of the dbt files to start.",

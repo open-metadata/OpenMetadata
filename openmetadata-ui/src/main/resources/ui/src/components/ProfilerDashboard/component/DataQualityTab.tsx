@@ -71,7 +71,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 style={{ fontSize: '16px' }}
               />
             )}
-            <Typography.Text>{result?.testCaseStatus || '--'}</Typography.Text>
+            <Typography.Text data-testid="test-case-status">
+              {result?.testCaseStatus || '--'}
+            </Typography.Text>
           </Space>
         ),
       },
@@ -110,6 +112,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (value) => {
           return (
             <Link
+              data-testid="test-suite-link"
               to={getTestSuitePath(value?.fullyQualifiedName || '')}
               onClick={(e) => e.stopPropagation()}>
               {getEntityName(value)}
@@ -127,6 +130,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           return (
             <Link
+              data-testid="table-link"
               to={getTableTabPath(tableFqn, 'profiler')}
               onClick={(e) => e.stopPropagation()}>
               {name}
@@ -216,6 +220,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         bordered
         className="table-shadow"
         columns={columns}
+        data-testid="data-quality-table"
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{
           ...getTableExpandableConfig<TestCase>(),
