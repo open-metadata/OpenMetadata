@@ -79,7 +79,6 @@ You can check the latest release [here](/overview/releases).
   >
     <li>SAML support</li>
     <li>User Personal Access Token to access APIs as a user</li>
-    <li>
   </Tile>
     <Tile
     title="Glossary"
