@@ -75,10 +75,6 @@ touch fr-fr.json
 Since we use `en-us` as our primary language, if you have added a new language file, you need to sync the newly added language file with the primary language. You can use the `i18n` script to achieve this.
 
 ```shell
-npm run i18n
-
-#OR
-
 yarn run i18n
 ```
 
