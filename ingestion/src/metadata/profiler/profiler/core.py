@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
+from metadata.ingestion.processor.pii import NERScanner
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.metrics.core import (
     ComposedMetric,
@@ -423,6 +424,17 @@ class Profiler(Generic[TMetric]):
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
                 sample_data = self.profiler_interface.fetch_sample_data(self.table)
+
+                if self.profiler_interface.source_config:
+                    entity_scanner = NERScanner(
+                        metadata=self.profiler_interface.ometa_client
+                    )
+                    entity_scanner.process(
+                        sample_data,
+                        self.profiler_interface.table_entity,
+                        self.profiler_interface.ometa_client,
+                    )
+
                 logger.info(
                     "Successfully fetched sample data for "
                     f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."

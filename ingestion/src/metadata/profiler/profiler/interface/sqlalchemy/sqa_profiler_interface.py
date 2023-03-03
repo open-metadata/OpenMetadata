@@ -58,6 +58,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         ometa_client,
         entity,
         profile_sample_config,
+        source_config,
         sample_query,
         table_partition_config,
         sqa_metadata=None,
@@ -69,8 +70,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         self._thread_count = thread_count
         self.table_entity = entity
         self.ometa_client = ometa_client
+        self.source_config = source_config
         self.service_connection_config = service_connection_config
-
         self.processor_status = ProfilerProcessorStatus()
         try:
             fqn = self.table_entity.fullyQualifiedName

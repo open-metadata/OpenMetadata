@@ -781,8 +781,8 @@ describe('Glossary page should work properly', () => {
       'have.value',
       GLOSSARY_TERM_WITH_DETAILS.relatedTerms
     );
-    verifyResponseStatusCode('@searchGlossaryTerm', 200);
     cy.get('[data-testid="loader"]').should('be.visible');
+    verifyResponseStatusCode('@searchGlossaryTerm', 200);
     cy.get('[data-testid="user-card-container"]').should('be.visible');
     cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
@@ -798,8 +798,8 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(GLOSSARY_TERM_WITH_DETAILS.reviewer);
-    verifyResponseStatusCode('@searchGlossaryTerm', 200);
     cy.get('[data-testid="loader"]').should('be.visible');
+    verifyResponseStatusCode('@searchGlossaryTerm', 200);
     cy.get('[data-testid="user-card-container"]').should('be.visible');
     cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
     cy.get('[data-testid="save-button"]').should('be.visible').click();

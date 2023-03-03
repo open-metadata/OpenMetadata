@@ -116,6 +116,7 @@ export const OPERATOR = {
 };
 
 export const searchForField = (condition, fieldid, searchCriteria, index) => {
+  interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
     .eq(index)
@@ -134,7 +135,6 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -148,14 +148,9 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
         .eq(index)
         .should('be.visible')
         .type(searchCriteria);
-    }
-  });
-
-  cy.wait(1000);
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if ($body.find(`.ant-select-dropdown [title="${searchCriteria}"]`).length) {
-      cy.get(`[title = '${searchCriteria}']`)
+      // select value from dropdown
+      verifyResponseStatusCode('@suggestApi', 200);
+      cy.get(`.ant-select-dropdown [title = '${searchCriteria}']`)
         .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
@@ -179,11 +174,19 @@ export const goToAdvanceSearch = () => {
     .scrollIntoView()
     .should('exist')
     .and('be.visible');
-  cy.wait(1000);
-  // Click on advance search button
-  cy.get('[data-testid="advance-search-button"]').should('be.visible').click();
 
-  cy.wait(1000);
+  cy.wait('@explorePage').then(() => {
+    // Click on advance search button
+    cy.get('[data-testid="advance-search-button"]')
+      .should('be.visible')
+      .click();
+
+    cy.get('.ant-btn')
+      .contains('Reset')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+  });
 };
 
 export const checkmustPaths = (
@@ -316,15 +319,14 @@ export const addOwner = (searchTerm, ownerName) => {
 
   verifyResponseStatusCode('@searchOwner', 200);
 
-  interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
+  interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
   // Selecting the user
-  cy.get('[data-testid="user-tag"]')
+  cy.get(`[data-testid="user-tag"]`)
     .contains(ownerName)
     .should('exist')
+    .scrollIntoView()
     .and('be.visible')
     .click();
-
-  verifyResponseStatusCode('@validateOwner', 200);
 
   cy.get('[data-testid="owner-link"]')
     .scrollIntoView()
@@ -336,6 +338,7 @@ export const addOwner = (searchTerm, ownerName) => {
 
 export const addTier = (tier) => {
   cy.get('[data-testid="appbar-item-explore"]')
+    .scrollIntoView()
     .should('exist')
     .and('be.visible')
     .click();
@@ -352,13 +355,11 @@ export const addTier = (tier) => {
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="select-tier-buuton"]')
+  cy.get('[data-testid="select-tier-button"]')
     .first()
     .should('exist')
     .should('be.visible')
     .click();
-
-  cy.wait(1000);
 
   cy.get('[data-testid="tags"] > [data-testid="add-tag"]').should(
     'contain',
@@ -367,6 +368,9 @@ export const addTier = (tier) => {
 };
 
 export const addTag = (tag) => {
+  cy.intercept('/api/v1/testCase?fields=testCaseResult*').as('testCaseResults');
+  cy.intercept('/api/v1/feed?entityLink=*').as('entityLink');
+
   cy.get('[data-testid="appbar-item-explore"]')
     .should('exist')
     .and('be.visible')
@@ -377,24 +381,29 @@ export const addTag = (tag) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
-    .eq(0)
-    .should('be.visible')
-    .scrollIntoView()
-    .click();
 
-  cy.wait(500);
-  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
-  cy.wait(500);
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-  ).contains(tag);
-  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-  cy.get('[data-testid="entity-tags"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .contains(tag);
+  cy.wait(['@testCaseResults', '@entityLink']).then(() => {
+    cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+      .eq(0)
+      .should('be.visible')
+      .scrollIntoView()
+      .click();
+
+    cy.get('[data-testid="tag-selector"]')
+      .should('be.visible')
+      .click()
+      .type(tag);
+
+    cy.get('.ant-select-item-option-content').should('be.visible').click();
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+    ).contains(tag);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(tag);
+  });
 };
 
 export const checkAddGroupWithOperator = (
@@ -430,7 +439,6 @@ export const checkAddGroupWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_1}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -440,30 +448,31 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
-    }
-  });
 
-  cy.wait(1000);
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_1}"]`).length
-    ) {
-      cy.get(`[title = '${searchCriteria_1}']`)
+      verifyResponseStatusCode('@suggestApi', 200);
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[title="${searchCriteria_1}"]`)
         .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
     }
   });
+
   // To close the dropdown for anyin and notin condition
   cy.get('.ant-modal-header').click();
 
   // Select add-group button
-  cy.get('.action--ADD-GROUP').eq(0).should('be.visible').click();
+  cy.get('.action--ADD-GROUP')
+    .eq(0)
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
   // Select the AND/OR condition
   cy.get(
@@ -483,7 +492,6 @@ export const checkAddGroupWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_2}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -493,38 +501,25 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-    }
-  });
+      verifyResponseStatusCode('@suggestApi', 200);
 
-  cy.wait(1000);
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length &&
-      searchCriteria_2 === 'Tier.Tier2'
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
-        .eq(1)
-        .contains(searchCriteria_2)
-        .click({ force: true });
-    } else if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
-        .contains(searchCriteria_2)
-        .click();
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[title="${searchCriteria_2}"]`)
+        .should('be.visible')
+        .trigger('mouseover')
+        .trigger('click');
     }
   });
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
-      searchCriteria_1
-    )}*${filter_2}*${encodeURI(response_2)}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${searchCriteria_1}*&sort_field=_score&sort_order=desc`,
     'search'
   );
 
@@ -566,7 +561,6 @@ export const checkAddRuleWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_1}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -576,25 +570,22 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
-    }
-  });
 
-  cy.wait(1000);
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_1}"]`).length
-    ) {
+      verifyResponseStatusCode('@suggestApi', 200);
+
       cy.get(`[title = '${searchCriteria_1}']`)
         .should('be.visible')
         .trigger('mouseover')
         .trigger('click');
     }
   });
+
   // To close the dropdown for anyin and notin condition
   cy.get('.ant-modal-header').click();
 
@@ -619,7 +610,6 @@ export const checkAddRuleWithOperator = (
   cy.get('.rule--operator .ant-select-selection-item')
     .should('be.visible')
     .should('contain', `${condition_2}`);
-  cy.wait(500);
 
   // Verify the search criteria for the condition
   cy.get('body').then(($body) => {
@@ -629,28 +619,18 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
+      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-    }
-  });
 
-  cy.wait(1000);
-  // if condition has a dropdown then select value from dropdown
-  cy.get('body').then(($body) => {
-    if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length &&
-      searchCriteria_2 === 'Tier.Tier2'
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
-        .eq(1)
-        .contains(searchCriteria_2)
-        .click({ force: true });
-    } else if (
-      $body.find(`.ant-select-dropdown [title="${searchCriteria_2}"]`).length
-    ) {
-      cy.get(`[title = "${searchCriteria_2}"]`)
+      verifyResponseStatusCode('@suggestApi', 200);
+
+      cy.get('.ant-select-dropdown')
+        .not('.ant-select-dropdown-hidden')
+        .find(`[title="${searchCriteria_2}"]`)
+        .should('be.visible')
         .contains(searchCriteria_2)
         .click();
     }
