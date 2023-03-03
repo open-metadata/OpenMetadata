@@ -67,11 +67,14 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeEntity(Query entity, boolean update) throws IOException {
-    List<EntityReference> queryUsage = entity.getQueryUsage();
-    entity.withQueryUsage(null);
-    store(entity, update);
-    entity.withQueryUsage(queryUsage);
+  public void storeEntity(Query queryEntity, boolean update) throws IOException {
+    EntityReference owner = queryEntity.getOwner();
+    List<EntityReference> queryUsage = queryEntity.getQueryUsage();
+    queryEntity.withQueryUsage(null).withOwner(null);
+    store(queryEntity, update);
+
+    // Restore relationships
+    queryEntity.withQueryUsage(queryUsage).withOwner(owner);
   }
 
   @Override
@@ -80,12 +83,18 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeRelationships(Query entity) throws IOException {
-    if (entity.getQueryUsage() != null) {
-      for (EntityReference entityId : entity.getQueryUsage()) {
-        addRelationship(entityId.getId(), entity.getId(), entityId.getType(), Entity.QUERY, Relationship.HAS);
+  public void storeRelationships(Query queryEntity) throws IOException {
+    if (queryEntity.getQueryUsage() != null) {
+      for (EntityReference entityId : queryEntity.getQueryUsage()) {
+        addRelationship(entityId.getId(), queryEntity.getId(), entityId.getType(), Entity.QUERY, Relationship.HAS);
       }
     }
+
+    // Add table owner relationship
+    storeOwner(queryEntity, queryEntity.getOwner());
+
+    // Add tag to table relationship
+    applyTags(queryEntity);
   }
 
   @Override
