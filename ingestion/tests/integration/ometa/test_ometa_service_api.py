@@ -56,7 +56,7 @@ class OMetaServiceTest(TestCase):
     )
     metadata = OpenMetadata(server_config)
 
-    # use ingestion_bot jwt token for this test
+    # we need to use ingestion bot user for this test since the admin user won't be able to see the password fields
     ingestion_bot: User = metadata.get_by_name(entity=User, fqn="ingestion-bot")
     ingestion_bot_auth: AuthenticationMechanism = metadata.get_by_id(
         entity=AuthenticationMechanism, entity_id=ingestion_bot.id

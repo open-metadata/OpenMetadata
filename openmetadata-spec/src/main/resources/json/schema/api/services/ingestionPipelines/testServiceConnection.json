@@ -37,8 +37,8 @@
       "type": "string"
     },
     "serviceName": {
-      "description": "Name of the service in case it exists",
-      "type": "string",
+      "description": "Optional value that identifies this service name.",
+      "$ref": "../../../type/basic.json#/definitions/entityName",
       "default": null
     },
     "secretsManagerProvider": {

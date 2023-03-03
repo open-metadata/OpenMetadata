@@ -119,7 +119,7 @@ secretsManagerConfiguration:
   secretsManager: in-memory
 
 security:
-  alwaysMaskPasswordsUI: false
+  maskPasswordsAPI: false
 
 health:
   delayedShutdownHandlerEnabled: true

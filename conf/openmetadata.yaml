@@ -242,7 +242,8 @@ secretsManagerConfiguration:
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
 security:
-  alwaysMaskPasswordsUI: ${ENABLE_MASK_PASSWORDS_UI:-false}
+# it will mask all the password fields in the responses sent from the API except for the bots
+  maskPasswordsAPI: ${MASK_PASSWORDS_API:-false}
 
 health:
   delayedShutdownHandlerEnabled: true

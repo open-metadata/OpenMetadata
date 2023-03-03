@@ -29,7 +29,7 @@ public class EntityMaskerFactoryTest {
 
   @Test
   void testInitWithPasswordEntityMasker() {
-    config.setAlwaysMaskPasswordsUI(true);
+    config.setMaskPasswordsAPI(true);
     assertTrue(EntityMaskerFactory.createEntityMasker(config) instanceof PasswordEntityMasker);
   }
 }

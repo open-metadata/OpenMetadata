@@ -115,7 +115,7 @@ services:
       OM_LOGIN_ACCESS_BLOCK_TIME: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
       OM_JWT_EXPIRY_TIME: ${OM_JWT_EXPIRY_TIME:-3600}
       # Mask passwords values in UI
-      ENABLE_MASK_PASSWORDS_UI: ${ENABLE_MASK_PASSWORDS_UI:-true}
+      MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-true}
     expose:
       - 8585
       - 8586

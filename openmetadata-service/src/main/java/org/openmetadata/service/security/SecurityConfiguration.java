@@ -19,5 +19,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class SecurityConfiguration {
-  private boolean alwaysMaskPasswordsUI;
+  private boolean maskPasswordsAPI;
 }
