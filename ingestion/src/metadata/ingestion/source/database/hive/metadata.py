@@ -185,7 +185,6 @@ def get_table_comment(  # pylint: disable=unused-argument
 
 HiveDialect.get_columns = get_columns
 HiveDialect.get_table_comment = get_table_comment
-ImpalaDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
@@ -225,10 +224,6 @@ class HiveSource(CommonDbSourceService):
         ):
             HiveDialect.get_table_names = get_table_names
             HiveDialect.get_view_names = get_view_names
-            ImpalaDialect.get_table_names = get_table_names
-            ImpalaDialect.get_table_names = get_view_names
         else:
             HiveDialect.get_table_names = get_table_names_older_versions
             HiveDialect.get_view_names = get_view_names_older_versions
-            ImpalaDialect.get_table_names = get_table_names_older_versions
-            ImpalaDialect.get_table_names = get_view_names_older_versions
