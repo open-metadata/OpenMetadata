@@ -147,7 +147,7 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="select-tier-buuton"]')
+    cy.get('[data-testid="select-tier-button"]')
       .first()
       .should('exist')
       .should('be.visible')
