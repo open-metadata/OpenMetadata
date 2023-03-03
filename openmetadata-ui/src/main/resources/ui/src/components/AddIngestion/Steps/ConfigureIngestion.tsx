@@ -456,7 +456,7 @@ const ConfigureIngestion = ({
     );
   };
 
-  const getProcessPiiToggles = () => {
+  const getProcessPiiTogglesForProfiler = () => {
     return (
       <Field>
         <div className="tw-flex tw-gap-1">
@@ -468,7 +468,7 @@ const ConfigureIngestion = ({
           />
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.process-pii-sensitive-column-message')}
+          {t('message.process-pii-sensitive-column-message-profiler')}
         </p>
         {getSeparator('')}
       </Field>
@@ -550,7 +550,6 @@ const ConfigureIngestion = ({
             {getFilterPatterns()}
             {getSeparator('')}
             {getFqnForFilteringToggles()}
-            {getProcessPiiToggles()}
             {getDatabaseFieldToggles()}
           </Fragment>
         );
@@ -835,6 +834,7 @@ const ConfigureIngestion = ({
           })
         )}
         {getDebugLogToggle()}
+        {getProcessPiiTogglesForProfiler()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
