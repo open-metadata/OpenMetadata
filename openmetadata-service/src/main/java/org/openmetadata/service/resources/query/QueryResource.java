@@ -475,8 +475,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withDuration(create.getDuration())
         .withVote(create.getVote())
         .withUsers(create.getUsers())
-        .withName(create.getEntityName())
+        .withName(create.getEntityType())
         .withQueryUsage(create.getQueryUsage())
-        .withEntityName(create.getEntityName());
+        .withEntityType(create.getEntityType())
+        .withQueryDate(create.getQueryDate());
   }
 }
