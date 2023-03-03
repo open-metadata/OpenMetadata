@@ -387,7 +387,7 @@ const Users = ({
         <Typography.Text
           className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
-          {t('label.chart-entity', { entity: t('label.password-lowercase') })}
+          {t('label.change-entity', { entity: t('label.password-lowercase') })}
         </Typography.Text>
 
         <ChangePasswordForm

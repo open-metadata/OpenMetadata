@@ -667,7 +667,7 @@ const TeamDetailsV1 = ({
                 data-testid="deleted-menu-item-label">
                 {t(
                   showDeletedTeam
-                    ? 'hide-deleted-team'
+                    ? 'label.hide-deleted-team'
                     : 'label.show-deleted-team'
                 )}
               </Typography.Text>
