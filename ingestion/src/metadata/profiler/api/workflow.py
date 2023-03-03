@@ -361,7 +361,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             )  # type: ignore
             self.create_profiler(entity, profiler_interface)
             self.profiler = cast(Profiler, self.profiler)  # satisfy type checker
-            profile: ProfilerResponse = self.profiler.process(self.source_config)
+            profile: ProfilerResponse = self.profiler.process(
+                self.source_config.generateSampleData
+            )
         except Exception as exc:  # pylint: disable=broad-except
 
             logger.debug(traceback.format_exc())

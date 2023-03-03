@@ -15,6 +15,7 @@ Processor util to fetch pii sensitive columns
 import logging
 import traceback
 from enum import Enum
+from typing import Optional, Tuple, Union
 
 from presidio_analyzer import AnalyzerEngine
 
@@ -35,7 +36,7 @@ class NEREntity(Enum):
     CREDIT_CARD = TagType.SENSITIVE.value
     EMAIL_ADDRESS = TagType.SENSITIVE.value
     IBAN_CODE = TagType.SENSITIVE.value
-    IP_ADDRESS = TagType.NONSENSITIVE.value
+    IP_ADDRESS = TagType.SENSITIVE.value
     NRP = TagType.NONSENSITIVE.value
     LOCATION = TagType.SENSITIVE.value
     PHONE_NUMBER = TagType.SENSITIVE.value
@@ -57,7 +58,9 @@ class NERScanner:
         self.text = ""
         self.analyzer = AnalyzerEngine()
 
-    def get_highest_score_label(self, labels_score):
+    def get_highest_score_label(
+        self, labels_score
+    ) -> Optional[Tuple[Union[float, str]]]:
         most_used_label_occurrence = 0
         label_score = None
         for label, score in labels_score.items():
@@ -109,7 +112,7 @@ class NERScanner:
         return pii_tag_fqn or "", score or 0
 
     def process(self, table_data: TableData, table_entity: Table, client: OpenMetadata):
-        len_of_rows = len(table_data.rows[0] if table_data.rows else [])
+        len_of_rows = len(table_data.rows[0]) if table_data.rows else 0
         for idx in range(len_of_rows):
             pii_found = False
             for tag in table_entity.columns[idx].tags or []:

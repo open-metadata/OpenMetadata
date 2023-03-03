@@ -58,6 +58,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         thread_count,
         entity,
         profile_sample_config,
+        source_config,
         sample_query,
         table_partition_config=None,
         **kwargs,
@@ -66,6 +67,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self._thread_count = thread_count
         self.table_entity = entity
         self.ometa_client = ometa_client
+        self.source_config = source_config
         self.service_connection_config = service_connection_config
         self.client = get_connection(self.service_connection_config).client
         self.processor_status = ProfilerProcessorStatus()
