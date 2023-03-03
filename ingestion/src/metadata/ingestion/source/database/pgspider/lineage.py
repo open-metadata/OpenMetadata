@@ -1,4 +1,5 @@
 #  Copyright 2021 Collate
+#  Portions Copyright(c) 2023, TOSHIBA CORPORATION
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -19,12 +20,8 @@ from metadata.ingestion.source.database.pgspider.queries import (
     PGSPIDER_GET_MULTI_TENANT_TABLES,
     PGSPIDER_GET_CHILD_TABLES
 )
-from metadata.ingestion.source.database.pgspider.query_parser import (
-    PGSpiderQueryParserSource,
-)
-from metadata.ingestion.source.database.postgres.lineage import (
-    PostgresLineageSource,
-)
+from metadata.ingestion.source.database.pgspider.query_parser import PGSpiderQueryParserSource
+from metadata.ingestion.source.database.postgres.lineage import PostgresLineageSource
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.generated.schema.type.entityLineage import (
@@ -33,9 +30,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.utils.logger import ingestion_logger
 
-logger = ingestion_logger()
 
 class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, LineageSource):
     """

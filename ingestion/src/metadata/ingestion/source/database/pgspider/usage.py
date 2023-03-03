@@ -1,4 +1,5 @@
 #  Copyright 2021 Collate
+#  Portions Copyright(c) 2023, TOSHIBA CORPORATION
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -11,19 +12,13 @@
 """
 PGSpider usage module
 """
-from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
-from metadata.ingestion.source.database.pgspider.query_parser import (
-    PGSpiderQueryParserSource,
-)
+from metadata.ingestion.source.database.pgspider.query_parser import PGSpiderQueryParserSource
 from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 
 
-class PgspiderUsageSource(PGSpiderQueryParserSource, UsageSource):
+class PgspiderUsageSource(PGSpiderQueryParserSource, PostgresUsageSource, UsageSource):
     """
     PGSpider class for Usage
     """
-
-    sql_stmt = POSTGRES_SQL_STATEMENT
-    filters = ""
-    database_field = "d.datname"
-    schema_field = ""  # schema filtering not available
+    pass
