@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Median Metric definition
+First Quartile definition
 """
 # pylint: disable=duplicate-code
 
