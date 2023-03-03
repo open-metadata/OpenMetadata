@@ -92,7 +92,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean maskPasswords(SecurityContext securityContext) {
+  public boolean shouldMaskPasswords(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return !subjectContext.isBot();
   }

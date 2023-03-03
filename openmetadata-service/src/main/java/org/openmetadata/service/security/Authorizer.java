@@ -45,5 +45,5 @@ public interface Authorizer {
 
   boolean decryptSecret(SecurityContext securityContext);
 
-  boolean maskPasswords(SecurityContext securityContext);
+  boolean shouldMaskPasswords(SecurityContext securityContext);
 }

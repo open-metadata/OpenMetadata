@@ -56,7 +56,7 @@ public abstract class ServiceEntityResource<
     }
     service
         .getConnection()
-        .setConfig(retrieveServiceConnectionConfig(service, authorizer.maskPasswords(securityContext)));
+        .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
     return service;
   }
 

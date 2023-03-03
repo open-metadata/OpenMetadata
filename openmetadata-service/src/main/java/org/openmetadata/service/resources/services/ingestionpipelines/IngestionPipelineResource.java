@@ -821,7 +821,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, false);
-    if (authorizer.maskPasswords(securityContext) && !forceNotMask) {
+    if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }
   }

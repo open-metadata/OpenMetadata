@@ -105,7 +105,7 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean maskPasswords(SecurityContext securityContext) {
+  public boolean shouldMaskPasswords(SecurityContext securityContext) {
     return false; // Always show passwords
   }
 }
