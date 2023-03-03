@@ -552,13 +552,15 @@ const EntityPageInfo = ({
                       <Button
                         className="w-7 h-7 p-0 d-flex justify-center"
                         data-testid="edit-button"
-                        type="text">
-                        <IconEdit
-                          height={16}
-                          name={t('label.edit')}
-                          width={16}
-                        />
-                      </Button>
+                        icon={
+                          <IconEdit
+                            height={16}
+                            name={t('label.edit')}
+                            width={16}
+                          />
+                        }
+                        type="text"
+                      />
                     ) : (
                       <span>
                         <Tags
