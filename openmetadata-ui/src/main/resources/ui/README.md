@@ -58,6 +58,7 @@ To add support for a new language in our internationalization setup using `react
 ### Create a Language JSON File
 
 First, create a new JSON file for the language you want to add in the `openmetadata-ui/src/main/resources/ui/src/locale/languages` directory.
+
 For example, if you want to add support for the `French` language, you can create a file called `fr-fr.json` in the languages directory:
 
 ```shell
