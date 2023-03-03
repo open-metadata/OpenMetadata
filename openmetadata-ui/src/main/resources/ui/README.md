@@ -100,8 +100,11 @@ export const getInitOptions = (): InitOptions => {
 
 ### Test the language translation
 
-To test the language translation, update the language code in the `i18n.changeLanguage` function call.
+To check the language translation functionality, please follow the steps outlined below:
 
-```shell
-i18n.changeLanguage('fr-FR')
-```
+1. Click on the language selection dropdown, and a list of available languages will appear.
+2. Choose the language you wish to test, and the translation will be applied.
+
+Please refer to the image below for assistance:
+
+<img width="1440" alt="image" src="https://user-images.githubusercontent.com/59080942/222646947-7ec6422e-4669-4db1-92c1-c6aec596dfdd.png">
