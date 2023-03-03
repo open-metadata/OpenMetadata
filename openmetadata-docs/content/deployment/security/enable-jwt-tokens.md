@@ -139,3 +139,54 @@ workflowConfig:
 
 In the above section, under the `workflowConfig`, configure `authProvider` to be "openmetadata" and under `securityConfig`
 section, add `jwtToken` and its value from the ingestion bot page.
+
+## Configure JWT Tokens for Kubernetes
+
+Following the above documentation, you will have private key and public key pair available as mentioned [here](#create-private-public-key). Next, will proceed with the below section which will configure JWT token with kubernetes environment.
+
+### Create Kubernetes Secrets for the Key Pairs
+
+We create Kubernetes Secrets from file using the kubernetes imparative commands below.
+
+```bash
+kubectl create secret generic openmetadata-jwt-keys --from-file private_key.der --from-file public_key.der --namespace default
+```
+
+### Update Helm Values to mount Kubernetes secrets and configure JWT Token Configuration
+
+Update your helm values to mount Kubernetes Secrets as Volumes and update the Jwt Token Configuration to point the Key File Paths to mounted path (absolute file path).
+
+```yaml
+# openmetadata.prod.values.yml
+global:
+	...
+	jwtTokenConfiguration:
+	  rsapublicKeyFilePath: "/etc/openmetadata/jwtkeys/public_key.der"
+	  rsaprivateKeyFilePath: "/etc/openmetadata/jwtkeys/private_key.der"
+	  jwtissuer: "open-metadata.org" # update this as per your environment
+	  keyId: "c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
+...
+extraVolumes:
+- name: openmetadata-jwt-vol
+  secret: 
+    secretName: openmetadata-jwt-keys
+extraVolumeMounts:
+- name: openmetadata-jwt-vol
+  mountPath: "/etc/openmetadata/jwtkeys"
+  readOnly: true
+```
+
+<Warning>
+
+It is recommended to consider new directory paths for mounting the secrets as volumes to OpenMetadata Server Pod.
+With OpenMetadata Helm Charts, you will be able to add volumes and volumeMounts with `extraVolumes` and `extraVolumeMounts` helm values.
+
+</Warning>
+
+### Install / Upgrade Helm Chart Release
+
+Run the below command to make sure the update helm values are available to OpenMetadata.
+
+```
+helm upgrade --install openmetadata open-metadata/openmetadata --values openmetadata.prod.values.yml
+```
