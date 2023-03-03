@@ -23,6 +23,7 @@ import {
 } from 'components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
+import { Container } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -572,6 +573,7 @@ export const getEntityName = (
     | Kpi
     | Classification
     | Field
+    | Container
 ) => {
   return entity?.displayName || entity?.name || '';
 };

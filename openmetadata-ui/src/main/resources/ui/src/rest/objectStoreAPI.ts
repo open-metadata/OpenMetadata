@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Container } from 'generated/entity/data/container';
 import { Paging } from 'generated/type/paging';
 import { ServicePageData } from 'pages/service';
 import { getURLWithQueryFields } from 'utils/APIUtils';
@@ -29,6 +30,12 @@ export const getContainers = async (
     data: ServicePageData[];
     paging: Paging;
   }>(url);
+
+  return response.data;
+};
+
+export const getContainerByName = async (name: string) => {
+  const response = await APIClient.get<Container>(`containers/name/${name}`);
 
   return response.data;
 };
