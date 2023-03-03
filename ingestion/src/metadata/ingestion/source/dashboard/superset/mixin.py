@@ -89,14 +89,16 @@ class SupersetSourceMixin(DashboardServiceSource):
         return None
 
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
-        for owner in dashboard_details.get("owners", []):
-            user = self._get_user_by_email(owner["email"])
-            if user:
-                return user
-        if dashboard_details.get("email"):
-            user = self._get_user_by_email(dashboard_details["email"])
-            if user:
-                return user
+        if self.source_config.overrideOwner:
+            for owner in dashboard_details.get("owners", []):
+                user = self._get_user_by_email(owner["email"])
+                if user:
+                    return user
+            if dashboard_details.get("email"):
+                user = self._get_user_by_email(dashboard_details["email"])
+                if user:
+                    return user
+            return None
         return None
 
     def _get_charts_of_dashboard(self, dashboard_details: dict) -> List[str]:

@@ -29,6 +29,12 @@
       "title": "Database Service Name List",
       "description": "List of Database Service Name for creation of lineage",
       "type": "array"
+    },
+    "overrideOwner": {
+      "title": "Override Current Owner",
+      "description": "Enabling this flag will override current owner with new owner ,if that is fetched during metadata ingestion",
+      "type": "boolean",
+      "default": "false"
     }
   },
   "additionalProperties": false

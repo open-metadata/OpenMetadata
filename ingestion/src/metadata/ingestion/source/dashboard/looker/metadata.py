@@ -159,29 +159,30 @@ class LookerSource(DashboardServiceSource):
         Returns:
             Optional[EntityReference]
         """
+        if self.source_config.overrideOwner:
+            try:
+                if (
+                    dashboard_details.user_id is not None
+                    and dashboard_details.user_id not in self._owners_ref
+                ):
+                    dashboard_owner = self.client.user(dashboard_details.user_id)
+                    user = self.metadata.get_user_by_email(dashboard_owner.email)
+                    if user:  # Save the EntityRef
+                        self._owners_ref[dashboard_details.user_id] = EntityReference(
+                            id=user.id, type="user"
+                        )
+                    else:  # Otherwise, flag the user as missing in OM
+                        self._owners_ref[dashboard_details.user_id] = None
+                        logger.debug(
+                            f"User {dashboard_owner.email} not found in OpenMetadata."
+                        )
 
-        try:
-            if (
-                dashboard_details.user_id is not None
-                and dashboard_details.user_id not in self._owners_ref
-            ):
-                dashboard_owner = self.client.user(dashboard_details.user_id)
-                user = self.metadata.get_user_by_email(dashboard_owner.email)
-                if user:  # Save the EntityRef
-                    self._owners_ref[dashboard_details.user_id] = EntityReference(
-                        id=user.id, type="user"
-                    )
-                else:  # Otherwise, flag the user as missing in OM
-                    self._owners_ref[dashboard_details.user_id] = None
-                    logger.debug(
-                        f"User {dashboard_owner.email} not found in OpenMetadata."
-                    )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Could not fetch owner data due to {err}")
 
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")
-
-        return self._owners_ref.get(dashboard_details.user_id)
+            return self._owners_ref.get(dashboard_details.user_id)
+        return None
 
     def yield_dashboard(
         self, dashboard_details: LookerDashboard

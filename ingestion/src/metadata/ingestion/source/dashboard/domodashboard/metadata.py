@@ -95,20 +95,21 @@ class DomodashboardSource(DashboardServiceSource):
         return dashboard
 
     def get_owner_details(self, owners: List[DomoOwner]) -> Optional[EntityReference]:
-        for owner in owners:
-            try:
-                owner_details = self.client.users_get(owner.id)
-                if owner_details.get("email"):
-                    user = self.metadata.get_user_by_email(owner_details["email"])
-                    if user:
-                        return EntityReference(id=user["id"], type="user")
-                    logger.debug(
-                        f"No user for found for email {owner_details['email']} in OMD"
+        if self.source_config.overrideOwner:
+            for owner in owners:
+                try:
+                    owner_details = self.client.users_get(owner.id)
+                    if owner_details.get("email"):
+                        user = self.metadata.get_user_by_email(owner_details["email"])
+                        if user:
+                            return EntityReference(id=user["id"], type="user")
+                        logger.debug(
+                            f"No user for found for email {owner_details['email']} in OMD"
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        f"Error while getting details of user {owner.displayName} - {exc}"
                     )
-            except Exception as exc:
-                logger.warning(
-                    f"Error while getting details of user {owner.displayName} - {exc}"
-                )
         return None
 
     def yield_dashboard(
