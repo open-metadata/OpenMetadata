@@ -32,7 +32,7 @@
     },
     "overrideOwner": {
       "title": "Override Current Owner",
-      "description": "Enabling this flag will override current owner with new owner ,if that is fetched during metadata ingestion",
+      "description": "Enabling this flag will override current owner with new owner ,if that is fetched during metadata ingestion. Kindly make to keep it enabled, to get the owner, for first time metadata ingestion.",
       "type": "boolean",
       "default": "false"
     }
