@@ -664,9 +664,11 @@ const TeamDetailsV1 = ({
               <Typography.Text
                 className="font-medium"
                 data-testid="deleted-menu-item-label">
-                {t('label.deleted-team-action', {
-                  action: showDeletedTeam ? t('label.hide') : t('label.show'),
-                })}
+                {t(
+                  showDeletedTeam
+                    ? 'hide-deleted-team'
+                    : 'label.show-deleted-team'
+                )}
               </Typography.Text>
             </Col>
 

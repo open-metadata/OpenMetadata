@@ -113,7 +113,9 @@ const UpdateDescription = () => {
     if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       return (
         <div data-testid="column-details">
-          <p className="tw-font-semibold">{t('label.column-details')}</p>
+          <p className="tw-font-semibold">
+            {t('label.column-entity', { entity: t('label.detail-plural') })}
+          </p>
           <p>
             <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>

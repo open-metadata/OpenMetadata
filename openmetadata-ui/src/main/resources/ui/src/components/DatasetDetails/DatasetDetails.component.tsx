@@ -296,7 +296,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         position: 7,
       },
       {
-        name: t('label.dbt-uppercase'),
+        name: t('label.dbt-lowercase'),
         icon: {
           alt: 'dbt-model',
           name: 'dbtmodel-light-grey',
