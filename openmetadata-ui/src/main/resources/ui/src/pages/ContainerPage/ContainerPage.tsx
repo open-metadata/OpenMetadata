@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -71,7 +72,10 @@ const ContainerPage = () => {
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
-      const response = await getContainerByName(containerFQN);
+      const response = await getContainerByName(
+        containerFQN,
+        'parent,children,dataModel,owner,tags,followers,extension'
+      );
       setContainerData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -311,7 +315,9 @@ const ContainerPage = () => {
             <Row
               className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
               gutter={[0, 16]}>
-              <Col span={24}>{t('label.children')}</Col>
+              <Col span={24}>
+                <ContainerChildren childrenList={containerData?.children} />
+              </Col>
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane

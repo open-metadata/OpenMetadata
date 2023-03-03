@@ -34,8 +34,10 @@ export const getContainers = async (
   return response.data;
 };
 
-export const getContainerByName = async (name: string) => {
-  const response = await APIClient.get<Container>(`containers/name/${name}`);
+export const getContainerByName = async (name: string, fields: string) => {
+  const response = await APIClient.get<Container>(
+    `containers/name/${name}?fields=${fields}`
+  );
 
   return response.data;
 };
