@@ -15,7 +15,7 @@ Processor util to fetch pii sensitive columns
 import logging
 import traceback
 from enum import Enum
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 from presidio_analyzer import AnalyzerEngine
 
@@ -60,7 +60,7 @@ class NERScanner:
 
     def get_highest_score_label(
         self, labels_score
-    ) -> Optional[Tuple[Union[float, str]]]:
+    ) -> Tuple[Optional[float], Optional[str]]:
         most_used_label_occurrence = 0
         label_score = None
         for label, score in labels_score.items():
@@ -71,8 +71,8 @@ class NERScanner:
                 most_used_label_occurrence = score[1]
         return label_score or (None, None)
 
-    def scan(self, text):
-        """Scan the text and return an array of PiiTypes that are found"""
+    def scan(self, text) -> Tuple[str, float]:
+        """Scan the text and return an pii tag fqn and confidence/score"""
 
         logging.debug("Processing '%s'", text)
         pii_tag_fqn = ""
