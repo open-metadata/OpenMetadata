@@ -156,7 +156,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             mode="multiple"
             onChange={handleTagSelection}>
             {tagOptions.map(({ label, value }) => (
-              <Select.Option key={label} value={value}>
+              <Select.Option key={label} title={label} value={value}>
                 <Tooltip
                   destroyTooltipOnHide
                   placement="topLeft"
