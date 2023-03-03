@@ -44,7 +44,7 @@ describe('Test column detail component', () => {
   it('Should render the component', async () => {
     render(<ColumnDetail column={mockColumnData} />);
 
-    const container = await screen.findByTestId('column-entity');
+    const container = await screen.findByTestId('column-details');
 
     const columnType = await screen.findByTestId('column-type');
 
@@ -58,7 +58,7 @@ describe('Test column detail component', () => {
   it('Should not render the component if column is empty object', async () => {
     render(<ColumnDetail column={{} as Column} />);
 
-    const container = screen.queryByTestId('column-entity');
+    const container = screen.queryByTestId('column-details');
 
     const columnType = screen.queryByTestId('column-type');
 
