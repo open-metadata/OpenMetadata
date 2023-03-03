@@ -70,7 +70,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.filters,
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:

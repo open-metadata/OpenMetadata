@@ -48,3 +48,8 @@ export enum SORT_ORDER {
   ASC = 'asc',
   DESC = 'desc',
 }
+
+export enum ERROR_PLACEHOLDER_TYPE {
+  ADD = 'ADD_DATA',
+  VIEW = 'VIEW_DATA',
+}
