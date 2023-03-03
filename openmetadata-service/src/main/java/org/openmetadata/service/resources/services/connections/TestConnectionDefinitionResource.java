@@ -2,42 +2,29 @@ package org.openmetadata.service.resources.services.connections;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.services.connections.CreateTestConnectionDefinition;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
-import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -145,27 +132,6 @@ public class TestConnectionDefinitionResource
   }
 
   @GET
-  @Path("/{id}/versions")
-  @Operation(
-      operationId = "listAllTestConnectionDefinitionVersion",
-      summary = "List test connection definition versions",
-      tags = "testConnectionDefinitions",
-      description = "Get a list of all the versions of a test connection definition identified by `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of test definition versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
-  public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
-    return super.listVersionsInternal(securityContext, id);
-  }
-
-  @GET
   @Path("/{id}")
   @Operation(
       summary = "Get a test connection definition by Id",
@@ -236,193 +202,5 @@ public class TestConnectionDefinitionResource
           Include include)
       throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-  }
-
-  @GET
-  @Path("/{id}/versions/{version}")
-  @Operation(
-      operationId = "getSpecificTestConnectionDefinitionVersion",
-      summary = "Get a version of the test connection definition",
-      tags = "testConnectionDefinitions",
-      description = "Get a version of the test connection definition by given `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "TestConnectionDefinition",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestConnectionDefinition.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Test Connection Definition for instance {id} and version {version} is " + "not found")
-      })
-  public TestConnectionDefinition getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test connection definition", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Test Connection Definition version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version)
-      throws IOException {
-    return super.getVersionInternal(securityContext, id, version);
-  }
-
-  @POST
-  @Operation(
-      operationId = "createTestConnectionDefinition",
-      summary = "Create a test connection definition",
-      tags = "testConnectionDefinitions",
-      description = "Create a Test Connection Definition.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The test connection definition",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestConnectionDefinition.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestConnectionDefinition create)
-      throws IOException {
-    TestConnectionDefinition testConnectionDefinition =
-        getTestConnectionDefinition(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, testConnectionDefinition);
-  }
-
-  @PATCH
-  @Path("/{id}")
-  @Operation(
-      operationId = "patchTestConnectionDefinition",
-      summary = "Update a test connection definition",
-      tags = "testConnectionDefinitions",
-      description = "Update an existing Test Connection Definition using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test connection definition", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
-          JsonPatch patch)
-      throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
-  }
-
-  @PUT
-  @Operation(
-      operationId = "createOrUpdateTestConnectionDefinition",
-      summary = "Update test connection definition",
-      tags = "testConnectionDefinitions",
-      description =
-          "Create a Test Connection Definition, if it does not exist, or update an existing Test Connection Definition.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The updated test connection definition ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestConnectionDefinition.class)))
-      })
-  public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestConnectionDefinition create)
-      throws IOException {
-    TestConnectionDefinition testConnectionDefinition =
-        getTestConnectionDefinition(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, testConnectionDefinition);
-  }
-
-  @DELETE
-  @Path("/{id}")
-  @Operation(
-      operationId = "deleteTestConnectionDefinition",
-      summary = "Delete a test connection definition",
-      tags = "testConnectionDefinitions",
-      description = "Delete a test connection definition by `id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Test connection definition for instance {id} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the test connection definition", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
-  }
-
-  @DELETE
-  @Path("/name/{name}")
-  @Operation(
-      operationId = "deleteTestConnectionDefinitionByName",
-      summary = "Delete a test connection definition",
-      tags = "testConnectionDefinitions",
-      description = "Delete a test connection definition by `name`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Test connection definition for instance {name} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Name of the test connection definition", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
-  }
-
-  @PUT
-  @Path("/restore")
-  @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted test connection definition",
-      tags = "testConnectionDefinitions",
-      description = "Restore a soft deleted Test Connection Definition.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the Test Connection Definition. ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestConnectionDefinition.class)))
-      })
-  public Response restoreTestConnectionDefinition(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private TestConnectionDefinition getTestConnectionDefinition(CreateTestConnectionDefinition create, String user)
-      throws IOException {
-    return copy(new TestConnectionDefinition(), create, user)
-        .withDescription(create.getDescription())
-        .withSteps(create.getSteps())
-        .withDisplayName(create.getDisplayName())
-        .withName(create.getName());
   }
 }

@@ -6,14 +6,17 @@
   "steps": [
     {
       "name": "GetSchemas",
+      "description": "List all the schemas available to the user.",
       "mandatory": true
     },
     {
       "name": "GetTables",
+      "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
       "mandatory": true
     },
     {
       "name": "GetViews",
+      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
       "mandatory": false
     }
   ]

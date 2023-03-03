@@ -16,6 +16,10 @@
           "description": "Name of the step being tested",
           "type": "string"
         },
+        "description": {
+          "description": "What is the goal of the step",
+          "type": "string"
+        },
         "mandatory": {
           "description": "Is this step mandatory to be passed?",
           "type": "boolean",
@@ -23,7 +27,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["name", "mandatory"]
+      "required": ["name", "mandatory", "description"]
     }
   },
   "properties": {

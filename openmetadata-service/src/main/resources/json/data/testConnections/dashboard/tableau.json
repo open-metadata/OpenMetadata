@@ -6,14 +6,17 @@
   "steps": [
     {
       "name": "ServerInfo",
+      "description": "Validate that the API can properly reach the server",
       "mandatory": true
     },
     {
       "name": "GetWorkbooks",
+      "description": "List all the workbooks available to the user. We will ingest Workbooks as Dashboards.",
       "mandatory": true
     },
     {
       "name": "GetViews",
+      "description": "List the Views (charts) from a given Workbook.",
       "mandatory": false
     }
   ]

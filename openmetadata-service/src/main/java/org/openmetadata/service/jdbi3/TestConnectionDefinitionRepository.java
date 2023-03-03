@@ -10,10 +10,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.connections.TestConnectionDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
+/*
+ We won't have any POST/PUT operations on these definitions.
+ They are created by the server and will be updated, if needed, via migration files.
+*/
 public class TestConnectionDefinitionRepository extends EntityRepository<TestConnectionDefinition> {
 
-  private static final String UPDATE_FIELDS = "owner";
-  private static final String PATCH_FIELDS = "owner";
+  private static final String UPDATE_FIELDS = "";
+  private static final String PATCH_FIELDS = "";
 
   public TestConnectionDefinitionRepository(CollectionDAO dao) {
     super(
@@ -59,18 +63,6 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   @Override
   public EntityUpdater getUpdater(
       TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
-    return new TestConnectionDefinitionUpdater(original, updated, operation);
-  }
-
-  public class TestConnectionDefinitionUpdater extends EntityUpdater {
-    public TestConnectionDefinitionUpdater(
-        TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
-      super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      recordChange("steps", original.getSteps(), updated.getSteps());
-    }
+    return null;
   }
 }
