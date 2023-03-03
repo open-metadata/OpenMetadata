@@ -97,7 +97,7 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
     return configure_spark_with_delta_pip(builder).getOrCreate()
 
 
-def test_connection(spark: SparkSession) -> None:
+def test_connection(spark: SparkSession, _) -> None:
     """
     Test connection
     """

@@ -88,7 +88,7 @@ const ForgotPassword = () => {
               <div
                 className="flex flex-col"
                 data-testid="success-screen-container">
-                <div className="flex border-1 border-main rounded-4 p-sm success-alert">
+                <div className="flex global-border rounded-4 p-sm success-alert">
                   <div className="m-r-xs">
                     <SVGIcons
                       alt={t('label.success')}

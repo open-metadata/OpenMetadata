@@ -58,8 +58,7 @@ class Median(StaticMetric):
         )
         return None
 
-    @_label
-    def df_fn(self, dfs=None):
+    def df_fn(self, df=None):
         """Dataframe function"""
         import pandas as pd  # pylint: disable=import-outside-toplevel
 

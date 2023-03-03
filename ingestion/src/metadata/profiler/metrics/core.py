@@ -43,18 +43,9 @@ def _label(_fn):
 
     @wraps(_fn)
     def inner(self, *args, **kwargs):
-        import pandas as pd  # pylint: disable=import-outside-toplevel
-
         res = _fn(self, *args, **kwargs)
         # If the metric computation returns some value
         if res is not None:
-            try:
-                if pd.isnull(res):
-                    res = None
-            except ValueError:
-                pass
-            if not hasattr(res, "label"):
-                return res
             return res.label(self.name())
 
         return None

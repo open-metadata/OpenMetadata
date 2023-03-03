@@ -51,7 +51,6 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
-from metadata.ingestion.source.database.processor import PiiProcessor
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
@@ -381,11 +380,6 @@ class CommonDbSourceService(
                 ),  # Pick tags from context info, if any
             )
 
-            # Process pii sensitive column and append tags
-            if self.source_config.processPiiSensitive:
-                processor = PiiProcessor(metadata_config=self.metadata)
-                processor.process(table_request)
-
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
@@ -470,7 +464,7 @@ class CommonDbSourceService(
         can properly reach the source
         """
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine)
+        test_connection_fn(self.engine, self.service_connection)
 
     @property
     def connection(self) -> Connection:

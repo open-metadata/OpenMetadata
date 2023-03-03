@@ -41,7 +41,6 @@ class Max(StaticMetric):
         return func.max(column(self.col.name))
 
     # pylint: disable=import-outside-toplevel
-    @_label
     def df_fn(self, df=None):
         """pandas function"""
         from pandas import DataFrame

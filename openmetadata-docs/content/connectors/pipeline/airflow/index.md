@@ -72,7 +72,7 @@ caption="Add a new Service from the Services page"
 
 ### 3. Select the Service Type
 
-Select Airbyte as the service type and click Next.
+Select Airflow as the service type and click Next.
 
 <div className="w-100 flex justify-center">
 <Image

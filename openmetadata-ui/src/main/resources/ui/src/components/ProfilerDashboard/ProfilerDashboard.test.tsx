@@ -142,9 +142,7 @@ describe('Test ProfilerDashboardPage component', () => {
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = screen.queryByText('ProfilerTab component');
     const DataQualityTab = await screen.findByText('DataQualityTab component');
-    const deletedTestSwitch = await screen.findByText(
-      'label.deleted-test-plural'
-    );
+    const deletedTestSwitch = await screen.findByText('label.deleted-entity');
     const statusDropdown = await screen.findByText('label.status');
 
     expect(profilerSwitch).toBeInTheDocument();

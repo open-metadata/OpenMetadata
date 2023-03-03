@@ -52,7 +52,6 @@ class RegexCount(StaticMetric):
             case([(column(self.col.name).regexp_match(self.expression), 1)], else_=0)
         )
 
-    @_label
     def df_fn(self, df):
         """pandas function"""
 

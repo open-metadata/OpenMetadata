@@ -108,7 +108,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       {
         key: 'Target',
         value: target
-          ? t('label.entity-with-value', {
+          ? t('label.entity-hyphen-value', {
               entity: t('label.target'),
               value: target,
             })
@@ -119,7 +119,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       {
         key: 'Server',
         value: server
-          ? t('label.entity-with-value', {
+          ? t('label.entity-hyphen-value', {
               entity: t('label.server'),
               value: server,
             })
@@ -130,7 +130,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       {
         key: 'Dashboard',
         value: dashboard
-          ? t('label.entity-with-value', {
+          ? t('label.entity-hyphen-value', {
               entity: t('label.dashboard'),
               value: dashboard,
             })

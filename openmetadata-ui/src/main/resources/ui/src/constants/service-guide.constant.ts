@@ -168,7 +168,7 @@ export const addDBTIngestionGuide = [
   {
     step: 5,
     title: i18n.t('label.entity-ingestion-added-successfully', {
-      entity: i18n.t('label.dbt-uppercase'),
+      entity: i18n.t('label.dbt-lowercase'),
     }),
     description: i18n.t(
       'message.ingestion-pipeline-name-successfully-deployed-entity',
