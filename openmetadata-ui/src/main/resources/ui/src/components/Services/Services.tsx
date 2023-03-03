@@ -96,6 +96,8 @@ const Services = ({
         return PAGE_HEADERS.ML_MODELS_SERVICES;
       case ServiceCategory.PIPELINE_SERVICES:
         return PAGE_HEADERS.PIPELINES_SERVICES;
+      case ServiceCategory.OBJECT_STORE_SERVICES:
+        return PAGE_HEADERS.OBJECT_STORE_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }

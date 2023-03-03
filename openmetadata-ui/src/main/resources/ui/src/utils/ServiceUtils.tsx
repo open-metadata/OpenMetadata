@@ -807,6 +807,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.metadata'))
       );
 
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.container'))
+      );
+
     default:
       return;
   }
@@ -827,6 +833,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
+  }
+  if (type === 'objectstoreServices') {
+    return GlobalSettingOptions.OBJECT_STORES;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -859,6 +868,10 @@ export const getResourceEntityFromServiceCategory = (
     case 'metadata':
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
+
+    case 'objectStores':
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return ResourceEntity.OBJECT_STORE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -867,16 +880,18 @@ export const getResourceEntityFromServiceCategory = (
 export const getCountLabel = (serviceName: ServiceTypes) => {
   switch (serviceName) {
     case ServiceCategory.DASHBOARD_SERVICES:
-      return 'Dashboards';
+      return t('label.dashboard-plural');
     case ServiceCategory.MESSAGING_SERVICES:
-      return 'Topics';
+      return t('label.topic-plural');
     case ServiceCategory.PIPELINE_SERVICES:
-      return 'Pipelines';
+      return t('label.pipeline-plural');
     case ServiceCategory.ML_MODEL_SERVICES:
-      return 'Models';
+      return t('label.ml-model-plural');
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return t('label.container-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return 'Databases';
+      return t('label.database-plural');
   }
 };
 
