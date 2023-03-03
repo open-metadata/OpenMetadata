@@ -44,7 +44,6 @@ import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageHeader from '../header/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
@@ -138,9 +137,7 @@ const Services = ({
             <Row data-testid="data-container" gutter={[16, 16]}>
               {serviceData.map((service, index) => (
                 <Col key={index} lg={8} xl={6}>
-                  <Card
-                    size="small"
-                    style={{ ...leftPanelAntCardStyle, height: '100%' }}>
+                  <Card className="w-full" size="small">
                     <div
                       className="tw-flex tw-justify-between tw-text-grey-muted"
                       data-testid="service-card">
