@@ -14,7 +14,6 @@ Source connection handler
 """
 from functools import partial
 
-from botocore.client import ClientError
 from sqlalchemy.engine import Engine
 
 from metadata.clients.aws_client import AWSClient
@@ -22,7 +21,6 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
     GlueConnection,
 )
 from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
     TestConnectionResult,
     TestConnectionStep,
     test_connection_steps,
@@ -34,22 +32,6 @@ def get_connection(connection: GlueConnection) -> Engine:
     Create connection
     """
     return AWSClient(connection.awsConfig).get_glue_client()
-
-
-def test_connection(client, _) -> None:
-    """
-    Test connection
-    """
-    try:
-        paginator = client.get_paginator("get_databases")
-        paginator.paginate()
-
-    except ClientError as err:
-        msg = f"Connection error for {client}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
 
 
 def test_connection(client, _) -> TestConnectionResult:
