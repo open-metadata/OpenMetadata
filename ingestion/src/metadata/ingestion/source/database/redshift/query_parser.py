@@ -13,9 +13,7 @@ Redshift usage module
 """
 from abc import ABC
 from datetime import datetime
-from typing import List
 
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -38,7 +36,6 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
     """
 
     filters: str
-    db_filters: str
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -50,32 +47,6 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata_config)
 
-    def prepare(self):
-        """
-        Fetch queries only from DB that is ingested in OM
-        """
-        databases: List[Database] = self.metadata.list_all_entities(
-            Database, ["databaseSchemas"], params={"service": self.config.serviceName}
-        )
-        database_name_list = []
-        schema_name_list = []
-
-        for database in databases:
-            database_name_list.append(database.name.__root__)
-            if self.schema_field and database.databaseSchemas:
-                for schema in database.databaseSchemas.__root__:
-                    schema_name_list.append(schema.name)
-
-        if self.database_field and database_name_list:
-            self.db_filters += (  # pylint: disable=no-member
-                f"{self.database_field} IN ('" + "','".join(database_name_list) + "')"
-            )
-
-        if self.schema_field and schema_name_list:
-            self.db_filters += (  # pylint: disable=no-member
-                f" AND {self.schema_field} IN ('" + "','".join(schema_name_list) + "')"
-            )
-
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
         returns sql statement to fetch query logs
@@ -83,7 +54,6 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,  # pylint: disable=no-member
-            db_filters=self.db_filters,  # pylint: disable=no-member
+            filters=self.filters,
             result_limit=self.source_config.resultLimit,
         )

@@ -31,7 +31,7 @@ def get_connection(connection: RedashConnection) -> Redash:
         raise SourceConnectionException(msg) from exc
 
 
-def test_connection(client: Redash) -> None:
+def test_connection(client: Redash, _) -> None:
     """
     Test connection
     """

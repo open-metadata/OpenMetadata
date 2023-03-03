@@ -28,6 +28,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -263,7 +264,7 @@ const TeamDetailsV1 = ({
             description={description}
             doc={doc}
             heading={heading}
-            type="ADD_DATA"
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
           />
         );
       },
@@ -780,7 +781,7 @@ const TeamDetailsV1 = ({
     const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
 
     return (
-      <div>
+      <>
         {isEmpty(currentTeamUsers) &&
         !teamUsersSearchText &&
         isTeamMemberLoading <= 0 ? (
@@ -869,7 +870,7 @@ const TeamDetailsV1 = ({
             )}
           </>
         )}
-      </div>
+      </>
     );
   };
 
@@ -1330,7 +1331,7 @@ const TeamDetailsV1 = ({
           }
           doc={TEAMS_DOCS}
           heading={t('label.team-plural')}
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       )}
 

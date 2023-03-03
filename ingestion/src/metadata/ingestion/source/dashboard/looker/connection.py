@@ -39,7 +39,7 @@ def get_connection(connection: LookerConnection) -> Looker40SDK:
     return looker_sdk.init40()
 
 
-def test_connection(client: Looker40SDK) -> None:
+def test_connection(client: Looker40SDK, _) -> None:
     """
     Test connection
     """

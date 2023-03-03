@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React from 'react';
 import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
 import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
-import { SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
 type Props = {
   children?: React.ReactNode;
-  type?: string;
+  type?: ERROR_PLACEHOLDER_TYPE;
   buttonLabel?: string;
   buttonListener?: () => void;
   heading?: string;
@@ -47,36 +47,37 @@ const ErrorPlaceHolder = ({
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
-  return type === 'ADD_DATA' ? (
-    <div data-testid={dataTestId}>
-      <div className="flex-center flex-col tw-mt-24 " data-testid="error">
-        {' '}
+  return type === ERROR_PLACEHOLDER_TYPE.ADD ? (
+    <div
+      className={classNames(classes, 'h-full flex-center')}
+      data-testid={dataTestId}>
+      <Space align="center" className="w-full" direction="vertical" size={10}>
         <img data-testid="no-data-image" src={AddPlaceHolder} width={size} />
-      </div>
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
-        {description ? (
-          description
-        ) : (
-          <>
-            <Paragraph style={{ marginBottom: '4px' }}>
-              {' '}
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: heading,
-              })}
-            </Paragraph>
-            <Paragraph>
-              {' '}
-              {t('label.refer-to-our')}{' '}
-              <Link href={doc} target="_blank">
-                {t('label.docs')}
-              </Link>{' '}
-              {t('label.for-more-info')}
-            </Paragraph>
-          </>
-        )}
 
-        <div className="tw-text-lg tw-text-center">{buttons}</div>
-      </div>
+        <div className="text-center text-base font-medium">
+          {description ? (
+            description
+          ) : (
+            <>
+              <Paragraph style={{ marginBottom: '4px' }}>
+                {' '}
+                {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                  entity: heading,
+                })}
+              </Paragraph>
+              <Paragraph>
+                {t('label.refer-to-our')}{' '}
+                <Link href={doc} target="_blank">
+                  {t('label.docs')}
+                </Link>{' '}
+                {t('label.for-more-info')}
+              </Paragraph>
+            </>
+          )}
+
+          <div className="text-lg text-center">{buttons}</div>
+        </div>
+      </Space>
     </div>
   ) : (
     <div
