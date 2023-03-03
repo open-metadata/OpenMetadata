@@ -32,7 +32,7 @@ def get_connection(connection: KinesisConnection):
     return AWSClient(connection.awsConfig).get_kinesis_client()
 
 
-def test_connection(client) -> None:
+def test_connection(client, _) -> None:
     """
     Test connection
     """

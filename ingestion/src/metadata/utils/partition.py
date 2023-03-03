@@ -51,6 +51,8 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                     partitionInterval=30,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
+                    partitionIntegerRangeStart=None,
+                    partitionIntegerRangeEnd=None,
                 )
             if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
                 return PartitionProfilerConfig(
@@ -62,6 +64,19 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                     partitionInterval=30,
                     partitionIntervalType=entity.tablePartition.intervalType.value,
                     partitionValues=None,
+                    partitionIntegerRangeStart=None,
+                    partitionIntegerRangeEnd=None,
+                )
+            if entity.tablePartition.intervalType == IntervalType.INTEGER_RANGE:
+                return PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName=entity.tablePartition.columns[0],
+                    partitionIntervalUnit=None,
+                    partitionInterval=30,
+                    partitionIntervalType=entity.tablePartition.intervalType.value,
+                    partitionValues=None,
+                    partitionIntegerRangeStart=1,
+                    partitionIntegerRangeEnd=10000,
                 )
             raise TypeError(
                 f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"

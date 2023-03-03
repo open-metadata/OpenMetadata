@@ -118,10 +118,10 @@ class ImporterTest(TestCase):
         )
 
     def test_import_sink_from(self) -> None:
-        from metadata.orm_profiler.sink.metadata_rest import MetadataRestSink
+        from metadata.profiler.sink.metadata_rest import MetadataRestSink
 
         self.assertEqual(
-            import_sink_class(sink_type="metadata-rest", from_="orm_profiler"),
+            import_sink_class(sink_type="metadata-rest", from_="profiler"),
             MetadataRestSink,
         )
 
