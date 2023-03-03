@@ -12,6 +12,7 @@
  */
 
 import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -238,9 +239,10 @@ const Services = ({
                 </Button>
               </Tooltip>
             }
+            classes="mt-24"
             doc={CONNECTORS_DOCS}
             heading={servicesDisplayName[serviceName]}
-            type="ADD_DATA"
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
           />
         </Col>
       )}
