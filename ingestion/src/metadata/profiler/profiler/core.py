@@ -407,7 +407,7 @@ class Profiler(Generic[TMetric]):
 
         return self
 
-    def process(self, generate_sample_data: Optional[bool]) -> ProfilerResponse:
+    def process(self, source_config) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
@@ -418,14 +418,14 @@ class Profiler(Generic[TMetric]):
         )
 
         self.compute_metrics()
-        if generate_sample_data:
+        if source_config.generateSampleData:
             try:
                 logger.info(
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
                 sample_data = self.profiler_interface.fetch_sample_data(self.table)
 
-                if self.profiler_interface.source_config.config.processPiiSensitive:
+                if source_config.processPiiSensitive:
                     entity_scanner = NERScanner(
                         metadata=self.profiler_interface.ometa_client
                     )

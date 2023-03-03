@@ -70,7 +70,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         self.table_entity = entity
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
-
         self.processor_status = ProfilerProcessorStatus()
         try:
             fqn = self.table_entity.fullyQualifiedName

@@ -335,7 +335,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             DatabaseService.__config__, copy_service_connection_config
         )
 
-        return copy_service_connection_config, self.config.source.sourceConfig
+        return copy_service_connection_config
 
     def run_profiler(
         self, entity: Table, copied_service_config, sqa_metadata=None
@@ -361,9 +361,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             )  # type: ignore
             self.create_profiler(entity, profiler_interface)
             self.profiler = cast(Profiler, self.profiler)  # satisfy type checker
-            profile: ProfilerResponse = self.profiler.process(
-                self.source_config.generateSampleData
-            )
+            profile: ProfilerResponse = self.profiler.process(self.source_config)
         except Exception as exc:  # pylint: disable=broad-except
 
             logger.debug(traceback.format_exc())
