@@ -91,6 +91,7 @@ import {
   getDeletedLineagePlaceholder,
   getEdgeStyle,
   getEdgeType,
+  getEntityLineagePath,
   getLayoutedElements,
   getLineageData,
   getLoadingStatusValue,
@@ -99,6 +100,7 @@ import {
   getNewNodes,
   getNodeRemoveButton,
   getPaginatedChildMap,
+  getParamByEntityType,
   getRemovedNodeData,
   getSelectedEdgeArr,
   getUniqueFlowElements,
@@ -150,7 +152,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   deleted,
   hasEditAccess,
   entityType,
-  onExitFullScreenViewClick,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -205,8 +206,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   });
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
 
-  const { datasetFQN } = useParams() as Record<string, string>;
-
+  const params = useParams<Record<string, string>>();
+  const entityFQN =
+    params[getParamByEntityType(entityType)] ?? params['entityFQN'];
   const history = useHistory();
 
   useEffect(() => {
@@ -214,13 +216,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   }, []);
 
   const onFullScreenClick = useCallback(() => {
-    history.push(getLineageViewPath(entityType, datasetFQN));
-  }, [entityType, datasetFQN]);
+    history.push(getLineageViewPath(entityType, entityFQN));
+  }, [entityType, entityFQN]);
 
   const fetchLineageData = useCallback(async () => {
     setIsLineageLoading(true);
     try {
-      const res = await getLineageByFQN(datasetFQN, entityType);
+      const res = await getLineageByFQN(entityFQN, entityType);
       if (res) {
         setEntityLineage(res);
         setUpdatedLineageData(res);
@@ -235,7 +237,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     } finally {
       setIsLineageLoading(false);
     }
-  }, [datasetFQN, entityType]);
+  }, [entityFQN, entityType]);
 
   const loadNodeHandler = useCallback(
     async (node: EntityReference, pos: LineagePos) => {
@@ -279,6 +281,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       }));
     }
   }, []);
+
+  const onExitFullScreenViewClick = useCallback(() => {
+    const path = getEntityLineagePath(entityType, entityFQN);
+    if (path !== '') {
+      history.push(path);
+    }
+  }, [entityType, entityFQN, history]);
 
   /**
    * take state and value to set selected node
@@ -1525,20 +1534,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     paginationObj: Record<string, NodeIndexMap>
   ) => {
     if (lineageData && childMapObj) {
-      let start = performance.now();
       const { nodes: newNodes, edges } = getPaginatedChildMap(
         lineageData,
         childMapObj,
         paginationObj
       );
-      let timeTaken = performance.now() - start;
-      console.log(
-        'Total time taken for getPaginatedChildMap : ' +
-          timeTaken +
-          ' milliseconds'
-      );
-
-      start = performance.now();
       setElementsHandle(
         {
           ...lineageData,
@@ -1546,12 +1546,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           downstreamEdges: [...(lineageData.downstreamEdges || []), ...edges],
         },
         paginationObj
-      );
-      timeTaken = performance.now() - start;
-      console.log(
-        'Total time taken for setElementsHandle : ' +
-          timeTaken +
-          ' milliseconds'
       );
     }
   };
@@ -1565,12 +1559,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       !isUndefined(entityLineage.entity) &&
       !deleted
     ) {
-      const start = performance.now();
       const childMapObj: EntityReferenceChild = getChildMap(entityLineage);
-      const timeTaken = performance.now() - start;
-      console.log(
-        'Total time taken for childMap : ' + timeTaken + ' milliseconds'
-      );
       setChildMap(childMapObj);
       initLineageChildMaps(entityLineage, childMapObj, paginationData);
     }

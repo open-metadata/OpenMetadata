@@ -27,7 +27,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -49,7 +48,6 @@ import {
   Task,
 } from '../../generated/entity/data/pipeline';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -71,7 +69,6 @@ import {
   updateThreadData,
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../utils/TagsUtils';
@@ -108,13 +105,7 @@ const PipelineDetails = ({
   settingsUpdateHandler,
   tasks,
   taskUpdateHandler,
-  loadNodeHandler,
-  lineageLeafNodes,
-  isNodeLoading,
   versionHandler,
-  addLineageHandler,
-  removeLineageHandler,
-  entityLineageHandler,
   pipelineFQN,
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
@@ -155,10 +146,6 @@ const PipelineDetails = ({
     task: Task;
     index: number;
   }>();
-  const [lineageLoading, setLineageLoading] = useState(false);
-  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
-    {} as EntityLineage
-  );
   const [entityThreadLoading, setEntityThreadLoading] = useState(false);
   const [entityThreads, setEntityThreads] = useState<Thread[]>([]);
   const [entityThreadPaging, setEntityThreadPaging] = useState<Paging>({
@@ -388,10 +375,6 @@ const PipelineDetails = ({
       setIsFollowing(true);
       followPipelineHandler();
     }
-  };
-
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.PIPELINE, pipelineFQN));
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -641,34 +624,9 @@ const PipelineDetails = ({
     [pipelinePermissions, editTask, editTaskTags, tagList, deleted]
   );
 
-  const getLineageData = () => {
-    setLineageLoading(true);
-    getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
-      .then((res) => {
-        if (res) {
-          setEntityLineage(res);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-lowercase'),
-          })
-        );
-      })
-      .finally(() => {
-        setLineageLoading(false);
-      });
-  };
-
   useEffect(() => {
     switch (tab) {
       case PIPELINE_DETAILS_TABS.Lineage:
-        !deleted && isEmpty(entityLineage) && getLineageData();
-
         break;
       case PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks:
         getFeedData();
@@ -964,20 +922,11 @@ const PipelineDetails = ({
             tab={<span data-testid="Lineage">{t('label.lineage')}</span>}>
             <div className="h-full bg-white">
               <EntityLineageComponent
-                addLineageHandler={addLineageHandler}
                 deleted={deleted}
-                entityLineage={entityLineage}
-                entityLineageHandler={entityLineageHandler}
                 entityType={EntityType.PIPELINE}
                 hasEditAccess={
                   pipelinePermissions.EditAll || pipelinePermissions.EditLineage
                 }
-                isLoading={lineageLoading}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={lineageLeafNodes}
-                loadNodeHandler={loadNodeHandler}
-                removeLineageHandler={removeLineageHandler}
-                onFullScreenClick={handleFullScreenClick}
               />
             </div>
           </Tabs.TabPane>

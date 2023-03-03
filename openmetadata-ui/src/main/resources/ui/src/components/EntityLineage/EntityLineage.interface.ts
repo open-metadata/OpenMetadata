@@ -32,8 +32,6 @@ export interface EntityLineageProp {
   entityType: EntityType;
   deleted?: boolean;
   hasEditAccess?: boolean;
-  isLoading?: boolean;
-  onExitFullScreenViewClick?: () => void;
 }
 
 export interface Edge {

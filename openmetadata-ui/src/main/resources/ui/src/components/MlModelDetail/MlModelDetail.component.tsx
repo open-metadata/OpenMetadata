@@ -28,7 +28,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -57,7 +56,6 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -87,7 +85,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   tagUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
-  lineageTabData,
   onExtensionUpdate,
   entityThread,
   isEntityThreadLoading,
@@ -104,7 +101,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   versionHandler,
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
@@ -269,15 +265,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 5,
     },
   ];
-
-  const handleFullScreenClick = () => {
-    history.push(
-      getLineageViewPath(
-        EntityType.MLMODEL,
-        mlModelDetail.fullyQualifiedName || ''
-      )
-    );
-  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -669,21 +656,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               {activeTab === 4 && (
                 <div className="h-full" data-testid="lineage-details">
                   <EntityLineageComponent
-                    addLineageHandler={lineageTabData.addLineageHandler}
                     deleted={mlModelDetail.deleted}
-                    entityLineage={lineageTabData.entityLineage}
-                    entityLineageHandler={lineageTabData.entityLineageHandler}
                     entityType={EntityType.MLMODEL}
                     hasEditAccess={
                       mlModelPermissions.EditAll ||
                       mlModelPermissions.EditLineage
                     }
-                    isLoading={lineageTabData.isLineageLoading}
-                    isNodeLoading={lineageTabData.isNodeLoading}
-                    lineageLeafNodes={lineageTabData.lineageLeafNodes}
-                    loadNodeHandler={lineageTabData.loadNodeHandler}
-                    removeLineageHandler={lineageTabData.removeLineageHandler}
-                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}

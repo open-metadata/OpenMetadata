@@ -65,7 +65,14 @@ import {
 } from 'reactflow';
 import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { SECONDARY_COLOR } from '../constants/constants';
+import {
+  getDashboardDetailsPath,
+  getMlModelPath,
+  getPipelineDetailsPath,
+  getTableTabPath,
+  getTopicDetailsPath,
+  SECONDARY_COLOR,
+} from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
   NODE_HEIGHT,
@@ -1461,5 +1468,52 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
     showErrorToast(err, jsonData['api-error-messages']['delete-lineage-error']);
 
     throw err;
+  }
+};
+
+export const getParamByEntityType = (entityType: EntityType): string => {
+  switch (entityType) {
+    case EntityType.DATASET:
+    case EntityType.TABLE:
+      return 'datasetFQN';
+    case EntityType.TOPIC:
+      return 'topicFQN';
+    case EntityType.PIPELINE:
+      return 'pipelineFQN';
+    case EntityType.MLMODEL:
+      return 'mlModelFqn';
+    case EntityType.DASHBOARD:
+      return 'dashboardFQN';
+    case EntityType.DATABASE:
+      return 'databaseFQN';
+    case EntityType.DATABASE_SCHEMA:
+      return 'databaseSchemaFQN';
+    default:
+      return 'entityFQN';
+  }
+};
+
+export const getEntityLineagePath = (
+  entityType: EntityType,
+  entityFQN: string
+): string => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return getTableTabPath(entityFQN, 'lineage');
+
+    case EntityType.TOPIC:
+      return getTopicDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.DASHBOARD:
+      return getDashboardDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.PIPELINE:
+      return getPipelineDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.MLMODEL:
+      return getMlModelPath(entityFQN, 'lineage');
+
+    default:
+      return '';
   }
 };
