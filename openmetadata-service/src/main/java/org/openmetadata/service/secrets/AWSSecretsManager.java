@@ -17,6 +17,7 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;

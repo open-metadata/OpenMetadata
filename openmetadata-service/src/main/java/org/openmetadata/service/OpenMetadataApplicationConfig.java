@@ -30,11 +30,11 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.SecurityConfiguration;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.secrets.SecretsManagerConfiguration;
-import org.openmetadata.service.security.SecurityConfiguration;
 
 @Getter
 @Setter

@@ -14,7 +14,6 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +31,8 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.service.Entity;
@@ -49,10 +50,10 @@ public abstract class ExternalSecretsManagerTest {
   void setUp() {
     Fernet fernet = Fernet.getInstance();
     fernet.setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
-    Map<String, String> parameters = new HashMap<>();
-    parameters.put("region", "eu-west-1");
-    parameters.put("accessKeyId", "123456");
-    parameters.put("secretAccessKey", "654321");
+    Parameters parameters = new Parameters();
+    parameters.setAdditionalProperty("region", "eu-west-1");
+    parameters.setAdditionalProperty("accessKeyId", "123456");
+    parameters.setAdditionalProperty("secretAccessKey", "654321");
     SecretsManagerConfiguration config = new SecretsManagerConfiguration();
     config.setParameters(parameters);
     setUpSpecific(config);

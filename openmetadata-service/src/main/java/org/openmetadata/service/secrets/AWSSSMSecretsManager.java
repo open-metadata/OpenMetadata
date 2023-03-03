@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS_SSM;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;

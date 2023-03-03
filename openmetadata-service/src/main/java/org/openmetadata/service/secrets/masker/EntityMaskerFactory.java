@@ -15,7 +15,7 @@ package org.openmetadata.service.secrets.masker;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
-import org.openmetadata.service.security.SecurityConfiguration;
+import org.openmetadata.schema.security.SecurityConfiguration;
 
 public class EntityMaskerFactory {
 
@@ -28,7 +28,7 @@ public class EntityMaskerFactory {
     if (entityMasker != null) {
       return entityMasker;
     }
-    if (config.isMaskPasswordsAPI()) {
+    if (Boolean.TRUE.equals(config.getMaskPasswordsAPI())) {
       entityMasker = PasswordEntityMasker.getInstance();
     } else {
       entityMasker = NoopEntityMasker.getInstance();

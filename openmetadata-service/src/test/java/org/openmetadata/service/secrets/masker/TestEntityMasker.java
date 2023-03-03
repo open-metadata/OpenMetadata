@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.security.SecurityConfiguration;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
@@ -26,7 +27,6 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.service.security.SecurityConfiguration;
 
 abstract class TestEntityMasker {
 
