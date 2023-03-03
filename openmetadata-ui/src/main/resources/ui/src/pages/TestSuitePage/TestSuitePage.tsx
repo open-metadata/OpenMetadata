@@ -17,10 +17,12 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -169,10 +171,10 @@ const TestSuitePage = () => {
         }
         doc={WEBHOOK_DOCS}
         heading="Test Suite"
-        type="ADD_DATA"
+        type={ERROR_PLACEHOLDER_TYPE.ADD}
       />
     ),
-    []
+    [createPermission]
   );
 
   if (isLoading) {
@@ -180,54 +182,56 @@ const TestSuitePage = () => {
   }
 
   if (isEmpty(testSuites)) {
-    return fetchErrorPlaceHolder();
+    return <PageContainerV1>{fetchErrorPlaceHolder()}</PageContainerV1>;
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.test-suite')}>
-      <Space align="center" className="w-full justify-between" size={16}>
-        <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
-        <Tooltip
-          placement="topRight"
-          title={!createPermission && t('message.no-permission-for-action')}>
-          <Button
-            data-testid="add-test-suite"
-            disabled={!createPermission}
-            type="primary"
-            onClick={onAddTestSuite}>
-            {t('label.add-entity', {
-              entity: t('label.test-suite'),
-            })}
-          </Button>
-        </Tooltip>
-      </Space>
+    <PageContainerV1>
+      <PageLayoutV1 pageTitle={t('label.test-suite')}>
+        <Space align="center" className="w-full justify-between" size={16}>
+          <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
+          <Tooltip
+            placement="topRight"
+            title={!createPermission && t('message.no-permission-for-action')}>
+            <Button
+              data-testid="add-test-suite"
+              disabled={!createPermission}
+              type="primary"
+              onClick={onAddTestSuite}>
+              {t('label.add-entity', {
+                entity: t('label.test-suite'),
+              })}
+            </Button>
+          </Tooltip>
+        </Space>
 
-      <Row className="w-full mt-4">
-        <Col span={24}>
-          <Table
-            bordered
-            columns={columns}
-            data-testid="test-suite-table"
-            dataSource={testSuites}
-            loading={{ spinning: isLoading, indicator: <Loader /> }}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        </Col>
-        {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
+        <Row className="w-full mt-4">
           <Col span={24}>
-            <NextPrevious
-              currentPage={testSuitePage}
-              pageSize={PAGE_SIZE_MEDIUM}
-              paging={testSuitePaging}
-              pagingHandler={testSuitePagingHandler}
-              totalCount={testSuitePaging.total}
+            <Table
+              bordered
+              columns={columns}
+              data-testid="test-suite-table"
+              dataSource={testSuites}
+              loading={{ spinning: isLoading, indicator: <Loader /> }}
+              pagination={false}
+              rowKey="name"
+              size="small"
             />
           </Col>
-        )}
-      </Row>
-    </PageLayoutV1>
+          {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
+            <Col span={24}>
+              <NextPrevious
+                currentPage={testSuitePage}
+                pageSize={PAGE_SIZE_MEDIUM}
+                paging={testSuitePaging}
+                pagingHandler={testSuitePagingHandler}
+                totalCount={testSuitePaging.total}
+              />
+            </Col>
+          )}
+        </Row>
+      </PageLayoutV1>
+    </PageContainerV1>
   );
 };
 

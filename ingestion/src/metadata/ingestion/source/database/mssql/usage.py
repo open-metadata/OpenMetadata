@@ -21,7 +21,3 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
     sql_stmt = MSSQL_SQL_STATEMENT
 
     filters = ""  # No filtering in the queries
-
-    database_field = "db.NAME"
-
-    schema_field = ""  # schema filtering not available
