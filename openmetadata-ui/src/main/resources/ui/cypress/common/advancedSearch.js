@@ -181,7 +181,11 @@ export const goToAdvanceSearch = () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-btn').contains('Reset').should('be.visible').click();
+    cy.get('.ant-btn')
+      .contains('Reset')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
   });
 };
 

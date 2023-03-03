@@ -93,6 +93,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
           page: 1,
         }),
       });
+      setTreeInternal(undefined);
     },
     [history, parsedSearch]
   );
