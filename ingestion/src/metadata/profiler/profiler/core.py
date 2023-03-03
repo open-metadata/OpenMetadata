@@ -59,6 +59,8 @@ class MissingMetricException(Exception):
     """
 
 
+# pylint: disable=too-many-public-methods
+# Pylint error above indicates that this class needs to be refactored
 class Profiler(Generic[TMetric]):
     """
     Core Profiler.
@@ -321,10 +323,10 @@ class Profiler(Generic[TMetric]):
             self._column_results[col.name][
                 metric.name()
             ] = self.profiler_interface.get_hybrid_metrics(
-                self.table,
                 col,
                 metric,
                 current_col_results,
+                table=self.table,
             )
 
     def _prepare_table_metrics(self) -> List:

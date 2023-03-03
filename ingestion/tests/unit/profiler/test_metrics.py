@@ -731,7 +731,7 @@ class MetricsTest(TestCase):
                 None,
             )
 
-        hist = (Metrics.HISTOGRAM.value)
+        hist = Metrics.HISTOGRAM.value
         res = (
             Profiler(
                 hist,

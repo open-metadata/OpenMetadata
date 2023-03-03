@@ -13,7 +13,7 @@
 Histogram Metric definition
 """
 import math
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 from sqlalchemy import and_, case, column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
@@ -56,6 +56,19 @@ class Histogram(HybridMetric):
             return 1
         return 2 * iqr * row_count ** (-1 / 3)
 
+    @staticmethod
+    def _get_res(res: Dict[str, Any]):
+        # get the metric need for the freedman-diaconis rule
+        res_iqr = res.get(InterQuartileRange.name())
+        res_row_count = res.get(Count.name())
+        res_min = res.get(Min.name())
+        res_max = res.get(Max.name())
+
+        if any(var is None for var in [res_iqr, res_row_count, res_min, res_max]):
+            return None
+
+        return (res_iqr, res_row_count, res_min, res_max)
+
     def fn(
         self,
         sample: Optional[DeclarativeMeta],
@@ -75,13 +88,10 @@ class Histogram(HybridMetric):
             return None
 
         # get the metric need for the freedman-diaconis rule
-        res_iqr = res.get(InterQuartileRange.name())
-        res_row_count = res.get(Count.name())
-        res_min = res.get(Min.name())
-        res_max = res.get(Max.name())
-
-        if any(var is None for var in [res_iqr, res_row_count, res_min, res_max]):
+        results = self._get_res(res)
+        if not results:
             return None
+        res_iqr, res_row_count, res_min, res_max = results
 
         # compute the bin width and the number of bins
         bind_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
@@ -120,8 +130,67 @@ class Histogram(HybridMetric):
 
         rows = session.query(*case_stmts).select_from(sample).first()
         if rows:
-            return {
-                "boundaries": list(rows.keys()),
-                "frequencies": list(rows)
-            }
+            return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
+        return None
+
+    def df_fn(
+        self,
+        res: Dict[str, Any],
+        dfs=None,
+    ):
+        """_summary_
+
+        Args:
+            res (Dict[str, Any]): dictionnary of columns values
+            dfs (List[DataFrame]): list of dataframes
+
+        Returns:
+            Dict
+        """
+        # pylint: disable=import-outside-toplevel
+        import numpy as np
+        import pandas as pd
+
+        dfs = cast(List[pd.DataFrame], dfs)  # satisfy mypy
+
+        if not is_quantifiable(self.col.type):
+            return None
+
+        # get the metric need for the freedman-diaconis rule
+        results = self._get_res(res)
+        if not results:
+            return None
+        res_iqr, res_row_count, res_min, res_max = results
+
+        # compute the bin width and the number of bins
+        bind_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
+        num_bins = math.ceil((res_max - res_min) / bind_width)  # type: ignore
+
+        if num_bins == 0:
+            return None
+
+        bins = list(np.arange(num_bins) * bind_width + res_min)
+        bins_label = [
+            f"{bins[i]:.2f} to {bins[i+1]:.2f}"
+            if i < len(bins) - 1
+            else f"{bins[i]:.2f} and up"
+            for i in range(len(bins))
+        ]
+
+        bins.append(np.inf)  # add the last bin
+
+        frequencies = None
+
+        for df in dfs:
+            if not frequencies:
+                frequencies = (
+                    pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                )  # right boundary is exclusive
+                continue
+            frequencies += (
+                pd.cut(df[self.col.name], bins, right=False).value_counts().values
+            )  # right boundary is exclusive
+
+        if frequencies.size > 0:
+            return {"boundaries": bins_label, "frequencies": frequencies.tolist()}
         return None

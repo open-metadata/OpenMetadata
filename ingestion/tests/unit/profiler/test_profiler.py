@@ -23,8 +23,8 @@ import pytest
 import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
-from ingestion.src.metadata.generated.schema.entity.data.table import Histogram
 
+from ingestion.src.metadata.generated.schema.entity.data.table import Histogram
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -160,9 +160,7 @@ class ProfilerTest(TestCase):
             thirdQuartile=31.0,
             interQuartileRange=1.0,
             nonParametricSkew=2.0,
-            histogram=Histogram(
-                boundaries=["30.00 and up"], frequencies=[2]
-            ),
+            histogram=Histogram(boundaries=["30.00 and up"], frequencies=[2]),
         )
 
     def test_required_metrics(self):

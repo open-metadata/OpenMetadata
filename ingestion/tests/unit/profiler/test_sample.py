@@ -241,13 +241,13 @@ class SampleTest(TestCase):
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
         profiler = Profiler(
-                hist,
-                count,
-                min,
-                max,
-                first_quartile,
-                third_quartile,
-                iqr,
+            hist,
+            count,
+            min,
+            max,
+            first_quartile,
+            third_quartile,
+            iqr,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results

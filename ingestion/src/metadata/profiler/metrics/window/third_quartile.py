@@ -14,7 +14,7 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
+from typing import List, cast
 
 from sqlalchemy import column
 
@@ -59,15 +59,26 @@ class ThirdQuartile(StaticMetric):
         return None
 
     @_label
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """Dataframe function"""
         # pylint: disable=import-outside-toplevel
         import numpy as np
-        from pandas import DataFrame
+        import pandas as pd
 
-        df = cast(DataFrame, df)
+        df = cast(List[pd.DataFrame], dfs)
 
         if is_quantifiable(self.col.type):
+            # we can't compute the median unless we have
+            # the entire set. Median of Medians could be used
+            # though it would required set to be sorted before hand
+            try:
+                df = pd.concat(dfs)
+            except MemoryError:
+                logger.error(
+                    f"Unable to compute Median for {self.col.name} due to memory constraints."
+                    f"We recommend using a smaller sample size or partitionning."
+                )
+                return None
             return np.percentile(df[self.col.name], 75)
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Third Quartile"

@@ -14,7 +14,7 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
+from typing import List, cast
 
 from sqlalchemy import column
 
@@ -59,13 +59,26 @@ class Median(StaticMetric):
         return None
 
     @_label
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """Dataframe function"""
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
-        df = cast(DataFrame, df)
+        dfs = cast(List[pd.DataFrame], dfs)
 
         if is_quantifiable(self.col.type):
+            # we can't compute the median unless we have
+            # the entire set. Median of Medians could be used
+            # though it would required set to be sorted before hand
+            try:
+                df = (
+                    pd.concat(dfs) if isinstance(dfs, list) else dfs
+                )  # workaround should be removed once #10351 is fixed
+            except MemoryError:
+                logger.error(
+                    f"Unable to compute Median for {self.col.name} due to memory constraints."
+                    f"We recommend using a smaller sample size or partitionning."
+                )
+                return None
             return df[self.col.name].median()
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"

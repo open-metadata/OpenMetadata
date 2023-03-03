@@ -208,6 +208,9 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
     @_get_metrics.register(MetricTypes.Window.value)
     def _(
         self,
+        metric_type: str,
+        metrics: Metrics,
+        column,
         *args,
         **kwargs,
     ):
@@ -215,7 +218,15 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         Given a list of metrics, compute the given results
         and returns the values
         """
-        return None  # to be implemented
+        try:
+            metric_values = {}
+            for metric in metrics:
+                metric_values[metric.name()] = metric(column).df_fn(self.dfs)
+            return metric_values if metric_values else None
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            return None
 
     @_get_metrics.register(MetricTypes.System.value)
     def _(
@@ -290,6 +301,26 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         """
         try:
             return metric(column).fn(column_results)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            return None
+
+    def get_hybrid_metrics(
+        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metric: list of metrics to compute
+            column_results: computed values for the column
+        Returns:
+            dictionary of results
+        """
+        try:
+            return metric(column).df_fn(column_results, self.dfs)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception computing metrics: {exc}")

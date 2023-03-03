@@ -461,7 +461,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             return None
 
     def get_hybrid_metrics(
-        self, table, column: Column, metric: Metrics, column_results: Dict
+        self, column: Column, metric: Metrics, column_results: Dict, table, **kwargs
     ):
         """Given a list of metrics, compute the given results
         and returns the values
