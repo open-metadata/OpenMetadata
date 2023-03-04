@@ -24,7 +24,10 @@ from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer
-from confluent_kafka.schema_registry.schema_registry_client import Schema, SchemaRegistryClient
+from confluent_kafka.schema_registry.schema_registry_client import (
+    Schema,
+    SchemaRegistryClient,
+)
 from confluent_kafka.serialization import SerializationContext
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
@@ -66,9 +69,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     """
 
     def __init__(
-            self,
-            config: WorkflowSource,
-            metadata_config: OpenMetadataConnection,
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
@@ -91,7 +94,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return topic_details.topic_name
 
     def yield_topic(
-            self, topic_details: BrokerTopicDetails
+        self, topic_details: BrokerTopicDetails
     ) -> Iterable[CreateTopicRequest]:
         try:
             schema_type_map = {
@@ -149,14 +152,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     @staticmethod
     def add_properties_to_topic_from_resource(
-            topic: CreateTopicRequest, topic_config_resource: dict
+        topic: CreateTopicRequest, topic_config_resource: dict
     ) -> None:
         """
         Stateful operation that adds new properties to a given Topic
         """
         try:
             for resource_value in concurrent.futures.as_completed(
-                    iter(topic_config_resource.values())
+                iter(topic_config_resource.values())
             ):
                 config_response = resource_value.result(timeout=10)
                 if "max.message.bytes" in config_response:
@@ -203,15 +206,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return None
 
     def yield_topic_sample_data(
-            self, topic_details: BrokerTopicDetails
+        self, topic_details: BrokerTopicDetails
     ) -> TopicSampleData:
         """
         Method to Get Sample Data of Messaging Entity
         """
         if (
-                self.context.topic
-                and self.context.topic.messageSchema
-                and self.generate_sample_data
+            self.context.topic
+            and self.context.topic.messageSchema
+            and self.generate_sample_data
         ):
             topic_name = topic_details.topic_name
             sample_data = []
@@ -233,8 +236,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(  # pylint: disable=protected-access
-                                    value, self.context.topic.messageSchema.schemaText,
-                                    self.context.topic.messageSchema.schemaType
+                                    value,
+                                    self.context.topic.messageSchema.schemaText,
+                                    self.context.topic.messageSchema.schemaType,
                                 )
                             )
                         except Exception as exc:
@@ -250,13 +254,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:
-            deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
+            deserializer = AvroDeserializer(
+                schema_str=schema, schema_registry_client=self.schema_registry_client
+            )
             return str(deserializer(record, None))
         elif schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
         else:
-            return str(json.loads(record.decode('utf-8')))
+            return str(json.loads(record.decode("utf-8")))
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:
