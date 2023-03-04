@@ -62,6 +62,7 @@ export enum ResourceEntity {
   TYPE = 'type',
   USER = 'user',
   WEBHOOK = 'webhook',
+  OBJECT_STORE_SERVICE = 'objectStoreService',
 }
 
 export interface PermissionContextType {

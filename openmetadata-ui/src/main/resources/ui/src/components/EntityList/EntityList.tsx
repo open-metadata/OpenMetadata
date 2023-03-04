@@ -17,7 +17,6 @@ import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './entity.less';
 interface Prop {
@@ -92,8 +91,8 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
 }: AntdEntityListProp) => {
   return (
     <Card
+      className="panel-shadow-color"
       extra={headerText}
-      style={leftPanelAntCardStyle}
       title={headerTextLabel}>
       <EntityListSkeleton
         dataLength={entityList.length !== 0 ? entityList.length : 5}

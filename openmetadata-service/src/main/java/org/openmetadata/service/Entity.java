@@ -30,6 +30,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -139,6 +140,20 @@ public final class Entity {
   public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
   public static final String QUALITY_BOT_NAME = "quality-bot";
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
+
+  // ServiceType - Service Entity name map
+  public static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP =
+      new HashMap<>() {
+        {
+          put(ServiceType.DATABASE, DATABASE_SERVICE);
+          put(ServiceType.MESSAGING, MESSAGING_SERVICE);
+          put(ServiceType.DASHBOARD, DASHBOARD_SERVICE);
+          put(ServiceType.PIPELINE, PIPELINE_SERVICE);
+          put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
+          put(ServiceType.METADATA, METADATA_SERVICE);
+          put(ServiceType.OBJECT_STORE, OBJECT_STORE_SERVICE);
+        }
+      };
 
   //
   // List of entities whose changes should not be published to the Activity Feed
@@ -271,6 +286,18 @@ public final class Entity {
     EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return entityRepository;
+  }
+
+  /** Retrieve the corresponding entity repository for a given entity name. */
+  public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
+      @NonNull ServiceType serviceType) {
+    @SuppressWarnings("unchecked")
+    EntityRepository<? extends EntityInterface> entityRepository =
+        ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
+    if (entityRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
   }

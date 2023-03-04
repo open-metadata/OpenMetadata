@@ -82,7 +82,6 @@ const TestCasesTab = ({
         </Col>
         <Col span={24}>
           <DataQualityTab
-            hasAccess
             deletedTable={deleted}
             isLoading={isDataLoading}
             testCases={sortedTestCases}

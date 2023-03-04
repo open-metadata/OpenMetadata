@@ -96,7 +96,7 @@ echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 if [[ $database == "postgresql" ]]; then
     docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
 else
-    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
+    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up -d
 fi
 
 RESULT=$?

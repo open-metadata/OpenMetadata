@@ -24,6 +24,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { getCurrentServiceTab } from '../../utils/ServiceUtils';
 import ServicePage from './index';
 import {
+  CONTAINERS_DATA,
   DASHBOARD_DATA,
   mockData,
   mockDatabase,
@@ -110,6 +111,18 @@ jest.mock('rest/dashboardAPI', () => ({
   getDashboards: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: DASHBOARD_DATA,
+      paging: {
+        after: null,
+        before: null,
+      },
+    })
+  ),
+}));
+
+jest.mock('rest/objectStoreAPI', () => ({
+  getContainers: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: CONTAINERS_DATA,
       paging: {
         after: null,
         before: null,
@@ -388,6 +401,67 @@ describe('Test ServicePage Component', () => {
     const rows = await screen.findAllByTestId('row');
 
     expect(rows).toHaveLength(3);
+
+    const firstRow = rows[0];
+    const secondRow = rows[1];
+
+    // first row test
+    const ownerData = await findByTestId(firstRow, 'owner-data');
+
+    expect(ownerData).toBeInTheDocument();
+
+    // owner profile pic
+    expect(
+      await findByTestId(ownerData, 'Compute-profile')
+    ).toBeInTheDocument();
+
+    // owner name
+    expect(
+      await findByTestId(ownerData, 'Compute-owner-name')
+    ).toBeInTheDocument();
+
+    const tagContainer = await findByTestId(firstRow, 'record-tags');
+
+    expect(tagContainer).toBeInTheDocument();
+
+    // should render tag viewer as it has tags
+    expect(await findByTestId(tagContainer, 'tag-viewer')).toBeInTheDocument();
+
+    // second row test
+
+    const noOwnerData = await findByTestId(secondRow, 'no-owner-text');
+
+    expect(noOwnerData).toBeInTheDocument();
+
+    const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
+
+    expect(secondRowTagContainer).toBeInTheDocument();
+
+    // should not render tag viewer as it does not have tags
+    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
+  });
+
+  it('Should render the containers and child components', async () => {
+    mockParams = {
+      serviceFQN: 's3_object_store_sample',
+      serviceType: 'S3',
+      serviceCategory: 'objectstoreServices',
+      tab: 'containers',
+    };
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const tableContainer = await screen.findByTestId('service-children-table');
+
+    expect(tableContainer).toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    expect(rows).toHaveLength(7);
 
     const firstRow = rows[0];
     const secondRow = rows[1];

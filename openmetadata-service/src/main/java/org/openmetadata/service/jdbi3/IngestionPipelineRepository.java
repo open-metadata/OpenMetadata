@@ -88,7 +88,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null) {
-      ingestionPipeline = secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
     }
 
     // Don't store owner. Build it on the fly based on relationships
@@ -286,7 +286,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
     IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
-    decrypted = SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
+    SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
     return decrypted;
   }
 }

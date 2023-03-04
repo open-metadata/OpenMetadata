@@ -78,6 +78,7 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -109,9 +110,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // init email Util for handling
     EmailUtil.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+
+    // init Secret Manager
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
+
+    // init Entity Masker
+    EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
