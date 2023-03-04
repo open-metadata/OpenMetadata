@@ -138,6 +138,12 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     ),
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
+            else:
+                topic.messageSchema = Topic(
+                    schemaText="",
+                    schemaType=SchemaType.Other,
+                    schemaFields=[]
+                )
             self.status.topic_scanned(topic.name.__root__)
             yield topic
 
@@ -213,7 +219,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         if (
             self.context.topic
-            and self.context.topic.messageSchema
             and self.generate_sample_data
         ):
             topic_name = topic_details.topic_name
@@ -262,7 +267,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
         else:
-            return str(json.loads(record.decode("utf-8")))
+            return str(record.decode("utf-8"))
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:
