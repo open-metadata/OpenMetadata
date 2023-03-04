@@ -100,7 +100,7 @@ class SqlColumnHandlerMixin:
     @staticmethod
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
-    ) -> Tuple[List, List]:
+    ) -> Tuple[List, List, List]:
         pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
             unique_constraints = inspector.get_unique_constraints(
@@ -131,7 +131,6 @@ class SqlColumnHandlerMixin:
                 "constrained_columns"
             ):
                 foreign_columns.extend(foreign_constraint.get("constrained_columns"))
-
         unique_columns = []
         for constraint in unique_constraints:
             if constraint.get("column_names"):
@@ -186,6 +185,7 @@ class SqlColumnHandlerMixin:
             unique_columns,
             foreign_columns,
         ) = self._get_columns_with_constraints(schema_name, table_name, inspector)
+
         table_columns = []
         table_constraints = []
         if foreign_columns:
