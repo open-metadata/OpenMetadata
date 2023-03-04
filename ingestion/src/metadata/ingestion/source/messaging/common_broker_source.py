@@ -214,7 +214,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 and self.generate_sample_data
         ):
             topic_name = topic_details.topic_name
-            schema = self.context.topic.messageSchema.schemaType.value
             sample_data = []
             try:
                 self.consumer_client.subscribe([topic_name], on_assign=on_assign)
@@ -255,8 +254,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             return str(deserializer(record, None))
         elif schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
+            return ""
         else:
-            return json.loads(record.decode('utf-8'))
+            return str(json.loads(record.decode('utf-8')))
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:

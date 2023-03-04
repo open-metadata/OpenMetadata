@@ -71,6 +71,7 @@ def parse_single_field(
     obj = cls(
         name=field.name,
         dataType=str(field.type.type).upper(),
+        description=field.doc
     )
     if cls == Column:
         obj.dataTypeDisplay = str(field.type.type)
