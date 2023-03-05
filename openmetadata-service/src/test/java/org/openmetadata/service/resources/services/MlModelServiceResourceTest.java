@@ -27,14 +27,13 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
-
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType;
-import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -47,8 +46,6 @@ import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResourc
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
-
-import javax.ws.rs.client.WebTarget;
 
 @Slf4j
 public class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
@@ -132,7 +129,8 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
     MlModelService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    MlModelService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    MlModelService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
@@ -144,7 +142,9 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
-  public MlModelService putTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders) throws HttpResponseException {
+  public MlModelService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, MlModelService.class, OK, authHeaders);
   }

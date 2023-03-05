@@ -29,7 +29,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
-
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
-import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
@@ -51,8 +50,6 @@ import org.openmetadata.service.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
-
-import javax.ws.rs.client.WebTarget;
 
 @Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
@@ -188,7 +185,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     MessagingService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    MessagingService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    MessagingService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
@@ -200,7 +198,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
-  public MessagingService putTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders) throws HttpResponseException {
+  public MessagingService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, MessagingService.class, OK, authHeaders);
   }

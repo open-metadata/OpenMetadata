@@ -222,11 +222,11 @@ public class DashboardServiceResource
       tags = "dashboardServices",
       description = "Add test connection result to the service.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully updated the service",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
       })
   public DashboardService addTestConnectionResult(
       @Context UriInfo uriInfo,

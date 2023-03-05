@@ -35,7 +35,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -63,8 +62,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-
-import javax.ws.rs.client.WebTarget;
 
 @Slf4j
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
@@ -201,7 +198,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     PipelineService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    PipelineService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    PipelineService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
@@ -213,7 +211,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
-  public PipelineService putTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders) throws HttpResponseException {
+  public PipelineService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, PipelineService.class, OK, authHeaders);
   }

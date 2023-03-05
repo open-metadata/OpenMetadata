@@ -49,7 +49,6 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -224,11 +223,11 @@ public class PipelineServiceResource
       tags = "pipelineServices",
       description = "Add test connection result to the service.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully updated the service",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
       })
   public PipelineService addTestConnectionResult(
       @Context UriInfo uriInfo,

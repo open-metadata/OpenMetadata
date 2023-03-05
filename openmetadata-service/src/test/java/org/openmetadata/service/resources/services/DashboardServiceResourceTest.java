@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -42,9 +42,7 @@ import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.schema.entity.data.Chart;
-import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
@@ -59,8 +57,6 @@ import org.openmetadata.service.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
-
-import javax.ws.rs.client.WebTarget;
 
 @Slf4j
 public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
@@ -166,7 +162,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     DashboardService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    DashboardService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    DashboardService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
@@ -178,7 +175,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
-  public DashboardService putTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders) throws HttpResponseException {
+  public DashboardService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, DashboardService.class, OK, authHeaders);
   }

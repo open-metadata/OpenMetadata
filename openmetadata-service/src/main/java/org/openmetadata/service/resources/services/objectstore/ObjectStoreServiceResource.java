@@ -36,7 +36,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateObjectStoreService;
-import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -219,11 +218,11 @@ public class ObjectStoreServiceResource
       tags = "objectStoreServices",
       description = "Add test connection result to the service.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully updated the service",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
       })
   public ObjectStoreService addTestConnectionResult(
       @Context UriInfo uriInfo,

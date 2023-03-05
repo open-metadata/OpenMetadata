@@ -50,7 +50,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMessagingService;
-import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -225,11 +224,11 @@ public class MessagingServiceResource
       tags = "messagingServices",
       description = "Add test connection result to the service.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully updated the service",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
       })
   public MessagingService addTestConnectionResult(
       @Context UriInfo uriInfo,

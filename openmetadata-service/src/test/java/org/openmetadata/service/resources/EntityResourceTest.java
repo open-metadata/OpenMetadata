@@ -303,15 +303,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
-  public static final TestConnectionResult TEST_CONNECTION_RESULT = new TestConnectionResult()
-      .withStatus(TestConnectionResultStatus.SUCCESSFUL)
-      .withSteps(List.of(
-          new TestConnectionStepResult()
-              .withMandatory(true)
-              .withName("myStep")
-              .withMessage("All good")
-              .withPassed(true)
-      ));
+  public static final TestConnectionResult TEST_CONNECTION_RESULT =
+      new TestConnectionResult()
+          .withStatus(TestConnectionResultStatus.SUCCESSFUL)
+          .withSteps(
+              List.of(
+                  new TestConnectionStepResult()
+                      .withMandatory(true)
+                      .withName("myStep")
+                      .withMessage("All good")
+                      .withPassed(true)));
 
   public static Type INT_TYPE;
   public static Type STRING_TYPE;

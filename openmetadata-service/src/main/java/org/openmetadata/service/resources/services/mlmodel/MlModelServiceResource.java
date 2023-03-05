@@ -50,7 +50,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MlModelService;
-import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityHistory;
@@ -224,11 +223,11 @@ public class MlModelServiceResource
       tags = "mlModelServices",
       description = "Add test connection result to the service.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully updated the service",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
       })
   public MlModelService addTestConnectionResult(
       @Context UriInfo uriInfo,

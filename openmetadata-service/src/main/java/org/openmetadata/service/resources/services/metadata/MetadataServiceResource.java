@@ -38,15 +38,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMetadataService;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
 import org.openmetadata.schema.services.connections.metadata.ElasticsSearch;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -55,6 +58,7 @@ import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -243,6 +247,32 @@ public class MetadataServiceResource
       throws IOException {
     MetadataService metadataService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
+  }
+
+  @PUT
+  @Path("/{id}/testConnectionResult")
+  @Operation(
+      operationId = "addTestConnectionResult",
+      summary = "Add test connection result",
+      tags = "metadataServices",
+      description = "Add test connection result to the service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public MetadataService addTestConnectionResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TestConnectionResult testConnectionResult)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET

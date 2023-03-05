@@ -14,13 +14,12 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
-
+import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreateObjectStoreService;
 import org.openmetadata.schema.api.services.CreateObjectStoreService.ObjectStoreServiceType;
-import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -33,8 +32,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.objectstore.ObjectStoreServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-
-import javax.ws.rs.client.WebTarget;
 
 public class ObjectStoreServiceResourceTest extends EntityResourceTest<ObjectStoreService, CreateObjectStoreService> {
   public ObjectStoreServiceResourceTest() {
@@ -115,7 +112,8 @@ public class ObjectStoreServiceResourceTest extends EntityResourceTest<ObjectSto
     ObjectStoreService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    ObjectStoreService updatedService = putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    ObjectStoreService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
@@ -127,7 +125,9 @@ public class ObjectStoreServiceResourceTest extends EntityResourceTest<ObjectSto
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
-  public ObjectStoreService putTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders) throws HttpResponseException {
+  public ObjectStoreService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, ObjectStoreService.class, OK, authHeaders);
   }
