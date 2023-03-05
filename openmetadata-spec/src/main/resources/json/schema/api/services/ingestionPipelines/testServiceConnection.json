@@ -44,6 +44,9 @@
     "secretsManagerProvider": {
       "$ref": "../../../security/secrets/secretsManagerProvider.json",
       "default": "noop"
+    },
+    "serviceName": {
+      "$ref": "../../../entity/type.json#/definitions/entityName"
     }
   },
   "additionalProperties": false

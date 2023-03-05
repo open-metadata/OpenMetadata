@@ -91,6 +91,10 @@
       "description": "References to pipelines deployed for this object store service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Object Store Service.",
       "type": "array",
