@@ -6,6 +6,7 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.operations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.operations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -23,6 +24,11 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
 
   @Override
   public Response testConnection(TestServiceConnectionRequest testServiceConnection) {
+    return null;
+  }
+
+  @Override
+  public Response runOperationsWorkflow(Workflow workflow) {
     return null;
   }
 

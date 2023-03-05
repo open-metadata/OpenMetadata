@@ -29,6 +29,7 @@ import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.operations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.operations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -244,6 +245,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
     }
     throw new PipelineServiceClientException(String.format("Failed to test connection due to %s", response.body()));
+  }
+
+  @Override
+  public Response runOperationsWorkflow(Workflow workflow) {
+    return null;
   }
 
   @Override

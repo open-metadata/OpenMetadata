@@ -40,7 +40,6 @@ import org.openmetadata.schema.entity.operations.CreateWorkflow;
 import org.openmetadata.schema.entity.operations.Workflow;
 import org.openmetadata.schema.entity.operations.WorkflowStatus;
 import org.openmetadata.schema.entity.operations.WorkflowType;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -313,20 +312,18 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The Workflow",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+            description = "Workflow trigger status code",
+            content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
       })
-  public Workflow triggerIngestion(
+  public Response runOperationsWorkflow(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext)
       throws IOException {
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
     Workflow workflow = dao.get(uriInfo, id, fields);
-
-    return addHref(uriInfo, workflow);
+    return pipelineServiceClient.runOperationsWorkflow(workflow);
   }
 
   @PATCH
