@@ -113,6 +113,20 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
 
+# Helps us dynamically load the Entity class path in the
+# generated module.
+MODULE_PATH = {
+    "policy": "policies",
+    "service": "services",
+    "tag": "classification",
+    "classification": "classification",
+    "test": "tests",
+    "user": "teams",
+    "role": "teams",
+    "team": "teams",
+    "workflow": "operations",
+}
+
 
 class MissingEntityTypeException(Exception):
     """
@@ -168,12 +182,6 @@ class OpenMetadata(
     entity_path = "entity"
     api_path = "api"
     data_path = "data"
-    policies_path = "policies"
-    services_path = "services"
-    teams_path = "teams"
-    classifications_path = "classification"
-    tests_path = "tests"
-    operations_workflows_path = "operations"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -449,38 +457,15 @@ class OpenMetadata(
             f"Missing {entity} type when generating suffixes"
         )
 
-    def get_module_path(
-        self, entity: Type[T]
-    ) -> str:  # pylint: disable=too-many-return-statements
+    def get_module_path(self, entity: Type[T]) -> str:
         """
         Based on the entity, return the module path
         it is found inside generated
         """
 
-        if "policy" in entity.__name__.lower():
-            return self.policies_path
-
-        if "service" in entity.__name__.lower():
-            return self.services_path
-
-        if (
-            "tag" in entity.__name__.lower()
-            or "classification" in entity.__name__.lower()
-        ):
-            return self.classifications_path
-
-        if "test" in entity.__name__.lower():
-            return self.tests_path
-
-        if (
-            "user" in entity.__name__.lower()
-            or "role" in entity.__name__.lower()
-            or "team" in entity.__name__.lower()
-        ):
-            return self.teams_path
-
-        if "workflow" in entity.__name__.lower():
-            return self.operations_workflows_path
+        for key in MODULE_PATH:
+            if key in entity.__name__.lower():
+                return MODULE_PATH[key]
 
         return self.data_path
 
