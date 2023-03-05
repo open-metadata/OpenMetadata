@@ -71,5 +71,5 @@ CREATE TABLE IF NOT EXISTS operations_workflow (
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     PRIMARY KEY (id),
-    UNIQUE (fullyQualifiedName)
+    UNIQUE (name)
 );
