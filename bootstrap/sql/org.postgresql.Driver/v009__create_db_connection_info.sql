@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS test_connection_definition (
 
 CREATE TABLE IF NOT EXISTS operations_workflow (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'workflowType') STORED NOT NULL,
     status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED,
     json JSONB NOT NULL,
