@@ -463,9 +463,9 @@ class OpenMetadata(
         it is found inside generated
         """
 
-        for key in MODULE_PATH:
+        for key, value in MODULE_PATH.items():
             if key in entity.__name__.lower():
-                return MODULE_PATH[key]
+                return value
 
         return self.data_path
 
