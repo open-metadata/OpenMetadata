@@ -60,3 +60,16 @@ CREATE TABLE IF NOT EXISTS test_connection_definition (
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     UNIQUE (name)
 );
+
+CREATE TABLE IF NOT EXISTS operations_workflow (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'workflowType') STORED NOT NULL,
+    status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fullyQualifiedName)
+);

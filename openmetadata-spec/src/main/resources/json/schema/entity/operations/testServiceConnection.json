@@ -1,0 +1,51 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/operations/workflow/testServiceConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestServiceConnectionRequest",
+  "javaType": "org.openmetadata.schema.entity.operations.TestServiceConnectionRequest",
+  "description": "Test Service Connection to test user provided configuration is valid or not.",
+  "type": "object",
+  "properties": {
+    "connection": {
+      "description": "Connection object.",
+      "oneOf": [
+        {
+          "$ref": "../services/databaseService.json#/definitions/databaseConnection"
+        },
+        {
+          "$ref": "../services/dashboardService.json#/definitions/dashboardConnection"
+        },
+        {
+          "$ref": "../services/messagingService.json#/definitions/messagingConnection"
+        },
+        {
+          "$ref": "../services/pipelineService.json#/definitions/pipelineConnection"
+        },
+        {
+          "$ref": "../services/mlmodelService.json#/definitions/mlModelConnection"
+        },
+        {
+          "$ref": "../services/metadataService.json#/definitions/metadataConnection"
+        }
+      ]
+    },
+    "serviceType": {
+      "description": "Type of service such as Database, Dashboard, Messaging, etc.",
+      "$ref": "../services/serviceType.json"
+    },
+    "connectionType": {
+      "description": "Type of the connection to test such as Snowflake, MySQL, Looker, etc.",
+      "type": "string"
+    },
+    "serviceName": {
+      "description": "Optional value that identifies this service name.",
+      "$ref": "../../type/basic.json#/definitions/entityName",
+      "default": null
+    },
+    "secretsManagerProvider": {
+      "$ref": "../../security/secrets/secretsManagerProvider.json",
+      "default": "noop"
+    }
+  },
+  "additionalProperties": false
+}

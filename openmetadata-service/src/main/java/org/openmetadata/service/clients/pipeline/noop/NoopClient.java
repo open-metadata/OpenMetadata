@@ -18,7 +18,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.schema.entity.operations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -38,7 +38,7 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response testConnection(TestServiceConnection testServiceConnection) {
+  public Response testConnection(TestServiceConnectionRequest testServiceConnection) {
     return null;
   }
 

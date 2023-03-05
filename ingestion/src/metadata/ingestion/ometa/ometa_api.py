@@ -17,6 +17,8 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.operations.workflow import Workflow
+
 try:
     from typing import get_args
 except ImportError:
@@ -172,6 +174,7 @@ class OpenMetadata(
     teams_path = "teams"
     classifications_path = "classification"
     tests_path = "tests"
+    operations_workflows_path = "operations"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -333,6 +336,11 @@ class OpenMetadata(
         ):
             return "/containers"
 
+        if issubclass(
+            entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
+        ):
+            return "/operations/workflow"
+
         # Services Schemas
         if issubclass(
             entity,
@@ -469,6 +477,9 @@ class OpenMetadata(
             or "team" in entity.__name__.lower()
         ):
             return self.teams_path
+
+        if "workflow" in entity.__name__.lower():
+            return self.operations_workflows_path
 
         return self.data_path
 

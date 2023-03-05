@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.schema.entity.operations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -230,7 +230,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response testConnection(TestServiceConnection testServiceConnection) {
+  public Response testConnection(TestServiceConnectionRequest testServiceConnection) {
     HttpResponse<String> response;
     try {
       String statusEndPoint = "%s/%s/test_connection";
