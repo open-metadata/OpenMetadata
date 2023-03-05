@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Table, Tooltip } from 'antd';
+import { Card, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -721,113 +721,111 @@ const DashboardDetails = ({
             tabs={tabs}
           />
 
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
-            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
-              {activeTab === 1 && (
-                <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description
-                        description={description}
-                        entityFieldTasks={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldTaskCount
-                        )}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={dashboardFQN}
-                        entityName={entityName}
-                        entityType={EntityType.DASHBOARD}
-                        hasEditAccess={
-                          dashboardPermissions.EditAll ||
-                          dashboardPermissions.EditDescription
-                        }
-                        isEdit={isEdit}
-                        isReadOnly={deleted}
-                        owner={owner}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
+          <Card className="h-full m-y-md">
+            {activeTab === 1 && (
+              <>
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                  <div className="tw-col-span-full">
+                    <Description
+                      description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={dashboardFQN}
+                      entityName={entityName}
+                      entityType={EntityType.DASHBOARD}
+                      hasEditAccess={
+                        dashboardPermissions.EditAll ||
+                        dashboardPermissions.EditDescription
+                      }
+                      isEdit={isEdit}
+                      isReadOnly={deleted}
+                      owner={owner}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
                   </div>
-                  <Table
-                    bordered
-                    className="p-t-xs"
-                    columns={tableColumn}
-                    data-testid="charts-table"
-                    dataSource={charts}
-                    pagination={false}
-                    rowKey="id"
-                    size="small"
-                  />
-                </>
-              )}
-              {activeTab === 2 && (
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                  id="activityfeed">
-                  <div />
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    className=""
-                    deletePostHandler={deletePostHandler}
-                    entityName={entityName}
-                    feedList={entityThread}
-                    isFeedLoading={isentityThreadLoading}
-                    postFeedHandler={postFeedHandler}
-                    updateThreadHandler={updateThreadHandler}
-                    onFeedFiltersUpdate={handleFeedFilterChange}
-                  />
-                  <div />
                 </div>
-              )}
-              {activeTab === 3 && (
-                <div className="h-full">
-                  <EntityLineageComponent
-                    addLineageHandler={addLineageHandler}
-                    deleted={deleted}
-                    entityLineage={entityLineage}
-                    entityLineageHandler={entityLineageHandler}
-                    entityType={EntityType.DASHBOARD}
-                    hasEditAccess={
-                      dashboardPermissions.EditAll ||
-                      dashboardPermissions.EditLineage
-                    }
-                    isLoading={isLineageLoading}
-                    isNodeLoading={isNodeLoading}
-                    lineageLeafNodes={lineageLeafNodes}
-                    loadNodeHandler={loadNodeHandler}
-                    removeLineageHandler={removeLineageHandler}
-                    onFullScreenClick={handleFullScreenClick}
-                  />
-                </div>
-              )}
-              {activeTab === 4 && (
-                <CustomPropertyTable
-                  entityDetails={
-                    dashboardDetails as CustomPropertyProps['entityDetails']
-                  }
+                <Table
+                  bordered
+                  className="p-t-xs"
+                  columns={tableColumn}
+                  data-testid="charts-table"
+                  dataSource={charts}
+                  pagination={false}
+                  rowKey="id"
+                  size="small"
+                />
+              </>
+            )}
+            {activeTab === 2 && (
+              <div
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                id="activityfeed">
+                <div />
+                <ActivityFeedList
+                  isEntityFeed
+                  withSidePanel
+                  className=""
+                  deletePostHandler={deletePostHandler}
+                  entityName={entityName}
+                  feedList={entityThread}
+                  isFeedLoading={isentityThreadLoading}
+                  postFeedHandler={postFeedHandler}
+                  updateThreadHandler={updateThreadHandler}
+                  onFeedFiltersUpdate={handleFeedFilterChange}
+                />
+                <div />
+              </div>
+            )}
+            {activeTab === 3 && (
+              <div className="h-full">
+                <EntityLineageComponent
+                  addLineageHandler={addLineageHandler}
+                  deleted={deleted}
+                  entityLineage={entityLineage}
+                  entityLineageHandler={entityLineageHandler}
                   entityType={EntityType.DASHBOARD}
-                  handleExtensionUpdate={onExtensionUpdate}
                   hasEditAccess={
                     dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditCustomFields
+                    dashboardPermissions.EditLineage
                   }
+                  isLoading={isLineageLoading}
+                  isNodeLoading={isNodeLoading}
+                  lineageLeafNodes={lineageLeafNodes}
+                  loadNodeHandler={loadNodeHandler}
+                  removeLineageHandler={removeLineageHandler}
+                  onFullScreenClick={handleFullScreenClick}
                 />
-              )}
-              <div
-                data-testid="observer-element"
-                id="observer-element"
-                ref={elementRef as RefObject<HTMLDivElement>}>
-                {getLoader()}
               </div>
+            )}
+            {activeTab === 4 && (
+              <CustomPropertyTable
+                entityDetails={
+                  dashboardDetails as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.DASHBOARD}
+                handleExtensionUpdate={onExtensionUpdate}
+                hasEditAccess={
+                  dashboardPermissions.EditAll ||
+                  dashboardPermissions.EditCustomFields
+                }
+              />
+            )}
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
       {editChart && (

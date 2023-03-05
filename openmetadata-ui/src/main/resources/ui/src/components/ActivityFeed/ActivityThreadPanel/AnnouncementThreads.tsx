@@ -99,6 +99,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             style={{
               marginTop: '20px',
               paddingTop: '8px',
+              borderRadius: '8px',
               border: `1px solid ${ANNOUNCEMENT_BORDER}`,
               background: `${ANNOUNCEMENT_BG}`,
             }}>
