@@ -14,6 +14,7 @@
 package org.openmetadata.schema;
 
 import java.util.List;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
 
 /** Interface to be implemented by all services entities to provide a way to access all the common fields. */
@@ -24,6 +25,8 @@ public interface ServiceEntityInterface extends EntityInterface {
   ServiceEntityInterface withOwner(EntityReference owner);
 
   void setPipelines(List<EntityReference> pipelines);
+
+  void setTestConnectionResult(TestConnectionResult testConnectionResult);
 
   EnumInterface getServiceType();
 }

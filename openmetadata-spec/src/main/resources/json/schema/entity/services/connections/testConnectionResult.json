@@ -4,12 +4,12 @@
   "title": "TestConnectionResult",
   "description": "TestConnectionResult is the definition that will encapsulate result of running the test connection steps.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.services.connectionst.TestConnectionResult",
+  "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionResult",
   "definitions": {
     "testConnectionStepResult": {
       "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStep",
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStepResult",
       "properties": {
         "name": {
           "description": "Name of the step being tested",
@@ -32,12 +32,22 @@
       },
       "additionalProperties": false,
       "required": ["name", "mandatory", "passed"]
+    },
+    "statusType": {
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus",
+      "description": "Enum defining possible Test Connection Result status",
+      "type": "string",
+      "enum": ["Successful", "Failed", "Running"]
     }
   },
   "properties": {
     "lastUpdatedAt": {
       "description": "Last time that the test connection was executed",
       "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "description": "Test Connection Result computation status.",
+      "$ref": "#/definitions/statusType"
     },
     "steps": {
       "description": "Steps to test the connection. Order matters.",

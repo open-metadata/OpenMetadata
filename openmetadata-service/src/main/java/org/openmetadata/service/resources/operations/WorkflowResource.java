@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.operations;
 
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -56,8 +58,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 @Slf4j
 @Path("/v1/operations/workflow")
@@ -311,17 +311,16 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       tags = "operationsWorkflow",
       description = "Trigger a workflow run by id.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "The Workflow",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-          @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Workflow",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
       })
   public Workflow triggerIngestion(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id")
-      UUID id,
+      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext)
       throws IOException {
     EntityUtil.Fields fields = getFields(FIELD_OWNER);

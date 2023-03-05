@@ -48,10 +48,14 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMlModelService;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MlModelService;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -60,6 +64,7 @@ import org.openmetadata.service.jdbi3.MlModelServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -209,6 +214,32 @@ public class MlModelServiceResource
       throws IOException {
     MlModelService mlModelService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, mlModelService);
+  }
+
+  @PUT
+  @Path("/{id}/testConnectionResult")
+  @Operation(
+      operationId = "addTestConnectionResult",
+      summary = "Add test connection result",
+      tags = "mlModelServices",
+      description = "Add test connection result to the service.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Successfully updated the service",
+              content =
+              @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public MlModelService addTestConnectionResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TestConnectionResult testConnectionResult)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    MlModelService service = dao.addTestConnectionResult(id, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET
