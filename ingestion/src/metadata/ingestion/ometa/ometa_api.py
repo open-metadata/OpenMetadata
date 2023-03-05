@@ -17,8 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.entity.operations.workflow import Workflow
-
 try:
     from typing import get_args
 except ImportError:
@@ -51,6 +49,7 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.operations.workflow import Workflow
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -450,7 +449,9 @@ class OpenMetadata(
             f"Missing {entity} type when generating suffixes"
         )
 
-    def get_module_path(self, entity: Type[T]) -> str:
+    def get_module_path(
+        self, entity: Type[T]
+    ) -> str:  # pylint: disable=too-many-return-statements
         """
         Based on the entity, return the module path
         it is found inside generated

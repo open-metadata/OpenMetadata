@@ -100,6 +100,7 @@ class OMetaWorkflowTest(TestCase):
             ),
             status=WorkflowStatus.Pending,
             workflowType=WorkflowType.TEST_CONNECTION,
+            openMetadataServerConnection=cls.server_config,
         )
 
         cls.create = CreateWorkflowRequest(
