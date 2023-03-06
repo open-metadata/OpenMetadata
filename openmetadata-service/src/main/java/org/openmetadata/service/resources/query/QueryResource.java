@@ -202,11 +202,11 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
-  @Path("/entity/{id}")
   @GET
+  @Path("/{entityType}/{id}")
   @Operation(
-      operationId = "listQueriesByEntityId",
-      summary = "Get List Queries By Entity Id",
+      operationId = "listQueriesByDataAssetId",
+      summary = "Get List Queries By Data Asset Type and Id",
       tags = "query",
       description = "Get List Queries",
       responses = {
@@ -219,7 +219,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
                     schema = @Schema(implementation = QueryResource.QueryList.class)))
       })
   public ResultList<Query> list(
-      @Parameter(description = "query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID queryId,
+      @Parameter(description = "data asset Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID entityId,
+      @Parameter(description = "data asset Type", schema = @Schema(type = "string")) @PathParam("entityType")
+          String entityType,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of queries before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -227,7 +229,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return dao.listQueriesByEntityId(queryId.toString(), before, after, limitParam);
+    return dao.listQueriesByEntityId(entityId.toString(), entityType, before, after, limitParam);
   }
 
   @GET

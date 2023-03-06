@@ -130,26 +130,36 @@ public class QueryRepository extends EntityRepository<Query> {
     return new QueryUpdater(original, updated, operation);
   }
 
-  public ResultList<Query> listQueriesByEntityId(String id, String before, String after, int limit) {
+  public ResultList<Query> listQueriesByEntityId(
+      String entityId, String entityType, String before, String after, int limit) {
     RestUtil.validateCursors(before, after);
-    int totalQueryCount = daoCollection.queryDAO().listQueryCount(id, Entity.QUERY, Relationship.HAS.ordinal());
+    int totalQueryCount =
+        daoCollection
+            .queryDAO()
+            .listQueryCount(entityId, entityType, Entity.QUERY, Relationship.MENTIONED_IN.ordinal());
     List<CollectionDAO.QueryList> queryList;
     if (before != null) {
       queryList =
           daoCollection
               .queryDAO()
               .listBeforeQueriesByEntityId(
-                  id, Entity.QUERY, RestUtil.decodeCursor(before), limit + 1, Relationship.HAS.ordinal());
+                  entityId,
+                  entityType,
+                  Entity.QUERY,
+                  RestUtil.decodeCursor(before),
+                  limit + 1,
+                  Relationship.MENTIONED_IN.ordinal());
     } else {
       queryList =
           daoCollection
               .queryDAO()
               .listAfterQueriesByEntityId(
-                  id,
+                  entityId,
+                  entityType,
                   Entity.QUERY,
                   after == null ? "" : RestUtil.decodeCursor(after),
                   limit + 1,
-                  Relationship.HAS.ordinal());
+                  Relationship.MENTIONED_IN.ordinal());
     }
     ResultList<Query> queryResultList;
     if (before != null) {

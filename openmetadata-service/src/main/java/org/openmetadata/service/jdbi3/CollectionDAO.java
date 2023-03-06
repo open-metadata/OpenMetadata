@@ -601,7 +601,7 @@ public interface CollectionDAO {
   class QueryMapper implements RowMapper<QueryList> {
     @Override
     public QueryList map(ResultSet rs, StatementContext ctx) throws SQLException {
-      String fqn = rs.getString("fullyQualifiedName");
+      String fqn = rs.getString("name");
       String json = rs.getString("json");
       Query query;
       try {
@@ -2040,27 +2040,33 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(QueryMapper.class)
     @SqlQuery(
-        "SELECT query_entity.json, query_entity.name FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.name > :after order by query_entity.name LIMIT :limit")
+        "SELECT query_entity.json, query_entity.name FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :fromId and entity_relationship.fromEntity = :fromEntity and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name > :after order by query_entity.name LIMIT :limit")
     List<QueryList> listAfterQueriesByEntityId(
-        @Bind("id") String id,
-        @Bind("entity") String entity,
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
         @Bind("after") String after,
         @Bind("limit") int limit,
         @Bind("relation") int relation);
 
     @RegisterRowMapper(QueryMapper.class)
     @SqlQuery(
-        "SELECT query_entity.json, query_entity.name FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.name < :before order by query_entity.name LIMIT :limit")
+        "SELECT query_entity.json, query_entity.name FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :fromId and entity_relationship.fromEntity = :fromEntity and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name < :before order by query_entity.name LIMIT :limit")
     List<QueryList> listBeforeQueriesByEntityId(
-        @Bind("id") String id,
-        @Bind("entity") String entity,
+        @Bind("fromId") String fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
         @Bind("before") String before,
         @Bind("limit") int limit,
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT count(*) FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity")
-    int listQueryCount(@Bind("id") String id, @Bind("entity") String entity, @Bind("relation") int relation);
+        "SELECT count(*) FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.fromEntity = :entityType and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntityType")
+    int listQueryCount(
+        @Bind("id") String entityId,
+        @Bind("entityType") String entityType,
+        @Bind("toEntityType") String toEntityType,
+        @Bind("relation") int relation);
   }
 
   interface PipelineDAO extends EntityDAO<Pipeline> {
