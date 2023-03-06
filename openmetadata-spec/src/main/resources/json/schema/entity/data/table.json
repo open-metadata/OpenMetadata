@@ -523,6 +523,22 @@
           "description": "Median of a column.",
           "type": "number"
         },
+        "firstQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "thirdQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "interQuartileRange": {
+          "description": "Inter quartile range of a column.",
+          "type": "number"
+        },
+        "nonParametricSkew": {
+          "description": "Non parametric skew of a column.",
+          "type": "number"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {

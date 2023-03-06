@@ -13,10 +13,9 @@ Usage Souce Module
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Iterator, List, Optional, Union
+from typing import Iterator, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -61,31 +60,8 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
 
     def prepare(self):
         """
-        Fetch queries only from DB that is ingested in OM
+        By default, there's nothing to prepare
         """
-        databases: List[Database] = self.metadata.list_all_entities(
-            Database, ["databaseSchemas"], params={"service": self.config.serviceName}
-        )
-        database_name_list = []
-        schema_name_list = []
-
-        for database in databases:
-            database_name_list.append(database.name.__root__)
-            if self.schema_field and database.databaseSchemas:
-                for schema in database.databaseSchemas.__root__:
-                    schema_name_list.append(schema.name)
-
-        if self.database_field and database_name_list:
-            self.filters += (  # pylint: disable=no-member
-                f" AND {self.database_field} IN ('"
-                + "','".join(database_name_list)
-                + "')"
-            )
-
-        if self.schema_field and schema_name_list:
-            self.filters += (  # pylint: disable=no-member
-                f" AND {self.schema_field} IN ('" + "','".join(schema_name_list) + "')"
-            )
 
     @abstractmethod
     def get_table_query(self) -> Optional[Iterator[TableQuery]]:
@@ -123,7 +99,7 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.filters,
             result_limit=self.source_config.resultLimit,
         )
 

@@ -1,0 +1,107 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/automations/workflow.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow",
+  "description": "A unit of work that will be triggered as an API call to the OpenMetadata server.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.automations.Workflow",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "workflowType": {
+      "javaType": "org.openmetadata.schema.entity.automations.WorkflowType",
+      "description": "This enum defines the type for which this workflow applies to.",
+      "type": "string",
+      "enum": [
+        "TEST_CONNECTION"
+      ]
+    },
+    "workflowStatus": {
+      "javaType": "org.openmetadata.schema.entity.automations.WorkflowStatus",
+      "description": "Enum defining possible Workflow status",
+      "type": "string",
+      "enum": ["Pending", "Successful", "Failed", "Running"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this workflow instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the workflow.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this workflow definition.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the test connection def.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "workflowType": {
+      "description": "Type of the workflow.",
+      "$ref": "#/definitions/workflowType"
+    },
+    "status": {
+      "description": "Workflow computation status.",
+      "$ref": "#/definitions/workflowStatus",
+      "default": "Pending"
+    },
+    "request": {
+      "description": "Request body for a specific workflow type",
+      "oneOf": [
+        {
+          "$ref": "testServiceConnection.json"
+        }
+      ]
+    },
+    "response": {
+      "description": "Response to the request.",
+      "oneOf": [
+        {
+          "$ref": "../services/connections/testConnectionResult.json"
+        }
+      ]
+    },
+    "openMetadataServerConnection": {
+      "$ref": "../services/connections/metadata/openMetadataConnection.json"
+    },
+    "owner": {
+      "description": "Owner of this workflow.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id", "name", "workflowType", "request", "openMetadataServerConnection"]
+}

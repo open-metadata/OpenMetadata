@@ -52,7 +52,7 @@ export const datasetTableTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: i18next.t('label.dbt-uppercase'),
+    name: i18next.t('label.dbt-lowercase'),
     path: 'dbt',
   },
   {

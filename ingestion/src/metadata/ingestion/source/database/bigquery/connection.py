@@ -23,8 +23,8 @@ from sqlalchemy.inspection import inspect
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSValues,
+from metadata.generated.schema.security.credentials.gcsValues import (
+    GcsCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
@@ -46,7 +46,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     environment variable when needed
     """
 
-    if isinstance(connection.credentials.gcsConfig, GCSValues):
+    if isinstance(connection.credentials.gcsConfig, GcsCredentialsValues):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcsConfig.projectId, SingleProjectId
         ):

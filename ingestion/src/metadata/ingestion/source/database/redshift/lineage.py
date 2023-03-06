@@ -47,9 +47,3 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT
-
-    database_field = "database_name"
-
-    schema_field = "schema_name"
-
-    db_filters = ""

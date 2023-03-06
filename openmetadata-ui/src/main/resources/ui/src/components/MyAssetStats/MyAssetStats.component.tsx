@@ -25,7 +25,6 @@ import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { MyAssetStatsProps } from './MyAssetStats.interface';
 
@@ -112,50 +111,48 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
   );
 
   return (
-    <div className="ant-entity-card">
-      <Card
-        data-testid="data-summary-container"
-        id="assetStatsCount"
-        style={leftPanelAntCardStyle}>
-        <EntityListSkeleton
-          isCount
-          isLabel
-          isSelect
-          loading={Boolean(entityCountLoading)}>
-          <>
-            {Object.values(dataSummary).map((data, index) => (
-              <div
-                className="tw-flex tw-items-center tw-justify-between"
-                data-testid={`${data.dataTestId}-summary`}
-                key={index}>
-                <div className="tw-flex">
-                  <SVGIcons
-                    alt="icon"
-                    className="tw-h-4 tw-w-4 tw-self-center"
-                    icon={data.icon}
-                  />
-                  {data.link ? (
-                    <Link
-                      className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
-                      data-testid={data.dataTestId}
-                      to={data.link}>
-                      <Button
-                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                        type="text">
-                        {data.data}
-                      </Button>
-                    </Link>
-                  ) : (
-                    <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
-                  )}
-                </div>
-                {!isNil(data.count) && getCountBadge(data.count, '', false)}
+    <Card
+      className="panel-shadow-color"
+      data-testid="data-summary-container"
+      id="assetStatsCount">
+      <EntityListSkeleton
+        isCount
+        isLabel
+        isSelect
+        loading={Boolean(entityCountLoading)}>
+        <>
+          {Object.values(dataSummary).map((data, index) => (
+            <div
+              className="tw-flex tw-items-center tw-justify-between"
+              data-testid={`${data.dataTestId}-summary`}
+              key={index}>
+              <div className="tw-flex">
+                <SVGIcons
+                  alt="icon"
+                  className="tw-h-4 tw-w-4 tw-self-center"
+                  icon={data.icon}
+                />
+                {data.link ? (
+                  <Link
+                    className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
+                    data-testid={data.dataTestId}
+                    to={data.link}>
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      type="text">
+                      {data.data}
+                    </Button>
+                  </Link>
+                ) : (
+                  <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
+                )}
               </div>
-            ))}
-          </>
-        </EntityListSkeleton>
-      </Card>
-    </div>
+              {!isNil(data.count) && getCountBadge(data.count, '', false)}
+            </div>
+          ))}
+        </>
+      </EntityListSkeleton>
+    </Card>
   );
 };
 

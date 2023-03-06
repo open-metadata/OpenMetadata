@@ -122,7 +122,7 @@ const GlobalSearchSuggestions = ({
         break;
       case SearchIndex.TABLE:
       default:
-        label = t('label.tables');
+        label = t('label.table-plural');
         icon = Icons.TABLE_GREY;
 
         break;

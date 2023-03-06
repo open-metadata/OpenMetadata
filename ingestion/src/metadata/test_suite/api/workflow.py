@@ -82,7 +82,6 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
         Attributes:
             config: OM workflow configuration object
-            source_config: TestSuitePipeline object
         """
         self.config = config
 
@@ -182,14 +181,14 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                     service_connection_config.catalog = entity_fqn.split(".")[1]
             return service_connection_config
 
-        logger.error(f"Could not retrive connection details for entity {entity_link}")
+        logger.error(f"Could not retrieve connection details for entity {entity_link}")
         raise ValueError()
 
     def _get_table_entity_from_test_case(self, entity_fqn: str):
         """given an entityLink return the table entity
 
         Args:
-            entity_link: entity link for the test case
+            entity_fqn: entity fqn for the test case
         """
         return self.metadata.get_by_name(
             entity=Table,
@@ -298,8 +297,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         self,
     ) -> List[TestSuite]:
         """
-        Fro the CLI workflow we'll have n testSuite in the
-        processor.config.testSuites
+        For the CLI workflow we'll have n testSuite in the processor.config.testSuites
         """
         test_suite_entities = []
         test_suites = self.processor_config.testSuites or []

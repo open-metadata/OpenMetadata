@@ -464,6 +464,14 @@
     ]
   },
   {
+    "name" : "testConnectionDefinition",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
     "name" : "type",
     "operations" : [
       "Create",
@@ -501,6 +509,14 @@
       "Delete",
       "ViewAll",
       "EditDescription"
+    ]
+  },
+  {
+    "name" : "workflow",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
     ]
   },
   {

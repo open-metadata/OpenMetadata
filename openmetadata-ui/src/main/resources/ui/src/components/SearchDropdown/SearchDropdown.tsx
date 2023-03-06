@@ -164,7 +164,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                   data-testid="clear-button"
                   type="link"
                   onClick={handleClear}>
-                  {t('label.clear-all')}
+                  {t('label.clear-entity', {
+                    entity: t('label.all'),
+                  })}
                 </Button>
               </>
             )}

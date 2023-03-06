@@ -27,7 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -144,7 +145,14 @@ public abstract class PipelineServiceClient {
   public abstract Response getServiceStatus();
 
   /* Test the connection to the service such as database service a pipeline depends on. */
-  public abstract Response testConnection(TestServiceConnection testServiceConnection);
+  public abstract Response testConnection(TestServiceConnectionRequest testServiceConnection);
+
+  /**
+   * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the
+   * new Test Connection endpoint. The UI can create a new workflow and trigger it in the server, and keep polling the
+   * results.
+   */
+  public abstract Response runAutomationsWorkflow(Workflow workflow);
 
   /* Deploy a pipeline to the pipeline service */
   public abstract String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);

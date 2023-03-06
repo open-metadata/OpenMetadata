@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
@@ -296,7 +296,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         position: 7,
       },
       {
-        name: t('label.dbt-uppercase'),
+        name: t('label.dbt-lowercase'),
         icon: {
           alt: 'dbt-model',
           name: 'dbtmodel-light-grey',
@@ -698,9 +698,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
+          <div className="m-y-md h-full">
             {activeTab === 1 && (
-              <div className="tab-details-container">
+              <Card className="h-full">
                 <Row id="schemaDetails">
                   <Col span={17}>
                     <Description
@@ -730,9 +730,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     />
                   </Col>
                   <Col offset={1} span={6}>
-                    <div className="border-1 border-main rounded-6">
+                    <div className="global-border rounded-4">
                       <FrequentlyJoinedTables
-                        header={t('label.frequently-joined-tables')}
+                        header={t('label.frequently-joined-table-plural')}
                         tableList={getFrequentlyJoinedWithTables()}
                       />
                     </div>
@@ -769,10 +769,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     />
                   </Col>
                 </Row>
-              </div>
+              </Card>
             )}
             {activeTab === 2 && (
-              <div className="tab-details-container">
+              <Card className="h-full">
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                   id="activityfeed">
@@ -797,23 +797,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   ref={elementRef as RefObject<HTMLDivElement>}>
                   {getLoader()}
                 </div>
-              </div>
+              </Card>
             )}
             {activeTab === 3 && (
-              <div className="tab-details-container" id="sampleDataDetails">
+              <Card className="h-full" id="sampleDataDetails">
                 <SampleDataTable
                   isTableDeleted={tableDetails.deleted}
                   tableId={tableDetails.id}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 4 && (
-              <div className="tab-details-container">
+              <Card className="h-full">
                 <TableQueries
                   isTableDeleted={tableDetails.deleted}
                   tableId={tableDetails.id}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 5 && (
               <TableProfilerV1
@@ -824,12 +824,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
 
             {activeTab === 7 && (
-              <div
+              <Card
                 className={classNames(
-                  'tab-details-container',
-                  location.pathname.includes(ROUTES.TOUR)
-                    ? 'tw-h-70vh'
-                    : 'tw-h-full'
+                  'card-body-full',
+                  location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
                 )}
                 id="lineageDetails">
                 <EntityLineageComponent
@@ -848,19 +846,19 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   removeLineageHandler={removeLineageHandler}
                   onFullScreenClick={handleFullScreenClick}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <div className="tab-details-container tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+              <Card className="h-full">
                 <SchemaEditor
                   className="tw-h-full"
                   mode={{ name: CSMode.SQL }}
                   value={dataModel?.sql || ''}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 9 && (
-              <div className="tab-details-container">
+              <Card className="h-full">
                 <CustomPropertyTable
                   entityDetails={
                     tableDetails as CustomPropertyProps['entityDetails']
@@ -872,7 +870,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     tablePermissions.EditCustomFields
                   }
                 />
-              </div>
+              </Card>
             )}
           </div>
           {threadLink ? (
