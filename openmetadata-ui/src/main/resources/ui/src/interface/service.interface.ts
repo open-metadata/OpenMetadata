@@ -12,6 +12,10 @@
  */
 
 import {
+  ObjectStoreConnection,
+  ObjectstoreService,
+} from 'generated/entity/services/objectstoreService';
+import {
   DashboardConnection,
   DashboardService,
 } from '../generated/entity/services/dashboardService';
@@ -80,7 +84,8 @@ export type ServicesType =
   | DashboardService
   | PipelineService
   | MlmodelService
-  | MetadataService;
+  | MetadataService
+  | ObjectstoreService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -93,4 +98,5 @@ export type ConfigData =
   | DashboardConnection
   | PipelineConnection
   | MlModelConnection
-  | MetadataConnection;
+  | MetadataConnection
+  | ObjectStoreConnection;

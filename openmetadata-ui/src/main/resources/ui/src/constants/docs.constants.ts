@@ -41,3 +41,6 @@ export const POLICY_DOCS =
 
 export const ROLE_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
+
+export const DATA_INSIGHT_DOCS =
+  'https://docs.open-metadata.org/openmetadata/data-insight';

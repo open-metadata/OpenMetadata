@@ -315,7 +315,7 @@ public class ObjectStoreServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateObjectStoreService update)
       throws IOException {
     ObjectStoreService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (ObjectStoreService) response.getEntity());
     return response;
   }

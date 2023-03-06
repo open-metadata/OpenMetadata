@@ -87,7 +87,6 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
@@ -387,7 +386,7 @@ const Users = ({
         <Typography.Text
           className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
-          {t('label.change-password')}
+          {t('label.change-entity', { entity: t('label.password-lowercase') })}
         </Typography.Text>
 
         <ChangePasswordForm
@@ -428,10 +427,9 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="teams-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -445,10 +443,9 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="teams-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -560,9 +557,8 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="roles-card"
+          key="roles-card panel-shadow-color"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -576,10 +572,9 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="roles-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -651,10 +646,9 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     return (
       <Card
-        className="ant-card-feed tw-relative"
+        className="ant-card-feed tw-relative panel-shadow-color"
         key="inherited-roles-card-component"
         style={{
-          ...leftPanelAntCardStyle,
           marginTop: '20px',
         }}
         title={
@@ -706,11 +700,8 @@ const Users = ({
     return (
       <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
-          className="ant-card-feed tw-relative"
-          key="left-panel-card"
-          style={{
-            ...leftPanelAntCardStyle,
-          }}>
+          className="ant-card-feed tw-relative panel-shadow-color"
+          key="left-panel-card">
           {isImgUrlValid ? (
             <Image
               alt="profile"

@@ -32,6 +32,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -48,6 +49,7 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlmodels } from 'rest/mlModelAPI';
+import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
@@ -106,7 +108,13 @@ import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
-export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
+export type ServicePageData =
+  | Database
+  | Topic
+  | Dashboard
+  | Mlmodel
+  | Pipeline
+  | Container;
 
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -127,7 +135,6 @@ const ServicePage: FunctionComponent = () => {
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [instanceCount, setInstanceCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(
     getCurrentServiceTab(tab, serviceName)
   );
@@ -174,11 +181,11 @@ const ServicePage: FunctionComponent = () => {
     () =>
       getServicePageTabs(
         serviceName,
-        instanceCount,
+        paging.total,
         ingestions,
         servicePermission
       ),
-    [serviceName, instanceCount, ingestions, servicePermission]
+    [serviceName, paging, ingestions, servicePermission]
   );
 
   const extraInfo: Array<ExtraInfo> = [
@@ -382,7 +389,6 @@ const ServicePage: FunctionComponent = () => {
           setServiceSchemaCount(res.data, setSchemaCount);
           setServiceTableCount(res.data, setTableCount);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -402,7 +408,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -422,7 +427,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -442,7 +446,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -462,7 +465,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -473,6 +475,25 @@ const ServicePage: FunctionComponent = () => {
       .catch(() => {
         setIsLoading(false);
       });
+  };
+
+  const fetchContainers = async (paging?: string) => {
+    setIsLoading(true);
+    try {
+      const response = await getContainers(
+        serviceFQN,
+        ['owner', 'tags'],
+        paging
+      );
+
+      setData(response.data);
+      setPaging(response.paging);
+      setIsLoading(false);
+    } catch (error) {
+      setData([]);
+      setPaging(pagingObject);
+      setIsLoading(false);
+    }
   };
 
   const getOtherDetails = (paging?: string) => {
@@ -502,6 +523,11 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        fetchContainers(paging);
+
+        break;
+      }
       default:
         break;
     }
@@ -520,6 +546,13 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
+
+      case ServiceCategory.OBJECT_STORE_SERVICES:
+        /**
+         * Update this when containers details page is ready
+         */
+
+        return '';
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -596,6 +629,20 @@ const ServicePage: FunctionComponent = () => {
           '--'
         );
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        const container = data as Container;
+
+        return container.tags && container.tags?.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={container.tags}
+            type="border"
+          />
+        ) : (
+          '--'
+        );
+      }
       default:
         return <></>;
     }
@@ -607,7 +654,9 @@ const ServicePage: FunctionComponent = () => {
       try {
         const response = await TestConnection(
           connectionDetails,
-          getTestConnectionType(serviceCategory as ServiceCategory)
+          getTestConnectionType(serviceCategory as ServiceCategory),
+          serviceDetails?.serviceType,
+          serviceDetails?.name
         );
         // This api only responds with status 200 on success
         // No data sent on api success
@@ -899,6 +948,9 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.ML_MODEL_SERVICES: {
         return [t('label.model-name'), t('label.tag-plural')];
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        return [t('label.model-name'), t('label.tag-plural')];
+      }
       default:
         return [];
     }
@@ -1035,7 +1087,7 @@ const ServicePage: FunctionComponent = () => {
                     allowSoftDelete={false}
                     deleteMessage={getDeleteEntityMessage(
                       serviceName || '',
-                      instanceCount,
+                      paging.total,
                       schemaCount,
                       tableCount
                     )}

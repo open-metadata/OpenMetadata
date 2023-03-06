@@ -108,7 +108,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           disabled={isEmpty(filters)}
           type="link"
           onClick={() => onClearFilter({})}>
-          {t('label.clear-all')}
+          {t('label.clear-entity', {
+            entity: t('label.all'),
+          })}
         </Button>
       </div>
       <hr className="m-y-xs" />

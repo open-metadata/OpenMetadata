@@ -271,7 +271,7 @@ const SigninPage = () => {
                   <div
                     className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
-                    <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
+                    <div className="flex global-border rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
                         <SVGIcons
                           alt="failed"

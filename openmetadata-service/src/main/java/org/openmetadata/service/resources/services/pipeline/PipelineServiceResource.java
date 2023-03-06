@@ -319,7 +319,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }

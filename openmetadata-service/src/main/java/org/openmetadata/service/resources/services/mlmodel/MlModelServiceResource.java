@@ -319,7 +319,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }

@@ -21,7 +21,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 14509.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 476.5,
+                            "interQuartileRange": 469.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [101, 235, 123, 98]
+                            }
                         },
                         {
                             "name": "address_id",

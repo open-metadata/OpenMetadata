@@ -213,7 +213,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const tableColumn: ColumnsType<EntityReference> = useMemo(
     () => [
       {
-        title: t('label.chart-name'),
+        title: t('label.chart-entity', {
+          entity: t('label.name'),
+        }),
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
@@ -231,7 +233,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
       },
       {
-        title: t('label.chart-type'),
+        title: t('label.chart-entity', {
+          entity: t('label.type'),
+        }),
         dataIndex: 'type',
         key: 'type',
       },

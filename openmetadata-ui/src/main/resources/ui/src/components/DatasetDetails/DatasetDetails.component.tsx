@@ -296,7 +296,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         position: 7,
       },
       {
-        name: t('label.dbt-uppercase'),
+        name: t('label.dbt-lowercase'),
         icon: {
           alt: 'dbt-model',
           name: 'dbtmodel-light-grey',
@@ -730,7 +730,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     />
                   </Col>
                   <Col offset={1} span={6}>
-                    <div className="border-1 border-main rounded-6">
+                    <div className="global-border rounded-4">
                       <FrequentlyJoinedTables
                         header={t('label.frequently-joined-tables')}
                         tableList={getFrequentlyJoinedWithTables()}

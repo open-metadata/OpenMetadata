@@ -12,6 +12,7 @@
  */
 
 import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,7 +44,6 @@ import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageHeader from '../header/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
@@ -96,6 +96,8 @@ const Services = ({
         return PAGE_HEADERS.ML_MODELS_SERVICES;
       case ServiceCategory.PIPELINE_SERVICES:
         return PAGE_HEADERS.PIPELINES_SERVICES;
+      case ServiceCategory.OBJECT_STORE_SERVICES:
+        return PAGE_HEADERS.OBJECT_STORE_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
@@ -137,9 +139,7 @@ const Services = ({
             <Row data-testid="data-container" gutter={[16, 16]}>
               {serviceData.map((service, index) => (
                 <Col key={index} lg={8} xl={6}>
-                  <Card
-                    size="small"
-                    style={{ ...leftPanelAntCardStyle, height: '100%' }}>
+                  <Card className="w-full" size="small">
                     <div
                       className="tw-flex tw-justify-between tw-text-grey-muted"
                       data-testid="service-card">
@@ -236,9 +236,10 @@ const Services = ({
                 </Button>
               </Tooltip>
             }
+            classes="mt-24"
             doc={CONNECTORS_DOCS}
             heading={servicesDisplayName[serviceName]}
-            type="ADD_DATA"
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
           />
         </Col>
       )}

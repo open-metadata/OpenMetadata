@@ -32,7 +32,3 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
         ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES',
         'INSERT', 'MERGE', 'CREATE_TABLE_AS_SELECT')
     """
-
-    database_field = "database_name"
-
-    schema_field = "schema_name"
