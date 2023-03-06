@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -36,6 +35,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -67,37 +67,39 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Query addHref(UriInfo uriInfo, Query entity) {
     Entity.withHref(uriInfo, entity.getOwner());
     Entity.withHref(uriInfo, entity.getFollowers());
+    Entity.withHref(uriInfo, entity.getUsers());
+    Entity.withHref(uriInfo, entity.getQueryUsedIn());
     return entity;
   }
 
-  public static class queryList extends ResultList<Query> {
+  public static class QueryList extends ResultList<Query> {
     @SuppressWarnings("unused")
-    public queryList() {
+    public QueryList() {
       /* Required for serde */
     }
   }
 
-  static final String FIELDS = "queryUsage";
+  static final String FIELDS = "owner,users,vote,tags,queryUsedIn";
 
   @GET
   @Operation(
       operationId = "listQueries",
-      summary = "List queries",
+      summary = "Get a list of Queries",
       tags = "query",
       description =
-          "Get a list of queries, optionally filtered by `service` it belongs to. Use `fields` "
+          "Get a list of queries. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of queries",
+            description = "Get List of queries",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.queryList.class)))
+                    schema = @Schema(implementation = QueryResource.QueryList.class)))
       })
-  public ResultList<Query> list(
+  public ResultList<Query> listQueries(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -110,16 +112,16 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "string", example = "s3://bucket/folder1"))
           @QueryParam("entity")
           String entity,
-      @Parameter(description = "Limit the number locations returned. " + "(1 to 1000000, default = 10)")
+      @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of locations before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of queries before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -139,7 +141,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       operationId = "getQueryByID",
       summary = "Get a query",
       tags = "query",
-      description = "Get a table by `id`",
+      description = "Get a Query by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -147,7 +149,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
         @ApiResponse(responseCode = "404", description = "Query for instance {id} is not found")
       })
-  public Query get(
+  public Query getQueryById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -180,7 +182,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
         @ApiResponse(responseCode = "404", description = "Query for instance {id} is not found")
       })
-  public Query getByName(
+  public Query getQueryByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Fully qualified name of the query", schema = @Schema(type = "string")) @PathParam("fqn")
@@ -203,37 +205,36 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @Path("/entity/{id}")
   @GET
   @Operation(
-      operationId = "listQueries",
-      summary = "List Queries",
+      operationId = "listQueriesByEntityId",
+      summary = "Get List Queries By Entity Id",
       tags = "query",
-      description = "",
+      description = "Get List Queries",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of Queries",
+            description = "Get List of Queries",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.queryList.class)))
+                    schema = @Schema(implementation = QueryResource.QueryList.class)))
       })
   public ResultList<Query> list(
-      @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id") String queryId,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of queries before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    ResultList<Query> queries = dao.listQueriesByEntityId(id, before, after, limitParam);
-    return queries;
+    return dao.listQueriesByEntityId(queryId, before, after, limitParam);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllQueryVersion",
-      summary = "List query versions",
+      summary = "Get List of all query versions",
       tags = "query",
       description = "Get a list of all the versions of a query identified by `id`",
       responses = {
@@ -245,7 +246,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "query Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -254,7 +255,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificQueryVersion",
-      summary = "Get a version of the query",
+      summary = "Get a specific version of the query",
       tags = "query",
       description = "Get a version of the query by given `id`",
       responses = {
@@ -269,9 +270,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Query getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "query version number in the form `major`.`minor`",
+              description = "Query version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -292,42 +293,13 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.queryList.class))),
+                    schema = @Schema(implementation = QueryResource.QueryList.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create)
       throws IOException {
     Query query = getQuery(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, query);
-  }
-
-  @PUT
-  @Path("/bulk")
-  @Operation(
-      operationId = "createBukQuery",
-      summary = "Add query in bulk",
-      tags = "query",
-      description = "insert bulk query data",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The query",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.queryList.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public List<Query> addBulkQueries(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<CreateQuery> createQueryList)
-      throws IOException {
-    List<Query> queryList = new ArrayList<>();
-    for (CreateQuery createQuery : createQueryList) {
-      Query query = getQuery(createQuery, securityContext.getUserPrincipal().getName());
-      Response response = createOrUpdate(uriInfo, securityContext, query);
-      queryList.add((Query) response.getEntity());
-    }
-    return queryList;
   }
 
   @PUT
@@ -374,6 +346,53 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           JsonPatch patch)
       throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollower",
+      summary = "Add a follower",
+      tags = "query",
+      description = "Add a user identified by `userId` as follower of this model",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
+      throws IOException {
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      tags = "mlModels",
+      description = "Remove the user identified `userId` as a follower of the model.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId)
+      throws IOException {
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -439,8 +458,31 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Query query = dao.addQueryUsage(id, entityIds);
-    return query;
+    return dao.addQueryUsage(id, entityIds);
+  }
+
+  @PUT
+  @Path("/{id}/removeQueryUsage")
+  @Operation(
+      operationId = "removeQueryUsedIn",
+      summary = "remove query used in",
+      tags = "query",
+      description = "remove Query Used in",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Query removeQueryUsedIn(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<EntityReference> entityIds)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return dao.removeQueryUsedIn(id, entityIds);
   }
 
   @DELETE
@@ -470,14 +512,12 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
 
   private Query getQuery(CreateQuery create, String user) throws IOException {
     return copy(new Query(), create, user)
-        .withChecksum(create.getChecksum())
+        .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
         .withVote(create.getVote())
         .withUsers(create.getUsers())
-        .withName(create.getEntityType())
-        .withQueryUsage(create.getQueryUsage())
-        .withEntityType(create.getEntityType())
+        .withQueryUsedIn(create.getQueryUsedIn())
         .withQueryDate(create.getQueryDate());
   }
 }

@@ -234,7 +234,7 @@ public interface CollectionDAO {
   LocationDAO locationDAO();
 
   @CreateSqlObject
-  QueryDao queryDao();
+  QueryDAO queryDAO();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -2022,7 +2022,7 @@ public interface CollectionDAO {
         @Bind("after") String after);
   }
 
-  interface QueryDao extends EntityDAO<Query> {
+  interface QueryDAO extends EntityDAO<Query> {
     @Override
     default String getTableName() {
       return "query_entity";
@@ -2035,12 +2035,12 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() {
-      return "fullyQualifiedName";
+      return "name";
     }
 
     @RegisterRowMapper(QueryMapper.class)
     @SqlQuery(
-        "SELECT query_entity.json, query_entity.fullyQualifiedName FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.fullyQualifiedName > :after order by query_entity.fullyQualifiedName LIMIT :limit")
+        "SELECT query_entity.json, query_entity.name FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.name > :after order by query_entity.name LIMIT :limit")
     List<QueryList> listAfterQueriesByEntityId(
         @Bind("id") String id,
         @Bind("entity") String entity,
@@ -2050,7 +2050,7 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(QueryMapper.class)
     @SqlQuery(
-        "SELECT query_entity.json, query_entity.fullyQualifiedName FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.fullyQualifiedName < :before order by query_entity.fullyQualifiedName LIMIT :limit")
+        "SELECT query_entity.json, query_entity.name FROM query_entity INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :entity and query_entity.name < :before order by query_entity.name LIMIT :limit")
     List<QueryList> listBeforeQueriesByEntityId(
         @Bind("id") String id,
         @Bind("entity") String entity,

@@ -76,12 +76,12 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
 
 CREATE TABLE IF NOT EXISTS query_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    UNIQUE (fullyQualifiedName)
+    UNIQUE (name)
 );
 
 CREATE TABLE IF NOT EXISTS temp_query_migration (
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS temp_query_migration (
 CREATE EXTENSION pgcrypto;
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT('table', '_', checksum),'updatedAt',
+SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','name',checksum,'updatedAt',
 floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
 checksum varchar,duration decimal,queryDate varchar)
 WHERE ee.extension = 'table.tableQueries';

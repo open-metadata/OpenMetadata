@@ -60,39 +60,6 @@ CREATE TABLE IF NOT EXISTS test_connection_definition (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
-CREATE TABLE IF NOT EXISTS query_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
-    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    UNIQUE(fullyQualifiedName),
-    INDEX name_index (fullyQualifiedName)
-);
-
-CREATE TABLE IF NOT EXISTS temp_query_migration (
-    tableId VARCHAR(36)NOT NULL,
-    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
-    json JSON NOT NULL
-);
-
-
-INSERT INTO temp_query_migration(tableId,json)
-SELECT id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','fullyQualifiedName',CONCAT('table', '_', checksum),
-'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',duration double path '$.duration',
-queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
-
-INSERT INTO query_entity(json)
-SELECT json FROM temp_query_migration;
-
-INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
-SELECT tableId,queryId,"table","query",10 FROM temp_query_migration;
-
-DELETE FROM entity_extension WHERE id IN
- (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = "table.tableQueries";
-
-DROP Table temp_query_migration;
 
 CREATE TABLE IF NOT EXISTS automations_workflow (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
@@ -106,3 +73,37 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+CREATE TABLE IF NOT EXISTS query_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    UNIQUE(name),
+    INDEX name_index (name)
+);
+
+CREATE TABLE IF NOT EXISTS temp_query_migration (
+    tableId VARCHAR(36)NOT NULL,
+    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    json JSON NOT NULL
+);
+
+
+INSERT INTO temp_query_migration(tableId,json)
+SELECT id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','name',checksum,
+'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',duration double path '$.duration',
+queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
+
+INSERT INTO query_entity(json)
+SELECT json FROM temp_query_migration;
+
+INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
+SELECT tableId,queryId,"table","query",5 FROM temp_query_migration;
+
+DELETE FROM entity_extension WHERE id IN
+ (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = "table.tableQueries";
+
+DROP Table temp_query_migration;

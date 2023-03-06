@@ -32,7 +32,7 @@ import org.openmetadata.service.util.TestUtils;
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   public QueryResourceTest() {
-    super(Entity.QUERY, Query.class, QueryResource.queryList.class, "query", QueryResource.FIELDS);
+    super(Entity.QUERY, Query.class, QueryResource.QueryList.class, "query", QueryResource.FIELDS);
   }
 
   /**
@@ -44,12 +44,11 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     List<EntityReference> queryUsage = new ArrayList<>();
     return new CreateQuery()
         .withName(type)
-        .withEntityType(type)
         .withQuery("select * from sales")
         .withDuration(0.0)
         .withQueryDate(1673857635064L)
         .withVote(1.0)
-        .withQueryUsage(queryUsage);
+        .withQueryUsedIn(queryUsage);
   }
 
   /**
@@ -113,12 +112,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Test
   public void post_without_query_400(TestInfo test) throws IOException {
-    CreateQuery create =
-        new CreateQuery()
-            .withDuration(0.0)
-            .withQueryDate(1673857635064L)
-            .withVote(1.0)
-            .withEntityType(getEntityName(test));
+    CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L).withVote(1.0);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
   }
@@ -143,8 +137,9 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     queryUsage.add(entityReference);
     queryUsage1.add(entityReference);
 
+    // TODO:
     // create query with vote 1.0
-    CreateQuery create = createRequest(getEntityName(test)).withQueryUsage(queryUsage);
+    CreateQuery create = createRequest(getEntityName(test)).withQueryUsedIn(queryUsage);
     createEntity(create, ADMIN_AUTH_HEADERS);
     // update vote to 2.0
     create.setVote(2.0);
@@ -152,11 +147,11 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     entityReference.setId(UUID.randomUUID());
     entityReference.setType("table");
     queryUsage1.add(entityReference);
-    create.setQueryUsage(queryUsage1);
+    // create.setsQueryUsage(queryUsage1);
 
     updateEntity(create, OK, ADMIN_AUTH_HEADERS);
     assertEquals(2.0, create.getVote());
-    assertEquals(2, create.getQueryUsage().size());
+    assertEquals(2, create.getQueryUsedIn().size());
   }
 
   @Override

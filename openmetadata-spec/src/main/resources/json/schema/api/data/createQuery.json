@@ -2,23 +2,38 @@
   "$id": "https://open-metadata.org/schema/api/data/createQuery.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateQueryRequest",
-  "description": "Create Query entity request",
+  "description": "Create Query Request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateQuery",
   "javaInterfaces": [
     "org.openmetadata.schema.CreateEntity"
   ],
-  "definitions": {
-    "createQueryList": {
+  "properties": {
+    "name": {
+      "description": "Name of a entity to which the query belong",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this query.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the query instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this entity",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this table",
       "type": "array",
-      "javaType": "org.openmetadata.schema.api.data.CreateQueryList",
       "items": {
-        "$ref": "createQuery.json"
+        "$ref": "../../type/tagLabel.json"
       },
       "default": null
-    }
-  },
-  "properties": {
+    },
     "query": {
       "description": "SQL Query definition.",
       "type": "string"
@@ -40,35 +55,15 @@
       "type": "number",
       "default": 1
     },
-    "checksum": {
-      "description": "Checksum to avoid registering duplicate queries.",
-      "type": "string"
-    },
     "queryDate": {
       "description": "Date on which the query ran.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "name": {
-      "description": "Name of a entity to which the query belong",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
-    "displayName": {
-      "description": "Display Name that identifies this query.",
-      "type": "string"
-    },
-    "description": {
-      "description": "Description of the query instance.",
-      "$ref": "../../type/basic.json#/definitions/markdown"
-    },
-    "queryUsage": {
+    "queryUsedIn": {
       "description": "list of entities to which the query is joined.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
-    "entityType": {
-      "description": "Type of an entity to which the query belongs, for e.g. table, dashboard etc.",
-      "type": "string"
     }
   },
-  "required": ["query", "entityType"],
+  "required": ["query"],
   "additionalProperties": false
 }

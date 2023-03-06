@@ -6,72 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Query",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-    "joinedWith": {
-      "description": "Fully qualified names of the fields/entities that this field/entity is joined with.",
-      "type": "object",
-      "properties": {
-        "fullyQualifiedName": {
-          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-        },
-        "joinCount": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "fullyQualifiedName",
-        "joinCount"
-      ],
-      "additionalProperties": false
-    },
-    "columnJoins": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.ColumnJoin",
-      "description": "This schema defines the type to capture how frequently a column is joined with columns in the other tables.",
-      "properties": {
-        "columnName": {
-          "$ref": "#/definitions/columnName"
-        },
-        "joinedWith": {
-          "description": "Fully qualified names of the columns that this column is joined with.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/joinedWith"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "tableJoins": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.TableJoins",
-      "description": "This schema defines the type to capture information about how this table is joined with other tables and columns.",
-      "properties": {
-        "startDate": {
-          "description": "Date can be only from today going back to last 29 days.",
-          "$ref": "../../type/basic.json#/definitions/date"
-        },
-        "dayCount": {
-          "type": "integer",
-          "default": 1
-        },
-        "columnJoins": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/columnJoins"
-          }
-        },
-        "directTableJoins": {
-          "description": "Joins with other tables that are not on a specific column (e.g: UNION join)",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/joinedWith"
-          }
-        }
-      },
-      "additionalProperties": false
-    }
-  },
   "properties": {
     "id": {
       "description": "Unique identifier of the query.",
@@ -81,13 +15,13 @@
       "description": "Name of a entity to which the query belong",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a query.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "displayName": {
       "description": "Display Name that identifies this Query. It could be title or label.",
       "type": "string"
-    },
-    "fullyQualifiedName": {
-      "description": "Fully qualified name of a query in the form `entityName_checksum`.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a query.",
@@ -130,6 +64,10 @@
       },
       "default": null
     },
+    "followers": {
+      "description": "Followers of this table.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "vote": {
       "description": "Users can vote up to rank the popular queries.",
       "type": "number",
@@ -160,11 +98,11 @@
       "type": "boolean",
       "default": false
     },
-    "queryUsage": {
-      "description": "list of entities to which the query is joined.",
+    "queryUsedIn": {
+      "description": "Entities that are using this query",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
-  "required": ["query", "entityType"],
+  "required": ["name","query"],
   "additionalProperties": false
 }
