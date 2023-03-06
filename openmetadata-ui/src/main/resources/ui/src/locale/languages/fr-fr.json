@@ -1189,6 +1189,5 @@
     "unexpected-response": "Réponse inattendu du serveur !",
     "update-entity-success": "{{entity}} updated successfully.",
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet."
-  },
-  "url": {}
+  }
 }
