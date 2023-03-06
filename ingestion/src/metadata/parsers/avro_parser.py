@@ -84,7 +84,15 @@ def parse_avro_schema(
     """
     try:
         parsed_schema = avroschema.parse(schema)
-        return get_avro_fields(parsed_schema, cls)
+        models = [
+            cls(
+                name=parsed_schema.name,
+                dataType=str(parsed_schema.type).upper(),
+                children=get_avro_fields(parsed_schema, cls),
+                description=parsed_schema.doc,
+            )
+        ]
+        return models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the avro schema: {exc}")

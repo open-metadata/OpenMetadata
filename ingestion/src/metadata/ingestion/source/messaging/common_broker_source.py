@@ -14,7 +14,6 @@ Common Broker for fetching metadata
 """
 
 import concurrent.futures
-import json
 import traceback
 from abc import ABC
 from typing import Iterable, Optional
@@ -23,12 +22,7 @@ import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.avro import AvroDeserializer
-from confluent_kafka.schema_registry.protobuf import ProtobufDeserializer
-from confluent_kafka.schema_registry.schema_registry_client import (
-    Schema,
-    SchemaRegistryClient,
-)
-from confluent_kafka.serialization import SerializationContext
+from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import TopicSampleData
@@ -140,9 +134,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             else:
                 topic.messageSchema = Topic(
-                    schemaText="",
-                    schemaType=SchemaType.Other,
-                    schemaFields=[]
+                    schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
             self.status.topic_scanned(topic.name.__root__)
             yield topic
@@ -217,10 +209,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         Method to Get Sample Data of Messaging Entity
         """
-        if (
-            self.context.topic
-            and self.generate_sample_data
-        ):
+        if self.context.topic and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
             try:
@@ -240,7 +229,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                         try:
                             value = message.value()
                             sample_data.append(
-                                self.decode_message(  # pylint: disable=protected-access
+                                self.decode_message(
                                     value,
                                     self.context.topic.messageSchema.schemaText,
                                     self.context.topic.messageSchema.schemaType,
@@ -263,11 +252,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 schema_str=schema, schema_registry_client=self.schema_registry_client
             )
             return str(deserializer(record, None))
-        elif schema_type == SchemaType.Protobuf:
+        if schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
-        else:
-            return str(record.decode("utf-8"))
+        return str(record.decode("utf-8"))
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:
