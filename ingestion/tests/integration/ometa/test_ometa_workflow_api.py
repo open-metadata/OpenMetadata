@@ -15,25 +15,16 @@ OpenMetadata high-level API Workflow test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.operations.createWorkflow import (
+from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceRequest,
-)
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.operations.workflow import (
+from metadata.generated.schema.entity.automations.workflow import (
     Workflow,
     WorkflowStatus,
     WorkflowType,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
-    LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -41,20 +32,11 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-    DashboardService,
-    DashboardServiceType,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

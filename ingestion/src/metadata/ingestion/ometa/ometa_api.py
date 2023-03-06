@@ -31,6 +31,7 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.automations.workflow import Workflow
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
@@ -49,7 +50,6 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.operations.workflow import Workflow
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -124,7 +124,7 @@ MODULE_PATH = {
     "user": "teams",
     "role": "teams",
     "team": "teams",
-    "workflow": "operations",
+    "workflow": "automations",
 }
 
 
