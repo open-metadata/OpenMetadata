@@ -380,26 +380,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const getInfoBadge = (infos: Array<Record<string, string | number>>) => {
-    return (
-      <div className="tw-flex tw-justify-between">
-        <div className="tw-flex tw-gap-3">
-          {infos.map((info, index) => (
-            <div className="tw-mt-4" key={index}>
-              <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
-                {info.key}
-              </span>
-              <span className="tw-py-1.5 tw-px-2 tw-bg-primary-lite tw-font-normal tw-rounded-r">
-                {info.value}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div />
-      </div>
-    );
-  };
-
   const handleFullScreenClick = () => {
     history.push(getLineageViewPath(EntityType.TOPIC, topicFQN));
   };
@@ -559,14 +539,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   </div>
                   {!isEmpty(topicDetails.messageSchema?.schemaFields) ? (
                     <Fragment>
-                      {getInfoBadge([
-                        {
-                          key: t('label.schema'),
-                          value: topicDetails.messageSchema?.schemaType ?? '',
-                        },
-                      ])}
                       <TopicSchemaFields
-                        className="mt-4"
                         hasDescriptionEditAccess={
                           topicPermissions.EditAll ||
                           topicPermissions.EditDescription
