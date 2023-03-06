@@ -14,9 +14,11 @@ Test Workflow pydantic parsing
 """
 from unittest import TestCase
 
-from metadata.generated.schema.entity.operations.testServiceConnection import TestServiceConnectionRequest
 from pydantic import ValidationError
 
+from metadata.generated.schema.entity.operations.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )

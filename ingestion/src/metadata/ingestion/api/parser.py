@@ -13,9 +13,11 @@ Helper to parse workflow configurations
 """
 from typing import Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.entity.operations.testServiceConnection import TestServiceConnectionRequest
 from pydantic import BaseModel, ValidationError
 
+from metadata.generated.schema.entity.operations.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardServiceType,
