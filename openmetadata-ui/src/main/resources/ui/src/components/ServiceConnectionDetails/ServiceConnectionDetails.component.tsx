@@ -16,7 +16,7 @@
 // @ts-nocheck
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { Card, Tooltip } from 'antd';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -226,13 +226,13 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <div className="tw-bg-white">
+    <Card>
       <div
-        className="tw-w-full tw-p-5 tw-flex tw-flex-wrap tw-border tw-rounded-lg tw-border-gray-300"
+        className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
         {data}
       </div>
-    </div>
+    </Card>
   );
 };
 

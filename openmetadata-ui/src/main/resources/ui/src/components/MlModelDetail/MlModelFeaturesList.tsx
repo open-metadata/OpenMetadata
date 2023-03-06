@@ -191,8 +191,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           {mlFeatures.map((feature: MlFeature) => (
             <Col key={feature.fullyQualifiedName} span={24}>
               <Card
-                bordered
-                className="m-b-xlg"
+                className="m-b-lg shadow-none"
                 data-testid="feature-card"
                 key={feature.fullyQualifiedName}>
                 <Row>
