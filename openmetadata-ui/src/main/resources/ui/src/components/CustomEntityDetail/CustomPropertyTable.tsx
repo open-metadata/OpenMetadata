@@ -177,7 +177,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           entityType: t('label.property'),
           entityName: selectedProperty.name,
         })}
-        placeholder={t('label.enter-property-description')}
+        placeholder={t('label.enter-field-description', {
+          field: t('label.property'),
+        })}
         value={selectedProperty.description || ''}
         visible={updateCheck}
         onCancel={resetSelectedProperty}

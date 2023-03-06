@@ -120,7 +120,11 @@ const BasicSignUp = () => {
                           })}
                           name="lastName"
                           rules={[{ whitespace: true, required: true }]}>
-                          <Input placeholder={t('label.enter-last-name')} />
+                          <Input
+                            placeholder={t('label.enter-entity', {
+                              entity: t('label.last-name-lowercase'),
+                            })}
+                          />
                         </Form.Item>
                         <Form.Item
                           label={t('label.email')}
