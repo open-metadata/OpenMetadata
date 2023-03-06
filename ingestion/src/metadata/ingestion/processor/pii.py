@@ -17,8 +17,6 @@ import traceback
 from enum import Enum
 from typing import Optional, Tuple
 
-from presidio_analyzer import AnalyzerEngine
-
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -54,6 +52,10 @@ class NERScanner:
     """A scanner that uses Spacy NER for entity recognition"""
 
     def __init__(self, metadata: OpenMetadata):
+        from presidio_analyzer import (  # pylint: disable=import-outside-toplevel
+            AnalyzerEngine,
+        )
+
         self.metadata = metadata
         self.text = ""
         self.analyzer = AnalyzerEngine()
