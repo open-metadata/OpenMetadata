@@ -76,7 +76,7 @@ class CustomSecretStr(SecretStr):
 
     def get_secret_value(self, skip_secret_manager: bool = False) -> str:
         # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel
+        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
             SecretsManagerFactory,
         )
 
