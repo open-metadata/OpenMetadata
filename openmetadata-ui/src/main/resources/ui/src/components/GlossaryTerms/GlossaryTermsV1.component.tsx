@@ -286,6 +286,7 @@ const GlossaryTermsV1 = ({
           onClick={handleTagContainerClick}>
           <TagsContainer
             buttonContainerClass="tw--mt-0"
+            className="w-min-20"
             containerClass="flex items-center tw-gap-2 m-t-xs"
             dropDownHorzPosRight={false}
             editable={isTagEditable}
