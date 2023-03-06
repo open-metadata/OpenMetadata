@@ -68,7 +68,7 @@ const CardListItem: FunctionComponent<Props> = ({
       default:
         return (
           <Button
-            data-testid="select-tier-buuton"
+            data-testid="select-tier-button"
             size="small"
             theme="primary"
             onClick={() => onSave(tier)}>
@@ -88,7 +88,7 @@ const CardListItem: FunctionComponent<Props> = ({
     } else {
       return (
         <Button
-          data-testid="select-tier-buuton"
+          data-testid="select-tier-button"
           size="small"
           theme="primary"
           variant="outlined"

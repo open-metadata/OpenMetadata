@@ -58,7 +58,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             region=self.service_connection.usageLocation,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.filters,
             result_limit=self.source_config.resultLimit,
         )
 

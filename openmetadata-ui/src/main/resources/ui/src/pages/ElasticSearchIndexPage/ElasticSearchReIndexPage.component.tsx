@@ -135,7 +135,7 @@ const ElasticSearchIndexPage = () => {
       <Col span={24}>
         <PageHeader
           data={{
-            header: t('label.elastic-search'),
+            header: t('label.elasticsearch'),
             subHeader: t('message.elastic-search-message'),
           }}
         />

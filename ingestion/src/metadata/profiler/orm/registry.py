@@ -119,7 +119,7 @@ def is_date_time(_type) -> bool:
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
     if isinstance(_type, Type):
-        return _type.__class__.__name__ in DATATIME_SET
+        return _type.name in DATATIME_SET
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
@@ -132,7 +132,7 @@ def is_quantifiable(_type) -> bool:
     Check if sqlalchemy _type is either integer or numeric
     """
     if isinstance(_type, Type):
-        return _type.__class__.__name__ in QUANTIFIABLE_SET
+        return _type.name in QUANTIFIABLE_SET
     return is_numeric(_type) or is_integer(_type)
 
 
@@ -142,5 +142,5 @@ def is_concatenable(_type) -> bool:
     e.g., strings or text
     """
     if isinstance(_type, Type):
-        return _type.__class__.__name__ in CONCATENABLE_SET
+        return _type.name in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)

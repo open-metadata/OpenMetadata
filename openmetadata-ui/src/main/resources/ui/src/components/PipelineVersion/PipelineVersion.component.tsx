@@ -218,7 +218,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
-        title: t('label.task-name'),
+        title: t('label.task-entity', {
+          entity: t('label.column-plural'),
+        }),
         dataIndex: 'displayName',
         key: 'displayName',
         render: (text, record) => (
@@ -249,7 +251,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           ),
       },
       {
-        title: t('label.task-type'),
+        title: t('label.task-entity', { entity: t('label.type-lowercase') }),
         dataIndex: 'taskType',
         key: 'taskType',
       },
