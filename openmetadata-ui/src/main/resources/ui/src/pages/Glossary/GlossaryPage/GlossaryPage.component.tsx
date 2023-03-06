@@ -235,7 +235,7 @@ const GlossaryPage = () => {
         <ErrorPlaceHolder
           buttons={
             <Button
-              className="rounded-4 m-y-md"
+              ghost
               data-testid="add-glossary"
               disabled={!createGlossaryPermission}
               size="middle"

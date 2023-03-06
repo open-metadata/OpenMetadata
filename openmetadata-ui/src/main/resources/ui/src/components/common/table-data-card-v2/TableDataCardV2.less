@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-@border-color: #dce3ec;
-@background-color: #ffffff;
+@import url('../../../styles/variables.less');
+
 @active-border-color: #1890ff;
 @active-box-shadow: 4px 6px 8px rgba(0, 0, 0, 0.14);
 
@@ -22,7 +22,7 @@
   background-color: @background-color;
   padding: 12px;
   transition: 0.3s ease-in-out;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: @card-shadow;
   &:hover {
     box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.13);
   }

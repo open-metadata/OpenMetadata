@@ -12,23 +12,22 @@
  */
 
 @import url('../../../styles/variables.less');
-@white: #ffffff;
-@gray: #dde3ea;
 @summary-panel-offset: 96px; // (topnav height) 64px + page padding top and bottom 32px
 @label-color: #6b7280;
-@succesColor: #28a745;
+@successColor: #28a745;
 @failedColor: #cb2431;
 @abortedColor: #efae2f;
 @section-header-color: #6b7280;
 
 .summary-panel-container {
-  background-color: @white;
+  background-color: @background-color;
   margin-right: -8px;
   position: sticky;
   height: calc(100vh - @summary-panel-offset);
   top: 2px; // To show the border properly
   z-index: 9;
-  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: @panels-shadow-color;
+  border: @global-border;
   font-size: 14px;
   overflow-y: scroll;
   -ms-overflow-style: none;
@@ -55,7 +54,7 @@
   }
 
   .success {
-    color: @succesColor;
+    color: @successColor;
   }
   .failed {
     color: @failedColor;
@@ -85,7 +84,7 @@
 
   .summary-schema-editor {
     margin: 16px 0px;
-    border: 1px solid @gray;
+    border: @global-border;
     border-radius: 4px;
   }
 
