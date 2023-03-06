@@ -20,7 +20,10 @@ from openmetadata_managed_apis.utils.logger import operations_logger
 from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
     build_secrets_manager_credentials,
 )
-from metadata.generated.schema.entity.operations.testServiceConnection import TestServiceConnectionRequest
+
+from metadata.generated.schema.entity.operations.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
