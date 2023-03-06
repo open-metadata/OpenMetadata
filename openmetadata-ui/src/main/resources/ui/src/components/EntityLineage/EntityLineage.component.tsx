@@ -229,9 +229,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       } else {
         showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
       }
-    } catch (err: any) {
+    } catch (err) {
       showErrorToast(
-        err,
+        err as AxiosError,
         jsonData['api-error-messages']['fetch-lineage-error']
       );
     } finally {
@@ -255,9 +255,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             jsonData['api-error-messages']['fetch-lineage-node-error']
           );
         }
-      } catch (err: any) {
+      } catch (err) {
         showErrorToast(
-          err,
+          err as AxiosError,
           jsonData['api-error-messages']['fetch-lineage-node-error']
         );
       } finally {
@@ -1462,7 +1462,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         reactFlowInstance &&
           reactFlowInstance.setCenter(position.x, position.y, {
             duration: ZOOM_TRANSITION_DURATION,
-            zoom: MIN_ZOOM_VALUE,
+            zoom: zoomValue,
           });
       } else {
         const path = findNodeById(value, childMap?.children, []);
@@ -1471,7 +1471,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             const parentId =
               index === 0 ? childMap?.id || '' : path[index - 1].id;
 
-            setPaginationData((prevState: any) => ({
+            setPaginationData((prevState: Record<string, string>) => ({
               ...prevState,
               [parentId]: [
                 ...(prevState[parentId] ?? []),

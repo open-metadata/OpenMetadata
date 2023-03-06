@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
 import React, { CSSProperties, Fragment, useEffect } from 'react';
 import {
   Handle,
@@ -32,13 +31,11 @@ const handleStyles: CSSProperties = {
 
 const leftHandleStyle: CSSProperties = {
   ...handleStyles,
-  borderLeft: '5px solid #d9ceee',
   left: -1,
 };
 
 const rightHandleStyle: CSSProperties = {
   ...handleStyles,
-  borderRight: '5px solid #d9ceee',
   right: -1,
 };
 
@@ -68,29 +65,18 @@ const getHandle = (
 
 const LoadMoreNode = (props: NodeProps) => {
   const updateNodeInternals = useUpdateNodeInternals();
-  const { data, isConnectable, selected, id } = props;
+  const { data, isConnectable, id } = props;
   /* eslint-disable-next-line */
-  const { label, isEditMode, isExpanded, isTraced } = data;
+  const { label, isEditMode, isExpanded } = data;
 
   useEffect(() => {
     updateNodeInternals(id);
   }, [isEditMode, isExpanded]);
 
   return (
-    <div className="nowheel custom-node load-more-node">
-      {/* Node label could be simple text or reactNode */}
-      <div
-        className={classNames(
-          'custom-node-header',
-          selected || data.selected
-            ? 'custom-node-header-active'
-            : 'custom-node-header-normal',
-          { 'custom-node-header-tracing': isTraced }
-        )}
-        data-testid="node-label">
-        {getHandle(isConnectable)}
-        {label}{' '}
-      </div>
+    <div className="load-more-node" data-testid="node-label">
+      {getHandle(isConnectable)}
+      {label}
     </div>
   );
 };

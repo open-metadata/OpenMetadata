@@ -15,9 +15,9 @@ import {
   CheckOutlined,
   LeftOutlined,
   MinusCircleOutlined,
-  PlusOutlined,
   RightOutlined,
 } from '@ant-design/icons';
+import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
 import CustomNode from 'components/EntityLineage/CustomNode.component';
 import {
@@ -380,11 +380,6 @@ export const getLineageData = (
               node={node}
               onNodeExpand={onNodeExpand}
             />
-            {type === EntityLineageNodeType.LOAD_MORE && (
-              <div className="tw-pl-2 tw-self-center tw-cursor-pointer ">
-                <PlusOutlined className="tw-text-primary tw-mr-2" />
-              </div>
-            )}
             {type === EntityLineageNodeType.OUTPUT && (
               <div
                 className="tw-pl-2 tw-self-center tw-cursor-pointer "
@@ -1320,6 +1315,10 @@ export const flattenObj = (
           });
       } else {
         const newNodeId = `loadmore_${uniqueId('node_')}_${id}_${i}`;
+        const childrenLength =
+          i === pageCount - 1
+            ? children.length - i * MAX_LINEAGE_LENGTH
+            : MAX_LINEAGE_LENGTH;
         const newNode = {
           description: 'Demo description',
           displayName: 'Load More',
@@ -1328,6 +1327,7 @@ export const flattenObj = (
           pagination_data: {
             index: i,
             parentId: id,
+            childrenLength,
           },
           edgeType: downwards
             ? EdgeTypeEnum.DOWN_STREAM
@@ -1449,8 +1449,11 @@ export const findNodeById = (
 export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
   try {
     await addLineage(edge);
-  } catch (err: any) {
-    showErrorToast(err, jsonData['api-error-messages']['add-lineage-error']);
+  } catch (err) {
+    showErrorToast(
+      err as AxiosError,
+      jsonData['api-error-messages']['add-lineage-error']
+    );
 
     throw err;
   }
@@ -1464,8 +1467,11 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
       data.toEntity,
       data.toId
     );
-  } catch (err: any) {
-    showErrorToast(err, jsonData['api-error-messages']['delete-lineage-error']);
+  } catch (err) {
+    showErrorToast(
+      err as AxiosError,
+      jsonData['api-error-messages']['delete-lineage-error']
+    );
 
     throw err;
   }
