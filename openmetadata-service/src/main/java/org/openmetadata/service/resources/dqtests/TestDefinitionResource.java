@@ -233,7 +233,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       })
   public TestDefinition getByName(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the test definition", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Name of the test definition", schema = @Schema(type = "string")) @PathParam("name")
           String name,
       @Context SecurityContext securityContext,
@@ -309,7 +308,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       operationId = "patchTestDefinition",
       summary = "Update a test definition",
       tags = "testDefinitions",
-      description = "Update an existing topic using JsonPatch.",
+      description = "Update an existing Test Definition using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
@@ -334,7 +333,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       operationId = "createOrUpdateTestDefinition",
       summary = "Update test definition",
       tags = "testDefinitions",
-      description = "Create a definition, it it does not exist or update an existing test definition.",
+      description = "Create a test definition, if it does not exist, or update an existing test definition.",
       responses = {
         @ApiResponse(
             responseCode = "200",

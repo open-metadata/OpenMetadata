@@ -1,0 +1,39 @@
+{
+  "name": "Redshift",
+  "fullyQualifiedName": "Redshift",
+  "displayName": "Redshift Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+  "steps": [
+    {
+      "name": "GetDatabases",
+      "description": "List all the available databases to the user. If all databases option is selected, we will try to go beyond the configured database.",
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the possible schemas from the configured database.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the views of a random schema.",
+      "mandatory": false
+    },
+    {
+      "name": "GetStlQueryText",
+      "description": "Check that we can properly access the records in stl_querytext. This is required for lineage and usage workflows.",
+      "mandatory": false
+    },
+    {
+      "name": "GetStlQuery",
+      "description": "Check that we can properly access the records in stl_query. This is required for lineage and usage workflows.",
+      "mandatory": false
+    }
+  ]
+}
+
