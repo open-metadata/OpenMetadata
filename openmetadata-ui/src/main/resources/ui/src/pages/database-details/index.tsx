@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Table } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -791,24 +791,24 @@ const DatabaseDetails: FunctionComponent = () => {
                         </Fragment>
                       )}
                       {activeTab === 2 && (
-                        <Row
-                          className="p-t-xss p-b-md entity-feed-list bg-white border-1 rounded-4 shadow-base h-full"
-                          id="activityfeed">
-                          <Col offset={4} span={16}>
-                            <ActivityFeedList
-                              hideFeedFilter
-                              hideThreadFilter
-                              isEntityFeed
-                              withSidePanel
-                              className=""
-                              deletePostHandler={deletePostHandler}
-                              entityName={databaseName}
-                              feedList={entityThread}
-                              postFeedHandler={postFeedHandler}
-                              updateThreadHandler={updateThreadHandler}
-                            />
-                          </Col>
-                        </Row>
+                        <Card className="p-t-xss p-b-md">
+                          <Row className="entity-feed-list" id="activityfeed">
+                            <Col offset={4} span={16}>
+                              <ActivityFeedList
+                                hideFeedFilter
+                                hideThreadFilter
+                                isEntityFeed
+                                withSidePanel
+                                className=""
+                                deletePostHandler={deletePostHandler}
+                                entityName={databaseName}
+                                feedList={entityThread}
+                                postFeedHandler={postFeedHandler}
+                                updateThreadHandler={updateThreadHandler}
+                              />
+                            </Col>
+                          </Row>
+                        </Card>
                       )}
                       <Col
                         data-testid="observer-element"
