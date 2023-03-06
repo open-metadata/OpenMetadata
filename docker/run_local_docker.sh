@@ -1,16 +1,3 @@
-#!/bin/bash
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 
 helpFunction()
 {
@@ -87,8 +74,9 @@ else
 fi
 
 echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/developmemnt/docker-compose-postgres.yml down
-docker compose -f docker/developmemnt/docker-compose.yml down
+pwd
+docker compose -f docker/development/docker-compose-postgres.yml down
+docker compose -f docker/development/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
@@ -96,7 +84,7 @@ echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 if [[ $database == "postgresql" ]]; then
     docker compose -f docker/development/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose-postgres.yml up -d
 else
-    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up -d
+    docker compose -f docker/development/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose.yml up -d
 fi
 
 RESULT=$?
