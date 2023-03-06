@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/operations/createWorkflow.json",
+  "$id": "https://open-metadata.org/schema/api/automations/createWorkflow.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateWorkflowRequest",
   "description": "A unit of work that will be triggered as an API call to the OpenMetadata server.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.operations.CreateWorkflow",
+  "javaType": "org.openmetadata.schema.entity.automations.CreateWorkflow",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
@@ -21,13 +21,13 @@
     },
     "workflowType": {
       "description": "Type of the workflow.",
-      "$ref": "../../entity/operations/workflow.json#/definitions/workflowType"
+      "$ref": "../../entity/automations/workflow.json#/definitions/workflowType"
     },
     "request": {
       "description": "Request body for a specific workflow type",
       "oneOf": [
         {
-          "$ref": "../../entity/operations/testServiceConnection.json"
+          "$ref": "../../entity/automations/testServiceConnection.json"
         }
       ]
     },

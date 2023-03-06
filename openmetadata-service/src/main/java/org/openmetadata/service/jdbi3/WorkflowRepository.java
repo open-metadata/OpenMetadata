@@ -3,7 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.WORKFLOW;
 
 import java.io.IOException;
-import org.openmetadata.schema.entity.operations.Workflow;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;

@@ -28,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.entity.operations.TestServiceConnectionRequest;
-import org.openmetadata.schema.entity.operations.Workflow;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -248,7 +248,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response runOperationsWorkflow(Workflow workflow) {
+  public Response runAutomationsWorkflow(Workflow workflow) {
     return null;
   }
 

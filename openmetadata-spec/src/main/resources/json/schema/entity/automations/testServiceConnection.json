@@ -1,8 +1,8 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/operations/workflow/testServiceConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/automations/workflow/testServiceConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestServiceConnectionRequest",
-  "javaType": "org.openmetadata.schema.entity.operations.TestServiceConnectionRequest",
+  "javaType": "org.openmetadata.schema.entity.automations.TestServiceConnectionRequest",
   "description": "Test Service Connection to test user provided configuration is valid or not.",
   "type": "object",
   "properties": {

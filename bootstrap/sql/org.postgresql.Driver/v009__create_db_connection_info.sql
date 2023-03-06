@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS test_connection_definition (
     UNIQUE (name)
 );
 
-CREATE TABLE IF NOT EXISTS operations_workflow (
+CREATE TABLE IF NOT EXISTS automations_workflow (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'workflowType') STORED NOT NULL,

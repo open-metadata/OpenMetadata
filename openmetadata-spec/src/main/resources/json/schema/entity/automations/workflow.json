@@ -1,14 +1,14 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/operations/workflow.json",
+  "$id": "https://open-metadata.org/schema/entity/automations/workflow.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Workflow",
   "description": "A unit of work that will be triggered as an API call to the OpenMetadata server.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.operations.Workflow",
+  "javaType": "org.openmetadata.schema.entity.automations.Workflow",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "workflowType": {
-      "javaType": "org.openmetadata.schema.entity.operations.WorkflowType",
+      "javaType": "org.openmetadata.schema.entity.automations.WorkflowType",
       "description": "This enum defines the type for which this workflow applies to.",
       "type": "string",
       "enum": [
@@ -16,7 +16,7 @@
       ]
     },
     "workflowStatus": {
-      "javaType": "org.openmetadata.schema.entity.operations.WorkflowStatus",
+      "javaType": "org.openmetadata.schema.entity.automations.WorkflowStatus",
       "description": "Enum defining possible Workflow status",
       "type": "string",
       "enum": ["Pending", "Successful", "Failed", "Running"]

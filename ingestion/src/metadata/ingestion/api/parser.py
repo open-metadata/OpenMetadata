@@ -15,7 +15,7 @@ from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
-from metadata.generated.schema.entity.operations.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.generated.schema.entity.services.dashboardService import (

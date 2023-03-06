@@ -23,10 +23,10 @@ from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.operations.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.operations.workflow import (
     Workflow,
     WorkflowStatus,
