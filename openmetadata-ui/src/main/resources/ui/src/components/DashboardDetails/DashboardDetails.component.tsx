@@ -14,6 +14,7 @@
 import { Card, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
@@ -721,51 +722,51 @@ const DashboardDetails = ({
             tabs={tabs}
           />
 
-          <Card className="h-full m-y-md">
-            {activeTab === 1 && (
-              <>
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      description={description}
-                      entityFieldTasks={getEntityFieldThreadCounts(
-                        EntityField.DESCRIPTION,
-                        entityFieldTaskCount
-                      )}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        EntityField.DESCRIPTION,
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={dashboardFQN}
-                      entityName={entityName}
-                      entityType={EntityType.DASHBOARD}
-                      hasEditAccess={
-                        dashboardPermissions.EditAll ||
-                        dashboardPermissions.EditDescription
-                      }
-                      isEdit={isEdit}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </div>
+          {activeTab === 1 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                <div className="tw-col-span-full">
+                  <Description
+                    description={description}
+                    entityFieldTasks={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldTaskCount
+                    )}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldThreadCount
+                    )}
+                    entityFqn={dashboardFQN}
+                    entityName={entityName}
+                    entityType={EntityType.DASHBOARD}
+                    hasEditAccess={
+                      dashboardPermissions.EditAll ||
+                      dashboardPermissions.EditDescription
+                    }
+                    isEdit={isEdit}
+                    isReadOnly={deleted}
+                    owner={owner}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
                 </div>
-                <Table
-                  bordered
-                  className="p-t-xs"
-                  columns={tableColumn}
-                  data-testid="charts-table"
-                  dataSource={charts}
-                  pagination={false}
-                  rowKey="id"
-                  size="small"
-                />
-              </>
-            )}
-            {activeTab === 2 && (
+              </div>
+              <Table
+                bordered
+                className="p-t-xs"
+                columns={tableColumn}
+                data-testid="charts-table"
+                dataSource={charts}
+                pagination={false}
+                rowKey="id"
+                size="small"
+              />
+            </Card>
+          )}
+          {activeTab === 2 && (
+            <Card className={ENTITY_CARD_CLASS}>
               <div
                 className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                 id="activityfeed">
@@ -784,29 +785,31 @@ const DashboardDetails = ({
                 />
                 <div />
               </div>
-            )}
-            {activeTab === 3 && (
-              <div className="h-full">
-                <EntityLineageComponent
-                  addLineageHandler={addLineageHandler}
-                  deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={entityLineageHandler}
-                  entityType={EntityType.DASHBOARD}
-                  hasEditAccess={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditLineage
-                  }
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  lineageLeafNodes={lineageLeafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  removeLineageHandler={removeLineageHandler}
-                  onFullScreenClick={handleFullScreenClick}
-                />
-              </div>
-            )}
-            {activeTab === 4 && (
+            </Card>
+          )}
+          {activeTab === 3 && (
+            <Card className={`${ENTITY_CARD_CLASS} card-body-full`}>
+              <EntityLineageComponent
+                addLineageHandler={addLineageHandler}
+                deleted={deleted}
+                entityLineage={entityLineage}
+                entityLineageHandler={entityLineageHandler}
+                entityType={EntityType.DASHBOARD}
+                hasEditAccess={
+                  dashboardPermissions.EditAll ||
+                  dashboardPermissions.EditLineage
+                }
+                isLoading={isLineageLoading}
+                isNodeLoading={isNodeLoading}
+                lineageLeafNodes={lineageLeafNodes}
+                loadNodeHandler={loadNodeHandler}
+                removeLineageHandler={removeLineageHandler}
+                onFullScreenClick={handleFullScreenClick}
+              />
+            </Card>
+          )}
+          {activeTab === 4 && (
+            <Card className={ENTITY_CARD_CLASS}>
               <CustomPropertyTable
                 entityDetails={
                   dashboardDetails as CustomPropertyProps['entityDetails']
@@ -818,14 +821,14 @@ const DashboardDetails = ({
                   dashboardPermissions.EditCustomFields
                 }
               />
-            )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
-            </div>
-          </Card>
+            </Card>
+          )}
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}>
+            {getLoader()}
+          </div>
         </div>
       </div>
       {editChart && (

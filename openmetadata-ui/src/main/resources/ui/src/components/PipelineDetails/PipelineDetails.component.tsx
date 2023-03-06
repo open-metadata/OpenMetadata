@@ -962,7 +962,7 @@ const PipelineDetails = ({
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.Lineage}
             tab={<span data-testid="Lineage">{t('label.lineage')}</span>}>
-            <Card className="h-full">
+            <Card className="h-full card-body-full">
               <EntityLineageComponent
                 addLineageHandler={addLineageHandler}
                 deleted={deleted}

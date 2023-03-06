@@ -15,12 +15,12 @@ import { Card, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   FC,
-  Fragment,
   RefObject,
   useCallback,
   useEffect,
@@ -607,43 +607,43 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <Card className="h-full m-y-md">
-            {activeTab === 1 && (
-              <Fragment>
-                <Description
-                  description={mlModelDetail.description}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldTaskCount
-                  )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
-                  entityName={mlModelDetail.name}
-                  entityType={EntityType.MLMODEL}
-                  hasEditAccess={
-                    mlModelPermissions.EditAll ||
-                    mlModelPermissions.EditDescription
-                  }
-                  isEdit={isEdit}
-                  isReadOnly={mlModelDetail.deleted}
-                  owner={mlModelDetail.owner}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={handleThreadLinkSelect}
-                />
-                <MlModelFeaturesList
-                  handleFeaturesUpdate={onFeaturesUpdate}
-                  mlFeatures={mlModelDetail.mlFeatures}
-                  permissions={mlModelPermissions}
-                />
-              </Fragment>
-            )}
-            {activeTab === 2 && (
-              <Row id="activityfeed">
+          {activeTab === 1 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <Description
+                description={mlModelDetail.description}
+                entityFieldTasks={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldTaskCount
+                )}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldThreadCount
+                )}
+                entityFqn={mlModelDetail.fullyQualifiedName}
+                entityName={mlModelDetail.name}
+                entityType={EntityType.MLMODEL}
+                hasEditAccess={
+                  mlModelPermissions.EditAll ||
+                  mlModelPermissions.EditDescription
+                }
+                isEdit={isEdit}
+                isReadOnly={mlModelDetail.deleted}
+                owner={mlModelDetail.owner}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+                onThreadLinkSelect={handleThreadLinkSelect}
+              />
+              <MlModelFeaturesList
+                handleFeaturesUpdate={onFeaturesUpdate}
+                mlFeatures={mlModelDetail.mlFeatures}
+                permissions={mlModelPermissions}
+              />
+            </Card>
+          )}
+          {activeTab === 2 && (
+            <Card className={ENTITY_CARD_CLASS} id="activityfeed">
+              <Row>
                 <Col offset={3} span={18}>
                   <ActivityFeedList
                     isEntityFeed
@@ -658,34 +658,40 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                 </Col>
               </Row>
-            )}
-            {activeTab === 3 && (
+            </Card>
+          )}
+          {activeTab === 3 && (
+            <Card className={ENTITY_CARD_CLASS}>
               <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
                 {getMlHyperParameters()}
                 {getMlModelStore()}
               </div>
-            )}
-            {activeTab === 4 && (
-              <div className="h-full" data-testid="lineage-details">
-                <EntityLineageComponent
-                  addLineageHandler={lineageTabData.addLineageHandler}
-                  deleted={mlModelDetail.deleted}
-                  entityLineage={lineageTabData.entityLineage}
-                  entityLineageHandler={lineageTabData.entityLineageHandler}
-                  entityType={EntityType.MLMODEL}
-                  hasEditAccess={
-                    mlModelPermissions.EditAll || mlModelPermissions.EditLineage
-                  }
-                  isLoading={lineageTabData.isLineageLoading}
-                  isNodeLoading={lineageTabData.isNodeLoading}
-                  lineageLeafNodes={lineageTabData.lineageLeafNodes}
-                  loadNodeHandler={lineageTabData.loadNodeHandler}
-                  removeLineageHandler={lineageTabData.removeLineageHandler}
-                  onFullScreenClick={handleFullScreenClick}
-                />
-              </div>
-            )}
-            {activeTab === 5 && (
+            </Card>
+          )}
+          {activeTab === 4 && (
+            <Card
+              className={`${ENTITY_CARD_CLASS} card-body-full`}
+              data-testid="lineage-details">
+              <EntityLineageComponent
+                addLineageHandler={lineageTabData.addLineageHandler}
+                deleted={mlModelDetail.deleted}
+                entityLineage={lineageTabData.entityLineage}
+                entityLineageHandler={lineageTabData.entityLineageHandler}
+                entityType={EntityType.MLMODEL}
+                hasEditAccess={
+                  mlModelPermissions.EditAll || mlModelPermissions.EditLineage
+                }
+                isLoading={lineageTabData.isLineageLoading}
+                isNodeLoading={lineageTabData.isNodeLoading}
+                lineageLeafNodes={lineageTabData.lineageLeafNodes}
+                loadNodeHandler={lineageTabData.loadNodeHandler}
+                removeLineageHandler={lineageTabData.removeLineageHandler}
+                onFullScreenClick={handleFullScreenClick}
+              />
+            </Card>
+          )}
+          {activeTab === 5 && (
+            <Card className={ENTITY_CARD_CLASS}>
               <CustomPropertyTable
                 entityDetails={
                   mlModelDetail as CustomPropertyProps['entityDetails']
@@ -697,14 +703,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   mlModelPermissions.EditCustomFields
                 }
               />
-            )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {isEntityThreadLoading ? <Loader /> : null}
-            </div>
-          </Card>
+            </Card>
+          )}
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}>
+            {isEntityThreadLoading ? <Loader /> : null}
+          </div>
         </div>
       </div>
       {threadLink ? (

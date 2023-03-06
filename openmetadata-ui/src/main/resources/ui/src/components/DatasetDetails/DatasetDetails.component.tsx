@@ -13,6 +13,7 @@
 
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -824,9 +825,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
             {activeTab === 7 && (
               <Card
-                className={
+                className={classNames(
+                  'card-body-full',
                   location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
-                }
+                )}
                 id="lineageDetails">
                 <EntityLineageComponent
                   addLineageHandler={addLineageHandler}
