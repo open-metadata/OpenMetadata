@@ -219,7 +219,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
                     schema = @Schema(implementation = QueryResource.QueryList.class)))
       })
   public ResultList<Query> list(
-      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id") String queryId,
+      @Parameter(description = "query Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID queryId,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of queries before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -227,7 +227,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return dao.listQueriesByEntityId(queryId, before, after, limitParam);
+    return dao.listQueriesByEntityId(queryId.toString(), before, after, limitParam);
   }
 
   @GET
