@@ -107,11 +107,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(
-              description = "Filter locations by prefix of the FQN",
-              schema = @Schema(type = "string", example = "s3://bucket/folder1"))
-          @QueryParam("entity")
-          String entity,
       @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -131,7 +126,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("entity", entity);
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
