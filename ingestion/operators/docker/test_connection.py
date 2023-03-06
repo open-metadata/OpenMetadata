@@ -14,10 +14,8 @@ Entrypoint to test the connection to a source
 import os
 
 import yaml
+from metadata.generated.schema.entity.operations.testServiceConnection import TestServiceConnectionRequest
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
-    TestServiceConnectionRequest,
-)
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
