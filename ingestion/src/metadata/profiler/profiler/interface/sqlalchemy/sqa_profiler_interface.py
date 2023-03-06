@@ -253,7 +253,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics]
             )
-            return dict(row)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -261,6 +260,10 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             )
             session.rollback()
             raise RuntimeError(exc)
+        else:
+            if row:
+                return dict(row)
+        return None
 
     @_get_metrics.register(MetricTypes.System.value)
     def _(
