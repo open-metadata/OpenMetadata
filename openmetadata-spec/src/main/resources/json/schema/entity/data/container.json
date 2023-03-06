@@ -132,6 +132,10 @@
       },
       "default": null
     },
+    "serviceType": {
+      "description": "Service type this table is hosted in.",
+      "$ref": "../services/objectstoreService.json#/definitions/objectStoreServiceType"
+    },
     "followers": {
       "description": "Followers of this container.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"

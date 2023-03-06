@@ -71,7 +71,7 @@ export const addMetadataIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.metadata'),
     }),
     description: i18n.t(
@@ -96,7 +96,7 @@ export const addUsageIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.usage'),
     }),
     description: i18n.t(
@@ -121,7 +121,7 @@ export const addLineageIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.lineage'),
     }),
     description: i18n.t(
@@ -144,7 +144,7 @@ export const addProfilerIngestionGuide = [
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.profiler'),
     }),
     description: i18n.t(
@@ -167,7 +167,7 @@ export const addDBTIngestionGuide = [
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.dbt-lowercase'),
     }),
     description: i18n.t(

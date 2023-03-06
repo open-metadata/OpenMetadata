@@ -371,7 +371,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              {`${t('label.synonyms')}:`}
+              {`${t('label.synonym-plural')}:`}
             </label>
 
             <input

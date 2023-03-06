@@ -1,0 +1,94 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/testConnectionDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestConnectionDefinition",
+  "description": "TestConnection is the definition that will encapsulate the steps required to test a connection to a specific service.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "testConnectionStep": {
+      "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStep",
+      "properties": {
+        "name": {
+          "description": "Name of the step being tested",
+          "type": "string"
+        },
+        "description": {
+          "description": "What is the goal of the step",
+          "type": "string"
+        },
+        "mandatory": {
+          "description": "Is this step mandatory to be passed?",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name", "mandatory", "description"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this test case definition instance.",
+      "$ref": "../../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the Test Connection Definition. It should be the `type` of the service being tested, e.g., Mysql, or Snowflake.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test definition.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the test connection def.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "steps": {
+      "description": "Steps to test the connection. Order matters.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testConnectionStep"
+      }
+    },
+    "owner": {
+      "description": "Owner of this TestConnection definition.",
+      "$ref": "../../../type/entityReference.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false,
+  "required": ["name", "steps"]
+}

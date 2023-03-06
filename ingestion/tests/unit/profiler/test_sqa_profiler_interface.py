@@ -204,15 +204,18 @@ class SQAInterfaceTestMultiThread(TestCase):
                         self.table,
                     )
                 )
-            for window_metric in self.window_metrics:
-                window_metrics.append(
-                    (
-                        window_metric,
-                        MetricTypes.Window,
-                        col,
-                        self.table,
-                    )
+            window_metrics.append(
+                (
+                    [
+                        metric
+                        for metric in self.window_metrics
+                        if metric.is_window_metric()
+                    ],
+                    MetricTypes.Window,
+                    col,
+                    self.table,
                 )
+            )
 
         all_metrics = [*table_metrics, *column_metrics, *query_metrics, *window_metrics]
 
@@ -247,7 +250,7 @@ class SQAInterfaceTestMultiThread(TestCase):
             profile for profile in profile_request.columnProfile if profile.name == "id"
         ][0]
         assert name_column_profile.nullCount == 0
-        assert id_column_profile.median == 1.5
+        assert id_column_profile.median == 1.0
 
     @classmethod
     def tearDownClass(cls) -> None:

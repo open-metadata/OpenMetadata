@@ -101,7 +101,8 @@ public final class Entity {
   public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
-
+  public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
+  public static final String WORKFLOW = "workflow";
   public static final String ALERT_ACTION = "alertAction";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";

@@ -296,7 +296,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                         </Col>
                         <Col span={24}>
                           <Typography.Title level={5}>
-                            {t('label.features-used')}
+                            {t('label.feature-plural-used')}
                           </Typography.Title>
                         </Col>
 
