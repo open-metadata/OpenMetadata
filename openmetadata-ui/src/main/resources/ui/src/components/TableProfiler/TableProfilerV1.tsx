@@ -508,7 +508,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             {isDataQuality && (
               <DataQualityTab
                 deletedTable={deleted}
-                hasAccess={permissions.EditAll}
                 isLoading={isTestCaseLoading}
                 testCases={getFilterTestCase()}
                 onTestUpdate={fetchAllTests}
