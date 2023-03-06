@@ -428,7 +428,10 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
-    cy.get(`[title="PersonalData.Personal"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('PersonalData.Personal')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-details"]')
@@ -588,7 +591,10 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
-    cy.get(`[title="PersonalData.Personal"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('PersonalData.Personal')
+      .should('be.visible')
+      .click();
 
     interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveData');
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
@@ -647,7 +653,10 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click()
       .type(`${glossary}.${term1}`);
-    cy.get(`[title*="${term1}"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains(term1)
+      .should('be.visible')
+      .click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term1);
@@ -656,7 +665,10 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click()
       .type(`${glossary}.${term2}`);
-    cy.get(`[title*="${term2}"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains(term2)
+      .should('be.visible')
+      .click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term2);
@@ -681,7 +693,10 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click()
       .type(`${glossary1}.${term3}`);
-    cy.get(`[title*="${term3}"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains(term3)
+      .should('be.visible')
+      .click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term3);
@@ -690,7 +705,10 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click()
       .type(`${glossary1}.${term4}`);
-    cy.get(`[title*="${term4}"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains(term4)
+      .should('be.visible')
+      .click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term4);
@@ -715,7 +733,10 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click()
       .type(`${glossary1}.${term3}`);
-    cy.get(`[title*="${term3}"]`).should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains(term3)
+      .should('be.visible')
+      .click();
 
     cy.get(
       '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
