@@ -41,7 +41,7 @@ def get_connection(connection: AmundsenConnection) -> Neo4jHelper:
         raise SourceConnectionException(msg)
 
 
-def test_connection(client: Neo4jHelper) -> None:
+def test_connection(client: Neo4jHelper, _) -> None:
     """
     Test connection
     """

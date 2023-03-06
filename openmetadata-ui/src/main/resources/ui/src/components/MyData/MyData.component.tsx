@@ -33,7 +33,6 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
@@ -90,6 +89,7 @@ const MyData: React.FC<MyDataProps> = ({
           <div className="tw-mb-5" data-testid="my-tasks-container ">
             <Card
               bodyStyle={{ padding: 0 }}
+              className="panel-shadow-color"
               extra={
                 <>
                   <Link
@@ -104,7 +104,6 @@ const MyData: React.FC<MyDataProps> = ({
                   </Link>
                 </>
               }
-              style={leftPanelAntCardStyle}
               title={
                 <div className="tw-flex tw-item-center ">
                   <SVGIcons

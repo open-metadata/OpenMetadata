@@ -80,6 +80,10 @@ export const PAGE_HEADERS = {
     header: 'Metadata',
     subHeader: 'Ingest metadata from metadata services, right from the UI.',
   },
+  OBJECT_STORE_SERVICES: {
+    header: 'Object Stores',
+    subHeader: 'Ingest metadata from the most popular object store services.',
+  },
   ACTIVITY_FEED: {
     header: 'Activity Feed',
     subHeader:

@@ -488,7 +488,10 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         service_type: ServiceType = get_service_type_from_source_type(
             self.config.source.type
         )
-        if not self.config.source.serviceConnection:
+        if (
+            not self.config.source.serviceConnection
+            and not self.metadata.config.forceEntityOverwriting
+        ):
             service_name = self.config.source.serviceName
             try:
                 service: ServiceWithConnectionType = cast(
@@ -514,4 +517,4 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         self.engine = get_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)
-        test_connection_fn(self.engine)
+        test_connection_fn(self.engine, service_config)

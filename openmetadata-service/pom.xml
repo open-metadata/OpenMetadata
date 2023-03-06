@@ -586,6 +586,7 @@
             </goals>
             <id>unit-tests</id>
             <configuration>
+              <includes>**/*Test.java</includes>
               <excludes>**/*ResourceTest.java</excludes>
               <systemPropertyVariables>
                 <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>

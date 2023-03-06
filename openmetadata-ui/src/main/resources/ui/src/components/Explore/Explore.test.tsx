@@ -77,7 +77,6 @@ describe('Test Explore component', () => {
           [SearchIndex.PIPELINE]: 5,
           [SearchIndex.MLMODEL]: 2,
         }}
-        onChangeAdvancedSearchJsonTree={mockFunction}
         onChangeAdvancedSearchQueryFilter={mockFunction}
         onChangePostFilter={mockFunction}
         onChangeSearchIndex={mockFunction}

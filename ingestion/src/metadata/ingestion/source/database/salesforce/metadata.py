@@ -200,9 +200,6 @@ class SalesforceSource(DatabaseServiceSource):
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
             )
-            self.process_pii_sensitive_column(
-                metadata_config=self.metadata, table_request=table_request
-            )
             yield table_request
             self.register_record(table_request=table_request)
 
@@ -266,4 +263,4 @@ class SalesforceSource(DatabaseServiceSource):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.client)
+        test_connection_fn(self.client, self.service_connection)

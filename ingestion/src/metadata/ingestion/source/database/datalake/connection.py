@@ -15,11 +15,17 @@ Source connection handler
 from dataclasses import dataclass
 from functools import singledispatch
 
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
-    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
     GCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.utils.credentials import set_google_credentials
@@ -97,7 +103,7 @@ def get_connection(connection: DatalakeConnection) -> DatalakeClient:
     )
 
 
-def test_connection(connection: DatalakeClient) -> None:
+def test_connection(connection: DatalakeClient, _) -> None:
     """
     Test that we can connect to the source using the given aws resource
     :param engine: boto service resource to test

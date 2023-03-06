@@ -728,3 +728,6 @@ export const getFrequentlyJoinedColumns = (
     </div>
   ) : null;
 };
+
+export const getSortedTierBucketList = (buckets: Bucket[]): Bucket[] =>
+  buckets.sort((a, b) => Number(a.key.slice(-1)) - Number(b.key.slice(-1)));

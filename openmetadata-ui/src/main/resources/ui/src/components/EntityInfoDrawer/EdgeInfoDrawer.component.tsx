@@ -157,7 +157,9 @@ const EdgeInfoDrawer = ({
           </Col>
           <Col span={24}>
             <Divider />
-            <Typography.Paragraph>{t('label.sql-query')}:</Typography.Paragraph>
+            <Typography.Paragraph>
+              {`${t('label.sql-uppercase-query')}:`}
+            </Typography.Paragraph>
             {mysqlQuery ? (
               <SchemaEditor
                 className="edge-drawer-sql-editor"

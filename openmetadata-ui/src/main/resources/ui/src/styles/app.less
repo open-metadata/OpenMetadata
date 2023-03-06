@@ -20,6 +20,24 @@
 @gray: #dde3ea;
 @trigger-btn-hover-bg: #efefef;
 
+// Global css
+.global-border {
+  border: @global-border;
+}
+
+.card-shadow {
+  box-shadow: @card-shadow;
+}
+
+.shadow-none {
+  box-shadow: none;
+}
+
+// Left and Right Panel shadow color
+.panel-shadow-color {
+  box-shadow: @panels-shadow-color;
+}
+
 //font weight
 .font-300 {
   font-weight: 300;
@@ -105,7 +123,7 @@
 // Radius
 
 .rounded-4 {
-  border-radius: 4px;
+  border-radius: @border-radius-base;
 }
 .rounded-full {
   border-radius: 9999px;
