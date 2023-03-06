@@ -122,7 +122,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
       <div className="tw-mb-5" data-testid="es-error">
         <div className="tw-mb-3 tw-text-center">
           <p>
-            <span>{t('label.welcome-to-open-metadata')} </span>
+            <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
               {t('message.unable-to-error-elasticsearch', { error: errorText })}
             </span>

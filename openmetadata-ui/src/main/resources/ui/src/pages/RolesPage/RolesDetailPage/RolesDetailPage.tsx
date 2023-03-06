@@ -335,7 +335,7 @@ const RolesDetailPage = () => {
                     }
                   />
                 </TabPane>
-                <TabPane key="users" tab={t('label.users')}>
+                <TabPane key="users" tab={t('label.user-plural')}>
                   <RolesDetailPageList
                     hasAccess={rolePermission.EditAll}
                     list={role.users ?? []}
