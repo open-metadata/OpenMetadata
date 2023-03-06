@@ -116,7 +116,7 @@ const CreateUser = ({
   const slashedBreadcrumbList = useMemo(
     () => [
       {
-        name: forceBot ? t('label.bot-plural') : t('label.users'),
+        name: forceBot ? t('label.bot-plural') : t('label.user-plural'),
         url: forceBot ? getBotsPagePath() : getUsersPagePath(),
       },
       {
