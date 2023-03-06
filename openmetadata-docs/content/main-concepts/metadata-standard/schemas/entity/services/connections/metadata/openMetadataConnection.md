@@ -29,6 +29,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`enableVersionValidation`** *(boolean)*: Validate Openmetadata Server & Client Version. Default: `True`.
 - **`includeDatabaseServices`** *(boolean)*: Include Database Services for Indexing. Default: `True`.
 - **`includePipelineServices`** *(boolean)*: Include Pipeline Services for Indexing. Default: `True`.
+- **`forceEntityOverwriting`** *(boolean)*: 'Force the overwriting of any entity during the ingestion. Default: `False`.
 - **`limitRecords`** *(integer)*: Limit the number of records for Indexing. Default: `1000`.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions

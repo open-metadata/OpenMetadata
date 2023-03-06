@@ -22,6 +22,7 @@ import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -533,6 +534,7 @@ const EntityPageInfo = ({
                     setIsEditable(true);
                   }}>
                   <TagsContainer
+                    className="w-min-20"
                     dropDownHorzPosRight={false}
                     editable={isEditable}
                     isLoading={isTagLoading}
@@ -547,17 +549,18 @@ const EntityPageInfo = ({
                       handleTagSelection(tags);
                     }}>
                     {tags.length || tier ? (
-                      <button
-                        className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"
-                        data-testid="edit-button">
-                        <SVGIcons
-                          alt="edit"
-                          className="tw--mt-3 "
-                          icon="icon-edit"
-                          title={t('label.edit')}
-                          width="16px"
-                        />
-                      </button>
+                      <Button
+                        className="w-7 h-7 p-0 d-flex justify-center"
+                        data-testid="edit-button"
+                        icon={
+                          <IconEdit
+                            height={16}
+                            name={t('label.edit')}
+                            width={16}
+                          />
+                        }
+                        type="text"
+                      />
                     ) : (
                       <span>
                         <Tags

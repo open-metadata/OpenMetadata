@@ -109,7 +109,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void prepare(Container container) throws IOException {
     // the objectStoreService is not fully filled in terms of props - go to the db and get it in full and re-set it
     ObjectStoreService objectStoreService = Entity.getEntity(container.getService(), "", Include.NON_DELETED);
-    container.withService(objectStoreService.getEntityReference());
+    container.setService(objectStoreService.getEntityReference());
+    container.setServiceType(objectStoreService.getServiceType());
 
     if (container.getParent() != null) {
       Container parent = Entity.getEntity(container.getParent(), "owner", ALL);

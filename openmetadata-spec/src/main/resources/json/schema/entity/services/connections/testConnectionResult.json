@@ -9,7 +9,7 @@
     "testConnectionStepResult": {
       "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStep",
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStepResult",
       "properties": {
         "name": {
           "description": "Name of the step being tested",
@@ -34,6 +34,7 @@
       "required": ["name", "mandatory", "passed"]
     },
     "statusType": {
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus",
       "description": "Enum defining possible Test Connection Result status",
       "type": "string",
       "enum": ["Successful", "Failed", "Running"]
@@ -57,5 +58,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["steps", "status"]
+  "required": ["steps"]
 }
