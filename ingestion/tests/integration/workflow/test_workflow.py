@@ -86,6 +86,19 @@ class WorkflowTest(TestCase):
         except ConfigurationError:
             self.assertRaises(ConfigurationError)
 
+    def test_fail_no_service_connection_and_overwrite(self):
+        current_dir = pathlib.Path(__file__).resolve().parent
+        config_file = current_dir.joinpath("mysql_test.yaml")
+        workflow_config = load_config_file(config_file)
+
+        del workflow_config["source"]["serviceConnection"]
+        workflow_config["workflowConfig"]["openMetadataServerConfig"][
+            "forceEntityOverwriting"
+        ] = True
+
+        with self.assertRaises(AttributeError):
+            Workflow.create(workflow_config)
+
     def test_debug_not_show_authorization_headers(self):
         current_dir = pathlib.Path(__file__).resolve().parent
         config_file = current_dir.joinpath("mysql_test.yaml")
