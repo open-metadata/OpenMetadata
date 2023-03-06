@@ -65,6 +65,16 @@ COMMONS = {
     },
 }
 
+# required library for pii tagging
+pii_requirements = {
+    "spacy==3.5.0",
+    (
+        "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_lg-3.5.0/en_core_web_lg-3.5.0-py3-none-any.whl"
+    ),
+    VERSIONS["pandas"],
+    "presidio-analyzer==2.2.32",
+}
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
@@ -199,6 +209,7 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib~=0.1"},
     "trino": {"trino[sqlalchemy]"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
+    "pii-processor": pii_requirements,
 }
 
 dev = {

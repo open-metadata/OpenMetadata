@@ -320,7 +320,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }

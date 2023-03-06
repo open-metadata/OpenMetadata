@@ -40,7 +40,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
-import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -131,7 +130,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             .withConfig(
                 new AirflowConnection()
                     .withHostPort(new URI("http://my-server:1234"))
-                    .withConnection(MYSQL_DATABASE_CONNECTION));
+                    .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
     update.withConnection(updatedConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
@@ -266,20 +265,32 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     assertEquals(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
     // Currently, just checking for MySQL as metadata db for Airflow
     // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
-    DatabaseConnection expectedDatabaseConnection = (DatabaseConnection) expectedAirflowConnection.getConnection();
-    MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
+    MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedAirflowConnection.getConnection();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
     if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-      DatabaseConnection actualDatabaseConnection =
-          JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =
-          JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
     } else {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
       assertNull(actualAirflowConnection.getConnection());
     }
+  }
+
+  @Override
+  public CreatePipelineService createPutRequest(String name) {
+    AirflowConnection airflowConnection =
+        JsonUtils.convertValue(AIRFLOW_CONNECTION.getConfig(), AirflowConnection.class);
+    MysqlConnection mysqlConnection = JsonUtils.convertValue(airflowConnection.getConnection(), MysqlConnection.class);
+    PipelineConnection pipelineConnection = JsonUtils.convertValue(AIRFLOW_CONNECTION, PipelineConnection.class);
+    String secretPassword = "secret:/openmetadata/pipeline/" + name.toLowerCase() + "/connection/password";
+    return new CreatePipelineService()
+        .withName(name)
+        .withServiceType(PipelineServiceType.Airflow)
+        .withConnection(
+            pipelineConnection.withConfig(
+                airflowConnection.withConnection(mysqlConnection.withPassword(secretPassword))));
   }
 }

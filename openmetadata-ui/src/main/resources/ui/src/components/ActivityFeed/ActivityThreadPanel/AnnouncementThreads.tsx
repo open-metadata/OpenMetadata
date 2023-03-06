@@ -25,7 +25,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -98,7 +97,6 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             data-testid="announcement-card"
             key={`${index} - card`}
             style={{
-              ...leftPanelAntCardStyle,
               marginTop: '20px',
               paddingTop: '8px',
               border: `1px solid ${ANNOUNCEMENT_BORDER}`,

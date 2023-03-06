@@ -74,7 +74,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "test_case_column_value_median_to_be_between",
             "columnValueMedianToBeBetween",
             "COLUMN",
-            (TestCaseResult, "30.0", None, TestCaseStatus.Failed),
+            (TestCaseResult, "30", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_min_to_be_between",

@@ -284,6 +284,7 @@ class OMetaPatchMixin(Generic[T]):
         tag_fqn: str,
         from_glossary: bool = False,
         operation: str = ADD,
+        is_suggested: bool = False,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
 
@@ -327,7 +328,9 @@ class OMetaPatchMixin(Generic[T]):
                                     "source": TagSource.Tag.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
-                                    "state": State.Confirmed.value,
+                                    "state": State.Suggested.value
+                                    if is_suggested
+                                    else State.Confirmed.value,
                                     "tagFQN": tag_fqn,
                                 },
                             }
