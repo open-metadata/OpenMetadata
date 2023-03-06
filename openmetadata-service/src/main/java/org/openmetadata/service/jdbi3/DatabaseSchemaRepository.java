@@ -32,7 +32,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner";
+  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner,tags";
   private static final String DATABASE_SCHEMA_PATCH_FIELDS = DATABASE_SCHEMA_UPDATE_FIELDS;
 
   public DatabaseSchemaRepository(CollectionDAO dao) {
@@ -77,6 +77,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     addRelationship(
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
     storeOwner(schema, schema.getOwner());
+    // Add tag to databaseSchema relationship
+    applyTags(schema);
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {
