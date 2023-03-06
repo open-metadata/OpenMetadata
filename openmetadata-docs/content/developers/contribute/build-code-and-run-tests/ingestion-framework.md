@@ -66,7 +66,7 @@ sh docker/run_local_docker.sh
 Which will package the server code. Afterward, if the modifications only impact the ingestion code and need to refresh the ingestion container, you can run:
 
 ```shell
-cd docker/local-metadata
+cd docker/development
 docker compose down -v && docker compose up --build
 ```
 
