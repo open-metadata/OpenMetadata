@@ -502,6 +502,14 @@
     ]
   },
   {
+    "name" : "workflow",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
     "name" : "metadataService",
     "operations" : [
       "Create",

@@ -17,6 +17,7 @@ import { AggregationEntry } from 'interface/search.interface';
 import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getSortedTierBucketList } from 'utils/EntityUtils';
 
 import {
   compareAggregationKey,
@@ -45,7 +46,14 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
    */
   const aggregationEntries = useMemo(() => {
     if (isNil(filters) || isEmpty(filters)) {
-      return Object.entries(aggregations)
+      const { 'tier.tagFQN': tier, ...restProps } = aggregations;
+
+      const sortedTiersList = {
+        ...tier,
+        buckets: getSortedTierBucketList(tier.buckets),
+      };
+
+      return Object.entries({ ...restProps, 'tier.tagFQN': sortedTiersList })
         .filter(([, { buckets }]) => buckets.length)
         .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
     }

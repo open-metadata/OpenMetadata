@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/objectstore/azureStoreConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Azure StoreConnection",
+  "title": "Azure Store Connection",
   "description": "Azure Store Connection.",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.objectstore.AzureConnection",

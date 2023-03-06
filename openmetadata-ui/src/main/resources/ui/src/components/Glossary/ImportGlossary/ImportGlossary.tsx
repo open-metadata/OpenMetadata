@@ -180,7 +180,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                   size={16}>
                   <ImportIcon height={58} width={58} />
                   <Typography.Text>
-                    {t('label.drag-and-drop-files-here')}
+                    {t('message.drag-and-drop-files-here')}
                   </Typography.Text>
                 </Space>
                 <Divider plain>
