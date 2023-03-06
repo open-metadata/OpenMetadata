@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.WORKFLOW;
 
 import java.io.IOException;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
@@ -48,12 +49,14 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   @Override
   public void storeEntity(Workflow entity, boolean update) throws IOException {
     EntityReference owner = entity.getOwner();
+    OpenMetadataConnection openmetadataConnection = entity.getOpenMetadataServerConnection();
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    entity.withOwner(null).withHref(null);
+    // We don't want to store the OM connection.
+    entity.withOwner(null).withHref(null).withOpenMetadataServerConnection(null);
     store(entity, update);
 
     // Restore the relationships
-    entity.withOwner(owner);
+    entity.withOwner(owner).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   @Override

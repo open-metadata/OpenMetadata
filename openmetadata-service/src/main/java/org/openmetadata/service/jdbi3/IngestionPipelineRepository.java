@@ -85,6 +85,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = ingestionPipeline.getOwner();
     EntityReference service = ingestionPipeline.getService();
+    OpenMetadataConnection openmetadataConnection = ingestionPipeline.getOpenMetadataServerConnection();
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null) {
@@ -92,12 +93,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     // Don't store owner. Build it on the fly based on relationships
-    ingestionPipeline.withOwner(null).withService(null).withHref(null);
+    // We don't want to store the OM connection.
+    ingestionPipeline.withOwner(null).withService(null).withHref(null).withOpenMetadataServerConnection(null);
 
     store(ingestionPipeline, update);
 
     // Restore the relationships
-    ingestionPipeline.withOwner(owner).withService(service);
+    ingestionPipeline.withOwner(owner).withService(service).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   @Override
@@ -230,8 +232,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     public void entitySpecificUpdate() throws IOException {
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
-      updateOpenMetadataServerConnection(
-          original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
@@ -251,17 +251,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         throws JsonProcessingException {
       if (!origAirflowConfig.equals(updatedAirflowConfig)) {
         recordChange("airflowConfig", origAirflowConfig, updatedAirflowConfig);
-      }
-    }
-
-    private void updateOpenMetadataServerConnection(
-        OpenMetadataConnection origConfig, OpenMetadataConnection updatedConfig) throws JsonProcessingException {
-
-      JSONObject origConfigJson = new JSONObject(JsonUtils.pojoToJson(origConfig));
-      JSONObject updatedConfigJson = new JSONObject(JsonUtils.pojoToJson(updatedConfig));
-
-      if (!origConfigJson.similar(updatedConfigJson)) {
-        recordChange("openMetadataServerConnection", origConfig, updatedConfig);
       }
     }
 

@@ -298,7 +298,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
       throws IOException {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
-    // TODO: Create Trigger workflow endpoint using the pipelineServiceClient
     return create(uriInfo, securityContext, workflow);
   }
 
@@ -323,6 +322,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       throws IOException {
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
     Workflow workflow = dao.get(uriInfo, id, fields);
+    workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     return pipelineServiceClient.runAutomationsWorkflow(workflow);
   }
 
