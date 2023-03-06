@@ -26,12 +26,6 @@ interface PageLayoutProp {
   pageTitle: string;
 }
 
-export const leftPanelAntCardStyle = {
-  border: '1px rgb(221, 227, 234) solid',
-  borderRadius: '4px',
-  boxShadow: '1px 1px 8px rgb(0 0 0 / 6%)',
-};
-
 /**
  *
  * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/containers/PageLayoutV1.tsx PageLayoutV1}

@@ -54,7 +54,9 @@ const AddPipeLineModal = ({
           key="remove-edge-btn"
           type="text"
           onClick={onRemoveEdgeClick}>
-          {t('label.remove-edge')}
+          {t('label.remove-entity', {
+            entity: t('label.edge-lowercase'),
+          })}
         </Button>,
         <Button
           data-testid="save-button"

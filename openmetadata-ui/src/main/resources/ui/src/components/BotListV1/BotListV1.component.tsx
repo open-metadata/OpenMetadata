@@ -14,6 +14,7 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -231,9 +232,10 @@ const BotListV1 = ({
               </Tooltip>
             </div>
           }
+          classes="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       </Col>
     </Row>

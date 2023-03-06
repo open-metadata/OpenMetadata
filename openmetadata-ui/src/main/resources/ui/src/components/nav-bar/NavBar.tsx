@@ -12,6 +12,7 @@
  */
 
 import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
@@ -20,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
+
 import {
   NOTIFICATION_READ_TIMER,
   ROUTES,
@@ -73,6 +75,8 @@ const NavBar = ({
   handleKeyDown,
   handleOnClick,
 }: NavBarProps) => {
+  const { logoConfig } = useApplicationConfigProvider();
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -295,16 +299,23 @@ const NavBar = ({
     [AppState]
   );
 
+  const brandLogoUrl = useMemo(() => {
+    return logoConfig?.customMonogramUrlPath ?? Logo;
+  }, [logoConfig]);
+
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons
+              <Image
                 alt="OpenMetadata Logo"
+                data-testid="image"
+                fallback={Logo}
                 height={30}
-                icon={Icons.LOGO_SMALL}
+                preview={false}
+                src={brandLogoUrl}
                 width={25}
               />
             </NavLink>
@@ -352,12 +363,11 @@ const NavBar = ({
             data-testid="appbar-item">
             <Input
               autoComplete="off"
-              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
+              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41 rounded-4"
               data-testid="searchBox"
               id="searchBox"
               placeholder={t('message.search-for-entity-types')}
               style={{
-                borderRadius: '0.24rem',
                 boxShadow: 'none',
                 height: '37px',
               }}

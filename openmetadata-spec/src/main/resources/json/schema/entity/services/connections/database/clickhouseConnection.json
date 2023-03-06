@@ -63,6 +63,16 @@
       "description": "Clickhouse SQL connection duration.",
       "type": "integer"
     },
+    "secure": {
+      "title": "Secure Connection",
+      "description": "Establish secure connection with clickhouse",
+      "type": "boolean"
+    },
+    "keyfile": {
+      "title": "Key File Path",
+      "description": "Path to key file for establishing secure connection",
+      "type": "boolean"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

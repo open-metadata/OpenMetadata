@@ -74,7 +74,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           <Form.Item
             data-testid="sql-editor-container"
             key={name}
-            label={t('label.sql-query')}
+            label={t('label.sql-uppercase-query')}
             name={name}
             tooltip={t('message.sql-query-tooltip')}>
             <SchemaEditor

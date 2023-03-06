@@ -21,9 +21,9 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base
 
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.orm_profiler.api.models import ProfileSampleConfig
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
+from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.profiler.runner import QueryRunner
+from metadata.profiler.profiler.sampler import Sampler
 from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()

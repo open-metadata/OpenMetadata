@@ -241,7 +241,9 @@ export const AuthProvider = ({
         appState.updateUserDetails(existingData);
         showErrorToast(
           error,
-          t('server.entity-updating-error', { entity: 'label.admin-profile' })
+          t('server.entity-updating-error', {
+            entity: t('label.admin-profile'),
+          })
         );
       });
   };

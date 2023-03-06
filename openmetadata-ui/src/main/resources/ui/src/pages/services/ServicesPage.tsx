@@ -14,6 +14,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import Services from 'components/Services/Services';
@@ -97,22 +98,26 @@ const ServicesPage = () => {
     return <Loader />;
   }
 
-  return viewAllPermission ? (
-    <Services
-      currentPage={currentPage}
-      paging={paging}
-      serviceData={serviceDetails}
-      serviceName={serviceName}
-      onPageChange={handlePageChange}
-    />
-  ) : (
-    <Row>
-      <Col span={24}>
-        <ErrorPlaceHolder>
-          <p>{NO_PERMISSION_TO_VIEW}</p>
-        </ErrorPlaceHolder>
-      </Col>
-    </Row>
+  return (
+    <PageContainerV1>
+      {viewAllPermission ? (
+        <Services
+          currentPage={currentPage}
+          paging={paging}
+          serviceData={serviceDetails}
+          serviceName={serviceName}
+          onPageChange={handlePageChange}
+        />
+      ) : (
+        <Row>
+          <Col span={24}>
+            <ErrorPlaceHolder>
+              <p>{NO_PERMISSION_TO_VIEW}</p>
+            </ErrorPlaceHolder>
+          </Col>
+        </Row>
+      )}
+    </PageContainerV1>
   );
 };
 

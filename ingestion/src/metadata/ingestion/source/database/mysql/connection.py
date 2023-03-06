@@ -24,8 +24,10 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
+    init_empty_connection_options,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -35,6 +37,16 @@ def get_connection(connection: MysqlConnection) -> Engine:
     """
     Create connection
     """
+    if connection.sslCA or connection.sslCert or connection.sslKey:
+        if not connection.connectionOptions:
+            connection.connectionOptions = init_empty_connection_options()
+        if connection.sslCA:
+            connection.connectionOptions.__root__["ssl_ca"] = connection.sslCA
+        if connection.sslCert:
+            connection.connectionOptions.__root__["ssl_cert"] = connection.sslCert
+        if connection.sslKey:
+            connection.connectionOptions.__root__["ssl_key"] = connection.sslKey
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
@@ -42,7 +54,7 @@ def get_connection(connection: MysqlConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> str:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test connection
     """
