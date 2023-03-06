@@ -16,10 +16,12 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -99,6 +101,13 @@ public abstract class ServiceEntityRepository<
     storeOwner(service, service.getOwner());
     // add tags relationship
     applyTags(service);
+  }
+
+  public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {
+    T service = dao.findEntityById(serviceId);
+    service.setTestConnectionResult(testConnectionResult);
+    dao.update(serviceId, JsonUtils.pojoToJson(service));
+    return service;
   }
 
   @Override

@@ -15,10 +15,6 @@ import { Card, Divider, Typography } from 'antd';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ANNOUNCEMENT_BG,
-  ANNOUNCEMENT_BORDER,
-} from '../../../constants/Feeds.constants';
-import {
   Post,
   Thread,
   ThreadType,
@@ -30,6 +26,7 @@ import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
+import './announcement.less';
 
 const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   threads,
@@ -93,15 +90,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       return (
         <Fragment key={index}>
           <Card
-            className="ant-card-feed"
+            className="ant-card-feed announcement-thread-card"
             data-testid="announcement-card"
-            key={`${index} - card`}
-            style={{
-              marginTop: '20px',
-              paddingTop: '8px',
-              border: `1px solid ${ANNOUNCEMENT_BORDER}`,
-              background: `${ANNOUNCEMENT_BG}`,
-            }}>
+            key={`${index} - card`}>
             <AnnouncementBadge />
             <div data-testid="main-message">
               <ActivityFeedCard

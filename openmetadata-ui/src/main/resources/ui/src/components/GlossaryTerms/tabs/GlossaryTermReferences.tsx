@@ -151,7 +151,7 @@ const GlossaryTermReferences = ({
                               message: t('message.endpoint-should-be-valid'),
                             },
                           ]}>
-                          <Input placeholder={t('label.end-point')} />
+                          <Input placeholder={t('label.endpoint')} />
                         </Form.Item>
                       </Col>
                       <Col span={1}>

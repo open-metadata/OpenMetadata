@@ -14,7 +14,8 @@ Python API REST wrapper and helpers
 import datetime
 import time
 import traceback
-from typing import Callable, Dict, List, Optional, Union
+from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
@@ -167,7 +168,10 @@ class REST:
         if self.config.extra_headers:
             extra_headers: Dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
-            logger.debug("Extra headers provided '%s'", extra_headers)
+            logger.debug(
+                "Extra headers provided '%s'",
+                self._mask_authorization_headers(extra_headers),
+            )
             headers = {**headers, **extra_headers}
 
         opts = {
@@ -180,6 +184,8 @@ class REST:
             "verify": self._verify,
         }
 
+        masked_opts = self._mask_authorization_headers(opts)
+
         method_key = "params" if method.upper() == "GET" else "data"
         opts[method_key] = data
 
@@ -188,7 +194,7 @@ class REST:
         while retry >= 0:
             try:
                 logger.debug("URL %s, method %s", url, method)
-                logger.debug("Data %s", opts)
+                logger.debug("Data %s", masked_opts)
                 return self._one_request(method, url, opts, retry)
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
@@ -318,3 +324,12 @@ class REST:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def _mask_authorization_headers(self, opts: Dict[str, Any]) -> Dict[str, Any]:
+        if opts and opts["headers"]:
+            if self.config.auth_header and opts["headers"][self.config.auth_header]:
+                masked_opts = deepcopy(opts)
+                if self.config.auth_header and opts["headers"][self.config.auth_header]:
+                    masked_opts["headers"][self.config.auth_header] = "********"
+                return masked_opts
+        return opts
