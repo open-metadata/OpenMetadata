@@ -34,6 +34,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,8 @@ import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline;
@@ -187,6 +191,31 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // Delete the pipeline service and ensure ingestion pipeline is deleted
     deleteEntity(updatedService.getId(), true, true, ADMIN_AUTH_HEADERS);
     ingestionPipelineResourceTest.assertEntityDeleted(ingestionPipeline.getId(), true);
+  }
+
+  @Test
+  void put_testConnectionResult_200(TestInfo test) throws IOException {
+    PipelineService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    // By default, we have no result logged in
+    assertNull(service.getTestConnectionResult());
+    PipelineService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    // Validate that the data got properly stored
+    assertNotNull(updatedService.getTestConnectionResult());
+    assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(updatedService.getConnection(), service.getConnection());
+    // Check that the stored data is also correct
+    PipelineService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(stored.getTestConnectionResult());
+    assertEquals(stored.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(stored.getConnection(), service.getConnection());
+  }
+
+  public PipelineService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(serviceId).path("/testConnectionResult");
+    return TestUtils.put(target, testConnectionResult, PipelineService.class, OK, authHeaders);
   }
 
   @Override

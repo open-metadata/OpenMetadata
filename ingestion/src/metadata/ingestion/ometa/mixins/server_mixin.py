@@ -50,7 +50,8 @@ class OMetaServerMixin:
             raw_version = self.client.get("/system/version")["version"]
         except KeyError:
             raise VersionNotFoundException(
-                "Cannot Find Version at api/v1/system/version"
+                "Cannot Find Version at api/v1/system/version."
+                + " If running the server in DEV mode locally, make sure to `mvn clean install`."
             )
         return get_version_from_string(raw_version)
 
