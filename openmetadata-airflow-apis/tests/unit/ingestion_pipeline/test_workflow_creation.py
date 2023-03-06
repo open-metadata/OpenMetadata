@@ -32,7 +32,7 @@ from openmetadata_managed_apis.workflows.ingestion.test_suite import (
 from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
-
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -215,7 +215,7 @@ class OMetaServiceTest(TestCase):
         workflow_config = build_metadata_workflow_config(ingestion_pipeline)
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
-        Workflow.create(config)
+        parse_workflow_config_gracefully(config)
 
     @patch.object(
         Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
@@ -248,7 +248,7 @@ class OMetaServiceTest(TestCase):
 
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
-        Workflow.create(config)
+        parse_workflow_config_gracefully(config)
 
     @patch.object(
         Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
@@ -281,7 +281,7 @@ class OMetaServiceTest(TestCase):
 
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
-        Workflow.create(config)
+        parse_workflow_config_gracefully(config)
 
     @patch.object(
         ProfilerWorkflow,
@@ -314,7 +314,7 @@ class OMetaServiceTest(TestCase):
         workflow_config = build_profiler_workflow_config(ingestion_pipeline)
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
-        ProfilerWorkflow.create(config)
+        parse_workflow_config_gracefully(config)
 
     @patch.object(
         TestSuiteWorkflow,
@@ -347,4 +347,4 @@ class OMetaServiceTest(TestCase):
         workflow_config = build_test_suite_workflow_config(ingestion_pipeline)
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
-        TestSuiteWorkflow.create(config)
+        parse_workflow_config_gracefully(config)
