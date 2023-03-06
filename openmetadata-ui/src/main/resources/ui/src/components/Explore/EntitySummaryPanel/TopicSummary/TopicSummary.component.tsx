@@ -37,7 +37,7 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface TopicSummaryProps {
   entityDetails: Topic;
   componentType?: string;
-  tags?: (TagLabel | undefined)[];
+  tags?: TagLabel[];
   isLoading?: boolean;
 }
 
@@ -70,7 +70,11 @@ function TopicSummary({
     const owner = entityDetails.owner;
 
     return {
-      value: getOwnerNameWithProfilePic(owner) || t('label.no-owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ||
+        t('label.no-entity', {
+          entity: t('label.owner'),
+        }),
       url: getTeamAndUserDetailsPath(owner?.name || ''),
       isLink: owner?.name ? true : false,
     };

@@ -20,7 +20,7 @@ import {
 export interface TableSummaryProps {
   entityDetails: Table;
   componentType?: string;
-  tags?: (TagLabel | undefined)[];
+  tags?: TagLabel[];
   isLoading?: boolean;
 }
 

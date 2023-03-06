@@ -34,7 +34,7 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;
   componentType?: string;
-  tags?: (TagLabel | undefined)[];
+  tags?: TagLabel[];
   isLoading?: boolean;
 }
 

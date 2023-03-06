@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Drawer, Row } from 'antd';
+import { Col, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
@@ -279,7 +279,7 @@ const EntityInfoDrawer = ({
             )}
           </Col>
           <Col span={24}>
-            <p
+            <Typography
               className={classNames('flex items-center text-base', {
                 'entity-info-header-link': !isMainNode,
               })}>
@@ -290,7 +290,7 @@ const EntityInfoDrawer = ({
                 selectedNode.type,
                 isMainNode
               )}
-            </p>
+            </Typography>
           </Col>
         </Row>
       }>

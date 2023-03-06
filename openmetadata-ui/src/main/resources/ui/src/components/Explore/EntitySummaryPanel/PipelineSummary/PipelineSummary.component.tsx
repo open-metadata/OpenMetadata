@@ -33,7 +33,7 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface PipelineSummaryProps {
   entityDetails: Pipeline;
   componentType?: string;
-  tags?: (TagLabel | undefined)[];
+  tags?: TagLabel[];
   isLoading?: boolean;
 }
 

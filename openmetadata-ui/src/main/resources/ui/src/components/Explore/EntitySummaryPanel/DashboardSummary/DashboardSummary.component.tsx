@@ -38,7 +38,7 @@ import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 interface DashboardSummaryProps {
   entityDetails: Dashboard;
   componentType?: string;
-  tags?: (TagLabel | undefined)[];
+  tags?: TagLabel[];
   isLoading?: boolean;
 }
 

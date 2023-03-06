@@ -23,7 +23,7 @@ const SummaryTagsDescription = ({
   tags,
   entityDetail,
 }: {
-  tags: (TagLabel | undefined)[];
+  tags: TagLabel[];
   entityDetail: EntityData;
 }) => {
   const { t } = useTranslation();
@@ -67,7 +67,9 @@ const SummaryTagsDescription = ({
             {entityDetail.description?.trim() ? (
               <RichTextEditorPreviewer markdown={entityDetail.description} />
             ) : (
-              <p className="text-grey-body">{t('label.no-data-found')}</p>
+              <Typography className="text-grey-body">
+                {t('label.no-data-found')}
+              </Typography>
             )}
           </div>
         </Col>

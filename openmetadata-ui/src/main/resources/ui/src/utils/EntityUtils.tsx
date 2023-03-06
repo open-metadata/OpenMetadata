@@ -72,7 +72,7 @@ export enum DRAWER_NAVIGATION_OPTIONS {
 export const getEntityTags = (
   type: string,
   entityDetail: Table | Pipeline | Dashboard | Topic | Mlmodel
-): Array<TagLabel | undefined> => {
+): Array<TagLabel> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
@@ -153,7 +153,10 @@ export const getEntityOverview = (
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -253,7 +256,10 @@ export const getEntityOverview = (
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -302,7 +308,10 @@ export const getEntityOverview = (
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -352,7 +361,10 @@ export const getEntityOverview = (
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) || i18next.t('label.no-owner'),
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
           url: getOwnerValue(owner as EntityReference),
           isLink: owner?.name ? true : false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
