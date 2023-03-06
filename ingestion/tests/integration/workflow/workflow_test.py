@@ -67,15 +67,15 @@ class WorkflowTest(TestCase):
         config = workflow.config.workflowConfig.openMetadataServerConfig
         client = OpenMetadata(config).client
 
+        self.assertIsNotNone(
+            client.get("/services/databaseServices/name/local_mysql_test")
+        )
+
         client.delete(
             f"/services/databaseServices/"
             f"{client.get('/services/databaseServices/name/local_mysql_test')['id']}"
             f"?hardDelete=true&recursive=true"
         )
-        file_path = "/tmp/mysql_test"
-        with open(file_path) as ingestionFile:
-            ingestionData = ingestionFile.read()
-        self.assertEqual(ingestionData is not None, True)
 
     def test_execute_4xx(self):
         config_file = pathlib.Path("/tmp/mysql_test123")
@@ -83,3 +83,16 @@ class WorkflowTest(TestCase):
             load_config_file(config_file)
         except ConfigurationError:
             self.assertRaises(ConfigurationError)
+
+    def test_fail_no_service_connection_and_overwrite(self):
+        current_dir = pathlib.Path(__file__).resolve().parent
+        config_file = current_dir.joinpath("mysql_test.yaml")
+        workflow_config = load_config_file(config_file)
+
+        del workflow_config["source"]["serviceConnection"]
+        workflow_config["workflowConfig"]["openMetadataServerConfig"][
+            "forceEntityOverwriting"
+        ] = True
+
+        with self.assertRaises(AttributeError):
+            Workflow.create(workflow_config)
