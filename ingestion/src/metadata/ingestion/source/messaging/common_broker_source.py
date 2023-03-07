@@ -213,7 +213,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             topic_name = topic_details.topic_name
             sample_data = []
             try:
-                self.consumer_client.subscribe([topic_name], on_assign=on_assign)
+                self.consumer_client.subscribe(
+                    [topic_name], on_assign=on_partitions_assignment_to_consumer
+                )
                 logger.info(
                     f"Broker consumer polling for sample messages in topic {topic_name}"
                 )
