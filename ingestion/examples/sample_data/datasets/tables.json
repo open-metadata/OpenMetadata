@@ -1,7 +1,7 @@
 {
       "tables": [
           {
-              "name": "dim_address",
+              "name": "bl_vertical_lists",
               "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
               "version": 0.1,
               "updatedAt": 1638354087391,
@@ -135,15 +135,15 @@
               "tags": [],
               "usageSummary": {
                   "dailyStats": {
-                      "count": 100,
+                      "count": 73,
                       "percentileRank": 45
                   },
                   "weeklyStats": {
-                      "count": 100,
+                      "count": 73,
                       "percentileRank": 45
                   },
                   "monthlyStats": {
-                      "count": 100,
+                      "count": 67,
                       "percentileRank": 45
                   },
                   "date": "2021-12-01"
@@ -678,7 +678,7 @@
           },
           {
               "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
-              "name": "dim_address_clean",
+              "name": "ab_account_verticals",
               "description": "Created from dim_address after a small cleanup.",
               "version": 0.1,
               "updatedAt": 1638354087591,
@@ -803,15 +803,15 @@
               "tags": [],
               "usageSummary": {
                   "dailyStats": {
-                      "count": 100,
+                      "count": 87,
                       "percentileRank": 45
                   },
                   "weeklyStats": {
-                      "count": 100,
+                      "count": 87,
                       "percentileRank": 45
                   },
                   "monthlyStats": {
-                      "count": 100,
+                      "count": 87,
                       "percentileRank": 45
                   },
                   "date": "2021-12-01"
