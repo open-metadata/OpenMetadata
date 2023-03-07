@@ -155,7 +155,7 @@ class ProfilerTest(TestCase):
             distinctCount=2.0,
             distinctProportion=1.0,
             median=30.0,
-            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+            timestamp=age_profile.timestamp,
             firstQuartile=30.0,
             thirdQuartile=31.0,
             interQuartileRange=1.0,
