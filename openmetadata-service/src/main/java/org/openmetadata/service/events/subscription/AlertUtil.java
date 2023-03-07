@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -179,5 +180,16 @@ public class AlertUtil {
     // Check Spel Conditions
     return AlertUtil.evaluateAlertConditions(
         event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules().getRules());
+  }
+
+  public static SubscriptionStatus buildSubscriptionStatus(SubscriptionStatus.Status status, Long lastSuccessful, Long lastFailure, Integer statusCode, String reason, Long nextAttempt, Long timeStamp){
+    return new SubscriptionStatus()
+            .withStatus(status)
+            .withLastSuccessfulAt(lastSuccessful)
+            .withLastFailedAt(lastFailure)
+            .withLastFailedStatusCode(statusCode)
+            .withLastFailedReason(reason)
+            .withNextAttempt(nextAttempt)
+            .withTimestamp(timeStamp);
   }
 }
