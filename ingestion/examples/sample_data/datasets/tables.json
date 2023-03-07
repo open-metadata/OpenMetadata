@@ -1,7 +1,7 @@
 {
       "tables": [
           {
-              "name": "bl_vertical_lists",
+              "name": "dim_address",
               "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
               "version": 0.1,
               "updatedAt": 1638354087391,
@@ -678,7 +678,7 @@
           },
           {
               "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
-              "name": "ab_account_verticals",
+              "name": "dim_address_clean",
               "description": "Created from dim_address after a small cleanup.",
               "version": 0.1,
               "updatedAt": 1638354087591,
