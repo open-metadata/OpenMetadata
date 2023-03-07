@@ -209,7 +209,9 @@ const TagsPage = () => {
     } catch (error) {
       const errMsg = getErrorText(
         error as AxiosError,
-        t('server.fetch-tags-category-error')
+        t('server.entity-fetch-error', {
+          entity: t('label.tag-category-lowercase'),
+        })
       );
       showErrorToast(errMsg);
       setError(errMsg);
@@ -248,7 +250,9 @@ const TagsPage = () => {
       } catch (err) {
         const errMsg = getErrorText(
           err as AxiosError,
-          t('server.fetch-tags-category-error')
+          t('server.entity-fetch-error', {
+            entity: t('label.tag-category-lowercase'),
+          })
         );
         showErrorToast(errMsg);
         setError(errMsg);
@@ -310,7 +314,12 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(err, t('server.create-tag-category-error'));
+          showErrorToast(
+            err,
+            t('server.create-entity-error', {
+              entity: t('label.tag-category-lowercase'),
+            })
+          );
         })
         .finally(() => {
           setIsAddingClassification(false);
@@ -361,11 +370,20 @@ const TagsPage = () => {
             return updatedClassification;
           });
         } else {
-          showErrorToast(t('server.delete-tag-category-error'));
+          showErrorToast(
+            t('server.delete-entity-error', {
+              entity: t('label.tag-category-lowercase'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.delete-tag-category-error'));
+        showErrorToast(
+          err,
+          t('server.delete-entity-error', {
+            entity: t('label.tag-category-lowercase'),
+          })
+        );
       })
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
@@ -390,11 +408,18 @@ const TagsPage = () => {
             });
           }
         } else {
-          showErrorToast(t('server.delete-tag-error'));
+          showErrorToast(
+            t('server.delete-entity-error', {
+              entity: t('label.tag-lowercase'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.delete-tag-error'));
+        showErrorToast(
+          err,
+          t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+        );
       })
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
@@ -513,7 +538,12 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(err, t('label.create-tag-error'));
+          showErrorToast(
+            err,
+            t('label.create-entity-error', {
+              entity: t('label.tag-lowercase'),
+            })
+          );
         })
         .finally(() => {
           setIsAddingTag(false);
