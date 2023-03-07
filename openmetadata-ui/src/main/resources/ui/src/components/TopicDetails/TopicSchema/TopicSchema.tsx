@@ -24,8 +24,10 @@ import {
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { CSMode } from 'enums/codemirror.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
@@ -274,49 +276,57 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <Tag>{messageSchema?.schemaType ?? ''}</Tag>
         </Space>
       </Col>
-      {!isEmpty(messageSchema?.schemaFields) && (
-        <Col span={24}>
-          <Radio.Group value={viewType} onChange={handleViewChange}>
-            <Radio.Button value={SchemaViewType.FIELDS}>
-              {t('label.field-plural')}
-            </Radio.Button>
-            <Radio.Button value={SchemaViewType.TEXT}>
-              {t('label.text')}
-            </Radio.Button>
-          </Radio.Group>
-        </Col>
+      {isEmpty(messageSchema?.schemaFields) &&
+      isEmpty(messageSchema?.schemaText) ? (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.VIEW}>
+          {t('message.no-schema-data-available')}
+        </ErrorPlaceHolder>
+      ) : (
+        <>
+          {!isEmpty(messageSchema?.schemaFields) && (
+            <Col span={24}>
+              <Radio.Group value={viewType} onChange={handleViewChange}>
+                <Radio.Button value={SchemaViewType.FIELDS}>
+                  {t('label.field-plural')}
+                </Radio.Button>
+                <Radio.Button value={SchemaViewType.TEXT}>
+                  {t('label.text')}
+                </Radio.Button>
+              </Radio.Group>
+            </Col>
+          )}
+          <Col span={24}>
+            {viewType === SchemaViewType.TEXT ||
+            isEmpty(messageSchema?.schemaFields) ? (
+              messageSchema?.schemaText && (
+                <SchemaEditor
+                  editorClass={classNames('table-query-editor')}
+                  mode={{ name: CSMode.JAVASCRIPT }}
+                  options={{
+                    styleActiveLine: false,
+                  }}
+                  value={messageSchema?.schemaText ?? ''}
+                />
+              )
+            ) : (
+              <Table
+                bordered
+                className={className}
+                columns={columns}
+                data-testid="topic-schema-fields-table"
+                dataSource={messageSchema?.schemaFields}
+                expandable={{
+                  ...getTableExpandableConfig<Field>(),
+                  rowExpandable: (record) => !isEmpty(record.children),
+                }}
+                pagination={false}
+                rowKey="name"
+                size="small"
+              />
+            )}
+          </Col>
+        </>
       )}
-      <Col span={24}>
-        {viewType === SchemaViewType.TEXT ||
-        isEmpty(messageSchema?.schemaFields) ? (
-          messageSchema?.schemaText && (
-            <SchemaEditor
-              editorClass={classNames('table-query-editor')}
-              mode={{ name: CSMode.JAVASCRIPT }}
-              options={{
-                styleActiveLine: false,
-              }}
-              value={messageSchema?.schemaText ?? ''}
-            />
-          )
-        ) : (
-          <Table
-            bordered
-            className={className}
-            columns={columns}
-            data-testid="topic-schema-fields-table"
-            dataSource={messageSchema?.schemaFields}
-            expandable={{
-              ...getTableExpandableConfig<Field>(),
-              rowExpandable: (record) => !isEmpty(record.children),
-            }}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        )}
-      </Col>
-
       {editFieldDescription && (
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
