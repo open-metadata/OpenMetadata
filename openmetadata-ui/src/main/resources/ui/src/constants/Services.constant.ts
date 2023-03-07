@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { map, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
@@ -171,6 +173,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
+  objectstoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -179,6 +184,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
+  'objectstoreServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -188,6 +194,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
+  objectStores: ServiceCategory.OBJECT_STORE_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -197,6 +204,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
+  objectstoreServices: 'objectStores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -217,6 +225,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   }),
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
+  }),
+  objectstoreServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.object-store'),
   }),
 };
 
@@ -240,3 +251,8 @@ export const COMMON_UI_SCHEMA = {
 
 export const OPENMETADATA = 'OpenMetadata';
 export const JWT_CONFIG = 'openMetadataJWTClientConfig';
+
+export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
+  label: startCase(value),
+  value,
+}));

@@ -213,6 +213,7 @@ And we receive the created Ingestion Pipeline Entity back:
     "enableVersionValidation": true,
     "includeDatabaseServices": true,
     "includePipelineServices": true,
+    "forceEntityOverwriting": false,
     "limitRecords": 1000,
     "supportsMetadataExtraction": true
   },

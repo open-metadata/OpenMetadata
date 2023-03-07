@@ -118,6 +118,9 @@ migrationConfiguration:
 secretsManagerConfiguration:
   secretsManager: in-memory
 
+security:
+  maskPasswordsAPI: false
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 5s
@@ -193,11 +196,8 @@ email:
 
 applicationConfig:
   logoConfig:
-    logoLocationType: "openmetadata"
-    loginPageLogoAbsoluteFilePath: ""
-    loginPageLogoUrlPath: ""
-    navBarLogoAbsoluteFilePath: ""
-    navBarLogoUrlPath: ""
+    customLogoUrlPath: ""
+    customMonogramUrlPath: ""
   loginConfig:
     maxLoginFailAttempts: 3
     accessBlockTime: 600

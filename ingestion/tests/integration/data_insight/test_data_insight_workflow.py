@@ -88,8 +88,8 @@ WEB_EVENT_DATA = [
         timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
-            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
-            url="/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+            fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
+            url='/table/sample_data.ecommerce_db.shopify."dim.shop"',
             hostname="localhost",
             language="en-US",
             screenSize="1280x720",

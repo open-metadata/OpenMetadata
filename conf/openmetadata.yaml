@@ -241,6 +241,10 @@ secretsManagerConfiguration:
     accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
+security:
+# it will mask all the password fields in the responses sent from the API except for the bots
+  maskPasswordsAPI: ${MASK_PASSWORDS_API:-false}
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
@@ -267,13 +271,10 @@ email:
 
 applicationConfig:
   logoConfig:
-    logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , based on this specify either '*AbsoluteFilePath' or '*LogoUrlPath' }
-    loginPageLogoAbsoluteFilePath: ${OM_LOGO_LOGIN_LOCATION_FILE_PATH:-""} #login page logo , work in "filePath" mode
-    loginPageLogoUrlPath: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""} #login page logo , work in "url" mode
-    navBarLogoAbsoluteFilePath: ${OM_LOGO_NAVBAR_LOCATION_FILE_PATH:-""} #nav bar logo , work in "filePath" mode
-    navBarLogoUrlPath: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""} #nav bar logo , work in "url" mode
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
   loginConfig:
     maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 

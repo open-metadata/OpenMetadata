@@ -14,6 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -179,8 +180,8 @@ const UserListV1: FC<UserListV1Props> = ({
   }, [showRestore]);
 
   const fetchErrorPlaceHolder = useMemo(
-    () => (type: string) => {
-      return (
+    () => () =>
+      (
         <Row>
           <Col className="w-full tw-flex tw-justify-end">
             <span>
@@ -189,7 +190,11 @@ const UserListV1: FC<UserListV1Props> = ({
                 size="small"
                 onClick={onShowDeletedUserChange}
               />
-              <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
+              <span className="tw-ml-2">
+                {t('label.deleted-entity', {
+                  entity: t('label.user-plural'),
+                })}
+              </span>
             </span>
           </Col>
           <Col span={24}>
@@ -205,17 +210,16 @@ const UserListV1: FC<UserListV1Props> = ({
                 </Button>
               }
               heading="User"
-              type={type}
+              type={ERROR_PLACEHOLDER_TYPE.ADD}
             />
           </Col>
         </Row>
-      );
-    },
+      ),
     []
   );
 
   if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
-    return fetchErrorPlaceHolder('ADD_DATA');
+    return fetchErrorPlaceHolder();
   }
 
   return (
@@ -232,7 +236,11 @@ const UserListV1: FC<UserListV1Props> = ({
               checked={showDeletedUser}
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
+            <span className="tw-ml-2">
+              {t('label.deleted-entity', {
+                entity: t('label.user-plural'),
+              })}
+            </span>
           </span>
           <Tooltip
             title={

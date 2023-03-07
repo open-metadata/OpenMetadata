@@ -23,7 +23,6 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { DEFAULT_SKELETON_DATA_LENGTH } from '../Skeleton/SkeletonUtils/Skeleton.utils';
 
@@ -48,7 +47,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
   return (
     <>
       <Card
-        style={leftPanelAntCardStyle}
+        className="panel-shadow-color"
         title={t('label.recent-search-term-plural')}>
         <EntityListSkeleton
           dataLength={

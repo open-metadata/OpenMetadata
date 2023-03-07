@@ -456,7 +456,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   }, [table]);
 
   return (
-    <PageLayoutV1>
+    <PageLayoutV1 pageTitle={t('label.profiler')}>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
@@ -515,7 +515,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                 <>
                   <Form.Item
                     className="m-0 "
-                    label={t('label.deleted-test-plural')}>
+                    label={t('label.deleted-entity', {
+                      entity: t('label.test-plural'),
+                    })}>
                     <Switch
                       checked={showDeletedTest}
                       onClick={handleDeletedTestCaseClick}
@@ -573,7 +575,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           <Col span={24}>
             <DataQualityTab
               deletedTable={showDeletedTest}
-              hasAccess={tablePermissions.EditAll}
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
               onTestUpdate={handleTestUpdate}

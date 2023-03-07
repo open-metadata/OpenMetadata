@@ -66,6 +66,10 @@ Set the sample to be use by the profiler for the specific table.
 **Thread Count (Optional)**
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 
+**Auto PII Tag**
+Here, the sample data will be analysed to determine appropriate PII tags for each column.
+For more information click [here](/connectors/ingestion/auto_tagging)
+
 **Timeout in Seconds (Optional)**
 This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminiate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
 

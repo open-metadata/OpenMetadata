@@ -120,7 +120,7 @@ function EditConnectionFormPage() {
               url: getPathByServiceFQN(serviceCategory, serviceFQN),
             },
             {
-              name: t('label.edit-connection'),
+              name: t('label.edit-entity', { entity: t('label.connection') }),
               url: '',
               activeTitle: true,
             },
@@ -150,7 +150,9 @@ function EditConnectionFormPage() {
         {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     ) : (
-      <PageLayoutV1 center>
+      <PageLayoutV1
+        center
+        pageTitle={t('label.edit-entity', { entity: t('label.connection') })}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
           <div className="form-container">

@@ -73,12 +73,15 @@ const TestCasesTab = ({
       testCasePageHandler={testCasePageHandler}>
       <>
         <Col className="flex justify-end items-center" span={24}>
-          <span className="m-r-xs">{t('label.deleted-test-plural')}</span>
+          <span className="m-r-xs">
+            {t('label.deleted-entity', {
+              entity: t('label.test-plural'),
+            })}
+          </span>
           <Switch checked={deleted} onClick={handleDeletedTestCaseClick} />
         </Col>
         <Col span={24}>
           <DataQualityTab
-            hasAccess
             deletedTable={deleted}
             isLoading={isDataLoading}
             testCases={sortedTestCases}

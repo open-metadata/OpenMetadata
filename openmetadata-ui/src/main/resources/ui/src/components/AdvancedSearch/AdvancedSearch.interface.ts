@@ -19,9 +19,9 @@ export interface AdvancedSearchProps {
   searchIndex: SearchIndex;
   onChangeJsonTree: (tree: JsonTree) => void;
   onChangeQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
+    queryFilter: Record<string, unknown> | undefined,
+    sqlFilter: string
   ) => void;
-  onAppliedFilterChange: (value: string) => void;
 }
 
 export type FilterObject = Record<string, string[]>;

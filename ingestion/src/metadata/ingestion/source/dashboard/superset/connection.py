@@ -54,7 +54,7 @@ def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
     return None
 
 
-def test_connection(client: Union[SupersetAPIClient, Engine]) -> None:
+def test_connection(client: Union[SupersetAPIClient, Engine], _) -> None:
     """
     Test connection
     """

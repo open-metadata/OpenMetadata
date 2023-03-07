@@ -18,6 +18,7 @@ import { useHistory } from 'react-router-dom';
 import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
+  GLOBAL_BORDER,
   TASK_BORDER,
 } from '../../../constants/Feeds.constants';
 import {
@@ -28,7 +29,6 @@ import {
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
-import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -100,14 +100,15 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       className="ant-card-feed"
                       key={`${index} - card`}
                       style={{
-                        ...leftPanelAntCardStyle,
                         marginTop: '20px',
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
                           ? `1px solid ${TASK_BORDER}`
-                          : isAnnouncement
-                          ? `1px solid ${ANNOUNCEMENT_BORDER}`
-                          : leftPanelAntCardStyle.border,
+                          : `1px solid ${
+                              isAnnouncement
+                                ? ANNOUNCEMENT_BORDER
+                                : GLOBAL_BORDER
+                            }`,
                         background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
                       }}
                       onClick={() =>

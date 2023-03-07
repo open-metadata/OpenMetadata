@@ -49,6 +49,10 @@ jest.mock('components/searched-data/SearchedData', () => {
 
 const mockFunction = jest.fn();
 
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
@@ -65,7 +69,6 @@ describe('Test Explore component', () => {
           [SearchIndex.PIPELINE]: 5,
           [SearchIndex.MLMODEL]: 2,
         }}
-        onChangeAdvancedSearchJsonTree={mockFunction}
         onChangeAdvancedSearchQueryFilter={mockFunction}
         onChangePostFilter={mockFunction}
         onChangeSearchIndex={mockFunction}

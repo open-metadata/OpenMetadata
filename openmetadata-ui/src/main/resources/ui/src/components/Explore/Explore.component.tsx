@@ -31,6 +31,7 @@ import {
   toUpper,
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
@@ -59,8 +60,6 @@ import SortingDropDown from './SortingDropDown';
 const Explore: React.FC<ExploreProps> = ({
   searchResults,
   tabCounts,
-  advancedSearchJsonTree,
-  onChangeAdvancedSearchJsonTree,
   onChangeAdvancedSearchQueryFilter,
   postFilter,
   onChangePostFilter,
@@ -76,6 +75,7 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
 }) => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
   const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
 
@@ -88,9 +88,6 @@ const Explore: React.FC<ExploreProps> = ({
 
   const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
     useState<string>('');
-
-  const handleAppliedFilterChange = (value: string) =>
-    setAppliedFilterSQLFormat(value);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -268,7 +265,8 @@ const Explore: React.FC<ExploreProps> = ({
             />
           </ExploreSkeleton>
         </Card>
-      }>
+      }
+      pageTitle={t('label.explore')}>
       <Tabs
         defaultActiveKey={defaultActiveTab}
         items={tabItems}
@@ -360,13 +358,13 @@ const Explore: React.FC<ExploreProps> = ({
         )}
       </Row>
       <AdvancedSearchModal
-        jsonTree={advancedSearchJsonTree}
         searchIndex={searchIndex}
         visible={showAdvanceSearchModal}
-        onAppliedFilterChange={handleAppliedFilterChange}
         onCancel={() => setShowAdvanceSearchModal(false)}
-        onChangeJsonTree={onChangeAdvancedSearchJsonTree}
-        onSubmit={onChangeAdvancedSearchQueryFilter}
+        onSubmit={(query, sqlFilter) => {
+          onChangeAdvancedSearchQueryFilter(query);
+          setAppliedFilterSQLFormat(sqlFilter);
+        }}
       />
     </PageLayoutV1>
   );

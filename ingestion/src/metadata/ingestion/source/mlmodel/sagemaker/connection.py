@@ -28,7 +28,7 @@ def get_connection(connection: SageMakerConnection):
     return AWSClient(connection.awsConfig).get_sagemaker_client()
 
 
-def test_connection(client) -> None:
+def test_connection(client, _) -> None:
     """
     Test connection
     """

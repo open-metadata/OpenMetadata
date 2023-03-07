@@ -158,7 +158,10 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               },
             },
           ]}>
-          <Input data-testid="name" placeholder={t('label.enter-name')} />
+          <Input
+            data-testid="name"
+            placeholder={t('label.enter-entity', { entity: t('label.name') })}
+          />
         </Form.Item>
         <Form.Item
           label={t('label.display-name')}

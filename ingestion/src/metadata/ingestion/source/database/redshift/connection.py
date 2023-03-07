@@ -24,8 +24,10 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -41,6 +43,10 @@ def get_connection(connection: RedshiftConnection) -> Engine:
     """
     Create connection
     """
+    if connection.sslMode:
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.__root__["sslmode"] = connection.sslMode
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
@@ -48,7 +54,7 @@ def get_connection(connection: RedshiftConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> str:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test connection
     """

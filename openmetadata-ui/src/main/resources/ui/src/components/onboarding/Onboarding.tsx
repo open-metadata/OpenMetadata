@@ -22,7 +22,7 @@ const Onboarding: FC = () => {
       className="tw-mt-10 tw-text-base tw-font-medium"
       data-testid="onboarding">
       <div className="tw-text-center tw-text-xl tw-font-semibold tw-mb-1">
-        {t('label.welcome-to-open-metadata')}
+        {t('message.welcome-to-open-metadata')}
       </div>
       <div className="tw-mb-5">
         <div className="tw-mb-3 tw-text-center">

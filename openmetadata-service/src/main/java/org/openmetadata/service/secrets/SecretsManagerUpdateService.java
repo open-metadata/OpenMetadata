@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
@@ -207,12 +206,10 @@ public class SecretsManagerUpdateService {
   private void updateBotUser(User botUser) {
     try {
       User user = userRepository.dao.findEntityById(botUser.getId());
-      AuthenticationMechanism authenticationMechanism =
-          oldSecretManager.encryptOrDecryptAuthenticationMechanism(
-              botUser.getName(), user.getAuthenticationMechanism(), false);
-      userRepository.dao.update(
-          user.withAuthenticationMechanism(
-              secretManager.encryptOrDecryptAuthenticationMechanism(botUser.getName(), authenticationMechanism, true)));
+      oldSecretManager.encryptOrDecryptAuthenticationMechanism(
+          botUser.getName(), user.getAuthenticationMechanism(), false);
+      secretManager.encryptOrDecryptAuthenticationMechanism(botUser.getName(), user.getAuthenticationMechanism(), true);
+      userRepository.dao.update(user);
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
