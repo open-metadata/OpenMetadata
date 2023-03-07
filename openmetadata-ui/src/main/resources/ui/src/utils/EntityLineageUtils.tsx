@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
 import {
   CustomEdgeData,
   CustomElement,
@@ -91,13 +92,20 @@ export const getHeaderLabel = (
           {name || prepareLabel(type, fqn, false)}
         </span>
       ) : (
-        <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
-          data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>
-            {name || prepareLabel(type, fqn, false)}
+        <Typography.Title
+          ellipsis
+          className="m-b-0 text-base"
+          level={5}
+          title={name || prepareLabel(type, fqn, false)}>
+          <Link className="" to={getEntityLink(type, fqn)}>
+            <Button
+              className="text-base font-semibold p-0"
+              data-testid="link-button"
+              type="link">
+              {name || prepareLabel(type, fqn, false)}
+            </Button>
           </Link>
-        </span>
+        </Typography.Title>
       )}
     </Fragment>
   );
