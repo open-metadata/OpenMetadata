@@ -12,8 +12,10 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { Col, Drawer, Row } from 'antd';
+import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
+import { EntityType } from 'enums/entity.enum';
+import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -34,16 +36,23 @@ export default function EntitySummaryPanel({
   handleClosePanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
+  const [currentSearchIndex, setCurrentSearchIndex] = useState<EntityType>();
 
   const summaryComponent = useMemo(() => {
     switch (entityDetails.entityType) {
       case ExplorePageTabs.TABLES:
+        setCurrentSearchIndex(EntityType.TABLE);
+
         return <TableSummary entityDetails={entityDetails.details as Table} />;
 
       case ExplorePageTabs.TOPICS:
+        setCurrentSearchIndex(EntityType.TOPIC);
+
         return <TopicSummary entityDetails={entityDetails.details as Topic} />;
 
       case ExplorePageTabs.DASHBOARDS:
+        setCurrentSearchIndex(EntityType.DASHBOARD);
+
         return (
           <DashboardSummary
             entityDetails={entityDetails.details as Dashboard}
@@ -51,11 +60,15 @@ export default function EntitySummaryPanel({
         );
 
       case ExplorePageTabs.PIPELINES:
+        setCurrentSearchIndex(EntityType.PIPELINE);
+
         return (
           <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
         );
 
       case ExplorePageTabs.MLMODELS:
+        setCurrentSearchIndex(EntityType.MLMODEL);
+
         return (
           <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
         );
@@ -66,13 +79,34 @@ export default function EntitySummaryPanel({
   }, [tab, entityDetails]);
 
   return (
-    <div className={classNames('summary-panel-container')}>
+    <Drawer
+      destroyOnClose
+      open
+      className="summary-panel-container"
+      closable={false}
+      extra={
+        <CloseOutlined
+          data-testid="summary-panel-close-icon"
+          onClick={handleClosePanel}
+        />
+      }
+      getContainer={false}
+      headerStyle={{ padding: 16 }}
+      mask={false}
+      title={
+        <Row gutter={[0, 6]}>
+          <Col span={24}>
+            <TableDataCardTitle
+              isPanel
+              dataTestId="summary-panel-title"
+              searchIndex={currentSearchIndex as EntityType}
+              source={entityDetails.details}
+            />
+          </Col>
+        </Row>
+      }
+      width="100%">
       {summaryComponent}
-      <CloseOutlined
-        className="close-icon"
-        data-testid="summary-panel-close-icon"
-        onClick={handleClosePanel}
-      />
-    </div>
+    </Drawer>
   );
 }
