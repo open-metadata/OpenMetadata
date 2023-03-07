@@ -522,7 +522,7 @@
     ]
   },
   {
-    "name" : "eventSubscription",
+    "name" : "subscription",
     "operations" : [
       "Create",
       "Delete",

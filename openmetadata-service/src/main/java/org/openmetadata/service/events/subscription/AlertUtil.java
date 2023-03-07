@@ -24,11 +24,11 @@ import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.events.subscription.emailAlert.EmailAlertPublisher;
-import org.openmetadata.service.events.subscription.gchat.GChatWebhookPublisher;
-import org.openmetadata.service.events.subscription.generic.GenericWebhookPublisher;
-import org.openmetadata.service.events.subscription.msteams.MSTeamsWebhookPublisher;
-import org.openmetadata.service.events.subscription.slack.SlackWebhookEventPublisher;
+import org.openmetadata.service.events.subscription.emailAlert.EmailPublisher;
+import org.openmetadata.service.events.subscription.gchat.GChatPublisher;
+import org.openmetadata.service.events.subscription.generic.GenericPublisher;
+import org.openmetadata.service.events.subscription.msteams.MSTeamsPublisher;
+import org.openmetadata.service.events.subscription.slack.SlackEventPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -38,23 +38,23 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 @Slf4j
 public class AlertUtil {
 
-  public static SubscriptionPublisher getAlertPublisher(EventSubscription eventSub, CollectionDAO daoCollection) {
+  public static SubscriptionPublisher getAlertPublisher(EventSubscription subscription, CollectionDAO daoCollection) {
     SubscriptionPublisher publisher;
-    switch (eventSub.getSubscriptionType()) {
+    switch (subscription.getSubscriptionType()) {
       case SLACK_WEBHOOK:
-        publisher = new SlackWebhookEventPublisher(eventSub, daoCollection);
+        publisher = new SlackEventPublisher(subscription, daoCollection);
         break;
       case MS_TEAMS_WEBHOOK:
-        publisher = new MSTeamsWebhookPublisher(eventSub, daoCollection);
+        publisher = new MSTeamsPublisher(subscription, daoCollection);
         break;
       case G_CHAT_WEBHOOK:
-        publisher = new GChatWebhookPublisher(eventSub, daoCollection);
+        publisher = new GChatPublisher(subscription, daoCollection);
         break;
       case GENERIC_WEBHOOK:
-        publisher = new GenericWebhookPublisher(eventSub, daoCollection);
+        publisher = new GenericPublisher(subscription, daoCollection);
         break;
       case EMAIL:
-        publisher = new EmailAlertPublisher(eventSub, daoCollection);
+        publisher = new EmailPublisher(subscription, daoCollection);
         break;
       case ACTIVITY_FEED:
         throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");

@@ -11,7 +11,7 @@ import org.openmetadata.service.events.errors.RetriableException;
 import org.openmetadata.service.resources.events.ChangeEventResource.ChangeEventList;
 
 @Slf4j
-public abstract class AbstractEventSubscriptionPublisher implements EventPublisher {
+public abstract class AbstractAlertPublisher implements EventPublisher {
   // Backoff timeout in seconds. Delivering events is retried 5 times.
   protected static final int BACKOFF_NORMAL = 0;
   protected static final int BACKOFF_3_SECONDS = 3 * 1000;
@@ -22,11 +22,11 @@ public abstract class AbstractEventSubscriptionPublisher implements EventPublish
   protected int currentBackoffTime = BACKOFF_NORMAL;
   protected final List<ChangeEvent> batch = new ArrayList<>();
 
-  protected final EventSubscription eventSubscribed;
+  protected final EventSubscription eventSubscription;
   private final int batchSize;
 
-  protected AbstractEventSubscriptionPublisher(EventSubscription eventSub) {
-    this.eventSubscribed = eventSub;
+  protected AbstractAlertPublisher(EventSubscription eventSub) {
+    this.eventSubscription = eventSub;
     this.batchSize = eventSub.getBatchSize();
   }
 
@@ -37,12 +37,12 @@ public abstract class AbstractEventSubscriptionPublisher implements EventPublish
     ChangeEvent changeEvent = changeEventHolder.getEvent();
 
     // Evaluate Alert Trigger Config
-    if (!AlertUtil.shouldTriggerAlert(changeEvent.getEntityType(), eventSubscribed.getFilteringRules())) {
+    if (!AlertUtil.shouldTriggerAlert(changeEvent.getEntityType(), eventSubscription.getFilteringRules())) {
       return;
     }
 
     // Evaluate ChangeEvent Alert Filtering
-    if (!AlertUtil.evaluateAlertConditions(changeEvent, eventSubscribed.getFilteringRules().getRules())) {
+    if (!AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
       return;
     }
 

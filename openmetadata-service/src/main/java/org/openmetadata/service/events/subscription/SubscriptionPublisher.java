@@ -33,9 +33,9 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.ChangeEventResource;
 
 /**
- * SubscriptionPublisher publishes events to the alert ndpoint using POST http requests/ Email. There is one instance of
- * SubscriptionPublisher per alert subscription. Each SubscriptionPublisher is an EventHandler that runs in a separate
- * thread and receives events from LMAX Disruptor {@link EventPubSub} through {@link BatchEventProcessor}.
+ * SubscriptionPublisher publishes events to the alert endpoint using POST http requests/ Email. There is one instance
+ * of SubscriptionPublisher per alert subscription. Each SubscriptionPublisher is an EventHandler that runs in a
+ * separate thread and receives events from LMAX Disruptor {@link EventPubSub} through {@link BatchEventProcessor}.
  *
  * <p>The failures during callback to Alert are handled in this class as follows:
  *
@@ -49,7 +49,7 @@ import org.openmetadata.service.resources.events.ChangeEventResource;
  * </ul>
  */
 @Slf4j
-public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
+public class SubscriptionPublisher extends AbstractAlertPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
   private final EventSubscriptionRepository eventSubscriptionRepository;
@@ -64,7 +64,7 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
   public void onStart() {
     setSuccessStatus(System.currentTimeMillis());
     onStartDelegate();
-    LOG.info("Alert-lifecycle-onStart {}", eventSubscribed.getName());
+    LOG.info("Alert-lifecycle-onStart {}", eventSubscription.getName());
   }
 
   @Override
@@ -72,27 +72,27 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
     currentBackoffTime = BACKOFF_NORMAL;
     shutdownLatch.countDown();
     onShutdownDelegate();
-    LOG.info("Alert-lifecycle-onShutdown {}", eventSubscribed.getName());
+    LOG.info("Alert-lifecycle-onShutdown {}", eventSubscription.getName());
   }
 
   public synchronized EventSubscription getEventSubscription() {
-    return eventSubscribed;
+    return eventSubscription;
   }
 
   public synchronized void updateEventSubscription(EventSubscription updatedEventSub) {
     currentBackoffTime = BACKOFF_NORMAL;
-    eventSubscribed.setDescription(updatedEventSub.getDescription());
-    eventSubscribed.setTimeout(updatedEventSub.getTimeout());
-    eventSubscribed.setBatchSize(updatedEventSub.getBatchSize());
-    eventSubscribed.setFilteringRules(updatedEventSub.getFilteringRules());
-    eventSubscribed.setSubscriptionType(updatedEventSub.getSubscriptionType());
-    eventSubscribed.setSubscriptionConfig(updatedEventSub.getSubscriptionConfig());
+    eventSubscription.setDescription(updatedEventSub.getDescription());
+    eventSubscription.setTimeout(updatedEventSub.getTimeout());
+    eventSubscription.setBatchSize(updatedEventSub.getBatchSize());
+    eventSubscription.setFilteringRules(updatedEventSub.getFilteringRules());
+    eventSubscription.setSubscriptionType(updatedEventSub.getSubscriptionType());
+    eventSubscription.setSubscriptionConfig(updatedEventSub.getSubscriptionConfig());
   }
 
   protected synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
       throws InterruptedException {
     SubscriptionStatus status = setStatus(FAILED, attemptTime, statusCode, reason, null);
-    eventSubscriptionRepository.removeProcessorForEventSubscription(eventSubscribed.getId(), status);
+    eventSubscriptionRepository.removeProcessorForEventSubscription(eventSubscription.getId(), status);
     throw new RuntimeException(reason);
   }
 
@@ -110,7 +110,7 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
             .withNextAttempt(null)
             .withTimestamp(updateTime)
             .withLastSuccessfulAt(updateTime);
-    eventSubscribed.setStatusDetails(subStatus);
+    eventSubscription.setStatusDetails(subStatus);
     return subStatus;
   }
 
@@ -124,12 +124,12 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
             .withLastFailedReason(reason)
             .withNextAttempt(timestamp)
             .withTimestamp(attemptTime);
-    eventSubscribed.setStatusDetails(subStatus);
+    eventSubscription.setStatusDetails(subStatus);
     return subStatus;
   }
 
   public void awaitShutdown() throws InterruptedException {
-    LOG.info("Awaiting shutdown alertActionPublisher-lifecycle {}", eventSubscribed.getName());
+    LOG.info("Awaiting shutdown alertActionPublisher-lifecycle {}", eventSubscription.getName());
     shutdownLatch.await(5, TimeUnit.SECONDS);
   }
 
@@ -149,12 +149,12 @@ public class SubscriptionPublisher extends AbstractEventSubscriptionPublisher {
     try {
       LOG.info(
           "Sending Alert {}:{}:{}",
-          eventSubscribed.getName(),
-          eventSubscribed.getStatusDetails().getStatus(),
+          eventSubscription.getName(),
+          eventSubscription.getStatusDetails().getStatus(),
           batch.size());
       sendAlert(list);
     } catch (Exception ex) {
-      LOG.warn("Invalid Exception in Alert {}", eventSubscribed.getName());
+      LOG.warn("Invalid Exception in Alert {}", eventSubscription.getName());
     }
   }
 }

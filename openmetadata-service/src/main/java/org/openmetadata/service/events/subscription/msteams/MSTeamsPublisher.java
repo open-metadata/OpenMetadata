@@ -1,6 +1,6 @@
-package org.openmetadata.service.events.subscription.gchat;
+package org.openmetadata.service.events.subscription.msteams;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.G_CHAT_WEBHOOK;
+import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.MS_TEAMS_WEBHOOK;
 
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
@@ -20,47 +20,45 @@ import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class GChatWebhookPublisher extends SubscriptionPublisher {
-
+public class MSTeamsPublisher extends SubscriptionPublisher {
   private final Invocation.Builder target;
   private final Client client;
 
-  public GChatWebhookPublisher(EventSubscription eventSub, CollectionDAO dao) {
+  public MSTeamsPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub, dao);
-    if (eventSub.getSubscriptionType() == G_CHAT_WEBHOOK) {
+    if (eventSub.getSubscriptionType() == MS_TEAMS_WEBHOOK) {
       Webhook webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
-      String gChatWebhookURL = webhook.getEndpoint().toString();
+      String msTeamsWebhookURL = webhook.getEndpoint().toString();
       ClientBuilder clientBuilder = ClientBuilder.newBuilder();
       clientBuilder.connectTimeout(eventSub.getTimeout(), TimeUnit.SECONDS);
       clientBuilder.readTimeout(eventSub.getReadTimeout(), TimeUnit.SECONDS);
       client = clientBuilder.build();
-      target = client.target(gChatWebhookURL).request();
+      target = client.target(msTeamsWebhookURL).request();
     } else {
-      throw new IllegalArgumentException("GChat Alert Invoked with Illegal Type and Settings.");
+      throw new IllegalArgumentException("MsTeams Alert Invoked with Illegal Type and Settings.");
     }
   }
 
   @Override
-  protected void onStartDelegate() {
-    LOG.info("GChat Webhook publisher started");
+  public void onStartDelegate() {
+    LOG.info("MsTeams Webhook Publisher Started");
   }
 
   @Override
-  protected void onShutdownDelegate() {
-    if (null != client) {
+  public void onShutdownDelegate() {
+    if (client != null) {
       client.close();
     }
   }
 
   @Override
-  protected void sendAlert(ChangeEventResource.ChangeEventList list) {
-
+  public void sendAlert(ChangeEventResource.ChangeEventList list) {
     for (ChangeEvent event : list.getData()) {
       long attemptTime = System.currentTimeMillis();
       try {
-        GChatMessage gchatMessage = ChangeEventParser.buildGChatMessage(event);
+        TeamsMessage teamsMessage = ChangeEventParser.buildTeamsMessage(event);
         Response response =
-            target.post(javax.ws.rs.client.Entity.entity(gchatMessage, MediaType.APPLICATION_JSON_TYPE));
+            target.post(javax.ws.rs.client.Entity.entity(teamsMessage, MediaType.APPLICATION_JSON_TYPE));
         if (response.getStatus() >= 300 && response.getStatus() < 400) {
           // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
           setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
@@ -73,9 +71,9 @@ public class GChatWebhookPublisher extends SubscriptionPublisher {
           setSuccessStatus(System.currentTimeMillis());
         }
       } catch (Exception e) {
-        LOG.error("Failed to publish event {} to gchat due to {} ", event, e.getMessage());
+        LOG.error("Failed to publish event {} to msteams due to {} ", event, e.getMessage());
         throw new EventPublisherException(
-            String.format("Failed to publish event %s to gchat due to %s ", event, e.getMessage()));
+            String.format("Failed to publish event %s to msteams due to %s ", event, e.getMessage()));
       }
     }
   }

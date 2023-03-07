@@ -31,11 +31,11 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class EmailAlertPublisher extends SubscriptionPublisher {
+public class EmailPublisher extends SubscriptionPublisher {
   private final EmailAlertConfig emailAlertConfig;
   private final CollectionDAO daoCollection;
 
-  public EmailAlertPublisher(EventSubscription eventSub, CollectionDAO dao) {
+  public EmailPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub, dao);
     if (eventSub.getSubscriptionType() == EMAIL) {
       this.emailAlertConfig = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), EmailAlertConfig.class);

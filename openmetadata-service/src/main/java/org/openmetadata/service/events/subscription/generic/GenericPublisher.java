@@ -23,11 +23,11 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class GenericWebhookPublisher extends SubscriptionPublisher {
+public class GenericPublisher extends SubscriptionPublisher {
   private final Client client;
   private final Webhook webhook;
 
-  public GenericWebhookPublisher(EventSubscription eventSub, CollectionDAO dao) {
+  public GenericPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub, dao);
     if (eventSub.getSubscriptionType() == GENERIC_WEBHOOK) {
       webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
@@ -72,7 +72,7 @@ public class GenericWebhookPublisher extends SubscriptionPublisher {
       }
       LOG.debug(
           "GenericWebhook {}:{} received response {}",
-          eventSubscribed.getName(),
+          eventSubscription.getName(),
           batch.size(),
           response.getStatusInfo());
       // Successfully sent Alert, update Status
@@ -90,7 +90,7 @@ public class GenericWebhookPublisher extends SubscriptionPublisher {
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
       if (cause != null && cause.getClass() == UnknownHostException.class) {
-        LOG.warn("Invalid webhook {} endpoint {}", eventSubscribed.getName(), webhook.getEndpoint());
+        LOG.warn("Invalid webhook {} endpoint {}", eventSubscription.getName(), webhook.getEndpoint());
         setErrorStatus(attemptTime, 400, "UnknownHostException");
       } else {
         LOG.debug("Exception occurred while publishing webhook", ex);

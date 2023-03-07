@@ -20,11 +20,11 @@ import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class SlackWebhookEventPublisher extends SubscriptionPublisher {
+public class SlackEventPublisher extends SubscriptionPublisher {
   private final Invocation.Builder target;
   private final Client client;
 
-  public SlackWebhookEventPublisher(EventSubscription eventSub, CollectionDAO dao) {
+  public SlackEventPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub, dao);
     if (eventSub.getSubscriptionType() == SLACK_WEBHOOK) {
       Webhook webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
