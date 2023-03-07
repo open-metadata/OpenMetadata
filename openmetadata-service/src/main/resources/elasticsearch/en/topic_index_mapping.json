@@ -237,6 +237,9 @@
           }
         ]
       },
+      "field_suggest": {
+        "type": "completion"
+      },
       "service_suggest": {
         "type": "completion"
       }
