@@ -437,13 +437,11 @@ export const getLineageData = (
       className: `leaf-node core`,
       data: {
         label: (
-          <div className="tw-flex">
-            <LineageNodeLabel
-              isExpanded={isExpanded}
-              node={mainNode}
-              onNodeExpand={onNodeExpand}
-            />
-          </div>
+          <LineageNodeLabel
+            isExpanded={isExpanded}
+            node={mainNode}
+            onNodeExpand={onNodeExpand}
+          />
         ),
         isEditMode,
         removeNodeHandler,

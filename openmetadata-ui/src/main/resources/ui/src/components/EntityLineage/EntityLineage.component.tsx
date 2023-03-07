@@ -318,10 +318,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           edgeType === EdgeTypeEnum.DOWN_STREAM
             ? {
                 upstream: updatedParentData.upstream,
-                downstream: [...updatedParentData.downstream, index],
+                downstream: [index],
               }
             : {
-                upstream: [...updatedParentData.upstream, index],
+                upstream: [index],
                 downstream: updatedParentData.downstream,
               };
 
