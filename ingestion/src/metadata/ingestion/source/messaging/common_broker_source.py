@@ -47,7 +47,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def on_assign(consumer, partitions):
+def on_partitions_assignment_to_consumer(consumer, partitions):
     # get offset tuple from the first partition
     for partition in partitions:
         last_offset = consumer.get_watermark_offsets(partition)
