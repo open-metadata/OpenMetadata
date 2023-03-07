@@ -98,6 +98,7 @@ export interface TopicDetailsProps {
 }
 
 export interface TopicConfigObjectInterface {
+  Owner?: Record<string, string | JSX.Element | undefined>;
   Partitions: number;
   'Replication Factor'?: number;
   'Retention Size'?: number;
