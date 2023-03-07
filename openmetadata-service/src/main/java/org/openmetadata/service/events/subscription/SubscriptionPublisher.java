@@ -101,14 +101,16 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
   }
 
   protected synchronized SubscriptionStatus setSuccessStatus(Long updateTime) {
-    SubscriptionStatus subStatus = AlertUtil.buildSubscriptionStatus(ACTIVE, updateTime, null, null, null, updateTime, updateTime);
+    SubscriptionStatus subStatus =
+        AlertUtil.buildSubscriptionStatus(ACTIVE, updateTime, null, null, null, updateTime, updateTime);
     eventSubscription.setStatusDetails(subStatus);
     return subStatus;
   }
 
   protected synchronized SubscriptionStatus setStatus(
       SubscriptionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp) {
-    SubscriptionStatus subStatus = AlertUtil.buildSubscriptionStatus(status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
+    SubscriptionStatus subStatus =
+        AlertUtil.buildSubscriptionStatus(status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
     eventSubscription.setStatusDetails(subStatus);
     return subStatus;
   }

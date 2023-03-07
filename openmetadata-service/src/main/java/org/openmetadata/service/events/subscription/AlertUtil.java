@@ -182,14 +182,21 @@ public class AlertUtil {
         event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules().getRules());
   }
 
-  public static SubscriptionStatus buildSubscriptionStatus(SubscriptionStatus.Status status, Long lastSuccessful, Long lastFailure, Integer statusCode, String reason, Long nextAttempt, Long timeStamp){
+  public static SubscriptionStatus buildSubscriptionStatus(
+      SubscriptionStatus.Status status,
+      Long lastSuccessful,
+      Long lastFailure,
+      Integer statusCode,
+      String reason,
+      Long nextAttempt,
+      Long timeStamp) {
     return new SubscriptionStatus()
-            .withStatus(status)
-            .withLastSuccessfulAt(lastSuccessful)
-            .withLastFailedAt(lastFailure)
-            .withLastFailedStatusCode(statusCode)
-            .withLastFailedReason(reason)
-            .withNextAttempt(nextAttempt)
-            .withTimestamp(timeStamp);
+        .withStatus(status)
+        .withLastSuccessfulAt(lastSuccessful)
+        .withLastFailedAt(lastFailure)
+        .withLastFailedStatusCode(statusCode)
+        .withLastFailedReason(reason)
+        .withNextAttempt(nextAttempt)
+        .withTimestamp(timeStamp);
   }
 }
