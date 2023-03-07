@@ -93,7 +93,7 @@ import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource;
-import org.openmetadata.service.resources.events.ChangeEventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.JsonUtils;
 

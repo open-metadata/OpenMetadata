@@ -153,7 +153,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
-import org.openmetadata.service.resources.events.ChangeEventResource;
+import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
@@ -2160,12 +2160,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected ResultList<ChangeEvent> getChangeEvents(
       String entityCreated, String entityUpdated, String entityDeleted, long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("changeEvents");
+    WebTarget target = getResource("events");
     target = entityCreated == null ? target : target.queryParam("entityCreated", entityCreated);
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
-    return TestUtils.get(target, ChangeEventResource.ChangeEventList.class, authHeaders);
+    return TestUtils.get(target, ChangeEventList.class, authHeaders);
   }
 
   protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {

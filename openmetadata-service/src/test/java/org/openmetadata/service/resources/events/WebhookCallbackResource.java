@@ -30,7 +30,7 @@ import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.service.resources.events.ChangeEventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
