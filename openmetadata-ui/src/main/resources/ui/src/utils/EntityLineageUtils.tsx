@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  CheckOutlined,
-  LeftOutlined,
-  MinusCircleOutlined,
-  RightOutlined,
-} from '@ant-design/icons';
+import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
 import CustomNode from 'components/EntityLineage/CustomNode.component';
@@ -106,7 +101,7 @@ import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
-export const MAX_LINEAGE_LENGTH = 100;
+export const MAX_LINEAGE_LENGTH = 20;
 
 export const getHeaderLabel = (
   name = '',
@@ -207,7 +202,6 @@ export const getColumnType = (edges: Edge[], id: string) => {
 
 export const getLineageData = (
   entityLineage: EntityLineage,
-  paginationData: Record<string, NodeIndexMap>,
   onSelect: (state: boolean, value: SelectedNode) => void,
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
@@ -226,8 +220,7 @@ export const getLineageData = (
   ) => void,
   handleColumnClick?: (value: string) => void,
   isExpanded?: boolean,
-  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void,
-  hidePageNodes?: (id: string, index: number, direction: EdgeTypeEnum) => void
+  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -242,11 +235,24 @@ export const getLineageData = (
     const sourceType = nodes.find((n) => edge.fromEntity === n.id);
     const targetType = nodes.find((n) => edge.toEntity === n.id);
 
+    if (isUndefined(sourceType) || isUndefined(targetType)) {
+      return;
+    }
+
     if (!isUndefined(edge.lineageDetails)) {
       edge.lineageDetails.columnsLineage?.forEach((e) => {
         const toColumn = e.toColumn || '';
-        if (e.fromColumns && e.fromColumns.length > 0) {
+        if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
+          const targetCol = nodes.find((n) => toColumn === n.id);
+          if (!targetCol) {
+            return;
+          }
+
           e.fromColumns.forEach((fromColumn) => {
+            const sourceCol = nodes.find((n) => fromColumn === n.id);
+            if (!sourceCol) {
+              return;
+            }
             lineageEdgesV1.push({
               id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity}-${edge.toEntity}`,
               source: edge.fromEntity,
@@ -362,19 +368,6 @@ export const getLineageData = (
                 ) : null}
               </div>
             )}
-            <div className="tw-flex tw-flex-col">
-              {hidePageNodes &&
-                !isNil(paginationData[node.id]) &&
-                paginationData[node.id].upstream.map((item: number) => (
-                  <MinusCircleOutlined
-                    key={item}
-                    onClick={(e) => {
-                      hidePageNodes(node.id, item, EdgeTypeEnum.UP_STREAM);
-                      e.stopPropagation();
-                    }}
-                  />
-                ))}
-            </div>
             <LineageNodeLabel
               isExpanded={isExpanded}
               node={node}
@@ -408,19 +401,6 @@ export const getLineageData = (
                 ) : null}
               </div>
             )}
-            <div className="tw-flex tw-flex-col">
-              {hidePageNodes &&
-                !isNil(paginationData[node.id]) &&
-                paginationData[node.id].downstream.map((item: number) => (
-                  <MinusCircleOutlined
-                    key={item}
-                    onClick={(e) => {
-                      hidePageNodes(node.id, item, EdgeTypeEnum.DOWN_STREAM);
-                      e.stopPropagation();
-                    }}
-                  />
-                ))}
-            </div>
           </div>
         ),
         entityType: node.type,
@@ -458,41 +438,11 @@ export const getLineageData = (
       data: {
         label: (
           <div className="tw-flex">
-            <div className="tw-flex tw-flex-col">
-              {hidePageNodes &&
-                !isNil(paginationData[mainNode.id]) &&
-                paginationData[mainNode.id].upstream.map((item: number) => (
-                  <MinusCircleOutlined
-                    key={item}
-                    onClick={(e) => {
-                      hidePageNodes(mainNode.id, item, EdgeTypeEnum.UP_STREAM);
-                      e.stopPropagation();
-                    }}
-                  />
-                ))}
-            </div>
             <LineageNodeLabel
               isExpanded={isExpanded}
               node={mainNode}
               onNodeExpand={onNodeExpand}
             />
-            <div className="tw-flex tw-flex-col">
-              {hidePageNodes &&
-                !isNil(paginationData[mainNode.id]) &&
-                paginationData[mainNode.id].downstream.map((item: number) => (
-                  <MinusCircleOutlined
-                    key={item}
-                    onClick={(e) => {
-                      hidePageNodes(
-                        mainNode.id,
-                        item,
-                        EdgeTypeEnum.DOWN_STREAM
-                      );
-                      e.stopPropagation();
-                    }}
-                  />
-                ))}
-            </div>
           </div>
         ),
         isEditMode,
@@ -575,11 +525,14 @@ export const getLayoutedElements = (
     });
   });
 
+  const edgesRequired: Edge[] = [];
+
   edge.forEach((el) => {
     if (
       nodeIds.indexOf(el.source) !== -1 &&
       nodeIds.indexOf(el.target) !== -1
     ) {
+      edgesRequired.push(el);
       dagreGraph.setEdge(el.source, el.target);
     }
   });
@@ -600,7 +553,7 @@ export const getLayoutedElements = (
     return el;
   });
 
-  return { node: uNode, edge };
+  return { node: uNode, edge: edgesRequired };
 };
 
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
@@ -1283,79 +1236,48 @@ export const flattenObj = (
   if (!children) {
     return;
   }
-  const startIndex = 0;
+  const startIndex =
+    pagination_data[id]?.[downwards ? 'downstream' : 'upstream'][0] ?? 0;
   const hasMoreThanLimit = children.length > startIndex + MAX_LINEAGE_LENGTH;
   const endIndex = startIndex + MAX_LINEAGE_LENGTH;
-  const pageCount = Math.ceil(children.length / MAX_LINEAGE_LENGTH);
-  // const node =
-  const currentPages =
-    pagination_data[id]?.[downwards ? 'downstream' : 'upstream'] ?? null;
+
+  children.slice(0, endIndex).forEach((item) => {
+    if (item) {
+      flattenObj(
+        entityObj,
+        item,
+        downwards,
+        item.id,
+        nodes,
+        edges,
+        pagination_data
+      );
+      nodes.push(item);
+    }
+  });
 
   if (hasMoreThanLimit) {
-    for (let i = 0; i < pageCount; i++) {
-      if (!isNil(currentPages) && currentPages.includes(i)) {
-        children
-          .slice(
-            i * MAX_LINEAGE_LENGTH,
-            i * MAX_LINEAGE_LENGTH + MAX_LINEAGE_LENGTH - 1
-          )
-          .forEach((item) => {
-            if (item) {
-              flattenObj(
-                entityObj,
-                item,
-                downwards,
-                item.id,
-                nodes,
-                edges,
-                pagination_data
-              );
-              nodes.push(item);
-            }
-          });
-      } else {
-        const newNodeId = `loadmore_${uniqueId('node_')}_${id}_${i}`;
-        const childrenLength =
-          i === pageCount - 1
-            ? children.length - i * MAX_LINEAGE_LENGTH
-            : MAX_LINEAGE_LENGTH;
-        const newNode = {
-          description: 'Demo description',
-          displayName: 'Load More',
-          id: newNodeId,
-          type: EntityLineageNodeType.LOAD_MORE,
-          pagination_data: {
-            index: i,
-            parentId: id,
-            childrenLength,
-          },
-          edgeType: downwards
-            ? EdgeTypeEnum.DOWN_STREAM
-            : EdgeTypeEnum.UP_STREAM,
-        };
-        nodes.push(newNode);
-        const newEdge: EntityLineageEdge = {
-          fromEntity: downwards ? id : newNodeId,
-          toEntity: downwards ? newNodeId : id,
-        };
-        edges.push(newEdge);
-      }
-    }
-  } else {
-    children.slice(0, endIndex).forEach((item) => {
-      if (item) {
-        flattenObj(
-          entityObj,
-          item,
-          downwards,
-          item.id,
-          nodes,
-          edges,
-          pagination_data
-        );
-        nodes.push(item);
-      }
-    });
+    const newNodeId = `loadmore_${uniqueId('node_')}_${id}_${startIndex}`;
+    const childrenLength = children.length - endIndex;
+
+    const newNode = {
+      description: 'Demo description',
+      displayName: 'Load More',
+      id: newNodeId,
+      type: EntityLineageNodeType.LOAD_MORE,
+      pagination_data: {
+        index: endIndex,
+        parentId: id,
+        childrenLength,
+      },
+      edgeType: downwards ? EdgeTypeEnum.DOWN_STREAM : EdgeTypeEnum.UP_STREAM,
+    };
+    nodes.push(newNode);
+    const newEdge: EntityLineageEdge = {
+      fromEntity: downwards ? id : newNodeId,
+      toEntity: downwards ? newNodeId : id,
+    };
+    edges.push(newEdge);
   }
 };
 
@@ -1432,7 +1354,8 @@ export const findNodeById = (
   items: EntityReferenceChild[] = [],
   path: EntityReferenceChild[] = []
 ): EntityReferenceChild[] | undefined => {
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
+    item.pageIndex = index;
     if (item.id === id) {
       // Return the path to the item, including the item itself
       return [...path, item];

@@ -110,7 +110,6 @@ import {
   getUpStreamDownStreamColumnLineageArr,
   isColumnLineageTraced,
   isTracedEdge,
-  MAX_LINEAGE_LENGTH,
   nodeTypes,
   onLoad,
   onNodeContextMenu,
@@ -692,52 +691,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
-  const hidePageNodes = (
-    id: string,
-    index: number,
-    direction: EdgeTypeEnum
-  ) => {
-    setPaginationData((prevState: Record<string, NodeIndexMap>) => {
-      const newPaginationData = { ...prevState };
-      const nodePaginationData = newPaginationData[id] || null;
-      if (nodePaginationData) {
-        if (direction === EdgeTypeEnum.UP_STREAM) {
-          nodePaginationData.upstream = nodePaginationData.upstream?.filter(
-            (item: number) => item !== index
-          );
-        } else if (direction === EdgeTypeEnum.DOWN_STREAM) {
-          nodePaginationData.downstream = nodePaginationData.downstream?.filter(
-            (item: number) => item !== index
-          );
-        }
-        const selectedNode = nodes.find((node) => node.id === id);
-
-        if (selectedNode) {
-          const { position } = selectedNode;
-          reactFlowInstance &&
-            reactFlowInstance.setCenter(position.x, position.y, {
-              duration: ZOOM_TRANSITION_DURATION,
-              zoom: zoomValue,
-            });
-        }
-      }
-
-      if (updatedLineageData) {
-        initLineageChildMaps(updatedLineageData, childMap, newPaginationData);
-      }
-
-      return newPaginationData;
-    });
-  };
-
-  const setElementsHandle = (
-    data: EntityLineage,
-    paginationObj: Record<string, NodeIndexMap>
-  ) => {
+  const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
       const graphElements = getLineageData(
         data,
-        paginationObj,
         selectNodeHandler,
         loadNodeHandler,
         leafNodes,
@@ -750,8 +707,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         addPipelineClick,
         handleColumnClick,
         expandAllColumns,
-        handleNodeExpand,
-        hidePageNodes
+        handleNodeExpand
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -1466,20 +1422,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           });
       } else {
         const path = findNodeById(value, childMap?.children, []);
-        path?.map((item, index) => {
-          if (!isNil(item.pageIndex)) {
-            const parentId =
-              index === 0 ? childMap?.id || '' : path[index - 1].id;
 
-            setPaginationData((prevState: Record<string, string>) => ({
-              ...prevState,
-              [parentId]: [
-                ...(prevState[parentId] ?? []),
-                Math.ceil((item.pageIndex || 0) / MAX_LINEAGE_LENGTH),
-              ],
-            }));
-          }
-        });
+        // Perform Search here
+
         setTimeout(() => {
           if (path) {
             const lastNode = path[path?.length - 1];
@@ -1539,14 +1484,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         childMapObj,
         paginationObj
       );
-      setElementsHandle(
-        {
-          ...lineageData,
-          nodes: newNodes,
-          downstreamEdges: [...(lineageData.downstreamEdges || []), ...edges],
-        },
-        paginationObj
-      );
+      setElementsHandle({
+        ...lineageData,
+        nodes: newNodes,
+        downstreamEdges: [...(lineageData.downstreamEdges || []), ...edges],
+      });
     }
   };
 
@@ -1610,6 +1552,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       <div className="w-full h-full" ref={reactFlowWrapper}>
         <ReactFlowProvider>
           <ReactFlow
+            onlyRenderVisibleElements
             className="custom-react-flow"
             data-testid="react-flow-component"
             edgeTypes={customEdges}
@@ -1630,7 +1573,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               setReactFlowInstance(reactFlowInstance);
             }}
             onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
-            onNodeClick={(_e, node) => onNodeClick(node)}
+            onNodeClick={(_e, node) => {
+              onNodeClick(node);
+              _e.stopPropagation();
+            }}
             onNodeContextMenu={onNodeContextMenu}
             onNodeDrag={dragHandle}
             onNodeDragStart={dragHandle}
