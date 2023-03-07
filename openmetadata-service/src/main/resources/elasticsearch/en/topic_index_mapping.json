@@ -52,11 +52,10 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
           }
         }
       },
