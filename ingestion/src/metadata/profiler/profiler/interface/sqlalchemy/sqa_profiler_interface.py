@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Dict, List
 
 from sqlalchemy import Column
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -32,6 +33,9 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.mean import Mean
+from metadata.profiler.metrics.static.stddev import StdDev
+from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.profiler.runner import QueryRunner
 from metadata.profiler.profiler.sampler import Sampler
@@ -41,6 +45,18 @@ from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 thread_local = threading.local()
+
+OVERFLOW_ERROR_CODES = {
+    "snowflake": {100046, 100058},
+}
+
+
+def handle_query_exception(msg, exc, session):
+    """Handle exception for query runs"""
+    logger.debug(traceback.format_exc())
+    logger.warning(msg)
+    session.rollback()
+    raise RuntimeError(exc)
 
 
 class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
@@ -104,6 +120,33 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         """
         engine = get_connection(service_connection_config)
         return create_and_bind_thread_safe_session(engine)
+
+    @staticmethod
+    def _compute_static_metrics_wo_sum(
+        metrics: List[Metrics],
+        runner: QueryRunner,
+        session,
+        column: Column,
+    ):
+        """If we catch an overflow error, we will try to compute the static
+        metrics without the sum, mean and stddev
+
+        Returns:
+            _type_: _description_
+        """
+        try:
+            row = runner.select_first_from_sample(
+                *[
+                    metric(column).fn()
+                    for metric in metrics
+                    if not metric.is_window_metric()
+                    and not metric in {Sum, StdDev, Mean}
+                ]
+            )
+            return dict(row)
+        except Exception as exc:
+            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
 
     @valuedispatch
     def _get_metrics(self, *args, **kwargs):
@@ -179,12 +222,19 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             )
             return dict(row)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"  # type: ignore
-            )
-            session.rollback()
-            raise RuntimeError(exc)
+            if isinstance(exc, ProgrammingError):
+                if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
+                    session.bind.dialect.name
+                ):
+                    logger.info(
+                        f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
+                    )
+                    return self._compute_static_metrics_wo_sum(
+                        metrics, runner, session, column
+                    )
+
+            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
 
     # pylint: disable=unused-argument
     @_get_metrics.register(MetricTypes.Query.value)
@@ -219,12 +269,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             row = runner.select_first_from_query(metric_query)
             return dict(row)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
-            )
-            session.rollback()
-            raise RuntimeError(exc)
+            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
 
     # pylint: disable=unused-argument
     @_get_metrics.register(MetricTypes.Window.value)
@@ -254,12 +300,16 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics]
             )
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
-            )
-            session.rollback()
-            raise RuntimeError(exc)
+            if isinstance(exc, ProgrammingError):
+                if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
+                    session.bind.dialect.name
+                ):
+                    logger.info(
+                        f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
+                    )
+                    return None
+            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
         if row:
             return dict(row)
         return None
@@ -288,12 +338,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             rows = metric().sql(session, conn_config=self.service_connection_config)
             return rows
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"  # type: ignore
-            )
-            session.rollback()
-            raise RuntimeError(exc)
+            msg = f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
+            handle_query_exception(msg, exc, session)
 
     def _create_thread_safe_sampler(
         self,
