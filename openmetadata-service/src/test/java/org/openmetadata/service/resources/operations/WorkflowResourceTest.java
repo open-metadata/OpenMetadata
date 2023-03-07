@@ -53,7 +53,6 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getWorkflowType(), createdEntity.getWorkflowType());
     assertNotNull(createdEntity.getRequest());
-    assertNotNull(createdEntity.getOpenMetadataServerConnection());
   }
 
   @Override
