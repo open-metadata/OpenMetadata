@@ -14,21 +14,12 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import {
   mockDashboardEntityDetails,
   mockFetchChartsResponse,
 } from '../mocks/DashboardSummary.mock';
 import DashboardSummary from './DashboardSummary.component';
-
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
 
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
@@ -48,17 +39,66 @@ describe('DashboardSummary component tests', () => {
       });
     });
 
-    const dashboardTitle = screen.getByTestId('TableDataCardTitle');
-    const dashboardUrlLabel = screen.getByTestId('dashboard-url-label');
-    const dashboardUrlValue = screen.getByTestId('dashboard-link-name');
+    const dashboardUrlLabel = screen.getByText(
+      'label.dashboard label.url-uppercase'
+    );
+    const dashboardUrlValue = screen.getByTestId('dashboard-url-value');
+    const dashboardLinkName = screen.getByTestId('dashboard-link-name');
     const chartsHeader = screen.getByTestId('charts-header');
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(dashboardTitle).toBeInTheDocument();
+    expect(dashboardLinkName).toBeInTheDocument();
     expect(dashboardUrlLabel).toBeInTheDocument();
     expect(dashboardUrlValue).toContainHTML(mockDashboardEntityDetails.name);
     expect(chartsHeader).toBeInTheDocument();
     expect(summaryList).toBeInTheDocument();
+  });
+
+  it('Component should render properly, when loaded in the Lineage page.', async () => {
+    const labels = ['label.service-label', 'label.tier-label'];
+
+    await act(async () => {
+      const { debug } = render(
+        <DashboardSummary
+          componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+          entityDetails={mockDashboardEntityDetails}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+
+      debug();
+    });
+
+    const dashboardUrlLabel = screen.getByText(
+      'label.dashboard label.url-uppercase'
+    );
+    const ownerLabel = screen.queryByTestId('label.owner-label');
+
+    const dashboardUrl = screen.getAllByTestId('dashboard-url-value');
+
+    const tags = screen.getByText('label.tag-plural');
+    const description = screen.getByText('label.description');
+    const noDataFound = screen.getByText('label.no-data-found');
+    const dashboardLink = screen.getAllByTestId('dashboard-link-name');
+    const dashboardValue = screen.getAllByTestId('dashboard-url-value');
+
+    labels.forEach((label) =>
+      expect(screen.getByTestId(label)).toBeInTheDocument()
+    );
+
+    expect(ownerLabel).not.toBeInTheDocument();
+
+    expect(dashboardUrl[0]).toBeInTheDocument();
+    expect(dashboardLink[0]).toBeInTheDocument();
+    expect(dashboardValue[0]).toBeInTheDocument();
+
+    expect(tags).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
+    expect(noDataFound).toBeInTheDocument();
+
+    expect(dashboardUrlLabel).toBeInTheDocument();
   });
 
   it('If the dashboard url is not present in dashboard details, "-" should be displayed as dashboard url value', async () => {

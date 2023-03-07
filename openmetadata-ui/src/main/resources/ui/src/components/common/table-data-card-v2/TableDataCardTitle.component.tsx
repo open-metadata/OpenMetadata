@@ -12,6 +12,7 @@
  */
 
 import { Button, Typography } from 'antd';
+import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -32,6 +33,7 @@ interface TableDataCardTitleProps {
   id?: string;
   searchIndex: SearchIndex | EntityType;
   source: SourceType;
+  isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
 }
 
@@ -41,6 +43,7 @@ const TableDataCardTitle = ({
   searchIndex,
   source,
   handleLinkClick,
+  isPanel = false,
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
@@ -76,7 +79,12 @@ const TableDataCardTitle = ({
       level={5}
       title={displayName}>
       <Link
-        className="table-data-card-title-container w-fit-content w-max-90"
+        className={classNames(
+          'table-data-card-title-container w-fit-content w-max-90',
+          {
+            'button-hover': isPanel,
+          }
+        )}
         to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
         {title}
       </Link>
