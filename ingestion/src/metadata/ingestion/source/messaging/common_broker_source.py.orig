@@ -248,16 +248,22 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 sample_data=TopicSampleData(messages=sample_data),
             )
 
+
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:
             deserializer = AvroDeserializer(
                 schema_str=schema, schema_registry_client=self.schema_registry_client
             )
             return str(deserializer(record, None))
-        if schema_type == SchemaType.Protobuf:
+        elif schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
-        return str(record.decode("utf-8"))
+        else:
+            return str(record.decode("utf-8"))
+<<<<<<< HEAD
+=======
+
+>>>>>>> 253517680 (Fix topic tags)
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:
