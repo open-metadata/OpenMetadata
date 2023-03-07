@@ -39,9 +39,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private EntityReference TABLE_REF;
-
   private String QUERY;
-
   private String QUERY_CHECKSUM;
 
   public QueryResourceTest() {
@@ -84,7 +82,13 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Override
   public void validateCreatedEntity(Query createdEntity, CreateQuery request, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+      throws HttpResponseException {
+    assertEquals(request.getQuery(), createdEntity.getQuery());
+    assertEquals(request.getVote(), createdEntity.getVote());
+    assertEquals(request.getQueryDate(), createdEntity.getQueryDate());
+    assertEntityReferences(request.getUsers(), createdEntity.getUsers());
+    assertEntityReferences(request.getQueryUsedIn(), createdEntity.getQueryUsedIn());
+  }
 
   @Override
   public void compareEntities(Query expected, Query updated, Map<String, String> authHeaders)
