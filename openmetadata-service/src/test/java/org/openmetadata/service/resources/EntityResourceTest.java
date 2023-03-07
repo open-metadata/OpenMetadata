@@ -159,6 +159,7 @@ import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
@@ -378,6 +379,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
+    new QueryResourceTest().setupQuery(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -810,7 +812,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  protected void post_entityCreateWithInvalidName_400() {
+  protected void post_entityCreateWithInvalidName_400() throws IOException {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponseContains(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");

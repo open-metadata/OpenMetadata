@@ -70,7 +70,7 @@
     },
     "vote": {
       "description": "Users can vote up to rank the popular queries.",
-      "type": "number",
+      "type": "integer",
       "default": 1
     },
     "query": {

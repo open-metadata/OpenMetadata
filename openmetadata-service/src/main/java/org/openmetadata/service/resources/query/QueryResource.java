@@ -79,7 +79,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     }
   }
 
-  static final String FIELDS = "owner,users,vote,tags,queryUsedIn";
+  static final String FIELDS = "owner,followers,users,vote,tags,queryUsedIn";
 
   @GET
   @Operation(
