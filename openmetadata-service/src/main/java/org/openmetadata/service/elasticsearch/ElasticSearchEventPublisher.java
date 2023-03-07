@@ -93,7 +93,7 @@ import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -121,7 +121,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(ChangeEventList events) throws EventPublisherException, JsonProcessingException {
+  public void publish(EventList events) throws EventPublisherException, JsonProcessingException {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       String contextInfo =

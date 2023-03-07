@@ -56,7 +56,7 @@ public class EmailPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list) throws IOException, InterruptedException {
+  public void sendAlert(EventResource.EventList list) throws IOException, InterruptedException {
     for (ChangeEvent event : list.getData()) {
       try {
         Set<String> receivers = buildReceiversList(event);

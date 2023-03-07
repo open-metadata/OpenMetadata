@@ -53,7 +53,7 @@ public class GChatPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  protected void sendAlert(EventResource.ChangeEventList list) {
+  protected void sendAlert(EventResource.EventList list) {
 
     for (ChangeEvent event : list.getData()) {
       long attemptTime = System.currentTimeMillis();

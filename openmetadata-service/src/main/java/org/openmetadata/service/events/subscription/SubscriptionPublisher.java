@@ -137,14 +137,14 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.ChangeEventList list) throws IOException, InterruptedException {}
+  protected void sendAlert(EventResource.EventList list) throws IOException, InterruptedException {}
 
   protected void onStartDelegate() {}
 
   protected void onShutdownDelegate() {}
 
   @Override
-  public void publish(EventResource.ChangeEventList list) throws EventPublisherException {
+  public void publish(EventResource.EventList list) throws EventPublisherException {
     // Publish to the given Alert Actions
     try {
       LOG.info(

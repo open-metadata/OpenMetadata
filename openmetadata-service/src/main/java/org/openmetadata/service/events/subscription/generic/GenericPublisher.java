@@ -58,7 +58,7 @@ public class GenericPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list)
+  public void sendAlert(EventResource.EventList list)
       throws IOException, EventPublisherException, InterruptedException {
     long attemptTime = System.currentTimeMillis();
     try {

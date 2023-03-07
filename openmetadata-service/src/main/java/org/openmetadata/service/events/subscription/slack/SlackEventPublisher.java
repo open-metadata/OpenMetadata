@@ -52,7 +52,7 @@ public class SlackEventPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.ChangeEventList list) {
+  public void sendAlert(EventResource.EventList list) {
     for (ChangeEvent event : list.getData()) {
       long attemptTime = System.currentTimeMillis();
       try {
