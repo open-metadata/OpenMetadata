@@ -541,6 +541,7 @@
     "test-suite": "Test Suite",
     "test-suite-status": "Test Suite Status",
     "tests-summary": "Tests Summary",
+    "text": "Text",
     "thread-count": "Thread Count",
     "tier": "Tier",
     "tier-number": "Tier{{tier}}",
