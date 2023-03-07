@@ -48,15 +48,19 @@ class ProtobufParserTests(TestCase):
     parsed_schema = protobuf_parser.parse_protobuf_schema()
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema[0].name.__root__, "age")
+        self.assertEqual(self.parsed_schema[0].name.__root__, "PersonInfo")
 
     def test_schema_type(self):
-        self.assertEqual(self.parsed_schema[0].dataType.name, "INT")
+        self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {str(field.name.__root__) for field in self.parsed_schema}
+        field_names = {
+            str(field.name.__root__) for field in self.parsed_schema[0].children
+        }
         self.assertEqual(field_names, {"height", "gender", "age"})
 
     def test_field_types(self):
-        field_types = {str(field.dataType.name) for field in self.parsed_schema}
+        field_types = {
+            str(field.dataType.name) for field in self.parsed_schema[0].children
+        }
         self.assertEqual(field_types, {"INT", "ENUM"})

@@ -21,6 +21,7 @@ from typing import Iterable, Optional
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
@@ -44,6 +45,15 @@ from metadata.parsers.schema_parsers import (
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+def on_partitions_assignment_to_consumer(consumer, partitions):
+    # get offset tuple from the first partition
+    for partition in partitions:
+        last_offset = consumer.get_watermark_offsets(partition)
+        # get latest 50 messages, if there are no more than 50 messages we try to fetch from beginning of the queue
+        partition.offset = last_offset[1] - 50 if last_offset[1] > 50 else 0
+    consumer.assign(partitions)
 
 
 class CommonBrokerSource(MessagingServiceSource, ABC):
@@ -104,7 +114,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 ]
             )
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
-
             if topic_schema is not None:
                 schema_type = topic_schema.schema_type.lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
@@ -121,9 +130,12 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     schemaType=schema_type_map.get(
                         topic_schema.schema_type.lower(), SchemaType.Other.value
                     ),
-                    schemaFields=schema_fields,
+                    schemaFields=schema_fields if schema_fields is not None else [],
                 )
-
+            else:
+                topic.messageSchema = Topic(
+                    schemaText="", schemaType=SchemaType.Other, schemaFields=[]
+                )
             self.status.topic_scanned(topic.name.__root__)
             yield topic
 
@@ -197,17 +209,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         Method to Get Sample Data of Messaging Entity
         """
-        if (
-            self.context.topic
-            and self.context.topic.messageSchema
-            and self.context.topic.messageSchema.schemaType.value
-            == SchemaType.Avro.value
-            and self.generate_sample_data
-        ):
+        if self.context.topic and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
             try:
-                self.consumer_client.subscribe([topic_name])
+                self.consumer_client.subscribe(
+                    [topic_name], on_assign=on_partitions_assignment_to_consumer
+                )
                 logger.info(
                     f"Broker consumer polling for sample messages in topic {topic_name}"
                 )
@@ -223,12 +231,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                         try:
                             value = message.value()
                             sample_data.append(
-                                value.decode()
-                                if isinstance(value, bytes)
-                                else str(
-                                    self.consumer_client._serializer.decode_message(  # pylint: disable=protected-access
-                                        value
-                                    )
+                                self.decode_message(
+                                    value,
+                                    self.context.topic.messageSchema.schemaText,
+                                    self.context.topic.messageSchema.schemaType,
                                 )
                             )
                         except Exception as exc:
@@ -242,8 +248,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 sample_data=TopicSampleData(messages=sample_data),
             )
 
-<<<<<<< Updated upstream
-=======
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:
             deserializer = AvroDeserializer(
@@ -256,7 +260,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         else:
             return str(record.decode("utf-8"))
 
->>>>>>> Stashed changes
     def close(self):
         if self.generate_sample_data and self.consumer_client:
             self.consumer_client.close()
