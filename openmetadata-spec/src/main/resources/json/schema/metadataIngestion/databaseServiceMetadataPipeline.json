@@ -19,7 +19,7 @@
       "default": "DatabaseMetadata"
     },
     "markDeletedTables": {
-      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted. Also if table is deleted all the associated entities like testSuite, lineage, etc with that table are deleted",
+      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted. Also, if the table is deleted, all the associated entities like testSuite, lineage, etc., with that table will be deleted",
       "type": "boolean",
       "default": true
     },

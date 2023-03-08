@@ -22,4 +22,4 @@ class DeleteTable(BaseModel):
     """Entity Reference of a table to be deleted"""
 
     table: Table
-    markDeletedTables: Optional[bool] = False
+    mark_deleted_tables: Optional[bool] = False
