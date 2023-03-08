@@ -374,7 +374,7 @@ class AmundsenSource(Source[Entity]):
                     ),
                     labelType="Automated",
                     state="Suggested",
-                    source="Tag",
+                    source="Classification",
                 ),
                 TagLabel(
                     tagFQN=fqn.build(
@@ -385,7 +385,7 @@ class AmundsenSource(Source[Entity]):
                     ),
                     labelType="Automated",
                     state="Suggested",
-                    source="Tag",
+                    source="Classification",
                 ),
             ]
             if table["tags"]:
@@ -401,7 +401,7 @@ class AmundsenSource(Source[Entity]):
                             ),
                             labelType="Automated",
                             state="Suggested",
-                            source="Tag",
+                            source="Classification",
                         )
                         for tag in table["tags"]
                     ]

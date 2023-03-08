@@ -33,13 +33,13 @@ const mockColumns: Column[] = [
       {
         tagFQN: 'string',
         labelType: LabelType.Manual,
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         state: State.Confirmed,
       },
       {
         tagFQN: 'string2',
         labelType: LabelType.Derived,
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         state: State.Confirmed,
       },
     ],

@@ -16,8 +16,8 @@ import React from 'react';
 import TagsContainer from './tags-container';
 
 const tagList = [
-  { fqn: 'tag 1', source: 'Tag' },
-  { fqn: 'tag 2', source: 'Tag' },
+  { fqn: 'tag 1', source: 'Classification' },
+  { fqn: 'tag 2', source: 'Classification' },
   { fqn: 'tag 3', source: 'Glossary' },
 ];
 
