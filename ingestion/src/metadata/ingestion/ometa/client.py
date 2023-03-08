@@ -136,7 +136,7 @@ class REST:
         base_url: URL = None,
         api_version: str = None,
         headers: dict = None,
-    ):  # pylint: disable=inconsistent-return-statements
+    ):
         # pylint: disable=too-many-locals
         if not headers:
             headers = {"Content-type": "application/json"}
@@ -206,6 +206,7 @@ class REST:
                 )
                 time.sleep(retry_wait)
                 retry -= 1
+        return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
