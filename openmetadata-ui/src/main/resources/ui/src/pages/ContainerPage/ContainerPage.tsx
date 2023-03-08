@@ -33,6 +33,7 @@ import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { ExtraInfo } from 'Models';
@@ -252,6 +253,82 @@ const ContainerPage = () => {
     }
   };
 
+  const handleRemoveOwner = async () => {
+    try {
+      const { owner: newOwner } = await handleUpdateContainerData({
+        ...(containerData as Container),
+        owner: undefined,
+      });
+
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        owner: newOwner,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleRemoveTier = async () => {
+    try {
+      const { tags: newTags } = await handleUpdateContainerData({
+        ...(containerData as Container),
+        tags: getTagsWithoutTier(containerData?.tags ?? []),
+      });
+
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        tags: newTags,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleUpdateOwner = async (updatedOwner?: Container['owner']) => {
+    try {
+      if (updatedOwner) {
+        const { owner: newOwner } = await handleUpdateContainerData({
+          ...(containerData as Container),
+          owner: updatedOwner ?? containerData?.owner,
+        });
+
+        setContainerData((prev) => ({
+          ...(prev as Container),
+          owner: newOwner,
+        }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleUpdateTier = async (updatedTier?: string) => {
+    try {
+      if (updatedTier) {
+        const { tags: newTags } = await handleUpdateContainerData({
+          ...(containerData as Container),
+          tags: [
+            ...(containerData?.tags ?? []),
+            {
+              tagFQN: updatedTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+              source: TagSource.Tag,
+            },
+          ],
+        });
+
+        setContainerData((prev) => ({
+          ...(prev as Container),
+          tags: newTags,
+        }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
@@ -303,12 +380,12 @@ const ContainerPage = () => {
           }
           removeOwner={
             containerPermissions.EditAll || containerPermissions.EditOwner
-              ? tempFunction
+              ? handleRemoveOwner
               : undefined
           }
           removeTier={
             containerPermissions.EditAll || containerPermissions.EditTier
-              ? tempFunction
+              ? handleRemoveTier
               : undefined
           }
           tags={tags}
@@ -317,12 +394,12 @@ const ContainerPage = () => {
           titleLinks={breadcrumbTitles}
           updateOwner={
             containerPermissions.EditAll || containerPermissions.EditOwner
-              ? tempFunction
+              ? handleUpdateOwner
               : undefined
           }
           updateTier={
             containerPermissions.EditAll || containerPermissions.EditTier
-              ? tempFunction
+              ? handleUpdateTier
               : undefined
           }
           version={version + ''}
