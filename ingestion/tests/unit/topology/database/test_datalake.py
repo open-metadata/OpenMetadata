@@ -185,7 +185,6 @@ EXPECTED_AVRO_COL_2 = [
     Column(
         name="twitter_schema",
         dataType="RECORD",
-        description="A basic schema for storing Twitter messages",
         children=[
             Column(
                 name="username",
@@ -197,7 +196,7 @@ EXPECTED_AVRO_COL_2 = [
                 name="tweet",
                 dataType="STRING",
                 dataTypeDisplay="string",
-                description="he content of the user's Twitter message",
+                description="The content of the user's Twitter message",
             ),
             Column(
                 name="timestamp",
@@ -276,6 +275,7 @@ def _get_str_value(data):
 def custom_column_compare(self, other):
     return (
         self.name == other.name
+        and self.description == other.description
         and self.dataTypeDisplay == other.dataTypeDisplay
         and self.children == other.children
         and _get_str_value(self.arrayDataType) == _get_str_value(other.arrayDataType)
