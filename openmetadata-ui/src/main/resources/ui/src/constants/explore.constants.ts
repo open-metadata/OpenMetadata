@@ -53,7 +53,7 @@ export interface ExploreTabInfo {
 
 export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
   [SearchIndex.TABLE]: {
-    label: t('label.tables'),
+    label: t('label.table-plural'),
     sortingFields: tableSortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'tables',

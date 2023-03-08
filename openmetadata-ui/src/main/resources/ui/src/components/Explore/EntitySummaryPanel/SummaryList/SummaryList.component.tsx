@@ -32,7 +32,9 @@ export default function SummaryList({
     <Row>
       {isEmpty(formattedEntityData) ? (
         <div className="m-y-md">
-          <Text className="text-gray">{t('message.no-data-available')}</Text>
+          <Text className="text-grey-body">
+            {t('message.no-data-available')}
+          </Text>
         </div>
       ) : (
         formattedEntityData.map((entity) =>

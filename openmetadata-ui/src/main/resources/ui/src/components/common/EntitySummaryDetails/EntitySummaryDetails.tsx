@@ -348,7 +348,9 @@ const EntitySummaryDetails = ({
                   title={
                     isGroupType
                       ? t('message.group-team-type-change-message')
-                      : t('label.edit-team-type')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
                   }>
                   <AntdButton
                     className={isGroupType ? 'tw-opacity-50' : ''}

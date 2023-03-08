@@ -1,0 +1,12 @@
+# Airflow Environment Variables for ingestion service
+AIRFLOW__API__AUTH_BACKENDS="airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+AIRFLOW__CORE__EXECUTOR="LocalExecutor"
+AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS="/opt/airflow/dag_generated_configs"
+
+# PostgreSQL Environment Variables for ingestion service
+DB_HOST="postgresql"
+DB_PORT="5432"
+AIRFLOW_DB="airflow_db"
+DB_USER="airflow_user"
+DB_SCHEME="postgresql+psycopg2"
+DB_PASSWORD="airflow_pass"

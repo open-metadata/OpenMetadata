@@ -16,7 +16,7 @@
 // @ts-nocheck
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { Card, Tooltip } from 'antd';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -76,19 +76,11 @@ const ServiceConnectionDetails = ({
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'credentials'
         ) {
-          if (isObject(value.gcsConfig)) {
-            // Condition for GCS Credentials value
-            const newSchemaPropertyObject =
-              schemaPropertyObject[key].definitions.GCSValues.properties;
+          // Condition for GCS Credentials path
+          const newSchemaPropertyObject =
+            schemaPropertyObject[key].definitions.GCSCredentialsPath;
 
-            return getKeyValues(value.gcsConfig, newSchemaPropertyObject);
-          } else {
-            // Condition for GCS Credentials path
-            const newSchemaPropertyObject =
-              schemaPropertyObject[key].definitions.GCSCredentialsPath;
-
-            return getKeyValues(value, newSchemaPropertyObject);
-          }
+          return getKeyValues(value, newSchemaPropertyObject);
         } else if (
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'configSource'
@@ -234,13 +226,13 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <div className="tw-bg-white">
+    <Card>
       <div
-        className="tw-w-full tw-p-5 tw-flex tw-flex-wrap tw-border tw-rounded-lg tw-border-gray-300"
+        className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
         {data}
       </div>
-    </div>
+    </Card>
   );
 };
 

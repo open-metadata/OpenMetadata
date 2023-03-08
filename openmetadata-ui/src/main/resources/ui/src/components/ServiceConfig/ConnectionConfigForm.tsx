@@ -85,7 +85,12 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     const updatedFormData = formatFormDataForSubmit(formData);
 
     return new Promise<void>((resolve, reject) => {
-      TestConnection(updatedFormData, getTestConnectionType(serviceCategory))
+      TestConnection(
+        updatedFormData,
+        getTestConnectionType(serviceCategory),
+        serviceType,
+        data?.name
+      )
         .then((res) => {
           // This api only responds with status 200 on success
           // No data sent on api success

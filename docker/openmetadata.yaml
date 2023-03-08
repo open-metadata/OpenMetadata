@@ -1,0 +1,279 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
+
+swagger:
+  resourcePackage: org.openmetadata.service.resources
+
+
+server:
+  rootPath: '/api/*'
+  applicationConnectors:
+    - type: http
+      port: ${SERVER_PORT:-8585}
+  adminConnectors:
+    - type: http
+      port: ${SERVER_ADMIN_PORT:-8586}
+
+# Above configuration for running http is fine for dev and testing.
+# For production setup, where UI app will hit apis through DPS it 
+# is strongly recommended to run https instead. Note that only
+# keyStorePath and keyStorePassword are mandatory properties. Values
+# for other properties are defaults
+#server:
+  #applicationConnectors:
+  #  - type: https
+  #    port: 8585
+  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePassword: changeit
+  #    keyStoreType: JKS
+  #    keyStoreProvider:
+  #    trustStorePath: /path/to/file
+  #    trustStorePassword: changeit
+  #    trustStoreType: JKS
+  #    trustStoreProvider:
+  #    keyManagerPassword: changeit
+  #    needClientAuth: false
+  #    wantClientAuth:
+  #    certAlias: <alias>
+  #    crlPath: /path/to/file
+  #    enableCRLDP: false
+  #    enableOCSP: false
+  #    maxCertPathLength: (unlimited)
+  #    ocspResponderUrl: (none)
+  #    jceProvider: (none)
+  #    validateCerts: true
+  #    validatePeers: true
+  #    supportedProtocols: SSLv3
+  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    allowRenegotiation: true
+  #    endpointIdentificationAlgorithm: (none)
+ 
+  #adminConnectors:
+  #  - type: https
+  #    port: 8586
+  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePassword: changeit 
+  #    keyStoreType: JKS
+  #    keyStoreProvider:
+  #    trustStorePath: /path/to/file
+  #    trustStorePassword: changeit
+  #    trustStoreType: JKS
+  #    trustStoreProvider:
+  #    keyManagerPassword: changeit
+  #    needClientAuth: false
+  #    wantClientAuth:
+  #    certAlias: <alias>
+  #    crlPath: /path/to/file
+  #    enableCRLDP: false
+  #    enableOCSP: false
+  #    maxCertPathLength: (unlimited)
+  #    ocspResponderUrl: (none)
+  #    jceProvider: (none)
+  #    validateCerts: true
+  #    validatePeers: true
+  #    supportedProtocols: SSLv3
+  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    allowRenegotiation: true
+  #    endpointIdentificationAlgorithm: (none)
+
+# Logging settings.
+# https://logback.qos.ch/manual/layouts.html#conversionWord
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  loggers:
+    io.swagger: ERROR
+  appenders:
+    - type: console
+      threshold: TRACE
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      timeZone: UTC
+    - type: file
+      filterFactories:
+        - type: audit-exclude-filter-factory
+      threshold: TRACE
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      currentLogFilename: ./logs/openmetadata.log
+      archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 7
+      timeZone: UTC
+      maxFileSize: 50MB
+    - type: file
+      filterFactories:
+        - type: audit-only-filter-factory
+      threshold: TRACE
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      currentLogFilename: ./logs/audit.log
+      archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 25
+      timeZone: UTC
+      maxFileSize: 50MB
+
+database:
+  # the name of the JDBC driver, mysql in our case
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
+  # the username and password
+  user: ${DB_USER:-openmetadata_user}
+  password: ${DB_USER_PASSWORD:-openmetadata_password}
+  # the JDBC URL; the database is called openmetadata_db
+  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
+
+
+migrationConfiguration:
+  path: "./bootstrap/sql"
+
+# Authorizer Configuration
+authorizerConfiguration:
+  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
+
+authenticationConfiguration:
+  provider: ${AUTHENTICATION_PROVIDER:-basic}
+  # This will only be valid when provider type specified is customOidc
+  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
+  authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
+  clientId: ${AUTHENTICATION_CLIENT_ID:-""}
+  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  ldapConfiguration:
+    host: ${AUTHENTICATION_LDAP_HOST:-}
+    port: ${AUTHENTICATION_LDAP_PORT:-}
+    dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
+    dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
+    userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
+    mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-}
+    #optional
+    maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
+    sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-}
+    truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll}
+    trustStoreConfig:
+      customTrustManagerConfig:
+        trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-}
+        trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}
+        trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-}
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-}
+      hostNameConfig:
+        allowWildCards: ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-}
+        acceptableHostNames: ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[]}
+      jvmDefaultConfig:
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+      trustAllConfig:
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-"./conf/private_key.der"}
+  jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
+  keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
+
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST:-localhost}
+  port: ${ELASTICSEARCH_PORT:-9200}
+  scheme: ${ELASTICSEARCH_SCHEME:-http}
+  username: ${ELASTICSEARCH_USER:-""}
+  password: ${ELASTICSEARCH_PASSWORD:-""}
+  truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
+  truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
+  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
+  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
+  searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
+
+eventMonitoringConfiguration:
+  eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
+  batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+  # it will use the default auth provider for AWS services if parameters are not set
+  # parameters:
+  #   region: ${OM_MONITOR_REGION:-""}
+  #   accessKeyId: ${OM_MONITOR_ACCESS_KEY_ID:-""}
+  #   secretAccessKey: ${OM_MONITOR_ACCESS_KEY:-""}
+
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.service.events.WebAnalyticEventHandler"
+
+pipelineServiceClientConfiguration:
+  # If we don't need this, set "org.openmetadata.service.clients.pipeline.noop.NoopClient"
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  sslConfig:
+    validate:
+      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
+
+# no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
+# to secure your instance of OpenMetadata with TLS and encryption at rest.
+fernetConfiguration:
+  fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
+
+secretsManagerConfiguration:
+  secretsManager: ${SECRET_MANAGER:-noop} # Possible values are "noop", "aws", "aws-ssm"
+# it will use the default auth provider for the secrets' manager service if parameters are not set
+  parameters:
+    region: ${OM_SM_REGION:-""}
+    accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
+
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 1s
+  healthChecks:
+    - name: OpenMetadataServerHealthCheck
+      critical: true
+      schedule:
+        checkInterval: 2500ms
+        downtimeInterval: 10s
+        failureAttempts: 2
+        successAttempts: 1
+
+email:
+  emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
+  supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
+  enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
+  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
+  serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
+  serverPort: ${SMTP_SERVER_PORT:-""}
+  username: ${SMTP_SERVER_USERNAME:-""}
+  password: ${SMTP_SERVER_PWD:-""}
+  transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
+
+applicationConfig:
+  logoConfig:
+    logoLocationType: ${OM_LOGO_LOCATION_TYPE:-openmetadata} #either "openmetadata' or { "url" or "filePath" , based on this specify either '*AbsoluteFilePath' or '*LogoUrlPath' }
+    loginPageLogoAbsoluteFilePath: ${OM_LOGO_LOGIN_LOCATION_FILE_PATH:-""} #login page logo , work in "filePath" mode
+    loginPageLogoUrlPath: ${OM_LOGO_LOGIN_LOCATION_URL_PATH:-""} #login page logo , work in "url" mode
+    navBarLogoAbsoluteFilePath: ${OM_LOGO_NAVBAR_LOCATION_FILE_PATH:-""} #nav bar logo , work in "filePath" mode
+    navBarLogoUrlPath: ${OM_LOGO_NAVBAR_LOCATION_URL_PATH:-""} #nav bar logo , work in "url" mode
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
+

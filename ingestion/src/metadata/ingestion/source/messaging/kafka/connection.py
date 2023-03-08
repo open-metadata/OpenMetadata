@@ -79,7 +79,8 @@ def get_connection(
         if "group.id" not in consumer_config:
             consumer_config["group.id"] = "openmetadata-consumer"
         if "auto.offset.reset" not in consumer_config:
-            consumer_config["auto.offset.reset"] = "earliest"
+            consumer_config["auto.offset.reset"] = "largest"
+        consumer_config["enable.auto.commit"] = False
         logger.debug(f"Using Kafka consumer config: {consumer_config}")
         consumer_client = AvroConsumer(
             consumer_config, schema_registry=schema_registry_client

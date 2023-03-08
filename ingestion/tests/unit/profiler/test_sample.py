@@ -207,11 +207,24 @@ class SampleTest(TestCase):
         Histogram should run correctly
         """
         hist = Metrics.HISTOGRAM.value
+        count = Metrics.COUNT.value
+        min = Metrics.MIN.value
+        max = Metrics.MAX.value
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        iqr = Metrics.IQR.value
+
         with patch.object(
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             profiler = Profiler(
                 hist,
+                count,
+                min,
+                max,
+                first_quartile,
+                third_quartile,
+                iqr,
                 profiler_interface=SQAProfilerInterface(
                     self.sqlite_conn,
                     None,
@@ -229,6 +242,12 @@ class SampleTest(TestCase):
 
         profiler = Profiler(
             hist,
+            count,
+            min,
+            max,
+            first_quartile,
+            third_quartile,
+            iqr,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
