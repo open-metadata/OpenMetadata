@@ -69,8 +69,8 @@ COMMONS = {
 pii_requirements = {
     "spacy==3.5.0",
     (
-        "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/"
-        "en_core_web_lg-3.5.0/en_core_web_lg-3.5.0-py3-none-any.whl"
+        "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_md-3.5.0/en_core_web_md-3.5.0-py3-none-any.whl"
     ),
     VERSIONS["pandas"],
     "presidio-analyzer==2.2.32",
