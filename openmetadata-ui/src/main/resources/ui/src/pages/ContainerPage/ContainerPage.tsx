@@ -45,6 +45,7 @@ import {
   getContainerByName,
   patchContainerDetails,
   removeContainerFollower,
+  restoreContainer,
 } from 'rest/objectStoreAPI';
 import {
   getCurrentUserId,
@@ -52,12 +53,13 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from 'utils/CommonUtils';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 export enum CONTAINER_DETAILS_TABS {
   SCHEME = 'schema',
@@ -352,6 +354,26 @@ const ContainerPage = () => {
     }
   };
 
+  const handleRestoreContainer = async () => {
+    try {
+      await restoreContainer(containerData?.id ?? '');
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.container'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.container'),
+        })
+      );
+    }
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
@@ -377,10 +399,6 @@ const ContainerPage = () => {
   if (!hasViewPermission && !isLoading) {
     return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
   }
-
-  const tempFunction = () => {
-    // temp function
-  };
 
   return (
     <PageContainerV1>
@@ -426,8 +444,7 @@ const ContainerPage = () => {
               : undefined
           }
           version={version + ''}
-          versionHandler={tempFunction}
-          onRestoreEntity={tempFunction}
+          onRestoreEntity={handleRestoreContainer}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
           <Tabs.TabPane

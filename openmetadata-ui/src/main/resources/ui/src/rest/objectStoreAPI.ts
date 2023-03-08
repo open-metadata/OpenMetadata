@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
+import { RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
@@ -70,6 +71,15 @@ export const addContainerFollower = async (id: string, userId: string) => {
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
   >(`/containers/${id}/followers`, userId, configOptions);
+
+  return response.data;
+};
+
+export const restoreContainer = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Container>
+  >('/containers/restore', { id });
 
   return response.data;
 };
