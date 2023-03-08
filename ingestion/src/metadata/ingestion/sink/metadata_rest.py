@@ -341,7 +341,9 @@ class MetadataRestSink(Sink[Entity]):
         try:
 
             self.metadata.delete(
-                entity=Table, entity_id=record.table.id, recursive=True
+                entity=Table,
+                entity_id=record.table.id,
+                recursive=record.markDeletedTables,
             )
             logger.debug(
                 f"{record.table.name} doesn't exist in source state, marking it as deleted"
