@@ -83,10 +83,9 @@ const mockTasks = [
 
 const PipelineDetailsProps = {
   pipelineUrl: '',
-  tasks: mockTasks,
   serviceType: '',
   users: [],
-  pipelineDetails: {} as Pipeline,
+  pipelineDetails: { tasks: mockTasks } as Pipeline,
   entityLineage: {} as EntityLineage,
   entityName: '',
   activeTab: 1,
@@ -239,9 +238,15 @@ describe('Test PipelineDetails component', () => {
   });
 
   it('Should render no tasks data placeholder is tasks list is empty', async () => {
-    render(<PipelineDetails {...PipelineDetailsProps} tasks={[]} />, {
-      wrapper: MemoryRouter,
-    });
+    render(
+      <PipelineDetails
+        {...PipelineDetailsProps}
+        pipelineDetails={{} as Pipeline}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const switchContainer = screen.getByTestId('pipeline-task-switch');
 

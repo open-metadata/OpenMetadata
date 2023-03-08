@@ -46,7 +46,7 @@ import {
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Connection } from '../../generated/entity/services/dashboardService';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -60,7 +60,10 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { defaultFields } from '../../utils/PipelineDetailsUtils';
+import {
+  defaultFields,
+  getFormattedPipelineDetails,
+} from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -76,8 +79,7 @@ const PipelineDetailsPage = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [pipelineUrl, setPipelineUrl] = useState<string>('');
+  const [pipelineHostPort, setPipelineHostPort] = useState<string>();
   const [displayName, setDisplayName] = useState<string>('');
   const [slashedPipelineName, setSlashedPipelineName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -169,8 +171,6 @@ const PipelineDetailsPage = () => {
             serviceType,
             displayName,
             name,
-            tasks,
-            pipelineUrl = '',
           } = res;
           setDisplayName(displayName || name);
           setPipelineDetails(res);
@@ -204,12 +204,7 @@ const PipelineDetailsPage = () => {
 
           fetchServiceDetails(service.type, service.name ?? '')
             .then((hostPort: string) => {
-              setPipelineUrl(hostPort + pipelineUrl);
-              const updatedTasks = ((tasks || []) as Task[]).map((task) => ({
-                ...task,
-                taskUrl: hostPort + task.taskUrl,
-              }));
-              setTasks(updatedTasks);
+              setPipelineHostPort(hostPort);
               setLoading(false);
             })
             .catch((err: AxiosError) => {
@@ -333,7 +328,8 @@ const PipelineDetailsPage = () => {
       const response = await patchPipelineDetails(pipelineId, jsonPatch);
 
       if (response) {
-        setTasks(response.tasks || []);
+        const formattedPipelineDetails = getFormattedPipelineDetails(response);
+        setPipelineDetails(formattedPipelineDetails);
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -474,13 +470,12 @@ const PipelineDetailsPage = () => {
               paging={paging}
               pipelineDetails={pipelineDetails}
               pipelineFQN={pipelineFQN}
-              pipelineUrl={pipelineUrl}
+              pipelineHostPort={pipelineHostPort}
               removeLineageHandler={removeLineageHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedPipelineName={slashedPipelineName}
               tagUpdateHandler={onTagUpdate}
               taskUpdateHandler={onTaskUpdate}
-              tasks={tasks}
               unfollowPipelineHandler={unfollowPipeline}
               versionHandler={versionHandler}
               onExtensionUpdate={handleExtensionUpdate}

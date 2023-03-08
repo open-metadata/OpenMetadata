@@ -13,7 +13,7 @@
 
 import { Operation } from 'fast-json-patch';
 
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -30,13 +30,12 @@ export interface PipeLineDetailsProp {
   pipelineFQN: string;
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
-  pipelineUrl: string;
   entityName: string;
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
-  tasks: Task[];
+  pipelineHostPort?: string;
   paging: Paging;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
