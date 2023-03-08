@@ -13,6 +13,8 @@
 import { Card, Col, Row, Tabs } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -494,6 +496,15 @@ const ContainerPage = () => {
   const handleFullScreenClick = () =>
     history.push(getLineageViewPath(EntityType.CONTAINER, containerName));
 
+  const handleExtensionUpdate = async (updatedContainer: Container) => {
+    try {
+      const response = await handleUpdateContainerData(updatedContainer);
+      setContainerData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   // Effects
   useEffect(() => {
     if (hasViewPermission) {
@@ -666,11 +677,19 @@ const ContainerPage = () => {
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <Row
-              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
-              gutter={[0, 16]}>
-              {t('label.custom-property-plural')}
-            </Row>
+            <Card className={ENTITY_CARD_CLASS}>
+              <CustomPropertyTable
+                entityDetails={
+                  containerData as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.CONTAINER}
+                handleExtensionUpdate={handleExtensionUpdate}
+                hasEditAccess={
+                  containerPermissions.EditAll ||
+                  containerPermissions.EditCustomFields
+                }
+              />
+            </Card>
           </Tabs.TabPane>
         </Tabs>
       </div>
