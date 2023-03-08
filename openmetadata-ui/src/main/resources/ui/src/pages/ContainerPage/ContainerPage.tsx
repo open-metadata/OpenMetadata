@@ -36,7 +36,7 @@ import { Container } from 'generated/entity/data/container';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import { ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -329,6 +329,22 @@ const ContainerPage = () => {
     }
   };
 
+  const handleUpdateTags = async (selectedTags: Array<EntityTags> = []) => {
+    try {
+      const { tags: newTags } = await handleUpdateContainerData({
+        ...(containerData as Container),
+        tags: [...(tier ? [tier] : []), ...selectedTags],
+      });
+
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        tags: newTags,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
@@ -389,7 +405,7 @@ const ContainerPage = () => {
               : undefined
           }
           tags={tags}
-          tagsHandler={tempFunction}
+          tagsHandler={handleUpdateTags}
           tier={tier}
           titleLinks={breadcrumbTitles}
           updateOwner={
