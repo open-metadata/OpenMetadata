@@ -19,7 +19,7 @@
       "default": "DatabaseMetadata"
     },
     "markDeletedTables": {
-      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
+      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted. Also if table is deleted all the associated entities with table are deleted",
       "type": "boolean",
       "default": true
     },
