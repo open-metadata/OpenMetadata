@@ -211,14 +211,16 @@ const ContainerPage = () => {
 
   const handleUpdateDescription = async (updatedDescription: string) => {
     try {
-      const { description: newDescription } = await handleUpdateContainerData({
-        ...(containerData as Container),
-        description: updatedDescription,
-      });
+      const { description: newDescription, version } =
+        await handleUpdateContainerData({
+          ...(containerData as Container),
+          description: updatedDescription,
+        });
 
       setContainerData((prev) => ({
         ...(prev as Container),
         description: newDescription,
+        version,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -255,7 +257,7 @@ const ContainerPage = () => {
 
   const handleRemoveOwner = async () => {
     try {
-      const { owner: newOwner } = await handleUpdateContainerData({
+      const { owner: newOwner, version } = await handleUpdateContainerData({
         ...(containerData as Container),
         owner: undefined,
       });
@@ -263,6 +265,7 @@ const ContainerPage = () => {
       setContainerData((prev) => ({
         ...(prev as Container),
         owner: newOwner,
+        version,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -271,7 +274,7 @@ const ContainerPage = () => {
 
   const handleRemoveTier = async () => {
     try {
-      const { tags: newTags } = await handleUpdateContainerData({
+      const { tags: newTags, version } = await handleUpdateContainerData({
         ...(containerData as Container),
         tags: getTagsWithoutTier(containerData?.tags ?? []),
       });
@@ -279,6 +282,7 @@ const ContainerPage = () => {
       setContainerData((prev) => ({
         ...(prev as Container),
         tags: newTags,
+        version,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -288,7 +292,7 @@ const ContainerPage = () => {
   const handleUpdateOwner = async (updatedOwner?: Container['owner']) => {
     try {
       if (updatedOwner) {
-        const { owner: newOwner } = await handleUpdateContainerData({
+        const { owner: newOwner, version } = await handleUpdateContainerData({
           ...(containerData as Container),
           owner: updatedOwner ?? containerData?.owner,
         });
@@ -296,6 +300,7 @@ const ContainerPage = () => {
         setContainerData((prev) => ({
           ...(prev as Container),
           owner: newOwner,
+          version,
         }));
       }
     } catch (error) {
@@ -306,7 +311,7 @@ const ContainerPage = () => {
   const handleUpdateTier = async (updatedTier?: string) => {
     try {
       if (updatedTier) {
-        const { tags: newTags } = await handleUpdateContainerData({
+        const { tags: newTags, version } = await handleUpdateContainerData({
           ...(containerData as Container),
           tags: [
             ...(containerData?.tags ?? []),
@@ -322,6 +327,7 @@ const ContainerPage = () => {
         setContainerData((prev) => ({
           ...(prev as Container),
           tags: newTags,
+          version,
         }));
       }
     } catch (error) {
@@ -331,7 +337,7 @@ const ContainerPage = () => {
 
   const handleUpdateTags = async (selectedTags: Array<EntityTags> = []) => {
     try {
-      const { tags: newTags } = await handleUpdateContainerData({
+      const { tags: newTags, version } = await handleUpdateContainerData({
         ...(containerData as Container),
         tags: [...(tier ? [tier] : []), ...selectedTags],
       });
@@ -339,6 +345,7 @@ const ContainerPage = () => {
       setContainerData((prev) => ({
         ...(prev as Container),
         tags: newTags,
+        version,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
