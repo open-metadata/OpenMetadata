@@ -129,14 +129,6 @@ class QuicksightSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        self.dashboard_url = self.client.get_dashboard_embed_url(
-            AwsAccountId=self.aws_account_id,
-            DashboardId=dashboard_details["DashboardId"],
-            IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
-            Namespace=self.config.serviceConnection.__root__.config.namespace
-            or "default",
-        )["EmbedUrl"]
-
         yield CreateDashboardRequest(
             name=dashboard_details["DashboardId"],
             dashboardUrl=self.dashboard_url,
@@ -175,7 +167,14 @@ class QuicksightSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart["Name"], "Chart Pattern not allowed")
                     continue
-
+                self.dashboard_url = self.client.get_dashboard_embed_url(
+                    AwsAccountId=self.aws_account_id,
+                    DashboardId=dashboard_details["DashboardId"],
+                    IdentityType=self.config.serviceConnection.__root__.config.identityType.value,
+                    Namespace=self.config.serviceConnection.__root__.config.namespace
+                    or "default",
+                    SessionLifetimeInMinutes=600,
+                )["EmbedUrl"]
                 yield CreateChartRequest(
                     name=chart["SheetId"],
                     displayName=chart["Name"],
