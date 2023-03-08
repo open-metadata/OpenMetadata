@@ -2098,17 +2098,17 @@ public interface CollectionDAO {
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
-    default void updateTagPrefix(String oldPrefix, String newPrefix) {
+    default void updateTagPrefix(String oldPrefix, String newPrefix, int source) {
       String update =
           String.format(
-              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
+              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%' AND source = %s",
+              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix), source);
       updateTagPrefixInternal(update);
     }
 
-    default void rename(String oldFQN, String newFQN) {
+    default void rename(String oldFQN, String newFQN, int source) {
       renameInternal(oldFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
-      updateTagPrefix(oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+      updateTagPrefix(oldFQN, newFQN, source); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */

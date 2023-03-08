@@ -40,6 +40,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+
+  private static final int TAG_LABEL_TAG_USAGE_SOURCE = 0;
+
   public TagRepository(CollectionDAO dao) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
   }
@@ -172,7 +175,9 @@ public class TagRepository extends EntityRepository<Tag> {
         // Category name changed - update tag names starting from category and all the children tags
         LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection
+            .tagUsageDAO()
+            .rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName(), TAG_LABEL_TAG_USAGE_SOURCE);
         recordChange("name", original.getName(), updated.getName());
       }
 
@@ -191,7 +196,9 @@ public class TagRepository extends EntityRepository<Tag> {
       boolean ClassificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
 
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      daoCollection
+          .tagUsageDAO()
+          .rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName(), TAG_LABEL_TAG_USAGE_SOURCE);
       if (ClassificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(

@@ -54,6 +54,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "tags,references,relatedTerms,reviewers,owner,synonyms";
   private static final String PATCH_FIELDS = "tags,references,relatedTerms,reviewers,owner,synonyms";
 
+  private static final int GLOSSARY_TAG_USAGE_SOURCE = 1;
+
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
@@ -349,7 +351,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection
+            .tagUsageDAO()
+            .rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName(), GLOSSARY_TAG_USAGE_SOURCE);
         recordChange("name", original.getName(), updated.getName());
       }
     }
@@ -365,7 +369,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
 
       daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      daoCollection
+          .tagUsageDAO()
+          .rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName(), GLOSSARY_TAG_USAGE_SOURCE);
       if (glossaryChanged) {
         updateGlossaryRelationship(original, updated);
         recordChange("glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);

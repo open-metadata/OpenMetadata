@@ -61,6 +61,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "owner,tags,reviewers";
   private static final String PATCH_FIELDS = "owner,tags,reviewers";
 
+  private static final int GLOSSARY_TAG_USAGE_SOURCE = 1;
+
   public GlossaryRepository(CollectionDAO dao) {
     super(
         GlossaryResource.COLLECTION_PATH,
@@ -270,7 +272,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         // Category name changed - update tag names starting from category and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName(), GLOSSARY_TAG_USAGE_SOURCE);
         recordChange("name", original.getName(), updated.getName());
       }
     }

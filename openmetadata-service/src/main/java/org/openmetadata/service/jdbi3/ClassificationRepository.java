@@ -34,6 +34,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
+
+  private static final int TAG_LABEL_TAG_USAGE_SOURCE = 0;
+
   public ClassificationRepository(CollectionDAO dao) {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
@@ -122,7 +125,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         // Category name changed - update tag names starting from category and all the children tags
         LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName(), TAG_LABEL_TAG_USAGE_SOURCE);
         recordChange("name", original.getName(), updated.getName());
       }
     }
