@@ -205,7 +205,9 @@ def get_impala_columns(self, connection, table_name, schema=None, **kwargs):
         column_info.append(
             {
                 "name": remove_table_from_column_name(table_name, col[0]),
-                "type": _impala_type_to_sqlalchemy_type[col[1]],
+                # Using Hive's map instead of Impala's, as we are pointing to a Hive Server
+                # Passing the lower as Hive's map is based on lower strings.
+                "type": _type_map[col[1].lower()],
                 "nullable": True,
                 "autoincrement": False,
             }
