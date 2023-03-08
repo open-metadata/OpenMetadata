@@ -180,7 +180,7 @@ class QuicksightSource(DashboardServiceSource):
                     displayName=chart["Name"],
                     description="",
                     chartType=ChartType.Other.value,
-                    chartUrl=f"{self.dashboard_url}/sheets/{chart['SheetId']}",
+                    chartUrl=self.dashboard_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart["Name"])
