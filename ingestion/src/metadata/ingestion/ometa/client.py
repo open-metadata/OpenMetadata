@@ -136,7 +136,7 @@ class REST:
         base_url: URL = None,
         api_version: str = None,
         headers: dict = None,
-    ):
+    ):  # pylint: disable=inconsistent-return-statements
         # pylint: disable=too-many-locals
         if not headers:
             headers = {"Content-type": "application/json"}
