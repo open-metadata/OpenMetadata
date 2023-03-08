@@ -15,7 +15,7 @@ Hive source methods.
 import re
 from typing import Tuple
 
-from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
+from impala.sqlalchemy import ImpalaDialect
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
