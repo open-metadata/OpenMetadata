@@ -17,6 +17,7 @@ from urllib.parse import quote_plus
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -32,11 +33,24 @@ from metadata.ingestion.connections.test_connections import (
 
 
 def get_connection_url(connection: AthenaConnection) -> str:
+    """
+    Method to get connection url
+    """
+    aws_access_key_id = connection.awsConfig.awsAccessKeyId
+    aws_secret_access_key = connection.awsConfig.awsSecretAccessKey
+    aws_session_token = connection.awsConfig.awsSessionToken
+    if connection.awsConfig.assumeRoleArn:
+        assume_configs = AWSClient.get_assume_role_config(connection.awsConfig)
+        if assume_configs:
+            aws_access_key_id = assume_configs.accessKeyId
+            aws_secret_access_key = assume_configs.secretAccessKey
+            aws_session_token = assume_configs.sessionToken
+
     url = f"{connection.scheme.value}://"
-    if connection.awsConfig.awsAccessKeyId:
-        url += connection.awsConfig.awsAccessKeyId
-        if connection.awsConfig.awsSecretAccessKey:
-            url += f":{connection.awsConfig.awsSecretAccessKey.get_secret_value()}"
+    if aws_access_key_id:
+        url += aws_access_key_id
+        if aws_secret_access_key:
+            url += f":{aws_secret_access_key.get_secret_value()}"
     else:
         url += ":"
     url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
@@ -44,8 +58,8 @@ def get_connection_url(connection: AthenaConnection) -> str:
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
-    if connection.awsConfig.awsSessionToken:
-        url += f"&aws_session_token={quote_plus(connection.awsConfig.awsSessionToken)}"
+    if aws_session_token:
+        url += f"&aws_session_token={quote_plus(aws_session_token)}"
 
     return url
 

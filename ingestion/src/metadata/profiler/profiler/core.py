@@ -460,15 +460,21 @@ class Profiler(Generic[TMetric]):
                 )
                 sample_data = self.profiler_interface.fetch_sample_data(self.table)
 
-                if self.profiler_interface.source_config:
-                    entity_scanner = NERScanner(
-                        metadata=self.profiler_interface.ometa_client
-                    )
-                    entity_scanner.process(
-                        sample_data,
-                        self.profiler_interface.table_entity,
-                        self.profiler_interface.ometa_client,
-                    )
+                if self.profiler_interface.source_config.processPiiSensitive:
+                    try:
+                        entity_scanner = NERScanner(
+                            metadata=self.profiler_interface.ometa_client
+                        )
+                        entity_scanner.process(
+                            sample_data,
+                            self.profiler_interface.table_entity,
+                            self.profiler_interface.ometa_client,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            f"Unexpected error while processing sample data for auto pii tagging - {exc}"
+                        )
+                        logger.debug(traceback.format_exc())
 
                 logger.info(
                     "Successfully fetched sample data for "
