@@ -54,7 +54,7 @@ COMMONS = {
     "kafka": {
         "avro~=1.11",
         VERSIONS["avro-python3"],
-        "confluent_kafka==1.9.2",
+        "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -69,8 +69,8 @@ COMMONS = {
 pii_requirements = {
     "spacy==3.5.0",
     (
-        "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/"
-        "en_core_web_lg-3.5.0/en_core_web_lg-3.5.0-py3-none-any.whl"
+        "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_md-3.5.0/en_core_web_md-3.5.0-py3-none-any.whl"
     ),
     VERSIONS["pandas"],
     "presidio-analyzer==2.2.32",
