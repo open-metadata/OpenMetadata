@@ -38,11 +38,13 @@ def parse_array_fields(
         name=field_items.name,
         dataType=str(field_items.type).upper(),
         children=get_avro_fields(field.type.items, cls),
+        description=field_items.doc,
     )
 
     obj = cls(
         name=field.name,
         dataType=str(field.type.type).upper(),
+        description=field.doc,
     )
 
     if cls == Column:

@@ -200,6 +200,7 @@ class REST:
                 )
                 time.sleep(retry_wait)
                 retry -= 1
+        return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
