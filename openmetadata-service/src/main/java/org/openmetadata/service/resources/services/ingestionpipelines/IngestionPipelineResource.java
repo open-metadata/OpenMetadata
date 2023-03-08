@@ -273,7 +273,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @PathParam("version")
           String version)
       throws IOException {
-    return super.getVersionInternal(securityContext, id, version);
+    IngestionPipeline ingestionPipeline = super.getVersionInternal(securityContext, id, version);
+    decryptOrNullify(securityContext, ingestionPipeline, false);
+    return ingestionPipeline;
   }
 
   @GET

@@ -23,6 +23,7 @@ import java.util.Set;
 import lombok.Getter;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -86,6 +87,17 @@ public abstract class SecretsManager {
           ingestionPipeline.getName(),
           String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
+  }
+
+  public Workflow encryptOrDecryptWorkflow(Workflow workflow, boolean encrypt) {
+    Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    try {
+      encryptOrDecryptPasswordFields(workflowConverted, buildSecretId(true, "workflow", workflow.getName()), encrypt);
+    } catch (Exception e) {
+      throw InvalidServiceConnectionException.byMessage(
+          workflow.getName(), String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
+    }
+    return workflowConverted;
   }
 
   private Object encryptOrDecryptPasswordFields(Object targetObject, String name, boolean encrypt) {

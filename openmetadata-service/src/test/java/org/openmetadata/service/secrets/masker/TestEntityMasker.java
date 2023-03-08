@@ -8,6 +8,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -173,6 +175,41 @@ abstract class TestEntityMasker {
   }
 
   @Test
+  void testWorkflowMasker() {
+    Workflow workflow =
+        new Workflow()
+            .withRequest(
+                new TestServiceConnectionRequest()
+                    .withConnection(buildMysqlConnection())
+                    .withServiceType(ServiceType.DATABASE)
+                    .withConnectionType("Mysql"))
+            .withOpenMetadataServerConnection(buildOpenMetadataConnection());
+    Workflow masked = EntityMaskerFactory.createEntityMasker(config).maskWorkflow(workflow);
+    assertNotNull(masked);
+    assertEquals(
+        ((MysqlConnection) ((TestServiceConnectionRequest) masked.getRequest()).getConnection()).getPassword(),
+        getMaskedPassword());
+    assertEquals(
+        ((AWSCredentials) masked.getOpenMetadataServerConnection().getSecretsManagerCredentials())
+            .getAwsSecretAccessKey(),
+        getMaskedPassword());
+    assertEquals(
+        ((GoogleSSOClientConfig) masked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
+        getMaskedPassword());
+    Workflow unmasked = EntityMaskerFactory.createEntityMasker(config).unmaskWorkflow(masked, workflow);
+    assertEquals(
+        ((MysqlConnection) ((TestServiceConnectionRequest) unmasked.getRequest()).getConnection()).getPassword(),
+        PASSWORD);
+    assertEquals(
+        ((AWSCredentials) unmasked.getOpenMetadataServerConnection().getSecretsManagerCredentials())
+            .getAwsSecretAccessKey(),
+        PASSWORD);
+    assertEquals(
+        ((GoogleSSOClientConfig) unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
+        PASSWORD);
+  }
+
+  @Test
   void testObjectMaskerWithoutACustomClassConverter() {
     MysqlConnection mysqlConnection = buildMysqlConnection();
     MysqlConnection masked =
@@ -216,10 +253,13 @@ abstract class TestEntityMasker {
                 .withConfig(
                     new DbtPipeline()
                         .withDbtConfigSource(new DbtGCSConfig().withDbtSecurityConfig(buildGcsCredentials()))))
-        .withOpenMetadataServerConnection(
-            new OpenMetadataConnection()
-                .withSecretsManagerCredentials(new AWSCredentials().withAwsSecretAccessKey(PASSWORD))
-                .withSecurityConfig(buildGoogleSSOClientConfig()));
+        .withOpenMetadataServerConnection(buildOpenMetadataConnection());
+  }
+
+  private OpenMetadataConnection buildOpenMetadataConnection() {
+    return new OpenMetadataConnection()
+        .withSecretsManagerCredentials(new AWSCredentials().withAwsSecretAccessKey(PASSWORD))
+        .withSecurityConfig(buildGoogleSSOClientConfig());
   }
 
   private GoogleSSOClientConfig buildGoogleSSOClientConfig() {

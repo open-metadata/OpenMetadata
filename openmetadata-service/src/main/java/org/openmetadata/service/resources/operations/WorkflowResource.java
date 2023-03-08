@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.operations;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.google.inject.Inject;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -37,12 +39,14 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -52,7 +56,13 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -90,7 +100,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
-    dao.setPipelineServiceClient(pipelineServiceClient);
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
@@ -162,7 +171,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (status != null) {
       filter.addQueryParam("status", status);
     }
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Workflow> workflows =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    workflows.setData(
+        listOrEmpty(workflows.getData()).stream()
+            .map(service -> decryptOrNullify(securityContext, service))
+            .collect(Collectors.toList()));
+    return workflows;
   }
 
   @GET
@@ -215,7 +230,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
   @GET
@@ -249,7 +264,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
   @GET
@@ -278,7 +293,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @PathParam("version")
           String version)
       throws IOException {
-    return super.getVersionInternal(securityContext, id, version);
+    return decryptOrNullify(securityContext, super.getVersionInternal(securityContext, id, version));
   }
 
   @POST
@@ -298,7 +313,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
       throws IOException {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, workflow);
+    Response response = create(uriInfo, securityContext, workflow);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
   }
 
   @POST
@@ -349,7 +367,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
   }
 
   @PUT
@@ -368,7 +389,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
       throws IOException {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, workflow);
+    workflow = unmask(workflow);
+    Response response = createOrUpdate(uriInfo, securityContext, workflow);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
   }
 
   @DELETE
@@ -391,7 +416,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           boolean hardDelete,
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
   }
 
   @DELETE
@@ -415,7 +443,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string")) @PathParam("name")
           String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
   }
 
   @PUT
@@ -434,7 +465,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   public Response restoreWorkflow(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
       throws IOException {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    Response response = restoreEntity(uriInfo, securityContext, restore.getId());
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
   }
 
   private Workflow getWorkflow(CreateWorkflow create, String user) throws IOException {
@@ -447,5 +481,32 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .withDisplayName(create.getDisplayName())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withName(create.getName());
+  }
+
+  private Workflow unmask(Workflow workflow) {
+    dao.setFullyQualifiedName(workflow);
+    Workflow originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
+  }
+
+  private Workflow decryptOrNullify(SecurityContext securityContext, Workflow workflow) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+          getResourceContextById(workflow.getId()));
+    } catch (AuthorizationException | IOException e) {
+      Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+      if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest) {
+        ((TestServiceConnectionRequest) workflowConverted.getRequest()).setConnection(null);
+      }
+      return workflowConverted;
+    }
+    Workflow workflowDecrypted = secretsManager.encryptOrDecryptWorkflow(workflow, false);
+    if (authorizer.shouldMaskPasswords(securityContext)) {
+      workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
+    }
+    return workflowDecrypted;
   }
 }
