@@ -37,31 +37,34 @@ class Dialects(Enum):
     Map the service types from DatabaseServiceType
     to the dialect scheme name used for ingesting
     and profiling data.
+
+    Keep this alphabetically ordered
     """
 
-    Hive = b"hive"  # Hive requires bytes
-    Postgres = "postgresql"
-    BigQuery = "bigquery"
-    MySQL = "mysql"
-    Redshift = "redshift"
-    Snowflake = "snowflake"
-    MSSQL = "mssql"
-    Oracle = "oracle"
     Athena = "awsathena"
-    Presto = "presto"
-    Trino = "trino"
-    Vertica = "vertica"
-    Glue = "glue"
-    MariaDB = "mariadb"
-    Druid = "druid"
-    Db2 = "db2"
+    AzureSQL = "azuresql"
+    BigQuery = "bigquery"
     ClickHouse = "clickhouse"
     Databricks = "databricks"
+    Db2 = "db2"
+    Druid = "druid"
     DynamoDB = "dynamoDB"
-    AzureSQL = "azuresql"
+    Glue = "glue"
+    Hive = b"hive"  # Hive requires bytes
+    IbmDbSa = "ibm_db_sa"
+    Impala = "impala"
+    MariaDB = "mariadb"
+    MSSQL = "mssql"
+    MySQL = "mysql"
+    Oracle = "oracle"
+    Postgres = "postgresql"
+    Presto = "presto"
+    Redshift = "redshift"
     SingleStore = "singlestore"
     SQLite = "sqlite"
-    IbmDbSa = "ibm_db_sa"
+    Snowflake = "snowflake"
+    Trino = "trino"
+    Vertica = "vertica"
 
 
 # Sometimes we want to skip certain types for computing metrics.
