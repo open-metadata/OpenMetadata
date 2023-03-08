@@ -109,6 +109,7 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
                                             toColumn=target_column.fullyQualifiedName.__root__
                                         )
                                     )
+                                    break
 
                         lineage_details = LineageDetails(
                             columnsLineage=column_lineages,
