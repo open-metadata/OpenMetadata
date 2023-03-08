@@ -54,7 +54,7 @@ COMMONS = {
     "kafka": {
         "avro~=1.11",
         VERSIONS["avro-python3"],
-        "confluent_kafka==1.9.2",
+        "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
