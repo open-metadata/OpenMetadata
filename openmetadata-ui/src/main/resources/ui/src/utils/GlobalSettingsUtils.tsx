@@ -225,6 +225,14 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           icon: <MlModelIcon className="side-panel-icons" />,
         },
+        {
+          label: i18next.t('label.container-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.TYPE,
+            permissions
+          ),
+          icon: <ObjectStoreIcon className="side-panel-icons" />,
+        },
       ],
     },
     {

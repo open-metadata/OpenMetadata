@@ -536,6 +536,7 @@ export const ENTITY_PATH: Record<string, string> = {
   dashboards: 'dashboard',
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
+  containers: 'container',
 };
 
 export const VALIDATE_MESSAGES = {
