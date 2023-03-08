@@ -20,6 +20,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import sqlparse
 from cached_property import cached_property
 from sqllineage import SQLPARSE_DIALECT
+from sqllineage.core.models import Column, Table
+from sqllineage.exceptions import SQLLineageException
+from sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
@@ -31,17 +34,13 @@ from metadata.utils.helpers import (
     insensitive_replace,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.timeout import timeout
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
-# pylint: disable=wrong-import-position
-from metadata.utils.timeout import timeout
 
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.core.models import Column, Table
-from sqllineage.exceptions import SQLLineageException
-from sqllineage.runner import LineageRunner
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -275,7 +274,7 @@ class LineageParser:
         :return: for each table name, list all joins against other tables
         """
         # Here we want to get tokens such as `(tableA.col1 = tableB.col2)`
-        statement = sqlparse.parse(sql_statement)[0]
+        statement: Statement = sqlparse.parse(sql_statement)[0]
         comparisons: List[Comparison] = []
         for sub in statement.get_sublists():
             if isinstance(sub, Parenthesis):
@@ -382,7 +381,8 @@ class LineageParser:
             )
         except TimeoutError:
             logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: Parser has been running for more than {LINEAGE_PARSING_TIMEOUT} seconds."
+                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: "
+                f"Parser has been running for more than {LINEAGE_PARSING_TIMEOUT} seconds."
             )
             lr_sqlfluff = None
         except Exception:
