@@ -160,8 +160,8 @@ const ContainerPage = () => {
   ];
 
   const breadcrumbTitles = useMemo(() => {
+    const serviceType = containerData?.serviceType;
     const service = containerData?.service;
-    const serviceType = service?.type;
     const serviceName = service?.name;
 
     return [
