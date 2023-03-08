@@ -31,11 +31,12 @@ import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   getListTestCase,
   getTestSuiteByName,
   ListTestCaseParams,
+  restoreTestSuite,
   updateTestSuiteById,
 } from 'rest/testAPI';
 import {
@@ -55,16 +56,16 @@ import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
+  const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
-  const [isDeleteWidgetVisible, setIsDeleteWidgetVisible] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
@@ -157,6 +158,7 @@ const TestSuiteDetailsPage = () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
         fields: 'owner',
+        include: Include.All,
       });
       setSlashedBreadCrumb([
         {
@@ -251,12 +253,33 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const onSetActiveValue = (tabValue: number) => {
-    setActiveTab(tabValue);
+  const onRestoreTestSuite = async () => {
+    try {
+      const res = await restoreTestSuite(testSuite?.id || '');
+      if (res) {
+        showSuccessToast(
+          t('message.entity-restored-success', {
+            entity: t('label.test-suite'),
+          })
+        );
+        history.push(ROUTES.TEST_SUITES);
+      } else {
+        throw t('message.entity-restored-error', {
+          entity: t('label.test-suite'),
+        });
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.entity-restored-error', {
+          entity: t('label.test-suite'),
+        })
+      );
+    }
   };
 
-  const handleDeleteWidgetVisible = (isVisible: boolean) => {
-    setIsDeleteWidgetVisible(isVisible);
+  const onSetActiveValue = (tabValue: number) => {
+    setActiveTab(tabValue);
   };
 
   const handleTestCasePaging = (
@@ -314,11 +337,10 @@ const TestSuiteDetailsPage = () => {
               <TestSuiteDetails
                 descriptionHandler={descriptionHandler}
                 extraInfo={extraInfo}
-                handleDeleteWidgetVisible={handleDeleteWidgetVisible}
                 handleDescriptionUpdate={onDescriptionUpdate}
                 handleRemoveOwner={onRemoveOwner}
+                handleRestoreTestSuite={onRestoreTestSuite}
                 handleUpdateOwner={onUpdateOwner}
-                isDeleteWidgetVisible={isDeleteWidgetVisible}
                 isDescriptionEditable={isDescriptionEditable}
                 permissions={testSuitePermissions}
                 slashedBreadCrumb={slashedBreadCrumb}

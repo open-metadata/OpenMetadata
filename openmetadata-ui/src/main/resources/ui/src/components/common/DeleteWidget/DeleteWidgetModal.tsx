@@ -261,8 +261,7 @@ const DeleteWidgetModal = ({
       <div>
         <p className="tw-mb-2">
           {t('label.type')} <strong>{t('label.delete-uppercase')}</strong>{' '}
-          {t('label.to-lowercase')}
-          {t('label.confirm-lowercase')}
+          {t('label.to-lowercase')} {t('label.confirm-lowercase')}
         </p>
         <input
           autoComplete="off"
