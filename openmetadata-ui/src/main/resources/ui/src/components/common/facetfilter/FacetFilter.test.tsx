@@ -37,7 +37,7 @@ const aggregations: Aggregations = {
       },
     ],
   },
-  tier: {
+  'tier.tagFQN': {
     buckets: [],
   },
   'service.name.keyword': {
@@ -97,6 +97,10 @@ const aggregations: Aggregations = {
     ],
   },
 };
+
+jest.mock('utils/EntityUtils', () => ({
+  getSortedTierBucketList: jest.fn().mockReturnValue([]),
+}));
 
 const filters = {
   serviceType: ['BigQuery', 'Glue'],

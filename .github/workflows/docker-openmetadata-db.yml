@@ -66,4 +66,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.input_check.outputs.tags }}
-          file: ./docker/local-metadata/Dockerfile_mysql
+          file: ./docker/mysql/Dockerfile_mysql

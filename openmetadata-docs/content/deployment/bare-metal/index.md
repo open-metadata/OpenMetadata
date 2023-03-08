@@ -35,7 +35,7 @@ or visit one of the following OS-specific guides.
 
 Make sure to configure required databases and users for OpenMetadata. 
 
-You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/local-metadata/mysql-script.sql).
+You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/mysql/mysql-script.sql).
 
 </Note>
 
@@ -46,7 +46,7 @@ To install Postgres see the instructions for your operating system (OS) at [Post
 
 Make sure to configure required databases and users for OpenMetadata. 
 
-You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/local-metadata/postgres-script.sql).
+You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/postgresql/postgres-script.sql).
 
 </Note>
 

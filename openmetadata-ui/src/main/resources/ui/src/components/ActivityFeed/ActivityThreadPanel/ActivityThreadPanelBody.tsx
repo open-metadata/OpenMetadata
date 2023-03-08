@@ -290,7 +290,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                       buttonClass="tw-mr-4"
                       className="tw-ml-5 tw-mr-2"
                       placeHolder={t('message.enter-a-field', {
-                        field: 'label.message-lowercase',
+                        field: t('label.message-lowercase'),
                       })}
                       onSave={onPostThread}
                     />

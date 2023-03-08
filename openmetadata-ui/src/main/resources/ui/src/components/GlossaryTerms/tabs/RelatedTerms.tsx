@@ -126,7 +126,7 @@ const RelatedTerms = ({
       key="related_term"
       setShow={() => setIsIconVisible(false)}
       showIcon={isIconVisible}
-      title={t('label.related-terms')}
+      title={t('label.related-term-plural')}
       onSave={handleRelatedTermsSave}>
       <div className="flex" data-testid="related-term-container">
         {isIconVisible ? (
@@ -162,7 +162,7 @@ const RelatedTerms = ({
             notFoundContent={isLoading ? <Spin size="small" /> : null}
             options={formatOptions(options)}
             placeholder={t('label.add-entity', {
-              entity: t('label.related-terms'),
+              entity: t('label.related-term-plural'),
             })}
             style={{ width: '100%' }}
             value={selectedOption}

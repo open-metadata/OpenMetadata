@@ -14,7 +14,6 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +31,8 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.service.Entity;
@@ -49,10 +50,10 @@ public abstract class ExternalSecretsManagerTest {
   void setUp() {
     Fernet fernet = Fernet.getInstance();
     fernet.setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
-    Map<String, String> parameters = new HashMap<>();
-    parameters.put("region", "eu-west-1");
-    parameters.put("accessKeyId", "123456");
-    parameters.put("secretAccessKey", "654321");
+    Parameters parameters = new Parameters();
+    parameters.setAdditionalProperty("region", "eu-west-1");
+    parameters.setAdditionalProperty("accessKeyId", "123456");
+    parameters.setAdditionalProperty("secretAccessKey", "654321");
     SecretsManagerConfiguration config = new SecretsManagerConfiguration();
     config.setParameters(parameters);
     setUpSpecific(config);
@@ -118,14 +119,14 @@ public abstract class ExternalSecretsManagerTest {
 
   void testEncryptDecryptSSOConfig(boolean decrypt) {
     OktaSSOClientConfig config = new OktaSSOClientConfig();
-    config.setPrivateKey("this-is-a-test");
+    config.setPrivateKey(decrypt ? "secret:/openmetadata/bot/bot/config/authconfig/privatekey" : "this-is-a-test");
     AuthenticationMechanism expectedAuthenticationMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.SSO)
             .withConfig(
                 new SSOAuthMechanism().withAuthConfig(config).withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA));
 
-    AuthenticationMechanism authenticationMechanism =
+    AuthenticationMechanism actualAuthenticationMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.SSO)
             .withConfig(
@@ -133,8 +134,15 @@ public abstract class ExternalSecretsManagerTest {
                     .withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA)
                     .withAuthConfig(Map.of("privateKey", "this-is-a-test")));
 
-    AuthenticationMechanism actualAuthenticationMechanism =
-        secretsManager.encryptOrDecryptAuthenticationMechanism("bot", authenticationMechanism, decrypt);
+    secretsManager.encryptOrDecryptAuthenticationMechanism("bot", actualAuthenticationMechanism, decrypt);
+
+    if (decrypt) {
+      String privateKey =
+          ((OktaSSOClientConfig) ((SSOAuthMechanism) actualAuthenticationMechanism.getConfig()).getAuthConfig())
+              .getPrivateKey();
+      ((OktaSSOClientConfig) ((SSOAuthMechanism) actualAuthenticationMechanism.getConfig()).getAuthConfig())
+          .setPrivateKey(Fernet.getInstance().decrypt(privateKey));
+    }
 
     assertEquals(expectedAuthenticationMechanism, actualAuthenticationMechanism);
   }
@@ -156,7 +164,7 @@ public abstract class ExternalSecretsManagerTest {
                                             .withAwsSecretAccessKey("secret-password")
                                             .withAwsRegion("eu-west-1")))));
 
-    IngestionPipeline ingestionPipeline =
+    IngestionPipeline actualIngestionPipeline =
         new IngestionPipeline()
             .withName("my-pipeline")
             .withPipelineType(PipelineType.DBT)
@@ -172,8 +180,7 @@ public abstract class ExternalSecretsManagerTest {
                                     "awsSecretAccessKey", "secret-password",
                                     "awsRegion", "eu-west-1")))));
 
-    IngestionPipeline actualIngestionPipeline =
-        secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, decrypt);
+    secretsManager.encryptOrDecryptIngestionPipeline(actualIngestionPipeline, decrypt);
 
     if (decrypt) {
       DbtPipeline expectedDbtPipeline = ((DbtPipeline) expectedIngestionPipeline.getSourceConfig().getConfig());

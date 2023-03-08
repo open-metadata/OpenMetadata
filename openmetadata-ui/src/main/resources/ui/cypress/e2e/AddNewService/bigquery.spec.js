@@ -52,15 +52,6 @@ describe('BigQuery Ingestion', () => {
       cy.get('#root_clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
-      cy.get('#root_authUri')
-        .scrollIntoView()
-        .type('https://accounts.google.com/o/oauth2/auth');
-      cy.get('#root_tokenUri')
-        .scrollIntoView()
-        .type('https://oauth2.googleapis.com/token');
-      cy.get('#root_authProviderX509CertUrl')
-        .scrollIntoView()
-        .type('https://www.googleapis.com/oauth2/v1/certs');
       cy.get('#root_clientX509CertUrl')
         .scrollIntoView()
         .type(

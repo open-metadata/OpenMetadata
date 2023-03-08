@@ -27,7 +27,9 @@ const ColumnDetail = ({ column }: { column: Column }) => {
         <span
           className="tw-text-grey-muted tw-flex-none tw-mr-1"
           data-testid="column-type">
-          {`${t('label.column-type')}:`}
+          {`${t('label.column-entity', {
+            entity: t('label.type-lowercase'),
+          })}:`}
         </span>
         <Typography.Paragraph
           className="ant-typography-ellipsis-custom"

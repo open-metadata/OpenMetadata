@@ -12,55 +12,80 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { getTeamAndUserDetailsPath } from 'constants/constants';
 import { isArray, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getOwnerNameWithProfilePic,
+} from 'utils/EntityUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
-import { Topic } from '../../../../generated/entity/data/topic';
+import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface TopicSummaryProps {
   entityDetails: Topic;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
 
-function TopicSummary({ entityDetails }: TopicSummaryProps) {
+function TopicSummary({
+  entityDetails,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
+  isLoading,
+}: TopicSummaryProps) {
   const { t } = useTranslation();
+
   const [topicDetails, setTopicDetails] = useState<Topic>(entityDetails);
 
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
   const topicConfig = useMemo(() => {
-    const configs = getConfigObject(topicDetails);
+    const combined = { ...topicDetails, ...entityDetails };
+    const configs = getConfigObject(combined);
 
     return {
       ...configs,
       'Retention Size': bytesToSize(configs['Retention Size'] ?? 0),
       'Max Message Size': bytesToSize(configs['Max Message Size'] ?? 0),
     };
-  }, [topicDetails]);
+  }, [entityDetails, topicDetails]);
 
-  const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
-        SummaryEntityType.SCHEMAFIELD,
-        topicDetails.messageSchema?.schemaFields
-      ),
-    [topicDetails]
-  );
+  const ownerDetails = useMemo(() => {
+    const owner = entityDetails.owner;
 
-  const fetchExtraTopicInfo = async () => {
+    return {
+      value:
+        getOwnerNameWithProfilePic(owner) ||
+        t('label.no-entity', {
+          entity: t('label.owner'),
+        }),
+      url: getTeamAndUserDetailsPath(owner?.name || ''),
+      isLink: owner?.name ? true : false,
+    };
+  }, [entityDetails, topicDetails]);
+
+  const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(
-        entityDetails.fullyQualifiedName ?? '',
-        ''
-      );
+      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', [
+        'tags',
+        'owner',
+      ]);
 
       const { partitions, messageSchema } = res;
 
@@ -73,73 +98,104 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
         })
       );
     }
-  };
-
-  useEffect(() => {
-    fetchExtraTopicInfo();
   }, [entityDetails]);
 
+  const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        topicDetails.messageSchema?.schemaFields
+      ),
+    [topicDetails]
+  );
+
+  useEffect(() => {
+    if (entityDetails.service?.type === 'messagingService') {
+      fetchExtraTopicInfo();
+    }
+  }, [entityDetails, componentType]);
+
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.TOPIC}
-            source={entityDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row>
-            {Object.keys(topicConfig).map((fieldName) => {
-              const value =
-                topicConfig[fieldName as keyof TopicConfigObjectInterface];
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          {!isExplore ? (
+            <Col className="p-b-md" span={24}>
+              {ownerDetails.isLink ? (
+                <Link
+                  component={Typography.Link}
+                  to={{ pathname: ownerDetails.url }}>
+                  {ownerDetails.value}
+                </Link>
+              ) : (
+                <Typography.Text className="text-grey-muted">
+                  {ownerDetails.value}
+                </Typography.Text>
+              )}
+            </Col>
+          ) : null}
+          <Col span={24}>
+            <Row>
+              {Object.keys(topicConfig).map((fieldName) => {
+                const value =
+                  topicConfig[fieldName as keyof TopicConfigObjectInterface];
 
-              const fieldValue = isArray(value) ? value.join(', ') : value;
+                const fieldValue = isArray(value) ? value.join(', ') : value;
 
-              return (
-                <Col key={fieldName} span={24}>
-                  <Row gutter={16}>
-                    <Col
-                      className="text-gray"
-                      data-testid={`${fieldName}-label`}
-                      span={10}>
-                      {fieldName}
-                    </Col>
-                    <Col data-testid={`${fieldName}-value`} span={12}>
-                      {fieldValue ? fieldValue : '-'}
-                    </Col>
-                  </Row>
-                </Col>
-              );
-            })}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="section-header"
-            data-testid="schema-header">
-            {t('label.schema')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          {isEmpty(topicDetails.messageSchema?.schemaFields) ? (
-            <div className="m-y-md">
-              <Typography.Text
-                className="text-gray"
-                data-testid="no-data-message">
-                {t('message.no-data-available')}
-              </Typography.Text>
-            </div>
-          ) : (
-            <SummaryList formattedEntityData={formattedSchemaFieldsData} />
-          )}
-        </Col>
-      </Row>
-    </>
+                return (
+                  <Col key={fieldName} span={24}>
+                    <Row gutter={[16, 32]}>
+                      <Col data-testid={`${fieldName}-label`} span={10}>
+                        <Typography.Text className="text-grey-muted">
+                          {fieldName}
+                        </Typography.Text>
+                      </Col>
+                      <Col data-testid={`${fieldName}-value`} span={14}>
+                        {fieldValue ? fieldValue : '-'}
+                      </Col>
+                    </Row>
+                  </Col>
+                );
+              })}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
+
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
+              <div className="m-y-md">
+                <Typography.Text data-testid="no-data-message">
+                  <Typography.Text className="text-grey-body">
+                    {t('message.no-data-available')}
+                  </Typography.Text>
+                </Typography.Text>
+              </div>
+            ) : (
+              <SummaryList formattedEntityData={formattedSchemaFieldsData} />
+            )}
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

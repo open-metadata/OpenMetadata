@@ -13,7 +13,7 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
-from typing import List
+from typing import List, Optional
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -66,3 +66,18 @@ def get_table_fqn(entity_link: str) -> str:
     """
 
     return entity_link.split("::")[2]
+
+
+def get_entity_link(table_fqn: str, column_name: Optional[str]) -> str:
+    """From table fqn and column name get the entity_link
+
+    Args:
+        table_fqn: table fqn
+        column_name: Optional param to generate entity link with column name
+    """
+
+    if column_name:
+        entity_link = f"<#E::table::" f"{table_fqn}" f"::columns::" f"{column_name}>"
+    else:
+        entity_link = f"<#E::table::" f"{table_fqn}>"
+    return entity_link

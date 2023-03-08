@@ -12,11 +12,13 @@
  */
 
 import { ISubmitEvent } from '@rjsf/core';
+import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TestConnection } from 'rest/serviceAPI';
+import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -83,7 +85,12 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     const updatedFormData = formatFormDataForSubmit(formData);
 
     return new Promise<void>((resolve, reject) => {
-      TestConnection(updatedFormData, getTestConnectionType(serviceCategory))
+      TestConnection(
+        updatedFormData,
+        getTestConnectionType(serviceCategory),
+        serviceType,
+        data?.name
+      )
         .then((res) => {
           // This api only responds with status 200 on success
           // No data sent on api success
@@ -142,6 +149,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
       case ServiceCategory.METADATA_SERVICES: {
         connSch = getMetadataConfig(serviceType as MetadataServiceType);
+
+        break;
+      }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        connSch = getObjectStoreConfig(serviceType as ObjectStoreServiceType);
 
         break;
       }

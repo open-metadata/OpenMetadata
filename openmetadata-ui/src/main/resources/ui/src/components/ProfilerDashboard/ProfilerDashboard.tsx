@@ -515,7 +515,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                 <>
                   <Form.Item
                     className="m-0 "
-                    label={t('label.deleted-test-plural')}>
+                    label={t('label.deleted-entity', {
+                      entity: t('label.test-plural'),
+                    })}>
                     <Switch
                       checked={showDeletedTest}
                       onClick={handleDeletedTestCaseClick}

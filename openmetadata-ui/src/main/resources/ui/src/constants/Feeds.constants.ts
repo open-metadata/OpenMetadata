@@ -65,3 +65,4 @@ export enum EntityField {
 export const ANNOUNCEMENT_BG = '#FFFDF8';
 export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';
+export const GLOBAL_BORDER = '#dde3ea';

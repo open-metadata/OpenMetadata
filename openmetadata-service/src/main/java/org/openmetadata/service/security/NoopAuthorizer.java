@@ -103,4 +103,9 @@ public class NoopAuthorizer implements Authorizer {
   public boolean decryptSecret(SecurityContext securityContext) {
     return true; // Always decrypt
   }
+
+  @Override
+  public boolean shouldMaskPasswords(SecurityContext securityContext) {
+    return false; // Always show passwords
+  }
 }
