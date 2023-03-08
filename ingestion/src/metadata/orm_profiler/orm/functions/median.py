@@ -63,6 +63,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.Hive)
+@compiles(MedianFn, Dialects.Impala)
 def _(elements, compiler, **kwargs):
     """Median computation for Hive"""
     col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
