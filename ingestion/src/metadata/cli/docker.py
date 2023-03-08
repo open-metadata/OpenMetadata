@@ -53,7 +53,7 @@ REQUESTS_TIMEOUT = 60 * 5
 
 DOCKER_URL_ROOT = (
     "https://raw.githubusercontent.com/open-metadata/OpenMetadata/"
-    f"{RELEASE_BRANCH_VERSION}/docker/metadata/"
+    f"{RELEASE_BRANCH_VERSION}/docker/docker-compose-quickstart/"
 )
 
 DEFAULT_COMPOSE_FILE = "docker-compose.yml"

@@ -31,7 +31,8 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const tableName = 'order_items';
 const description = `This is ${serviceName} description`;
 const filterPattern = 'sales';
-const query =
+const clearQuery = 'select pg_stat_statements_reset()';
+const selectQuery =
   'SELECT * FROM sales.order_items oi INNER JOIN sales.orders o ON oi.order_id=o.order_id';
 
 describe('Postgres Ingestion', () => {
@@ -40,7 +41,8 @@ describe('Postgres Ingestion', () => {
   });
 
   it('Trigger select query', () => {
-    cy.postgreSQL(query);
+    cy.postgreSQL(clearQuery);
+    cy.postgreSQL(selectQuery);
   });
 
   it('add and ingest data', () => {
@@ -165,7 +167,7 @@ describe('Postgres Ingestion', () => {
     // Validate that the triggered query is visible in the queries container
     cy.get('[data-testid="queries-container"]')
       .should('be.visible')
-      .should('contain', query);
+      .should('contain', selectQuery);
     // Validate queries count is greater than 1
     cy.get('[data-testid="entity-summary-details"]')
       .invoke('text')

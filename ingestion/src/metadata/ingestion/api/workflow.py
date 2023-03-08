@@ -304,7 +304,10 @@ class Workflow(WorkflowStatusMixin):
         :param service_type: source workflow service type
         :return:
         """
-        if not self.config.source.serviceConnection:
+        if (
+            not self.config.source.serviceConnection
+            and not self.metadata.config.forceEntityOverwriting
+        ):
             service_name = self.config.source.serviceName
             try:
                 service: ServiceWithConnectionType = cast(

@@ -498,7 +498,10 @@ export const addNewTagToEntity = (entityObj, term) => {
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
 
-  cy.get(`[title="${term}"]`).should('be.visible').click();
+  cy.get('.ant-select-item-option-content')
+    .contains(term)
+    .should('be.visible')
+    .click();
   cy.get(
     '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
   ).contains(term);
@@ -518,7 +521,10 @@ export const addNewTagToEntity = (entityObj, term) => {
     .should('be.visible')
     .type(term);
   cy.wait(500);
-  cy.get(`[title="${term}"]`).should('be.visible').click();
+  cy.get('.ant-select-item-option-content')
+    .contains(term)
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')

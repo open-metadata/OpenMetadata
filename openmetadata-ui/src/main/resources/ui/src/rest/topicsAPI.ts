@@ -67,7 +67,7 @@ export const getTopicDetails = (
 
 export const getTopicByFqn = async (
   fqn: string,
-  arrQueryFields: string | TabSpecificField[]
+  arrQueryFields: string[] | string | TabSpecificField[]
 ) => {
   const url = getURLWithQueryFields(
     `/topics/name/${fqn}`,

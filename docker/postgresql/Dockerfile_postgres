@@ -1,4 +1,4 @@
-FROM mysql/mysql-server:latest
+FROM postgres:14
 WORKDIR /docker-entrypoint-initdb.d
-COPY docker/local-metadata/mysql-script.sql .
+COPY docker/postgresql/postgres-script.sql .
 RUN chmod -R 775 /docker-entrypoint-initdb.d
