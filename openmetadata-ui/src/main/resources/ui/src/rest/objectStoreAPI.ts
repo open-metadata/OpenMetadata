@@ -13,10 +13,19 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
 import { ServicePageData } from 'pages/service';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
+
+const configOptionsForPatch = {
+  headers: { 'Content-type': 'application/json-patch+json' },
+};
+
+const configOptions = {
+  headers: { 'Content-type': 'application/json' },
+};
 
 export const getContainers = async (
   serviceName: string,
@@ -45,15 +54,33 @@ export const getContainerByName = async (name: string, fields: string) => {
 };
 
 export const patchContainerDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Container>>(
     `/containers/${id}`,
     data,
-    configOptions
+    configOptionsForPatch
   );
+
+  return response.data;
+};
+
+export const addContainerFollower = async (id: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/containers/${id}/followers`, userId, configOptions);
+
+  return response.data;
+};
+
+export const removeContainerFollower = async (id: string, userId: string) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(`/containers/${id}/followers/${userId}`, configOptions);
 
   return response.data;
 };

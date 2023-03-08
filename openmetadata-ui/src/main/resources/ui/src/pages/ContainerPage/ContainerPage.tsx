@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Tabs } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
@@ -38,7 +39,12 @@ import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getContainerByName, patchContainerDetails } from 'rest/objectStoreAPI';
+import {
+  addContainerFollower,
+  getContainerByName,
+  patchContainerDetails,
+  removeContainerFollower,
+} from 'rest/objectStoreAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -65,13 +71,12 @@ const ContainerPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
     useParams<{ containerName: string; tab: CONTAINER_DETAILS_TABS }>();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [containerData, setContainerData] = useState<Container>();
-
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
 
   const fetchContainerDetail = async (containerFQN: string) => {
@@ -183,6 +188,12 @@ const ContainerPage = () => {
     ];
   }, [containerData, containerName, entityName]);
 
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
@@ -208,6 +219,34 @@ const ContainerPage = () => {
         ...(prev as Container),
         description: newDescription,
       }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleFollowContainer = async () => {
+    const followerId = currentUser?.id ?? '';
+    const containerId = containerData?.id ?? '';
+    try {
+      if (isUserFollowing) {
+        const response = await removeContainerFollower(containerId, followerId);
+        const { oldValue } = response.changeDescription.fieldsDeleted[0];
+
+        setContainerData((prev) => ({
+          ...(prev as Container),
+          followers: (containerData?.followers || []).filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        }));
+      } else {
+        const response = await addContainerFollower(containerId, followerId);
+        const { newValue } = response.changeDescription.fieldsAdded[0];
+
+        setContainerData((prev) => ({
+          ...(prev as Container),
+          followers: [...(containerData?.followers ?? []), ...newValue],
+        }));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -255,7 +294,7 @@ const ContainerPage = () => {
           entityName={entityName || ''}
           entityType={EntityType.CONTAINER}
           extraInfo={extraInfo}
-          followHandler={tempFunction}
+          followHandler={handleFollowContainer}
           followers={followers.length}
           followersList={followers}
           isFollowing={isUserFollowing}
